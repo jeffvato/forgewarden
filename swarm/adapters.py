@@ -6,11 +6,12 @@ import os
 import re
 import resource
 import shutil
+import shlex
 import subprocess
 import tempfile
 import time
 import uuid
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -62,6 +63,68 @@ class WriterInvocationSpec:
             f"The sanitized failing assertion is: {self.failing_assertion}. Make the smallest source correction. "
             "Do not modify or create tests. Do not write Git metadata, stage files, create commits, remotes, or pushes."
         )
+
+
+@dataclass
+class CodexRunEvidence:
+    job_id: str
+    codex_version: str
+    sanitized_argv: list[str]
+    actual_cwd: str
+    environment_variable_names: list[str]
+    prompt_hash: str
+    sanitized_prompt: str
+    target_canonical_path: str
+    target_pre_hash: str | None = None
+    target_post_hash: str | None = None
+    codex_exit_code: int | None = None
+    jsonl_event_types: list[str] = field(default_factory=list)
+    tool_commands: list[dict[str, Any]] = field(default_factory=list)
+    sandbox_write_denials: list[str] = field(default_factory=list)
+    schema_validation: str = "NOT_RUN"
+    sanitized_final_response: str = "[MISSING_FINAL_RESPONSE]"
+    claimed_changed_files: list[str] | None = None
+    actual_normalized_changed_paths: list[str] | None = None
+    persisted_path: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+def _codex_version(executable: str) -> str:
+    result = run_command([executable, "--version"], Path.cwd(), timeout=15)
+    return redact(result.stdout.strip() or result.stderr.strip())[:200] if result.returncode == 0 else "UNAVAILABLE"
+
+
+def _jsonl_telemetry(stdout: str) -> tuple[list[str], list[dict[str, Any]], list[str]]:
+    event_types: list[str] = []
+    commands: list[dict[str, Any]] = []
+    denials: list[str] = []
+    denial_terms = re.compile(r"(?i)(permission denied|operation not permitted|read-only|sandbox|write.*denied|cannot write|index\.lock)")
+    for line in stdout.splitlines():
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(event, dict):
+            continue
+        event_type = event.get("type")
+        if isinstance(event_type, str):
+            event_types.append(event_type)
+        item = event.get("item") if isinstance(event.get("item"), dict) else {}
+        if item.get("type") == "command_execution":
+            raw_command = str(item.get("command", ""))
+            try:
+                command_name = shlex.split(raw_command)[0] if shlex.split(raw_command) else ""
+            except ValueError:
+                command_name = raw_command.split(maxsplit=1)[0] if raw_command else ""
+            commands.append({"name": redact(command_name)[:160], "exit_code": item.get("exit_code"), "status": redact(str(item.get("status", "")))[:80]})
+        candidates = [item.get("message"), item.get("aggregated_output"), event.get("error")]
+        for candidate in candidates:
+            text = redact(str(candidate))[:512] if candidate is not None else ""
+            if text and denial_terms.search(text):
+                denials.append(text)
+    return event_types, commands, denials
 
 
 def normalize_changed_paths(spec: WriterInvocationSpec, paths: list[str]) -> list[str]:
@@ -343,16 +406,37 @@ class HermesAdapter:
 
 
 class CodexAdapter:
-    def __init__(self, schema: Path, limits: ResourceLimits, executable: str = "/home/jeff/.local/bin/codex"):
+    def __init__(self, schema: Path, limits: ResourceLimits, executable: str = "/home/jeff/.local/bin/codex", evidence_dir: Path | None = None):
         self.schema = schema
         self.limits = limits
         self.executable = executable
+        self.evidence_dir = evidence_dir
         self.last_invocation: dict[str, Any] = {}
+        self.last_evidence: CodexRunEvidence | None = None
         self.last_cache_directory: Path | None = None
+
+    def persist_evidence(self) -> Path | None:
+        if self.last_evidence is None or self.evidence_dir is None:
+            return None
+        self.evidence_dir.mkdir(parents=True, exist_ok=True)
+        self.evidence_dir.chmod(0o700)
+        path = self.evidence_dir / f"{self.last_evidence.job_id}.json"
+        path.write_text(json.dumps(self.last_evidence.to_dict(), sort_keys=True), encoding="utf-8")
+        path.chmod(0o600)
+        self.last_evidence.persisted_path = str(path)
+        path.write_text(json.dumps(self.last_evidence.to_dict(), sort_keys=True), encoding="utf-8")
+        path.chmod(0o600)
+        return path
+
+    def record_actual_paths(self, paths: list[str]) -> None:
+        if self.last_evidence is None:
+            raise SwarmError("Codex telemetry is unavailable")
+        self.last_evidence.actual_normalized_changed_paths = list(paths)
+        self.persist_evidence()
 
     def run(self, spec: WriterInvocationSpec, prompt: str | None = None) -> dict[str, Any]:
         canonical_job_id = _job_id_filename(spec.job_id)
-        spec.target()
+        target = spec.target()
         worktree = spec.git_root
         cache_dir = Path("/home/jeff/hermes-swarm-runtime/python-cache") / canonical_job_id
         cache_dir.mkdir(parents=True, exist_ok=True)
@@ -372,8 +456,25 @@ class CodexAdapter:
         )
         command = [self.executable, "--ask-for-approval", "never", "exec", "--ephemeral", "--sandbox", "workspace-write", "--skip-git-repo-check", "--cd", str(spec.codex_cwd)]
         command.extend(["--output-schema", str(schema_copy), "--output-last-message", str(external_output), "--color", "never", "--json", canonical_prompt])
+        evidence = CodexRunEvidence(
+            job_id=canonical_job_id,
+            codex_version=_codex_version(self.executable),
+            sanitized_argv=command[:-1] + ["<prompt-argument>"],
+            actual_cwd=str(spec.codex_cwd),
+            environment_variable_names=sorted(_codex_environment({"SWARM_ROLE": "CODEX_WRITER", "SWARM_DRY_RUN": "1"}, cache_dir)),
+            prompt_hash=hashlib.sha256(canonical_prompt.encode("utf-8")).hexdigest(),
+            sanitized_prompt=redact(canonical_prompt)[:12000],
+            target_canonical_path=str(target),
+            target_pre_hash=hashlib.sha256(target.read_bytes()).hexdigest(),
+        )
+        self.last_evidence = evidence
         try:
             result = limited_run(command, spec.codex_cwd, "", self.limits, {"SWARM_ROLE": "CODEX_WRITER", "SWARM_DRY_RUN": "1"}, use_cgroup=True, environment_builder=lambda values: _codex_environment(values, cache_dir))
+            event_types, tool_commands, denials = _jsonl_telemetry(result.stdout)
+            evidence.jsonl_event_types = event_types
+            evidence.tool_commands = tool_commands
+            evidence.sandbox_write_denials = denials
+            evidence.codex_exit_code = result.returncode
             self.last_invocation = {
                 "executable": self.executable,
                 "argv": command[:-1] + ["<prompt-argument>"],
@@ -386,16 +487,32 @@ class CodexAdapter:
                 "stderr": redact(result.stderr),
             }
             if result.returncode:
+                evidence.schema_validation = "NOT_REACHED_PROCESS_EXIT"
+                evidence.target_post_hash = hashlib.sha256(target.read_bytes()).hexdigest()
+                self.persist_evidence()
                 raise SwarmError(f"Codex failed ({result.returncode}): {redact(result.stderr + result.stdout)}")
             if not external_output.exists() or not external_output.read_text(encoding="utf-8").strip():
+                evidence.schema_validation = "MISSING_FINAL_RESPONSE"
+                evidence.target_post_hash = hashlib.sha256(target.read_bytes()).hexdigest()
+                self.persist_evidence()
                 raise SwarmError("Codex did not write its schema-constrained result; output: " + redact(result.stdout + result.stderr))
             payload = json.loads(external_output.read_text(encoding="utf-8"))
+            evidence.sanitized_final_response = redact(json.dumps(payload, sort_keys=True))[:12000]
+            evidence.claimed_changed_files = payload.get("changed_files") if isinstance(payload, dict) and isinstance(payload.get("changed_files"), list) else None
             output.write_text(json.dumps(payload, sort_keys=True), encoding="utf-8")
             self.last_invocation["final_response"] = redact(json.dumps(payload, sort_keys=True))
+            evidence.target_post_hash = hashlib.sha256(target.read_bytes()).hexdigest()
+            try:
+                validate_contract(payload, "codex", expected_job_id=canonical_job_id)
+            except SwarmError as exc:
+                evidence.schema_validation = "FAILED"
+                self.persist_evidence()
+                raise
+            evidence.schema_validation = "PASSED"
+            self.persist_evidence()
         finally:
             external_output.unlink(missing_ok=True)
             shutil.rmtree(cache_dir, ignore_errors=True)
-        validate_contract(payload, "codex", expected_job_id=canonical_job_id)
         return payload
 
 
