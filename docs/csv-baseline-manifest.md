@@ -1,7 +1,7 @@
 # Protected CSV processor onboarding baseline
 
-Status: baseline created; the first controlled repair attempt was blocked by
-the complete-tree secret scan before a worktree or agent was started. The
+Status: corrected v2 baseline created; the conditional controlled exercise
+stopped safely when the required systemd user scope could not be created. The
 swarm kill switch remains engaged, deployment remains disabled, and
 `/home/jeff/n8n` is not in the allowlist.
 
@@ -14,10 +14,10 @@ contains only the clean v2 repository documented below.
 
 ```text
 repository: /home/jeff/swarm-repositories/n8n-csv-baseline-v2
-baseline commit: 9cf4d5933b5563fe079e17ccdd8d33b8169de2db
+baseline commit: bad64e7cf14e3c586d395341b25467841847dec6
 tree files scanned: 2
 tree findings: 0
-committed blobs scanned: 2
+committed blobs scanned: 3
 blob findings: 0
 ```
 
@@ -42,6 +42,23 @@ The final conditional v2 exercise then stopped before defect introduction or
 kill-switch clearance because the unchanged minimal test failed import
 collection (`ModuleNotFoundError: app`). See
 [`docs/first-controlled-repair-v2-final.md`](first-controlled-repair-v2-final.md).
+
+The approved human baseline correction changed only
+`csv-processor/tests/swarm_regressions/test_deadline_contract.py`. It now
+expects `ProductDeadlineExceeded` around the complete zero-duration context
+entry, proves the body is not entered, and retains the positive-duration
+assertions. The exact deterministic test passed (`2 passed`), and the
+corrected baseline was committed as
+`bad64e7cf14e3c586d395341b25467841847dec6`.
+
+The one authorized conditional exercise used job
+`controlled-baseline-kps4zang`. Its path and command preflight was recorded,
+but the baseline subprocess could not start because the required systemd
+user scope reported `Failed to connect to bus: No medium found`. The kill
+switch was never cleared; no defect, Codex invocation, repair commit, or
+Gemini review occurred. See
+[`docs/first-controlled-repair-v2-final.md`](first-controlled-repair-v2-final.md)
+for the final evidence.
 
 ## Source and independent clone
 

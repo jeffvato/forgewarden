@@ -1,81 +1,74 @@
-# Final v2 deterministic environment proof
+# Final v2 controlled exercise
 
-Result: **STOPPED at the unchanged-baseline test gate.**
+Result: **STOPPED safely at deterministic preflight.**
 
-The runner now configures deterministic pytest with the same project working
-directory, argument array, and minimal environment that a future authorized
-repair would use. No repair authorization was consumed.
+## Corrected baseline
 
-## Configuration proved
-
-For a temporary worktree rooted at `<worktree>`:
+The human-approved correction changed only:
 
 ```text
-working directory: <worktree>/csv-processor
-argument array: [<resolved-python-executable>, -m, pytest, -q, -p, no:cacheprovider, tests/swarm_regressions/test_deadline_contract.py]
-PYTHONDONTWRITEBYTECODE=1
-PYTHONNOUSERSITE=1
-PYTEST_DISABLE_PLUGIN_AUTOLOAD=1
-network: blocked by the repair runner's systemd scope
+csv-processor/tests/swarm_regressions/test_deadline_contract.py
 ```
 
-The environment is constructed from an explicit allowlist containing only
-`PATH`, `HOME`, `LANG`, and `LC_ALL` when present, plus the deterministic
-Python variables above. Proxy variables are removed. Production, database,
-credential, token, customer, order, WooCommerce, distributor, Docker, and
-unrelated environment variables are not passed.
+It wraps the complete `product_deadline(0)` statement in
+`pytest.raises(ProductDeadlineExceeded)`, verifies that the context body is
+never entered, and retains the positive-duration contract assertions. The
+application deadline implementation was not changed.
 
-## Disposable baseline proof
-
-The temporary worktree was created from exactly:
+The exact deterministic command passed before the baseline commit:
 
 ```text
-9cf4d5933b5563fe079e17ccdd8d33b8169de2db
+working directory: <v2>/csv-processor
+argv: [/home/jeff/anaconda3/bin/python3, -m, pytest, -q, -p, no:cacheprovider, tests/swarm_regressions/test_deadline_contract.py]
+environment: explicit minimal allowlist; PYTHONDONTWRITEBYTECODE=1
+result: 2 passed in 0.01s
 ```
 
-The resolved Python executable was `/home/jeff/anaconda3/bin/python3`. The
-unchanged test command reached pytest successfully, proving the import path
-correction, but the baseline test itself failed:
+Corrected authoritative baseline:
 
 ```text
-1 failed, 1 passed
-app.ai.deadline.ProductDeadlineExceeded: Product deadline exhausted before product processing
+bad64e7cf14e3c586d395341b25467841847dec6
 ```
 
-The failure occurs while entering `product_deadline(0)` in
-`test_expired_deadline_is_authoritative`, before that test’s inner exception
-handler. The baseline was not changed to compensate. Because the unchanged
-baseline did not pass, no defect was introduced, the kill switch was not
-cleared, and Codex and Gemini were not invoked.
+The complete tree scan found 2 files with 0 findings. The complete reachable
+Git-blob scan found 3 blobs with 0 findings. The corrected test is a regular
+read-only file in the clean baseline.
 
-The worktree was removed afterward. No `__pycache__`, `.pyc`, pytest cache,
-log, or source file was written to the baseline repository. The v2 baseline
-remains clean at the exact SHA above.
+## Conditional exercise
 
-## Tests and changes
+Job ID: `controlled-baseline-kps4zang`
 
-The process-level integration test creates the same disposable layout and
-executes real pytest using the corrected command. The complete swarm test
-suite passes: **28 tests passed**.
+The runner verified the exact baseline SHA, scanned the tree and Git blobs,
+created a temporary worktree, resolved the test path inside it, and recorded
+the working directory and argument array. The first unchanged-baseline
+subprocess could not start under the required aggregate systemd scope:
 
-Changed and committed only in the swarm repository:
+```text
+Failed to connect to bus: No medium found
+```
 
-- `swarm/adapters.py`: explicit minimal deterministic test environment.
-- `swarm/baseline.py`: project working directory and exact pytest argument
-  array, including cache suppression and bytecode policy.
-- `tests/test_baseline.py`: real process-level pytest proof and preflight
-  coverage.
-- this documentation.
+This is an infrastructure preflight failure, not a test result. The runner
+stopped before introducing the defect. Therefore:
 
-## Safety state
+- Codex was not invoked.
+- No repair commit SHA exists.
+- agy/Gemini was not invoked; no verdict exists.
+- The kill switch was never cleared.
+- The temporary worktree was removed by the runner cleanup path.
+- The durable audit record is `/home/jeff/hermes-swarm-audit/audit.jsonl`.
+
+No retry was attempted; this consumed the single authorized conditional
+exercise.
+
+## Final safety state
 
 - Kill switch: **ENGAGED**.
 - Deployment: **DISABLED**.
-- Codex: not invoked.
-- agy/Gemini: not invoked.
-- v2 baseline: unchanged.
-- Old baseline, `/home/jeff/n8n`, Docker, and production: untouched.
+- v2 baseline: unchanged at `bad64e7cf14e3c586d395341b25467841847dec6`.
+- Original `/home/jeff/n8n`: unchanged at `dd847c7e86ea62369537f46cf887aba799a441fa`.
+- Old baseline: untouched.
+- Docker and production: untouched.
+- No production credentials, customer data, or database data were exposed.
 
-The baseline test must be corrected through a separately authorized,
-human-reviewed baseline change before any future repair exercise can pass
-this gate. No further exercise was attempted.
+The runner, baseline manifest, and this evidence document were updated in the
+swarm repository only. No repair authorization remains to be executed.

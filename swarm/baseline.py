@@ -14,7 +14,7 @@ from .core import AuditLog, Job, ServiceLock, SwarmError, redact, run_command
 from .local_run import _readonly_snapshot
 
 
-BASELINE_SHA = "9cf4d5933b5563fe079e17ccdd8d33b8169de2db"
+BASELINE_SHA = "bad64e7cf14e3c586d395341b25467841847dec6"
 REPOSITORY = Path("/home/jeff/swarm-repositories/n8n-csv-baseline-v2")
 WRITABLE_DEADLINE = "csv-processor/app/ai/deadline.py"
 WRITABLE_TEST_ROOT = "csv-processor/tests/swarm_regressions/"
