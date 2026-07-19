@@ -1,10 +1,10 @@
-# Final v2 controlled exercise and writer validation
+# V2 controlled exercise attempt history
 
-Summary: the earlier v2 attempt stopped at deterministic preflight; the later
-authorized exercise reached Codex and stopped at the diff gate because no
-authorized change was committed. The separate Codex writer capability probe
-also reached Codex but was rejected for a structured job-ID mismatch. No
-deadline repair was retried.
+Each attempted job below has its own final state. The latest authorized
+deadline exercise, `controlled-baseline-gwxk2slx`, reached Codex and failed
+closed at the trusted diff gate because no authorized working-tree change was
+detected. No deadline repair was retried, and this wiring validation invokes
+neither Codex nor agy/Gemini.
 
 ## Corrected baseline
 

@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from swarm.adapters import CodexAdapter, ResourceLimits, _codex_environment
+from swarm.adapters import CodexAdapter, ResourceLimits, WriterInvocationSpec, _codex_environment
 from swarm.core import SwarmError, validate_contract
 
 
@@ -61,7 +61,8 @@ class CodexAdapterProcessTests(unittest.TestCase):
         before = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=self.repo, text=True).strip()
         schema = Path(__file__).resolve().parents[1] / "schemas/codex-result.schema.json"
         adapter = CodexAdapter(schema, ResourceLimits(timeout_seconds=30), str(self.fake))
-        result = adapter.run(self.repo, "codex-writer-test1234", "repair only value.py; return the required JSON")
+        spec = WriterInvocationSpec("codex-writer-test1234", self.repo, self.repo, "value.py", "value.py", "value() returns 2", "assert value() == 2", ("value.py",))
+        result = adapter.run(spec)
         self.assertEqual(result["status"], "FIXED")
         self.assertEqual(adapter.last_invocation["exit_code"], 0)
         self.assertEqual(adapter.last_invocation["argv"][0:4], [str(self.fake), "--ask-for-approval", "never", "exec"])
@@ -114,9 +115,11 @@ class CodexJobIdContractTests(unittest.TestCase):
                 action = "raise SystemExit(7)" if mode == "failure" else "import time; time.sleep(3)"
                 fake.write_text(f"#!/usr/bin/env python3\n{action}\n", encoding="utf-8")
                 fake.chmod(0o700)
+                (root / "value.py").write_text("def value():\n    return 1\n", encoding="utf-8")
                 adapter = CodexAdapter(Path(__file__).resolve().parents[1] / "schemas/codex-result.schema.json", ResourceLimits(timeout_seconds=1), str(fake))
                 with self.assertRaises(Exception):
-                    adapter.run(root, "codex-writer-cache1234", "probe")
+                    spec = WriterInvocationSpec("codex-writer-cache1234", root, root, "value.py", "value.py", "probe", "assert true", ("value.py",))
+                    adapter.run(spec)
                 self.assertIsNotNone(adapter.last_cache_directory)
                 self.assertFalse(adapter.last_cache_directory.exists())
                 shutil.rmtree(root, ignore_errors=True)

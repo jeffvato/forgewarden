@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import os
 import re
 import resource
@@ -14,6 +15,74 @@ from pathlib import Path
 from typing import Any
 
 from .core import SwarmError, redact, run_command, validate_contract
+
+
+@dataclass(frozen=True)
+class WriterInvocationSpec:
+    job_id: str
+    git_root: Path
+    codex_cwd: Path
+    codex_relative_target: str
+    git_relative_target: str
+    expected_behavior: str
+    failing_assertion: str
+    writable_git_paths: tuple[str, ...]
+
+    def target(self, seeded_hash: str | None = None) -> Path:
+        if not self.codex_cwd.is_dir():
+            raise SwarmError("Codex CWD does not exist")
+        codex_target = self.codex_cwd / self.codex_relative_target
+        git_target = self.git_root / self.git_relative_target
+        if codex_target.is_symlink() or not codex_target.is_file():
+            raise SwarmError("Codex target is not a regular file")
+        try:
+            resolved_cwd = self.codex_cwd.resolve()
+            resolved_codex = codex_target.resolve()
+            resolved_git = git_target.resolve()
+            resolved_cwd.relative_to(self.git_root.resolve())
+            resolved_codex.relative_to(self.git_root.resolve())
+        except ValueError as exc:
+            raise SwarmError("Codex target escaped the Git worktree") from exc
+        if git_target.is_symlink() or not git_target.is_file():
+            raise SwarmError("Git-root target is not a regular file")
+        if resolved_codex != resolved_git:
+            raise SwarmError("Codex and Git target paths do not resolve identically")
+        if seeded_hash is not None:
+            import hashlib
+            if hashlib.sha256(resolved_git.read_bytes()).hexdigest() != seeded_hash:
+                raise SwarmError("seeded target hash mismatch")
+        return resolved_git
+
+    def prompt(self) -> str:
+        return (
+            f"Work only in Git root {self.git_root}. Your actual CWD is {self.codex_cwd}. "
+            f"The exact canonical job ID is {self.job_id}. The only writable source path is "
+            f"{self.codex_relative_target} relative to your CWD, corresponding to "
+            f"{self.git_relative_target} relative to Git root. Expected behavior: {self.expected_behavior}. "
+            f"The sanitized failing assertion is: {self.failing_assertion}. Make the smallest source correction. "
+            "Do not modify or create tests. Do not write Git metadata, stage files, create commits, remotes, or pushes."
+        )
+
+
+def normalize_changed_paths(spec: WriterInvocationSpec, paths: list[str]) -> list[str]:
+    normalized: list[str] = []
+    for raw in paths:
+        path = Path(raw)
+        if path.is_absolute() or "\\" in raw or any(part in {"", ".", ".."} for part in path.parts):
+            raise SwarmError(f"unsafe Codex changed path: {raw}")
+        candidate = spec.codex_cwd / path
+        if candidate.is_symlink() or not candidate.exists():
+            raise SwarmError(f"Codex changed path is missing or symlinked: {raw}")
+        try:
+            canonical = candidate.resolve().relative_to(spec.git_root.resolve()).as_posix()
+        except ValueError as exc:
+            raise SwarmError(f"Codex changed path escaped Git root: {raw}") from exc
+        if canonical not in spec.writable_git_paths:
+            raise SwarmError(f"Codex changed path outside scope: {canonical}")
+        if canonical in normalized:
+            raise SwarmError(f"duplicate Codex changed path: {canonical}")
+        normalized.append(canonical)
+    return normalized
 
 
 @dataclass(frozen=True)
@@ -281,8 +350,10 @@ class CodexAdapter:
         self.last_invocation: dict[str, Any] = {}
         self.last_cache_directory: Path | None = None
 
-    def run(self, worktree: Path, job_id: str, prompt: str, git_metadata: Path | None = None) -> dict[str, Any]:
-        canonical_job_id = _job_id_filename(job_id)
+    def run(self, spec: WriterInvocationSpec, prompt: str | None = None) -> dict[str, Any]:
+        canonical_job_id = _job_id_filename(spec.job_id)
+        spec.target()
+        worktree = spec.git_root
         cache_dir = Path("/home/jeff/hermes-swarm-runtime/python-cache") / canonical_job_id
         cache_dir.mkdir(parents=True, exist_ok=True)
         cache_dir.chmod(0o700)
@@ -296,22 +367,21 @@ class CodexAdapter:
         schema_copy = result_dir / f"codex-result-{canonical_job_id}.schema.json"
         schema_copy.write_text(json.dumps(_codex_job_schema(self.schema, canonical_job_id)), encoding="utf-8")
         canonical_prompt = (
-            f"RETURN JOB_ID EXACTLY AS SUPPLIED: {canonical_job_id}. "
-            "Do not shorten, rewrite, or derive it.\n\n" + prompt
+            f"RETURN JOB_ID EXACTLY AS SUPPLIED: {canonical_job_id}. Do not shorten, rewrite, or derive it.\n\n"
+            + (prompt or spec.prompt())
         )
-        command = [self.executable, "--ask-for-approval", "never", "exec", "--ephemeral", "--sandbox", "workspace-write", "--skip-git-repo-check", "--cd", str(worktree)]
-        if git_metadata:
-            command.extend(["--add-dir", str(git_metadata)])
+        command = [self.executable, "--ask-for-approval", "never", "exec", "--ephemeral", "--sandbox", "workspace-write", "--skip-git-repo-check", "--cd", str(spec.codex_cwd)]
         command.extend(["--output-schema", str(schema_copy), "--output-last-message", str(external_output), "--color", "never", "--json", canonical_prompt])
         try:
-            result = limited_run(command, worktree, "", self.limits, {"SWARM_ROLE": "CODEX_WRITER", "SWARM_DRY_RUN": "1"}, use_cgroup=True, environment_builder=lambda values: _codex_environment(values, cache_dir))
+            result = limited_run(command, spec.codex_cwd, "", self.limits, {"SWARM_ROLE": "CODEX_WRITER", "SWARM_DRY_RUN": "1"}, use_cgroup=True, environment_builder=lambda values: _codex_environment(values, cache_dir))
             self.last_invocation = {
                 "executable": self.executable,
                 "argv": command[:-1] + ["<prompt-argument>"],
-                "working_directory": str(worktree),
+                "working_directory": str(spec.codex_cwd),
                 "environment_names": sorted(_codex_environment({"SWARM_ROLE": "CODEX_WRITER", "SWARM_DRY_RUN": "1"}, cache_dir)),
                 "pycache_directory": str(cache_dir),
                 "exit_code": result.returncode,
+                "prompt_hash": hashlib.sha256(canonical_prompt.encode("utf-8")).hexdigest(),
                 "stdout": redact(result.stdout),
                 "stderr": redact(result.stderr),
             }

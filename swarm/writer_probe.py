@@ -9,7 +9,7 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-from .adapters import CodexAdapter, ResourceLimits, limited_run, new_codex_job_id
+from .adapters import CodexAdapter, ResourceLimits, WriterInvocationSpec, limited_run, new_codex_job_id
 from .core import SwarmError, redact
 
 
@@ -81,11 +81,11 @@ def run_writer_probe(root: Path, fixture_dir: Path, audit_path: Path, codex_exec
         hook.chmod(0o700)
         shutil.move(repo / ".git", git_store)
         evidence["git_metadata_during_codex"] = "unavailable"
-        prompt = f"""This is a disposable Codex writer probe. Modify only value.py so value() returns 2. Do not edit test_value.py or any other path. Do not write Git metadata, stage files, create commits, access remotes, or push. Run the exact test command {TEST_COMMAND!r}. Return job_id exactly as supplied. Do not shorten, rewrite, or derive it. The canonical job ID is {job_id}. Return only the schema-constrained JSON result."""
+        spec = WriterInvocationSpec(job_id, repo, repo, "value.py", "value.py", "value() returns 2", "assert value() == 2", ("value.py",))
         schema = Path(__file__).resolve().parents[1] / "schemas/codex-result.schema.json"
         adapter = CodexAdapter(schema, limits, codex_executable)
         evidence["states"].append("CODEX_RUNNING")
-        result = adapter.run(repo, job_id, prompt)
+        result = adapter.run(spec)
         evidence.update({"codex_exit_code": adapter.last_invocation.get("exit_code"), "schema_validation": "PASSED", "claimed_changed_files": result["changed_files"], "states": [*evidence["states"], "CODEX_RESULT_VALIDATED"]})
         evidence["external_cache_removed"] = adapter.last_cache_directory is not None and not adapter.last_cache_directory.exists()
         if (repo / ".git").exists():

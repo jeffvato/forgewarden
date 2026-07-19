@@ -24,8 +24,9 @@ this CLI. The exec sandbox is explicitly selected; no default is relied on.
 
 ## Sanitized invocation contract
 
-For worktree `<WORKTREE>`, the adapter invokes the following argument array
-(the optional `--add-dir` pair is included only when Git metadata is supplied):
+For each immutable `WriterInvocationSpec`, the adapter invokes the following
+argument array. Git metadata is never supplied to Codex; the trusted
+orchestrator owns staging and commits:
 
 ```text
 [
@@ -42,8 +43,9 @@ For worktree `<WORKTREE>`, the adapter invokes the following argument array
 ]
 ```
 
-The subprocess working directory is `<WORKTREE>`, and `--cd` points to the
-same directory. The prompt is delivered as the final positional argument;
+The subprocess working directory and `--cd` value are the spec's Codex CWD.
+For deadline repairs that is `<WORKTREE>/csv-processor`; the Git root remains
+`<WORKTREE>`. The prompt is delivered as the final positional argument;
 stdin is empty. Codex runs in its own transient systemd scope with the
 aggregate 2 GiB memory limit, `MemorySwapMax=0`, blocked network policy,
 CPU/timeout limits, and log cap.

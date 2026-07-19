@@ -9,7 +9,7 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-from .adapters import CodexAdapter, GeminiAdapter, HermesAdapter, limited_run, measure_resources, select_limits
+from .adapters import CodexAdapter, GeminiAdapter, HermesAdapter, WriterInvocationSpec, limited_run, measure_resources, normalize_changed_paths, select_limits
 from .core import AuditLog, Job, ServiceLock, SwarmError, redact, run_command
 from .local_run import _readonly_snapshot
 
@@ -265,6 +265,7 @@ def _run_deadline_preflight(worktree: Path, limits, validated: tuple[Path, Path,
         "seeded_defect_exit_code": seeded.returncode,
         "seeded_failure": "AssertionError",
         "network_policy": "blocked-by-systemd-IPAddrDeny",
+        "defect_target": str((worktree / WRITABLE_DEADLINE).resolve()),
     }
     return working_directory, test_path, test_command, evidence
 
@@ -308,12 +309,26 @@ def run_controlled_baseline(root: Path, repository: Path = REPOSITORY, runtime_r
             audit.record(job, "deterministic_preflight_started", working_directory=str(working_directory.resolve()), test_path=str(test_path), command=list(test_command), environment_policy="minimal-allowlist-PYTHONDONTWRITEBYTECODE", network_policy="blocked-by-systemd-IPAddrDeny")
             working_directory, test_path, test_command, preflight = _run_deadline_preflight(worktree, limits, (working_directory, test_path, test_command))
             audit.record(job, "deterministic_preflight_passed", **preflight)
+            seeded_hash = hashlib.sha256((worktree / WRITABLE_DEADLINE).read_bytes()).hexdigest()
+            writer_spec = WriterInvocationSpec(
+                job.job_id,
+                worktree,
+                working_directory,
+                "app/ai/deadline.py",
+                WRITABLE_DEADLINE,
+                "remaining_seconds() returns non-negative remaining monotonic time",
+                "the seeded deadline contract assertion must pass after the smallest source correction",
+                (WRITABLE_DEADLINE,),
+            )
+            writer_spec.target(seeded_hash)
+            if preflight["defect_target"] != str((worktree / WRITABLE_DEADLINE).resolve()):
+                raise SwarmError("deterministic failure evidence did not reference the writer target")
+            audit.record(job, "writer_spec_validated", git_root=str(worktree.resolve()), codex_cwd=str(working_directory.resolve()), codex_target=writer_spec.codex_relative_target, git_target=writer_spec.git_relative_target, seeded_hash=seeded_hash)
             with _AuthorizedKillSwitch(runtime_root, audit, job):
                 hermes = HermesAdapter(state_dir / "hermes")
                 hermes.prepare(job.job_id, job.evidence)
                 job.state = "CODEX_RUNNING"
-                audit.record(job, "codex_started", allowed_scope=[WRITABLE_DEADLINE, WRITABLE_TEST_ROOT], environment_policy="production-and-credential-vars-removed")
-                prompt = f"""You are the sole writer for controlled job {job.job_id}. Work only in this detached Git worktree. Repair the deliberate defect in {WRITABLE_DEADLINE}. Do not edit, delete, rename, or add any existing test. You may add a new regression test only below {WRITABLE_TEST_ROOT}, but do not add one unless needed. Do not touch any other path. Do not use network, Docker, production services, credentials, customer data, environment secrets, Git metadata, staging, commits, remotes, or pushes. Run only this argument-array test command from {working_directory!s}: {test_command!r}. Do not commit; the trusted orchestrator will validate and commit your working-tree edit. Return only the supplied Codex JSON schema with changed_files exactly matching your actual working-tree changes."""
+                audit.record(job, "codex_started", allowed_scope=[WRITABLE_DEADLINE, WRITABLE_TEST_ROOT], environment_policy="production-and-credential-vars-removed", target_path=WRITABLE_DEADLINE, target_pre_hash=seeded_hash)
                 codex = CodexAdapter(root / "schemas/codex-result.schema.json", limits, commands["codex"])
                 git_pointer = worktree / ".git"
                 hidden_git_pointer = state_dir / f"{job.job_id}.git-pointer"
@@ -321,7 +336,7 @@ def run_controlled_baseline(root: Path, repository: Path = REPOSITORY, runtime_r
                     raise SwarmError("controlled writer worktree Git pointer was not a file")
                 shutil.move(git_pointer, hidden_git_pointer)
                 try:
-                    codex_result = codex.run(worktree, job.job_id, prompt)
+                    codex_result = codex.run(writer_spec, writer_spec.prompt() + f" Run only this argument-array deterministic test from {working_directory!s}: {test_command!r}. Do not commit; the trusted orchestrator will validate and commit your working-tree edit.")
                 finally:
                     created_git_metadata = git_pointer.exists()
                     if created_git_metadata:
@@ -333,12 +348,31 @@ def run_controlled_baseline(root: Path, repository: Path = REPOSITORY, runtime_r
                 gate = enforce_diff_gate(worktree, BASELINE_SHA, original_test_hashes)
                 if gate["changed_files"] != [WRITABLE_DEADLINE]:
                     raise SwarmError(f"controlled exercise changed unexpected authorized files: {gate['changed_files']}")
-                if codex_result["changed_files"] != gate["changed_files"]:
-                    raise SwarmError(f"Codex claimed changed files {codex_result['changed_files']} but actual files were {gate['changed_files']}")
+                normalized_claims = normalize_changed_paths(writer_spec, codex_result["changed_files"])
+                if normalized_claims != gate["changed_files"]:
+                    raise SwarmError(f"Codex claimed changed files {normalized_claims} but actual files were {gate['changed_files']}")
                 post_scan = scan_baseline_tree(worktree)
                 if post_scan["findings"]:
                     raise SwarmError(f"post-Codex secret gate found {len(post_scan['findings'])} finding(s)")
-                audit.record(job, "codex_result_validated", exit_code=codex.last_invocation.get("exit_code"), schema_validation="PASSED", claimed_changed_files=codex_result["changed_files"], actual_changed_files=gate["changed_files"], post_tree_findings=0)
+                target_post_hash = hashlib.sha256((worktree / WRITABLE_DEADLINE).read_bytes()).hexdigest()
+                invocation = codex.last_invocation
+                audit.record(
+                    job,
+                    "codex_result_validated",
+                    exit_code=invocation.get("exit_code"),
+                    schema_validation="PASSED",
+                    claimed_changed_files=normalized_claims,
+                    actual_changed_files=gate["changed_files"],
+                    post_tree_findings=0,
+                    sanitized_argv=invocation.get("argv"),
+                    actual_cwd=invocation.get("working_directory"),
+                    environment_variable_names=invocation.get("environment_names"),
+                    prompt_hash=invocation.get("prompt_hash"),
+                    target_path=WRITABLE_DEADLINE,
+                    target_pre_hash=seeded_hash,
+                    target_post_hash=target_post_hash,
+                    sanitized_response=f"status={codex_result['status']}; changed_files={len(normalized_claims)}; schema=PASSED",
+                )
                 job.state = "CHECKS_RUNNING"
                 audit.record(job, "deterministic_checks_started", command=list(test_command), working_directory=str(working_directory.resolve()), test_path=str(test_path), environment_policy="minimal-allowlist-PYTHONDONTWRITEBYTECODE", network_policy="blocked-by-systemd-IPAddrDeny")
                 checks = limited_run(test_command, working_directory, "", limits, {"SWARM_ROLE": "DETERMINISTIC_CHECK"}, use_cgroup=True, minimal_environment=True)

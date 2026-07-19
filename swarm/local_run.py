@@ -7,7 +7,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-from .adapters import CodexAdapter, GeminiAdapter, HermesAdapter, last_cgroup_peak_bytes, limited_run, measure_resources, select_limits
+from .adapters import CodexAdapter, GeminiAdapter, HermesAdapter, WriterInvocationSpec, last_cgroup_peak_bytes, limited_run, measure_resources, select_limits
 from .core import Job, Orchestrator, SwarmError, redact, require_exact_commit, run_command
 
 
@@ -61,8 +61,8 @@ def run_real_dry_run(root: Path, runtime_root: Path | None = None, audit_dir: Pa
             job.state = "CODEX_RUNNING"
             codex_prompt = f"""You are the sole application-code writer. Work only in this Git worktree. The exact required job_id value is {job.job_id}; copy it character-for-character into the final JSON. Repair the harmless defect in parser.py so parse(value) normalizes surrounding whitespace and lowercases the result. Preserve the existing test, add a focused regression assertion if practical, run the test, inspect the diff, and commit the repair. Do not deploy, access secrets, change configuration, or modify files outside this fixture. Your final response MUST be JSON matching the supplied Codex result schema, with changed_files matching the committed diff."""
             codex = CodexAdapter(root / "schemas/codex-result.schema.json", limits, commands["codex"])
-            git_metadata = Path(orchestrator._git(worktree, "rev-parse", "--git-common-dir"))
-            codex_result = codex.run(worktree, job.job_id, codex_prompt, git_metadata)
+            codex_spec = WriterInvocationSpec(job.job_id, worktree, worktree, "parser.py", "parser.py", "parse(value) normalizes whitespace and lowercases", "assert parse(' X ') == 'x'", ("parser.py", "test_parser.py"))
+            codex_result = codex.run(codex_spec, codex_prompt)
             if codex_result["status"] != "FIXED":
                 raise SwarmError(f"real Codex did not complete the repair: {codex_result['status']} ({codex_result['summary']})")
             changed = orchestrator._git(worktree, "diff", "--name-only", base).splitlines()
