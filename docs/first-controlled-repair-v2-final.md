@@ -1,6 +1,10 @@
-# Final v2 controlled exercise
+# Final v2 controlled exercise and writer validation
 
-Result: **STOPPED safely at deterministic preflight.**
+Summary: the earlier v2 attempt stopped at deterministic preflight; the later
+authorized exercise reached Codex and stopped at the diff gate because no
+authorized change was committed. The separate Codex writer capability probe
+also reached Codex but was rejected for a structured job-ID mismatch. No
+deadline repair was retried.
 
 ## Corrected baseline
 

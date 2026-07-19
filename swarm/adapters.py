@@ -106,6 +106,22 @@ def _user_systemd_bus_environment() -> dict[str, str]:
     return {}
 
 
+def _codex_environment(env: dict[str, str] | None = None) -> dict[str, str]:
+    """Pass only Codex runtime/authentication variables; never log values."""
+    allowed_names = {
+        "PATH", "HOME", "LANG", "LC_ALL", "TERM", "CODEX_HOME",
+        "OPENAI_API_KEY", "OPENAI_BASE_URL",
+    }
+    result = {key: os.environ[key] for key in allowed_names if key in os.environ}
+    result.update(_user_systemd_bus_environment())
+    result.update(env or {})
+    result["SWARM_NETWORK_BLOCKED"] = "1"
+    result.pop("HTTP_PROXY", None)
+    result.pop("HTTPS_PROXY", None)
+    result.pop("ALL_PROXY", None)
+    return result
+
+
 _last_cgroup_peak_bytes = 0
 
 
@@ -113,8 +129,8 @@ def last_cgroup_peak_bytes() -> int:
     return _last_cgroup_peak_bytes
 
 
-def limited_run(command: list[str], cwd: Path, prompt: str, limits: ResourceLimits, env: dict[str, str] | None = None, use_cgroup: bool = False, minimal_environment: bool = False) -> subprocess.CompletedProcess[str]:
-    child_env = _minimal_test_environment(env) if minimal_environment else _safe_agent_environment(env)
+def limited_run(command: list[str], cwd: Path, prompt: str, limits: ResourceLimits, env: dict[str, str] | None = None, use_cgroup: bool = False, minimal_environment: bool = False, environment_builder=None) -> subprocess.CompletedProcess[str]:
+    child_env = environment_builder(env) if environment_builder else (_minimal_test_environment(env) if minimal_environment else _safe_agent_environment(env))
     global _last_cgroup_peak_bytes
     cgroup_path: Path | None = None
     wrapped_command = list(command)
@@ -238,6 +254,7 @@ class CodexAdapter:
         self.schema = schema
         self.limits = limits
         self.executable = executable
+        self.last_invocation: dict[str, Any] = {}
 
     def run(self, worktree: Path, job_id: str, prompt: str, git_metadata: Path | None = None) -> dict[str, Any]:
         result_dir = worktree / ".swarm"
@@ -248,18 +265,28 @@ class CodexAdapter:
         external_output = Path(output_name)
         schema_copy = result_dir / "codex-result.schema.json"
         schema_copy.write_text(json.dumps(_codex_cli_schema(self.schema)), encoding="utf-8")
-        command = [self.executable, "exec", "--ephemeral", "--sandbox", "workspace-write", "--skip-git-repo-check", "--cd", str(worktree)]
+        command = [self.executable, "--ask-for-approval", "never", "exec", "--ephemeral", "--sandbox", "workspace-write", "--skip-git-repo-check", "--cd", str(worktree)]
         if git_metadata:
             command.extend(["--add-dir", str(git_metadata)])
         command.extend(["--output-schema", str(schema_copy), "--output-last-message", str(external_output), "--color", "never", "--json", prompt])
         try:
-            result = limited_run(command, worktree, "", self.limits, {"SWARM_ROLE": "CODEX_WRITER", "SWARM_DRY_RUN": "1"}, use_cgroup=True)
+            result = limited_run(command, worktree, "", self.limits, {"SWARM_ROLE": "CODEX_WRITER", "SWARM_DRY_RUN": "1"}, use_cgroup=True, environment_builder=_codex_environment)
+            self.last_invocation = {
+                "executable": self.executable,
+                "argv": command[:-1] + ["<prompt-argument>"],
+                "working_directory": str(worktree),
+                "environment_names": sorted(_codex_environment({"SWARM_ROLE": "CODEX_WRITER", "SWARM_DRY_RUN": "1"})),
+                "exit_code": result.returncode,
+                "stdout": redact(result.stdout),
+                "stderr": redact(result.stderr),
+            }
             if result.returncode:
                 raise SwarmError(f"Codex failed ({result.returncode}): {redact(result.stderr + result.stdout)}")
             if not external_output.exists() or not external_output.read_text(encoding="utf-8").strip():
                 raise SwarmError("Codex did not write its schema-constrained result; output: " + redact(result.stdout + result.stderr))
             payload = json.loads(external_output.read_text(encoding="utf-8"))
             output.write_text(json.dumps(payload, sort_keys=True), encoding="utf-8")
+            self.last_invocation["final_response"] = redact(json.dumps(payload, sort_keys=True))
         finally:
             external_output.unlink(missing_ok=True)
         validate_contract(payload, "codex")
