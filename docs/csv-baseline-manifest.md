@@ -1,8 +1,9 @@
 # Protected CSV processor onboarding baseline
 
-Status: baseline created; no repair job has run. The swarm kill switch remains
-engaged, deployment remains disabled, and `/home/jeff/n8n` is not in the
-allowlist.
+Status: baseline created; the first controlled repair attempt was blocked by
+the complete-tree secret scan before a worktree or agent was started. The
+swarm kill switch remains engaged, deployment remains disabled, and
+`/home/jeff/n8n` is not in the allowlist.
 
 ## Source and independent clone
 
@@ -69,14 +70,24 @@ csv-processor/tests/test_supplier_images.py
 
 ## Secret scan
 
-All 31 untracked `csv-processor/` paths were scanned before selection. The
-scan checked for private-key blocks, known credential/token formats, secret
-assignments, and embedded authenticated URLs. It found no private keys,
-known token formats, or secret assignments. Two test fixtures contained
-embedded username/password-style URLs; those files were excluded and no
-credential-bearing fixture was copied. No `.env`, credential, token,
-certificate, private material, log, backup, database, cache, runtime output,
-customer data, order data, or distributor data was copied.
+The complete sanitized baseline tree was scanned before the controlled
+exercise. The scan covered 420 regular files and reported these filename-only
+findings:
+
+```text
+docker-compose.yml                  SECRET_OR_PRIVATE_MATERIAL
+test_wc_api.py                      SECRET_OR_PRIVATE_MATERIAL
+project_context.md                  SECRET_OR_PRIVATE_MATERIAL
+vps/docker-compose.vps.yml          SECRET_OR_PRIVATE_MATERIAL
+csv-processor/app/templates/content_pipeline.html  SECRET_OR_PRIVATE_MATERIAL
+```
+
+The scan therefore blocked the exercise. No credential values were printed or
+copied by the onboarding operation. The earlier 31-path scan also found two
+test fixtures with embedded username/password-style URLs; both remain
+excluded. No `.env`, credential, token, certificate, private material, log,
+backup, database, cache, runtime output, customer data, order data, or
+distributor data was copied from the original repository.
 
 ## Untracked path disposition
 
@@ -133,9 +144,14 @@ The committed swarm profile now contains exactly one repository root:
 `/home/jeff/n8n` is absent. The eligible scope is limited to:
 
 ```text
-/home/jeff/swarm-repositories/n8n-csv-baseline/csv-processor/tests/
 /home/jeff/swarm-repositories/n8n-csv-baseline/csv-processor/app/ai/deadline.py
+/home/jeff/swarm-repositories/n8n-csv-baseline/csv-processor/tests/swarm_regressions/
 ```
+
+Every existing test is read-only. All other source and configuration are
+read-only. The diff gate rejects existing-test mutations or deletions,
+out-of-scope changes, escaping renames, symlinks, traversal paths, test
+skipping or xfail, unconditional-success tests, and assertion removal.
 
 The following remain human-required even inside the clone: database,
 migrations, pricing, MAP, checkout, payments, orders, WooCommerce writes,

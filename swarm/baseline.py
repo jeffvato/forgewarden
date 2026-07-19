@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import math
 import re
 import shutil
 import tempfile
@@ -18,12 +19,11 @@ WRITABLE_DEADLINE = "csv-processor/app/ai/deadline.py"
 WRITABLE_TEST_ROOT = "csv-processor/tests/swarm_regressions/"
 EXISTING_TEST_ROOT = "csv-processor/tests/"
 
-_SECRET_CONTENT_PATTERNS = (
-    re.compile(r"BEGIN\s+(?:RSA |EC |OPENSSH )?PRIVATE KEY", re.I),
-    re.compile(r"\b(?:sk|ghp|xoxb|AIza)[-_A-Za-z0-9]{12,}\b"),
-    re.compile(r"(?i)(?:api[_-]?key|access[_-]?key|client[_-]?secret|password|token|secret)\s*[:=]\s*[\"'][^\"']{8,}[\"']"),
-    re.compile(r"(?i)(?:https?|postgres(?:ql)?|mysql|redis)://[^/\s:@]+:[^/\s@]+@"),
-)
+_PRIVATE_KEY = re.compile(r"BEGIN\s+(?:RSA |EC |OPENSSH )?PRIVATE KEY", re.I)
+_KNOWN_TOKEN = re.compile(r"\b(?:sk-[A-Za-z0-9]{20,}|ghp_[A-Za-z0-9]{30,}|xoxb-[A-Za-z0-9-]{20,}|AIza[A-Za-z0-9_-]{30,})\b")
+_ASSIGNMENT = re.compile(r"(?i)(api[_-]?key|access[_-]?key|client[_-]?secret|password|token|secret)\s*[:=]\s*[\"']([^\"']+)[\"']")
+_AUTH_URL = re.compile(r"(?i)(?:https?|postgres(?:ql)?|mysql|redis)://([^/\s:@]+):([^/\s@]+)@")
+_PLACEHOLDER = re.compile(r"(?i)(env|os\.getenv|os\.environ|example|test|dummy|redacted|changeme|your_|placeholder|none|null|\$\{|\.\.\.)")
 _SENSITIVE_NAME = re.compile(r"(?i)(^|/)(\.env($|\.)|.*(credential|secret|token|password).*|.*\.(pem|key|p12)$|logs?/|backups?/$)")
 _TEST_INTEGRITY_PATTERNS = (
     re.compile(r"pytest\.(?:skip|xfail)\b", re.I),
@@ -37,6 +37,28 @@ _TEST_INTEGRITY_PATTERNS = (
 
 def _relative(path: Path, root: Path) -> str:
     return path.relative_to(root).as_posix()
+
+
+def _entropy(value: str) -> float:
+    if not value:
+        return 0.0
+    counts = {char: value.count(char) for char in set(value)}
+    size = len(value)
+    return -sum((count / size) * math.log2(count / size) for count in counts.values())
+
+
+def _content_finding(text: str) -> bool:
+    if _PRIVATE_KEY.search(text) or _KNOWN_TOKEN.search(text):
+        return True
+    for match in _ASSIGNMENT.finditer(text):
+        value = match.group(2)
+        if len(value) >= 16 and _entropy(value) >= 3.2 and not _PLACEHOLDER.search(value):
+            return True
+    for match in _AUTH_URL.finditer(text):
+        username, password = match.groups()
+        if len(password) >= 12 and not _PLACEHOLDER.search(username + password):
+            return True
+    return False
 
 
 def scan_baseline_tree(root: Path) -> dict[str, Any]:
@@ -61,10 +83,8 @@ def scan_baseline_tree(root: Path) -> dict[str, Any]:
         except OSError as exc:
             findings.append({"path": rel, "classification": f"UNREADABLE:{type(exc).__name__}"})
             continue
-        for pattern in _SECRET_CONTENT_PATTERNS:
-            if pattern.search(text):
-                findings.append({"path": rel, "classification": "SECRET_OR_PRIVATE_MATERIAL"})
-                break
+        if _content_finding(text):
+            findings.append({"path": rel, "classification": "SECRET_OR_PRIVATE_MATERIAL"})
     return {"files_scanned": files, "findings": findings}
 
 
@@ -181,6 +201,8 @@ def run_controlled_baseline(root: Path, repository: Path = REPOSITORY, runtime_r
     scan = scan_baseline_tree(repository)
     audit.record(job, "baseline_secret_scan", files_scanned=scan["files_scanned"], findings_count=len(scan["findings"]))
     if scan["findings"]:
+        job.state = "FAILED"
+        audit.record(job, "baseline_secret_scan_blocked", findings_count=len(scan["findings"]), kill_switch="ENGAGED")
         raise SwarmError("baseline secret scan found prohibited material")
     original_test_hashes = _tracked_test_hashes(repository)
     resources = measure_resources()
