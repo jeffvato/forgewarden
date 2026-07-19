@@ -18,7 +18,7 @@ baseline branch was not changed.
 ```text
 v2 repository: /home/jeff/swarm-repositories/n8n-csv-baseline-v2
 v2 baseline: 9cf4d5933b5563fe079e17ccdd8d33b8169de2db
-job: one controlled-baseline invocation
+job: controlled-baseline-awnomd9k
 tree scan: 2 files, 0 findings
 Git blob scan: 2 blobs, 0 findings
 Codex: invoked; repair worktree cleaned up
@@ -29,9 +29,10 @@ deployment: DISABLED
 audit: /home/jeff/hermes-swarm-audit/audit.jsonl
 ```
 
-The durable audit contains the v2 scan, worktree, kill-switch, Codex, and
-failure state records. It contains no secret values. The failed repair commit
-was confined to the temporary worktree and was not merged into v2 `main`.
+The durable audit contains the v2 scan, worktree, kill-switch, Codex,
+deterministic-check, re-engagement, and failure state records. It contains no
+secret values. The failed repair commit was confined to the temporary
+worktree and was not merged into v2 `main`.
 
 ## Controls verified
 
