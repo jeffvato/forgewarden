@@ -3,7 +3,28 @@ mode: DRY_RUN
 local_only: true
 automatic_deployment: false
 repository_roots:
-  - disposable-fixtures-only
+  - /home/jeff/swarm-repositories/n8n-csv-baseline
+eligible_scopes:
+  - /home/jeff/swarm-repositories/n8n-csv-baseline/csv-processor/tests/
+  - /home/jeff/swarm-repositories/n8n-csv-baseline/csv-processor/app/ai/deadline.py
+human_required_scopes:
+  - database
+  - migrations
+  - pricing
+  - MAP
+  - checkout
+  - payments
+  - orders
+  - WooCommerce
+  - distributor-APIs
+  - GunBroker-writes
+  - credentials
+  - security-middleware
+  - Docker
+  - deployment
+  - FFL-rules
+  - state-restrictions
+  - NFA-filtering
 roles:
   orchestrator: hermes
   application_writer: codex
