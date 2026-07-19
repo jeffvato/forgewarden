@@ -5,6 +5,29 @@ the complete-tree secret scan before a worktree or agent was started. The
 swarm kill switch remains engaged, deployment remains disabled, and
 `/home/jeff/n8n` is not in the allowlist.
 
+The original `/home/jeff/swarm-repositories/n8n-csv-baseline` is now
+ineligible because its history may contain sensitive blobs. It has not been
+deleted or modified. During the rebuild the allowlist was empty; it now
+contains only the clean v2 repository documented below.
+
+## Clean v2 baseline
+
+```text
+repository: /home/jeff/swarm-repositories/n8n-csv-baseline-v2
+baseline commit: 9cf4d5933b5563fe079e17ccdd8d33b8169de2db
+tree files scanned: 2
+tree findings: 0
+committed blobs scanned: 2
+blob findings: 0
+```
+
+The v2 repository was built from a newly exported filesystem tree containing
+only `csv-processor/app/ai/deadline.py` and
+`csv-processor/tests/swarm_regressions/test_deadline_contract.py`. It has a
+fresh single-commit Git repository with no old `.git` directory, objects,
+alternates, history, or copied Docker/deployment/database/production files.
+The five prior high-confidence findings were excluded completely.
+
 ## Source and independent clone
 
 ```text
@@ -135,19 +158,19 @@ The included tests are not permission to modify or execute the protected
 components they cover. The two excluded tests remain available in the source
 repository for Jeff's later reviewed handling; they were not copied.
 
-## Initial allowlist and protected scope
+## Current allowlist and protected scope
 
 The committed swarm profile now contains exactly one repository root:
 
 ```text
-/home/jeff/swarm-repositories/n8n-csv-baseline
+/home/jeff/swarm-repositories/n8n-csv-baseline-v2
 ```
 
 `/home/jeff/n8n` is absent. The eligible scope is limited to:
 
 ```text
-/home/jeff/swarm-repositories/n8n-csv-baseline/csv-processor/app/ai/deadline.py
-/home/jeff/swarm-repositories/n8n-csv-baseline/csv-processor/tests/swarm_regressions/
+/home/jeff/swarm-repositories/n8n-csv-baseline-v2/csv-processor/app/ai/deadline.py
+/home/jeff/swarm-repositories/n8n-csv-baseline-v2/csv-processor/tests/swarm_regressions/
 ```
 
 Every existing test is read-only. All other source and configuration are

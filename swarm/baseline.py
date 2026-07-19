@@ -13,8 +13,8 @@ from .core import AuditLog, Job, ServiceLock, SwarmError, redact, run_command
 from .local_run import _readonly_snapshot
 
 
-BASELINE_SHA = "1815f77634a81adfdb0383139f37cd663a951393"
-REPOSITORY = Path("/home/jeff/swarm-repositories/n8n-csv-baseline")
+BASELINE_SHA = "9cf4d5933b5563fe079e17ccdd8d33b8169de2db"
+REPOSITORY = Path("/home/jeff/swarm-repositories/n8n-csv-baseline-v2")
 WRITABLE_DEADLINE = "csv-processor/app/ai/deadline.py"
 WRITABLE_TEST_ROOT = "csv-processor/tests/swarm_regressions/"
 EXISTING_TEST_ROOT = "csv-processor/tests/"

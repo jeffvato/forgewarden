@@ -68,7 +68,7 @@ EOF
   controlled-baseline)
     ensure_runtime
     test -f "$RUNTIME_ROOT/KILL_SWITCH" || { echo "blocked: controlled baseline requires engaged kill switch" >&2; exit 1; }
-    exec env PYTHONPATH="$SWARM_ROOT" "$PYTHON" -m swarm.cli controlled-baseline --repository /home/jeff/swarm-repositories/n8n-csv-baseline --runtime-root "$RUNTIME_ROOT" --state-dir "$RUNTIME_ROOT/state" --audit-dir "$AUDIT_ROOT"
+    exec env PYTHONPATH="$SWARM_ROOT" "$PYTHON" -m swarm.cli controlled-baseline --repository /home/jeff/swarm-repositories/n8n-csv-baseline-v2 --runtime-root "$RUNTIME_ROOT" --state-dir "$RUNTIME_ROOT/state" --audit-dir "$AUDIT_ROOT"
     ;;
   audit)
     found=0
