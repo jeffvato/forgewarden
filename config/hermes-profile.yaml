@@ -11,5 +11,7 @@ roles:
 limits:
   max_concurrent_jobs: 1
   max_review_cycles: 3
-  command_timeout_seconds: 60
+  command_timeout_seconds: 180
+  max_memory_bytes: 10398124032
+  max_log_bytes: 256000
 kill_switch: .swarm-state/KILL_SWITCH

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import resource
 import shutil
 import subprocess
 import tempfile
@@ -86,6 +87,7 @@ def run_real_dry_run(root: Path) -> dict:
             for rule in gemini_result.get("proposed_rules", []):
                 orchestrator.rules.propose(rule, job)
             job.state = "SUCCEEDED"
+            resources["peak_child_rss_kib"] = int(resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss)
             orchestrator.audit.record(job, "real_local_dry_run_succeeded", base=base, commit=commit, resources=resources, limits=limits.__dict__, codex=codex_result, gemini=gemini_result)
             return {"job_id": job.job_id, "state": job.state, "base": base, "commit": commit, "resources": resources, "limits": limits.__dict__, "codex": codex_result, "gemini": gemini_result}
         finally:

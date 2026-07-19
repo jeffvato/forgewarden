@@ -181,6 +181,14 @@ class Orchestrator:
         job.state = "CLASSIFIED"
         self.audit.record(job, "classified", risk=job.risk)
 
+    def begin_review_cycle(self, job: Job) -> int:
+        """Advance a review cycle, refusing a fourth Codex/Gemini attempt."""
+        if job.review_cycles >= self.max_cycles:
+            raise SwarmError(f"maximum review cycles exceeded ({self.max_cycles})")
+        job.review_cycles += 1
+        self.audit.record(job, "review_cycle_started", cycle=job.review_cycles)
+        return job.review_cycles
+
     def _git(self, repo: Path, *args: str) -> str:
         result = run_command(["git", *args], repo)
         if result.returncode:
@@ -206,6 +214,10 @@ class Orchestrator:
 
     def run(self, job: Job, codex_command: list[str], check_command: list[str], gemini_command: list[str]) -> dict[str, Any]:
         self.state_dir.mkdir(parents=True, exist_ok=True)
+        if (self.state_dir / "KILL_SWITCH").exists():
+            job.state = "FAILED"
+            self.audit.record(job, "kill_switch_blocked")
+            raise SwarmError("global kill switch is enabled; refusing new jobs")
         self.classify(job)
         if job.risk == "HIGH":
             job.state = "AWAITING_JEFF"
@@ -252,6 +264,7 @@ class Orchestrator:
                     item.chmod(0o555 if item.is_dir() else 0o444)
                 output_dir.chmod(0o755)
                 job.state = "GEMINI_REVIEWING"
+                self.begin_review_cycle(job)
                 self.audit.record(job, "gemini_started", reviewed_commit=commit)
                 review = run_command(gemini_command, snapshot, timeout=60, env={"SWARM_ROLE": "GEMINI_READ_ONLY", "SWARM_DRY_RUN": "1", "SWARM_REVIEWED_COMMIT": commit})
                 review_file = snapshot / ".swarm" / "gemini-review.json"

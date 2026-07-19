@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from swarm.core import DeploymentController, Job, Orchestrator, SwarmError, redact, validate_contract
+from swarm.core import DeploymentController, Job, Orchestrator, RuleStore, ServiceLock, SwarmError, redact, validate_contract
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -62,6 +62,43 @@ class SwarmTests(unittest.TestCase):
     def test_deployment_is_mechanically_disabled(self):
         with self.assertRaises(SwarmError):
             DeploymentController().deploy("anything")
+
+    def test_gemini_rejects_deliberately_incorrect_patch(self):
+        self.gemini.write_text("""import json, os, pathlib\npathlib.Path('.swarm').mkdir(exist_ok=True)\njson.dump({'job_id':'job-1','reviewed_commit':os.environ['SWARM_REVIEWED_COMMIT'],'verdict':'REJECT','risk':'LOW','blocking_findings':[{'severity':'HIGH','file':'parser.py','line':'1','finding':'incorrect behavior','required_change':'restore expected behavior'}],'non_blocking_notes':[],'tests_missing':['regression'],'reasoning_summary':'incorrect fixture','proposed_rules':[]}, open('.swarm/gemini-review.json','w'))\n""", encoding="utf-8")
+        self.assertEqual(self.run_job()["state"], "REVISION_REQUIRED")
+
+    def test_forbidden_file_change_is_blocked(self):
+        self.codex.write_text("""import json, pathlib, subprocess\npathlib.Path('.env').write_text('SECRET=redacted-fixture')\npathlib.Path('.swarm').mkdir(exist_ok=True)\nsubprocess.run(['git','add','.env'])\nsubprocess.run(['git','-c','user.name=codex','-c','user.email=codex@example.test','commit','-qm','bad'])\njson.dump({'job_id':'job-1','status':'FIXED','root_cause':'bad','summary':'bad','changed_files':['.env'],'tests_added_or_changed':[],'commands_run':[{'command':'bad','exit_code':0}],'remaining_risks':[],'requires_human_approval':False}, open('.swarm/codex-result.json','w'))\n""", encoding="utf-8")
+        with self.assertRaises(SwarmError):
+            self.run_job()
+
+    def test_duplicate_job_is_blocked(self):
+        state = self.root / "state"
+        with ServiceLock(state / "locks", "fixture-parser"):
+            with self.assertRaises(SwarmError):
+                self.run_job()
+
+    def test_three_review_cycle_limit(self):
+        orchestrator = Orchestrator(self.root / "cycles", max_cycles=3)
+        job = Job("cycles", "fixture-parser", self.repo, "parser defect")
+        self.assertEqual([orchestrator.begin_review_cycle(job) for _ in range(3)], [1, 2, 3])
+        with self.assertRaises(SwarmError):
+            orchestrator.begin_review_cycle(job)
+
+    def test_kill_switch_prevents_new_jobs(self):
+        state = self.root / "killed"
+        state.mkdir()
+        (state / "KILL_SWITCH").write_text("disabled\n", encoding="utf-8")
+        with self.assertRaises(SwarmError):
+            Orchestrator(state).run(Job("killed", "fixture-parser", self.repo, "parser defect"), ["true"], ["true"], ["true"])
+
+    def test_learned_rule_cannot_activate_itself_and_protected_rule_requires_jeff(self):
+        store = RuleStore(self.root / "rules")
+        job = Job("rule-job", "fixture-parser", self.repo, "parser defect")
+        base = {'id':'rule-123','scope':'fixture-parser','trigger':'parser change','rule':'run parser regression tests','enforcement':'python3 -m unittest','evidence':'observed test omission','source_job_id':job.job_id,'confidence':0.99,'status':'PROPOSED'}
+        self.assertEqual(store.propose({**base, 'category':'TESTING'}, job), 'PROPOSED_DRY_RUN')
+        self.assertFalse(store.active.exists())
+        self.assertEqual(store.propose({**base, 'id':'rule-security', 'category':'SECURITY'}, job), 'HUMAN_REQUIRED')
 
     def test_redaction(self):
         self.assertNotIn("supersecret", redact("token=supersecret"))

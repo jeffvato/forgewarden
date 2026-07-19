@@ -44,7 +44,10 @@ def select_limits(resources: dict[str, Any]) -> ResourceLimits:
     available = resources.get("memory_available_bytes") or 1_073_741_824
     # Node/V8-based local CLIs reserve virtual address space before the model
     # starts. Keep a hard cap, but leave enough headroom for their runtime.
-    memory = min(12_884_901_888, max(1_073_741_824, (available * 85) // 100))
+    # Reserve at least 25% of currently available memory for n8n, PostgreSQL,
+    # Docker, and the CSV processor while allowing the Node/Wasm reviewer to
+    # reserve its required address space.
+    memory = min(10_737_418_240, max(1_073_741_824, (available * 75) // 100))
     return ResourceLimits(memory_bytes=memory)
 
 
