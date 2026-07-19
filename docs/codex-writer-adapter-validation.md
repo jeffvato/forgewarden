@@ -143,6 +143,43 @@ The disposable repository was removed after evidence persistence. No retry,
 deadline repair, Gemini review, baseline access, or production operation was
 performed.
 
+## Trusted-orchestrator writer-probe retry
+
+The corrected checked-in fixture templates passed integrity, compilation,
+collection, and seeded-assertion checks. The trusted orchestrator moved Git
+metadata out of the Codex-visible worktree, and the process-level tests passed
+for metadata isolation, authorized edits, unauthorized edits, claimed/actual
+mismatches, hook suppression, explicit staging, and exact committed diffs.
+
+The one authorized real retry used this newly generated canonical ID:
+
+```text
+codex-writer-56c6f44114774f6bbdcd31fa1d91be1d
+```
+
+Evidence:
+
+```text
+seeded test: FAILED_ASSERTION (exit 1)
+Codex exit: 0
+schema validation: PASSED; exact job ID matched
+Codex claimed changed files: value.py
+actual changed files: value.py plus two generated __pycache__ files
+deterministic post-edit test: not reached
+orchestrator commit: none
+```
+
+The orchestrator blocked the commit because the Codex subprocess generated
+bytecode files while running its own test command. It captured before/after
+hashes and changed paths, recorded the failure before cleanup, and kept the
+kill switch engaged. The Codex environment is now corrected to set
+`PYTHONDONTWRITEBYTECODE=1` and `PYTHONNOUSERSITE=1` for future probes; this
+probe was not retried.
+
+The disposable repository and its external Git metadata were removed only
+after the sanitized evidence was written to the durable audit file. No
+deadline repair or Gemini review was invoked.
+
 ## Final safety state
 
 - Deployment: **DISABLED**.

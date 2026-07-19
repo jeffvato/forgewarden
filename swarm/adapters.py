@@ -117,6 +117,8 @@ def _codex_environment(env: dict[str, str] | None = None) -> dict[str, str]:
     result = {key: os.environ[key] for key in allowed_names if key in os.environ}
     result.update(_user_systemd_bus_environment())
     result.update(env or {})
+    result["PYTHONDONTWRITEBYTECODE"] = "1"
+    result["PYTHONNOUSERSITE"] = "1"
     result["SWARM_NETWORK_BLOCKED"] = "1"
     result.pop("HTTP_PROXY", None)
     result.pop("HTTPS_PROXY", None)

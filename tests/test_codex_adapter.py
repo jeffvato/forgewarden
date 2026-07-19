@@ -80,7 +80,7 @@ class CodexAdapterProcessTests(unittest.TestCase):
         self.assertNotIn("HTTP_PROXY", capture["env_names"])
         self.assertIn("SWARM_NETWORK_BLOCKED", capture["env_names"])
         codex_env = _codex_environment()
-        self.assertEqual(set(codex_env) - {"PATH", "HOME", "LANG", "LC_ALL", "TERM", "CODEX_HOME", "OPENAI_API_KEY", "OPENAI_BASE_URL", "XDG_RUNTIME_DIR", "DBUS_SESSION_BUS_ADDRESS", "SWARM_NETWORK_BLOCKED"}, set())
+        self.assertEqual(set(codex_env) - {"PATH", "HOME", "LANG", "LC_ALL", "TERM", "CODEX_HOME", "OPENAI_API_KEY", "OPENAI_BASE_URL", "XDG_RUNTIME_DIR", "DBUS_SESSION_BUS_ADDRESS", "PYTHONDONTWRITEBYTECODE", "PYTHONNOUSERSITE", "SWARM_NETWORK_BLOCKED"}, set())
 
 
 class CodexJobIdContractTests(unittest.TestCase):
