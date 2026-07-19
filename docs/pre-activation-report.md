@@ -205,3 +205,87 @@ it, first copy it to a timestamped backup, stop new swarm jobs, enable the
 swarm kill switch, remove only that dedicated profile file, restore the backup
 if required, and verify `hermes --print-prompt` plus the existing Hermes
 configuration diff. Do not alter unrelated Hermes files.
+
+## Parallel DRY-RUN activation evidence
+
+The separate launcher was installed at `/home/jeff/.local/bin/hermes-swarm`
+with runtime/configuration root `/home/jeff/hermes-swarm-runtime`. Its only
+installed instruction surfaces were `agents/hermes.md`, `config/policy.yaml`,
+and `review/task.md`.
+
+The launcher starts in `DRY_RUN`, with deployment disabled and the kill switch
+engaged. Before the successful fixture run, `hermes-swarm dry-run` returned
+exit code 1 with `blocked: dry-run kill switch engaged`. The separate
+`hermes-swarm enable-dry-run` command cleared only that dry-run kill switch;
+it could not enable deployment.
+
+The complete disposable fixture run produced:
+
+```text
+Codex commit: f8b26dd0fb9a72c75936c3d5e49da722755d59af
+Deterministic checks: passed (exit 0)
+agy/Gemini review: APPROVE LOW
+Reviewed commit: f8b26dd0fb9a72c75936c3d5e49da722755d59af
+Audit: /home/jeff/hermes-swarm-runtime/run-_vaqc76g/state/audit.jsonl
+MemoryMax: 2147483648 bytes (2 GiB)
+MemorySwapMax: 0
+Peak child RSS: 227968 KiB
+Deployment: disabled
+```
+
+The audit record contained matching base, commit, and reviewer SHAs, the
+deterministic test result, the agy/Gemini decision, and the enforced limits.
+No credentials were copied into the repository, runtime, prompts, or logs;
+the existing supported credential mechanism was used. No `~/n8n` path,
+Docker command, production data, or production service was accessed.
+
+Rollback was tested by removing only the parallel launcher and runtime. The
+original `/home/jeff/.local/bin/hermes --print-prompt` then succeeded and its
+SHA remained:
+
+```text
+8e364441fc54fff4f2ae5037a643faef632e61307a8612e806893fd289b40b76
+```
+
+The parallel launcher was reinstalled from committed revision
+`32b9d3d359150b732fcb9701a1913f8a5126ba35`. The current post-test state is
+therefore `DRY_RUN`, deployment `DISABLED`, and kill switch `ENGAGED`.
+The runtime audit was intentionally removed with the runtime during rollback;
+the evidence above was captured before removal.
+
+### Parallel launcher operations
+
+```bash
+LAUNCHER=/home/jeff/.local/bin/hermes-swarm
+$LAUNCHER start
+$LAUNCHER status
+$LAUNCHER prompt
+$LAUNCHER enable-dry-run   # explicit dry-run-only enable; deployment stays disabled
+$LAUNCHER dry-run
+$LAUNCHER audit
+$LAUNCHER stop
+$LAUNCHER kill-switch      # engage before maintenance or emergency shutdown
+```
+
+Uninstall/rollback and reinstall from the committed swarm repository:
+
+```bash
+chmod -R u+rwX /home/jeff/hermes-swarm-runtime
+rm -f /home/jeff/.local/bin/hermes-swarm
+rm -rf /home/jeff/hermes-swarm-runtime
+/home/jeff/.local/bin/hermes --print-prompt
+
+REV=32b9d3d359150b732fcb9701a1913f8a5126ba35
+git -C /home/jeff/hermes-swarm-phase1 show "$REV":packaging/hermes-swarm > /tmp/hermes-swarm-reinstall
+git -C /home/jeff/hermes-swarm-phase1 show "$REV":packaging/runtime-task.md > /tmp/hermes-swarm-task-reinstall
+mkdir -p /home/jeff/hermes-swarm-runtime/{agents,config,review,state}
+install -m 0700 /tmp/hermes-swarm-reinstall /home/jeff/.local/bin/hermes-swarm
+install -m 0644 /home/jeff/hermes-sandbox/agents/hermes.md /home/jeff/hermes-swarm-runtime/agents/hermes.md
+install -m 0600 /home/jeff/hermes-sandbox/config/policy.yaml /home/jeff/hermes-swarm-runtime/config/policy.yaml
+install -m 0644 /tmp/hermes-swarm-task-reinstall /home/jeff/hermes-swarm-runtime/review/task.md
+touch /home/jeff/hermes-swarm-runtime/state/KILL_SWITCH
+touch /home/jeff/hermes-swarm-runtime/state/RUNNING
+```
+
+The reinstall procedure uses only the existing credential mechanism and does
+not copy credentials.
