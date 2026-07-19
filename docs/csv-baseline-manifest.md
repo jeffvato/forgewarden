@@ -28,12 +28,15 @@ fresh single-commit Git repository with no old `.git` directory, objects,
 alternates, history, or copied Docker/deployment/database/production files.
 The five prior high-confidence findings were excluded completely.
 
-The single v2 controlled exercise was attempted once. It failed safely at the
-deterministic stage because the runner referenced the superseded test path;
-the temporary worktree was removed and the kill switch was re-engaged. See
-[`docs/first-controlled-repair-v2.md`](first-controlled-repair-v2.md). The
-runner is corrected to use the v2 regression test path, but no second
-authorization or retry was performed.
+The first v2 controlled exercise failed safely at the deterministic stage
+because the runner referenced the superseded test path; the temporary
+worktree was removed and the kill switch was re-engaged. The explicitly
+authorized retry also failed safely because its command omitted the
+`csv-processor/` repository prefix. See
+[`docs/first-controlled-repair-v2.md`](first-controlled-repair-v2.md) and
+[`docs/first-controlled-repair-v2-retry.md`](first-controlled-repair-v2-retry.md).
+The runner is now corrected to use the exact repository-relative command, but
+no further authorization was used.
 
 ## Source and independent clone
 

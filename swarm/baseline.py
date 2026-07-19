@@ -18,7 +18,7 @@ REPOSITORY = Path("/home/jeff/swarm-repositories/n8n-csv-baseline-v2")
 WRITABLE_DEADLINE = "csv-processor/app/ai/deadline.py"
 WRITABLE_TEST_ROOT = "csv-processor/tests/swarm_regressions/"
 EXISTING_TEST_ROOT = "csv-processor/tests/"
-DEADLINE_TEST_COMMAND = "python3 -m pytest -q tests/swarm_regressions/test_deadline_contract.py"
+DEADLINE_TEST_COMMAND = "python3 -m pytest -q csv-processor/tests/swarm_regressions/test_deadline_contract.py"
 
 _PRIVATE_KEY = re.compile(r"BEGIN\s+(?:RSA |EC |OPENSSH )?PRIVATE KEY", re.I)
 _KNOWN_TOKEN = re.compile(r"\b(?:sk-[A-Za-z0-9]{20,}|ghp_[A-Za-z0-9]{30,}|xoxb-[A-Za-z0-9-]{20,}|AIza[A-Za-z0-9_-]{30,})\b")
@@ -265,7 +265,7 @@ def run_controlled_baseline(root: Path, repository: Path = REPOSITORY, runtime_r
                     raise SwarmError(f"controlled exercise changed unexpected authorized files: {gate['changed_files']}")
                 job.state = "CHECKS_RUNNING"
                 audit.record(job, "deterministic_checks_started", command=DEADLINE_TEST_COMMAND, network_policy="blocked-by-systemd-IPAddrDeny")
-                checks = limited_run(["python3", "-m", "pytest", "-q", "tests/swarm_regressions/test_deadline_contract.py"], worktree, "", limits, {"SWARM_ROLE": "DETERMINISTIC_CHECK"}, use_cgroup=True)
+                checks = limited_run(["python3", "-m", "pytest", "-q", "csv-processor/tests/swarm_regressions/test_deadline_contract.py"], worktree, "", limits, {"SWARM_ROLE": "DETERMINISTIC_CHECK"}, use_cgroup=True)
                 if checks.returncode:
                     raise SwarmError("narrow deadline tests failed: " + redact(checks.stdout + checks.stderr))
                 commit = run_command(["git", "rev-parse", "HEAD"], worktree).stdout.strip()
