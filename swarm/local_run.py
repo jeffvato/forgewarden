@@ -85,7 +85,8 @@ def run_real_dry_run(root: Path, runtime_root: Path | None = None, audit_dir: Pa
                 job.state = "REVISION_REQUIRED"
                 raise SwarmError("Gemini did not approve the deterministic fixture repair")
             for rule in gemini_result.get("proposed_rules", []):
-                orchestrator.rules.propose(rule, job)
+                decision = orchestrator.rules.propose(rule, job)
+                orchestrator.audit.record(job, "learned_rule_decision", decision=decision)
             job.state = "SUCCEEDED"
             resources["peak_child_rss_kib"] = int(resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss)
             resources["peak_cgroup_bytes"] = last_cgroup_peak_bytes()

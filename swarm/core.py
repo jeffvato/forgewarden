@@ -313,7 +313,8 @@ class Orchestrator:
                     self.audit.record(job, "review_not_approved", verdict=gemini["verdict"], risk=gemini["risk"])
                     return {"job_id": job.job_id, "state": job.state, "commit": commit, "gemini": gemini}
                 if gemini["proposed_rules"]:
-                    self.rules.propose(gemini["proposed_rules"][0], job)
+                    decision = self.rules.propose(gemini["proposed_rules"][0], job)
+                    self.audit.record(job, "learned_rule_decision", decision=decision)
                 job.state = "READY_TO_DEPLOY" if not self.dry_run else "SUCCEEDED"
                 self.audit.record(job, "dry_run_succeeded", commit=commit)
                 return {"job_id": job.job_id, "state": job.state, "commit": commit, "base": base, "gemini": gemini}
