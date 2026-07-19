@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from swarm.baseline import enforce_diff_gate, scan_baseline_tree
+from swarm.baseline import enforce_diff_gate, scan_baseline_tree, scan_git_blobs
 from swarm.core import SwarmError, run_command
 
 
@@ -63,6 +63,11 @@ class BaselineDiffGateTests(unittest.TestCase):
         secret.mkdir()
         (secret / "private.pem").write_text("not read into output", encoding="utf-8")
         self.assertTrue(scan_baseline_tree(secret)["findings"])
+
+    def test_git_blob_scan_covers_committed_content(self):
+        scan = scan_git_blobs(self.repo)
+        self.assertGreaterEqual(scan["blobs_scanned"], 2)
+        self.assertEqual(scan["findings"], [])
 
 
 if __name__ == "__main__":

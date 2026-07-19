@@ -88,6 +88,32 @@ def scan_baseline_tree(root: Path) -> dict[str, Any]:
     return {"files_scanned": files, "findings": findings}
 
 
+def scan_git_blobs(repo: Path) -> dict[str, Any]:
+    """Scan every blob reachable from every ref without exposing blob content."""
+    listing = run_command(["git", "rev-list", "--objects", "--all"], repo)
+    if listing.returncode:
+        raise SwarmError(redact(listing.stderr))
+    blobs = 0
+    findings: list[dict[str, str]] = []
+    for line in listing.stdout.splitlines():
+        object_id, _, name = line.partition(" ")
+        if not name:
+            continue
+        kind = run_command(["git", "cat-file", "-t", object_id], repo)
+        if kind.stdout.strip() != "blob":
+            continue
+        blobs += 1
+        if _SENSITIVE_NAME.search(name):
+            findings.append({"path": name, "classification": "SENSITIVE_FILENAME"})
+            continue
+        content = run_command(["git", "cat-file", "-p", object_id], repo)
+        if content.returncode:
+            findings.append({"path": name, "classification": "UNREADABLE_BLOB"})
+        elif _content_finding(content.stdout):
+            findings.append({"path": name, "classification": "SECRET_OR_PRIVATE_MATERIAL"})
+    return {"blobs_scanned": blobs, "findings": findings}
+
+
 def _tracked_test_hashes(repo: Path) -> dict[str, str]:
     output = run_command(["git", "ls-files", EXISTING_TEST_ROOT], repo)
     if output.returncode:
@@ -199,10 +225,11 @@ def run_controlled_baseline(root: Path, repository: Path = REPOSITORY, runtime_r
     if baseline_head != BASELINE_SHA:
         raise SwarmError(f"baseline HEAD mismatch: expected {BASELINE_SHA}, got {baseline_head}")
     scan = scan_baseline_tree(repository)
-    audit.record(job, "baseline_secret_scan", files_scanned=scan["files_scanned"], findings_count=len(scan["findings"]))
-    if scan["findings"]:
+    blob_scan = scan_git_blobs(repository)
+    audit.record(job, "baseline_secret_scan", files_scanned=scan["files_scanned"], tree_findings=len(scan["findings"]), blobs_scanned=blob_scan["blobs_scanned"], blob_findings=len(blob_scan["findings"]))
+    if scan["findings"] or blob_scan["findings"]:
         job.state = "FAILED"
-        audit.record(job, "baseline_secret_scan_blocked", findings_count=len(scan["findings"]), kill_switch="ENGAGED")
+        audit.record(job, "baseline_secret_scan_blocked", tree_findings=len(scan["findings"]), blob_findings=len(blob_scan["findings"]), kill_switch="ENGAGED")
         raise SwarmError("baseline secret scan found prohibited material")
     original_test_hashes = _tracked_test_hashes(repository)
     resources = measure_resources()
