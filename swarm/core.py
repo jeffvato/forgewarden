@@ -49,7 +49,7 @@ def redact(value: str) -> str:
     return result
 
 
-def validate_contract(payload: Any, kind: str) -> None:
+def validate_contract(payload: Any, kind: str, expected_job_id: str | None = None) -> None:
     if not isinstance(payload, dict):
         raise SwarmError(f"{kind} result must be a JSON object")
     required = {
@@ -69,6 +69,8 @@ def validate_contract(payload: Any, kind: str) -> None:
             raise SwarmError("Codex changed_files must contain strings")
         if any(not isinstance(item, dict) or not isinstance(item.get("exit_code"), int) or not isinstance(item.get("command"), str) for item in payload["commands_run"]):
             raise SwarmError("invalid Codex command evidence")
+        if expected_job_id is not None and payload["job_id"] != expected_job_id:
+            raise SwarmError(f"Codex result job ID mismatch: expected {expected_job_id}, got {payload['job_id']}")
     else:
         if not re.fullmatch(r"[0-9a-fA-F]{40,64}", str(payload["reviewed_commit"])):
             raise SwarmError("Gemini reviewed_commit is not a full SHA")

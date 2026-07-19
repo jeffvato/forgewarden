@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import resource
 import shutil
 import subprocess
 import tempfile
 import time
+import uuid
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -230,6 +232,23 @@ def _codex_cli_schema_value(value: Any) -> Any:
     return value
 
 
+def new_codex_job_id() -> str:
+    """Generate one canonical, immutable ID for a Codex invocation."""
+    return f"codex-writer-{uuid.uuid4().hex}"
+
+
+def _job_id_filename(job_id: str) -> str:
+    if not re.fullmatch(r"[a-z0-9][a-z0-9-]{7,127}", job_id):
+        raise SwarmError("Codex job ID is not canonical")
+    return job_id
+
+
+def _codex_job_schema(schema: Path, job_id: str) -> dict[str, Any]:
+    value = _codex_cli_schema(schema)
+    value.setdefault("properties", {}).setdefault("job_id", {})["const"] = job_id
+    return value
+
+
 class HermesAdapter:
     """Uses Hermes' non-mutating prompt path as the local orchestration contract."""
 
@@ -257,18 +276,23 @@ class CodexAdapter:
         self.last_invocation: dict[str, Any] = {}
 
     def run(self, worktree: Path, job_id: str, prompt: str, git_metadata: Path | None = None) -> dict[str, Any]:
+        canonical_job_id = _job_id_filename(job_id)
         result_dir = worktree / ".swarm"
         result_dir.mkdir(exist_ok=True)
-        output = result_dir / "codex-result.json"
-        fd, output_name = tempfile.mkstemp(prefix="swarm-codex-result-", suffix=".json")
+        output = result_dir / f"codex-result-{canonical_job_id}.json"
+        fd, output_name = tempfile.mkstemp(prefix=f"swarm-codex-result-{canonical_job_id}-", suffix=".json")
         os.close(fd)
         external_output = Path(output_name)
-        schema_copy = result_dir / "codex-result.schema.json"
-        schema_copy.write_text(json.dumps(_codex_cli_schema(self.schema)), encoding="utf-8")
+        schema_copy = result_dir / f"codex-result-{canonical_job_id}.schema.json"
+        schema_copy.write_text(json.dumps(_codex_job_schema(self.schema, canonical_job_id)), encoding="utf-8")
+        canonical_prompt = (
+            f"RETURN JOB_ID EXACTLY AS SUPPLIED: {canonical_job_id}. "
+            "Do not shorten, rewrite, or derive it.\n\n" + prompt
+        )
         command = [self.executable, "--ask-for-approval", "never", "exec", "--ephemeral", "--sandbox", "workspace-write", "--skip-git-repo-check", "--cd", str(worktree)]
         if git_metadata:
             command.extend(["--add-dir", str(git_metadata)])
-        command.extend(["--output-schema", str(schema_copy), "--output-last-message", str(external_output), "--color", "never", "--json", prompt])
+        command.extend(["--output-schema", str(schema_copy), "--output-last-message", str(external_output), "--color", "never", "--json", canonical_prompt])
         try:
             result = limited_run(command, worktree, "", self.limits, {"SWARM_ROLE": "CODEX_WRITER", "SWARM_DRY_RUN": "1"}, use_cgroup=True, environment_builder=_codex_environment)
             self.last_invocation = {
@@ -289,9 +313,7 @@ class CodexAdapter:
             self.last_invocation["final_response"] = redact(json.dumps(payload, sort_keys=True))
         finally:
             external_output.unlink(missing_ok=True)
-        validate_contract(payload, "codex")
-        if payload["job_id"] != job_id:
-            raise SwarmError(f"Codex result job ID mismatch: expected {job_id}, got {payload['job_id']}")
+        validate_contract(payload, "codex", expected_job_id=canonical_job_id)
         return payload
 
 

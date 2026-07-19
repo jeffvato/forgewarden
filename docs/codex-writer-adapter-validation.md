@@ -74,7 +74,7 @@ argument ordering, working directory, prompt, environment-name contract,
 authorized fixture edit, and diff detection. The real systemd scope test also
 verifies the cgroup controls and clean scope termination.
 
-Targeted validation passed: **13 tests passed**. The fake CLI edited only its
+Targeted validation passed: **16 tests passed**. The fake CLI edited only its
 fixture's authorized `value.py`; no agent or baseline was involved.
 
 ## Real disposable Codex capability probe
@@ -104,6 +104,44 @@ probe evidence is preserved at:
 No retry or automatic correction was performed. The probe failure means real
 Codex writer capability is not yet validated end-to-end; a separate explicit
 authorization is required for any future probe or repair.
+
+The failed pre-canonical probe’s sanitized evidence did not include a file
+diff, so it cannot establish whether `value.py` changed before its response
+was rejected. Its temporary repository no longer exists, and no change could
+escape that disposable directory.
+
+## Canonical-ID retry result
+
+The one authorized retry generated this single job ID:
+
+```text
+codex-writer-a6d6b322889e422099c23046ad260973
+```
+
+That exact value was used for the audit record, prompt, dynamic output-schema
+`const`, response validation, result filenames, and state evidence. The
+structured Codex response was accepted for the exact ID. Codex changed only
+`value.py`; no test or other source file was changed.
+
+The probe nevertheless failed its required completion gates. The disposable
+test repository was created incorrectly with literal backslash-n characters in
+`test_value.py`, so the required unchanged and post-write pytest command
+failed collection with exit code 2. The probe Git metadata was also not
+writable to the Codex subprocess, so the permitted `value.py` change was not
+committed. Consequently there is no valid probe commit and the diff/green-test
+requirements were not satisfied.
+
+The sanitized evidence records the generated ID, Codex exit code 0, exact
+structured response summary, changed path, test exit code, cgroup controls,
+and final kill-switch state at:
+
+```text
+/home/jeff/hermes-swarm-audit/codex-writer-adapter-validation.jsonl
+```
+
+The disposable repository was removed after evidence persistence. No retry,
+deadline repair, Gemini review, baseline access, or production operation was
+performed.
 
 ## Final safety state
 
