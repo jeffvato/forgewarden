@@ -1,0 +1,15 @@
+profile: hermes-coding-swarm-phase1
+mode: DRY_RUN
+local_only: true
+automatic_deployment: false
+repository_roots:
+  - disposable-fixtures-only
+roles:
+  orchestrator: hermes
+  application_writer: codex
+  reviewer: gemini-read-only
+limits:
+  max_concurrent_jobs: 1
+  max_review_cycles: 3
+  command_timeout_seconds: 60
+kill_switch: .swarm-state/KILL_SWITCH

@@ -1,0 +1,19 @@
+mode: DRY_RUN
+deployment:
+  enabled: false
+  adapter: DISABLED
+  credentials: NOT_CONFIGURED
+rollback:
+  adapter: DISABLED
+  tested: false
+gateway:
+  authenticated_jeff_account: NOT_CONFIGURED
+notifications:
+  enabled: false
+  provider: PLACEHOLDER
+  credential_env: HERMES_SWARM_NOTIFICATION_TOKEN
+gemini:
+  executable: /home/jeff/.nvm/versions/node/v24.11.1/bin/gemini
+  output_mode: json
+  review_mode: plan
+  readiness: BLOCKED_UNSUPPORTED_ACCOUNT_TIER

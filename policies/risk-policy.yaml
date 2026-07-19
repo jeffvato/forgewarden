@@ -1,0 +1,34 @@
+version: 1
+default_risk: HIGH
+uncertainty_raises_risk: true
+automatic_deployment:
+  enabled_initially: false
+  maximum_risk: LOW
+  maximum_concurrent_jobs: 1
+  maximum_review_cycles: 3
+  require_regression_test: true
+  require_exact_commit_review: true
+  require_immutable_rollback_artifact: true
+always_high_risk:
+  - database
+  - pricing
+  - checkout
+  - payments
+  - orders
+  - purchase orders
+  - tracking
+  - credentials
+  - backups
+  - firewall
+  - ssh
+  - dns
+  - ffl
+  - nfa
+  - deployment
+forbidden_diff_patterns:
+  - .env
+  - private keys
+  - database migrations
+  - deployment policy
+  - risk policy
+  - core Hermes governance

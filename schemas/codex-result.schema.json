@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CodexRepairResult",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["job_id", "status", "root_cause", "summary", "changed_files", "tests_added_or_changed", "commands_run", "remaining_risks", "requires_human_approval"],
+  "properties": {
+    "job_id": {"type": "string", "minLength": 1},
+    "status": {"enum": ["FIXED", "NOT_FIXED", "BLOCKED"]},
+    "root_cause": {"type": "string"},
+    "summary": {"type": "string"},
+    "changed_files": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "tests_added_or_changed": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "commands_run": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["command", "exit_code"], "properties": {"command": {"type": "string"}, "exit_code": {"type": "integer"}}}},
+    "remaining_risks": {"type": "array", "items": {"type": "string"}},
+    "requires_human_approval": {"type": "boolean"}
+  }
+}

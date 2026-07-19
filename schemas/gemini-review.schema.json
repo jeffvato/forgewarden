@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "GeminiRepairReview",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["job_id", "reviewed_commit", "verdict", "risk", "blocking_findings", "non_blocking_notes", "tests_missing", "reasoning_summary", "proposed_rules"],
+  "properties": {
+    "job_id": {"type": "string", "minLength": 1},
+    "reviewed_commit": {"type": "string", "pattern": "^[0-9a-fA-F]{40,64}$"},
+    "verdict": {"enum": ["APPROVE", "REJECT", "HUMAN_REQUIRED"]},
+    "risk": {"enum": ["LOW", "MEDIUM", "HIGH"]},
+    "blocking_findings": {"type": "array"},
+    "non_blocking_notes": {"type": "array"},
+    "tests_missing": {"type": "array"},
+    "reasoning_summary": {"type": "string", "minLength": 1},
+    "proposed_rules": {"type": "array", "maxItems": 1}
+  }
+}
