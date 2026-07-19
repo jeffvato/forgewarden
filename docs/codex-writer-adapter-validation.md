@@ -180,6 +180,46 @@ The disposable repository and its external Git metadata were removed only
 after the sanitized evidence was written to the durable audit file. No
 deadline repair or Gemini review was invoked.
 
+## Final workspace-hygiene retry result
+
+After the fixture-integrity and hygiene tests passed, the one authorized real
+writer probe succeeded with canonical job ID:
+
+```text
+codex-writer-5992160844164b28823c55db4e4d0af3
+```
+
+Evidence:
+
+```text
+baseline commit: 507d8e4cdb19d236d81334f82aea0c22c7512189
+preflight test: FAILED_ASSERTION (exit 1)
+preflight hashes: unchanged
+Codex exit: 0
+schema validation: PASSED
+claimed changed files: value.py
+actual changed files: value.py
+post-edit deterministic test: PASSED (exit 0)
+staged files: value.py
+committed diff: value.py
+probe commit: 00dcc9de36023cb98bb3d4e4e8f65c3512450c90
+secret scan: 4 files, 0 findings
+external cache cleanup: PASSED
+hook executed: no
+```
+
+The Codex subprocess inherited `PYTHONDONTWRITEBYTECODE=1`, a job-specific
+`PYTHONPYCACHEPREFIX` beneath the disposable swarm runtime, and
+`PYTEST_ADDOPTS=-p no:cacheprovider`. No cache or generated artifact appeared
+inside the worktree. The orchestrator restored Git metadata only after Codex
+returned, staged `value.py` explicitly, disabled hooks and signing, and
+created the commit with the fixed Hermes Swarm identity.
+
+The durable evidence is preserved in
+`/home/jeff/hermes-swarm-audit/codex-writer-adapter-validation.jsonl`. The
+kill switch is engaged, deployment remains disabled, and no deadline repair,
+Gemini review, baseline, n8n, Docker, or production operation was performed.
+
 ## Final safety state
 
 - Deployment: **DISABLED**.

@@ -7,6 +7,7 @@ import unittest
 from pathlib import Path
 
 from swarm.writer_probe import PROBE_FILES, TEST_COMMAND, run_writer_probe
+from swarm.adapters import _minimal_test_environment
 
 
 FIXTURE = Path(__file__).parent / "fixtures" / "codex_writer_probe"
@@ -32,6 +33,8 @@ class WriterProbeProcessTests(unittest.TestCase):
     def _fake(self, mode="success"):
         path = self.root / f"fake-{mode}"
         extra = "pathlib.Path('unauthorized.py').write_text('x = 1\\n')\n" if mode == "unauthorized" else ""
+        if mode == "cache":
+            extra += "pathlib.Path('__pycache__').mkdir(); pathlib.Path('__pycache__/bad.pyc').write_bytes(b'bad')\n"
         claimed = "['test_value.py']" if mode == "claimed-mismatch" else "['value.py']"
         path.write_text(
             "#!/usr/bin/env python3\n"
@@ -54,13 +57,20 @@ class WriterProbeProcessTests(unittest.TestCase):
             text = (FIXTURE / name).read_text(encoding="utf-8")
             self.assertNotIn("\\n", text)
             compile(text, name, "exec")
-        collected = subprocess.run([*TEST_COMMAND, "--collect-only"], cwd=FIXTURE, text=True, capture_output=True, check=False)
+        external_cache = self.root / "fixture-pycache"
+        import_env = _minimal_test_environment({"PYTHONDONTWRITEBYTECODE": "0", "PYTHONPYCACHEPREFIX": str(external_cache)})
+        imported = subprocess.run(["/home/jeff/anaconda3/bin/python3", "-c", "import value"], cwd=FIXTURE, env=import_env, text=True, capture_output=True, check=False)
+        self.assertEqual(imported.returncode, 0, imported.stderr)
+        self.assertTrue(any(external_cache.rglob("*.pyc")))
+        self.assertFalse(any((FIXTURE / "__pycache__").rglob("*.pyc")) if (FIXTURE / "__pycache__").exists() else False)
+        collected = subprocess.run([*TEST_COMMAND, "--collect-only"], cwd=FIXTURE, env=_minimal_test_environment({"PYTHONPYCACHEPREFIX": str(external_cache)}), text=True, capture_output=True, check=False)
         self.assertEqual(collected.returncode, 0, collected.stderr)
-        seeded = subprocess.run(TEST_COMMAND, cwd=FIXTURE, text=True, capture_output=True, check=False)
+        seeded = subprocess.run(TEST_COMMAND, cwd=FIXTURE, env=_minimal_test_environment({"PYTHONPYCACHEPREFIX": str(external_cache)}), text=True, capture_output=True, check=False)
         self.assertNotEqual(seeded.returncode, 0)
         self.assertIn("AssertionError", seeded.stdout + seeded.stderr)
         self.assertNotIn("SyntaxError", seeded.stdout + seeded.stderr)
         self.assertNotIn("ImportError", seeded.stdout + seeded.stderr)
+        self.assertFalse((FIXTURE / ".pytest_cache").exists())
 
     def test_orchestrator_detects_edit_and_creates_exact_commit_without_hooks(self):
         audit = self.root / "audit.jsonl"
@@ -84,4 +94,10 @@ class WriterProbeProcessTests(unittest.TestCase):
         self.assertEqual(result["result"], "FAILED")
         self.assertEqual(result["claimed_changed_files"], ["test_value.py"])
         self.assertEqual(result["actual_changed_files"], ["value.py"])
+        self.assertNotIn("repair_commit", result)
+
+    def test_cache_artifact_blocks_commit(self):
+        result = run_writer_probe(self.root, FIXTURE, self.root / "audit-cache.jsonl", str(self._fake("cache")))
+        self.assertEqual(result["result"], "FAILED")
+        self.assertIn("__pycache__/bad.pyc", result["actual_changed_files"])
         self.assertNotIn("repair_commit", result)

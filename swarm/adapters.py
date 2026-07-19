@@ -108,7 +108,7 @@ def _user_systemd_bus_environment() -> dict[str, str]:
     return {}
 
 
-def _codex_environment(env: dict[str, str] | None = None) -> dict[str, str]:
+def _codex_environment(env: dict[str, str] | None = None, pycache_dir: Path | None = None) -> dict[str, str]:
     """Pass only Codex runtime/authentication variables; never log values."""
     allowed_names = {
         "PATH", "HOME", "LANG", "LC_ALL", "TERM", "CODEX_HOME",
@@ -119,6 +119,9 @@ def _codex_environment(env: dict[str, str] | None = None) -> dict[str, str]:
     result.update(env or {})
     result["PYTHONDONTWRITEBYTECODE"] = "1"
     result["PYTHONNOUSERSITE"] = "1"
+    if pycache_dir is not None:
+        result["PYTHONPYCACHEPREFIX"] = str(pycache_dir)
+    result["PYTEST_ADDOPTS"] = "-p no:cacheprovider"
     result["SWARM_NETWORK_BLOCKED"] = "1"
     result.pop("HTTP_PROXY", None)
     result.pop("HTTPS_PROXY", None)
@@ -182,7 +185,7 @@ def limited_run(command: list[str], cwd: Path, prompt: str, limits: ResourceLimi
             stdout, stderr = process.communicate(prompt, timeout=limits.timeout_seconds)
         except subprocess.TimeoutExpired as exc:
             process.kill()
-            process.wait()
+            stdout, stderr = process.communicate()
             raise SwarmError(f"agent timed out after {limits.timeout_seconds}s: {command[0]}") from exc
         result = subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
     finally:
@@ -276,9 +279,14 @@ class CodexAdapter:
         self.limits = limits
         self.executable = executable
         self.last_invocation: dict[str, Any] = {}
+        self.last_cache_directory: Path | None = None
 
     def run(self, worktree: Path, job_id: str, prompt: str, git_metadata: Path | None = None) -> dict[str, Any]:
         canonical_job_id = _job_id_filename(job_id)
+        cache_dir = Path("/home/jeff/hermes-swarm-runtime/python-cache") / canonical_job_id
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        cache_dir.chmod(0o700)
+        self.last_cache_directory = cache_dir
         result_dir = worktree / ".swarm"
         result_dir.mkdir(exist_ok=True)
         output = result_dir / f"codex-result-{canonical_job_id}.json"
@@ -296,12 +304,13 @@ class CodexAdapter:
             command.extend(["--add-dir", str(git_metadata)])
         command.extend(["--output-schema", str(schema_copy), "--output-last-message", str(external_output), "--color", "never", "--json", canonical_prompt])
         try:
-            result = limited_run(command, worktree, "", self.limits, {"SWARM_ROLE": "CODEX_WRITER", "SWARM_DRY_RUN": "1"}, use_cgroup=True, environment_builder=_codex_environment)
+            result = limited_run(command, worktree, "", self.limits, {"SWARM_ROLE": "CODEX_WRITER", "SWARM_DRY_RUN": "1"}, use_cgroup=True, environment_builder=lambda values: _codex_environment(values, cache_dir))
             self.last_invocation = {
                 "executable": self.executable,
                 "argv": command[:-1] + ["<prompt-argument>"],
                 "working_directory": str(worktree),
-                "environment_names": sorted(_codex_environment({"SWARM_ROLE": "CODEX_WRITER", "SWARM_DRY_RUN": "1"})),
+                "environment_names": sorted(_codex_environment({"SWARM_ROLE": "CODEX_WRITER", "SWARM_DRY_RUN": "1"}, cache_dir)),
+                "pycache_directory": str(cache_dir),
                 "exit_code": result.returncode,
                 "stdout": redact(result.stdout),
                 "stderr": redact(result.stderr),
@@ -315,6 +324,7 @@ class CodexAdapter:
             self.last_invocation["final_response"] = redact(json.dumps(payload, sort_keys=True))
         finally:
             external_output.unlink(missing_ok=True)
+            shutil.rmtree(cache_dir, ignore_errors=True)
         validate_contract(payload, "codex", expected_job_id=canonical_job_id)
         return payload
 

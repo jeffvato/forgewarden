@@ -69,7 +69,10 @@ def run_writer_probe(root: Path, fixture_dir: Path, audit_path: Path, codex_exec
         before_hashes = _hashes(repo)
         evidence.update({"baseline_commit": base, "before_hashes": before_hashes, "states": [*evidence["states"], "BASELINE_READY"]})
         pre = limited_run(TEST_COMMAND, repo, "", limits, {"SWARM_ROLE": "CODEX_WRITER_PROBE_TEST"}, use_cgroup=True, minimal_environment=True)
-        evidence.update({"unchanged_test_exit_code": pre.returncode, "deterministic_before": "FAILED_ASSERTION" if "AssertionError" in pre.stdout + pre.stderr else "FAILED_OTHER", "states": [*evidence["states"], "SEEDED_TEST_FAILED"]})
+        pre_hashes = _hashes(repo)
+        evidence.update({"unchanged_test_exit_code": pre.returncode, "deterministic_before": "FAILED_ASSERTION" if "AssertionError" in pre.stdout + pre.stderr else "FAILED_OTHER", "pre_test_hashes": pre_hashes, "states": [*evidence["states"], "SEEDED_TEST_FAILED"]})
+        if pre_hashes != before_hashes:
+            raise SwarmError("seeded preflight created an artifact in the worktree")
         if pre.returncode == 0 or "AssertionError" not in pre.stdout + pre.stderr:
             raise SwarmError("probe seed did not fail for the expected assertion")
         hook_marker = repo / ".hook-ran"
@@ -84,6 +87,7 @@ def run_writer_probe(root: Path, fixture_dir: Path, audit_path: Path, codex_exec
         evidence["states"].append("CODEX_RUNNING")
         result = adapter.run(repo, job_id, prompt)
         evidence.update({"codex_exit_code": adapter.last_invocation.get("exit_code"), "schema_validation": "PASSED", "claimed_changed_files": result["changed_files"], "states": [*evidence["states"], "CODEX_RESULT_VALIDATED"]})
+        evidence["external_cache_removed"] = adapter.last_cache_directory is not None and not adapter.last_cache_directory.exists()
         if (repo / ".git").exists():
             raise SwarmError("Codex created Git metadata")
         shutil.move(git_store, repo / ".git")
@@ -124,6 +128,7 @@ def run_writer_probe(root: Path, fixture_dir: Path, audit_path: Path, codex_exec
         if adapter is not None:
             evidence["codex_exit_code"] = adapter.last_invocation.get("exit_code")
             evidence["schema_validation"] = evidence.get("schema_validation", "FAILED_OR_NOT_REACHED")
+            evidence["external_cache_removed"] = adapter.last_cache_directory is not None and not adapter.last_cache_directory.exists()
         return evidence
     finally:
         evidence["kill_switch_final"] = "ENGAGED"

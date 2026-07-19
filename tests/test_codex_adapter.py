@@ -48,7 +48,7 @@ class CodexAdapterProcessTests(unittest.TestCase):
             "job_id = prompt.split(': ', 1)[1].split('.', 1)[0]\n"
             "output = pathlib.Path(args[args.index('--output-last-message') + 1])\n"
             "pathlib.Path('value.py').write_text('def value():\\n    return 2\\n')\n"
-            "pathlib.Path('.swarm/fake-capture.json').write_text(json.dumps({'args': args, 'cwd': os.getcwd(), 'prompt': prompt, 'schema': json.loads(pathlib.Path(args[args.index('--output-schema') + 1]).read_text()), 'env_names': sorted(os.environ)}))\n"
+            "pathlib.Path('.swarm/fake-capture.json').write_text(json.dumps({'args': args, 'cwd': os.getcwd(), 'prompt': prompt, 'schema': json.loads(pathlib.Path(args[args.index('--output-schema') + 1]).read_text()), 'env_names': sorted(os.environ), 'pycache': os.environ.get('PYTHONPYCACHEPREFIX'), 'pytest_opts': os.environ.get('PYTEST_ADDOPTS')}))\n"
             "output.write_text(json.dumps({'job_id':job_id,'status':'FIXED','root_cause':'fixture defect','summary':'fixed fixture','changed_files':['value.py'],'tests_added_or_changed':[],'commands_run':[{'command':'pytest','exit_code':0}],'remaining_risks':[],'requires_human_approval':False}))\n",
             encoding="utf-8",
         )
@@ -79,8 +79,14 @@ class CodexAdapterProcessTests(unittest.TestCase):
         self.assertNotIn("DATABASE_URL", capture["env_names"])
         self.assertNotIn("HTTP_PROXY", capture["env_names"])
         self.assertIn("SWARM_NETWORK_BLOCKED", capture["env_names"])
+        self.assertIn("PYTHONDONTWRITEBYTECODE", capture["env_names"])
+        self.assertIn("PYTHONPYCACHEPREFIX", capture["env_names"])
+        self.assertIn("PYTEST_ADDOPTS", capture["env_names"])
+        self.assertTrue(capture["pycache"].startswith("/home/jeff/hermes-swarm-runtime/python-cache/"))
+        self.assertEqual(capture["pytest_opts"], "-p no:cacheprovider")
+        self.assertFalse(adapter.last_cache_directory.exists())
         codex_env = _codex_environment()
-        self.assertEqual(set(codex_env) - {"PATH", "HOME", "LANG", "LC_ALL", "TERM", "CODEX_HOME", "OPENAI_API_KEY", "OPENAI_BASE_URL", "XDG_RUNTIME_DIR", "DBUS_SESSION_BUS_ADDRESS", "PYTHONDONTWRITEBYTECODE", "PYTHONNOUSERSITE", "SWARM_NETWORK_BLOCKED"}, set())
+        self.assertEqual(set(codex_env) - {"PATH", "HOME", "LANG", "LC_ALL", "TERM", "CODEX_HOME", "OPENAI_API_KEY", "OPENAI_BASE_URL", "XDG_RUNTIME_DIR", "DBUS_SESSION_BUS_ADDRESS", "PYTHONDONTWRITEBYTECODE", "PYTHONNOUSERSITE", "PYTEST_ADDOPTS", "SWARM_NETWORK_BLOCKED"}, set())
 
 
 class CodexJobIdContractTests(unittest.TestCase):
@@ -98,4 +104,19 @@ class CodexJobIdContractTests(unittest.TestCase):
 
     def test_response_for_another_job_fails(self):
         with self.assertRaises(SwarmError):
-            validate_contract(self._payload("codex-writer-other1234"), "codex", expected_job_id="codex-writer-test1234")
+                validate_contract(self._payload("codex-writer-other1234"), "codex", expected_job_id="codex-writer-test1234")
+
+    def test_external_cache_cleanup_on_failure_and_timeout(self):
+        for mode in ("failure", "timeout"):
+            with self.subTest(mode=mode):
+                root = Path(tempfile.mkdtemp(prefix=f"codex-cache-{mode}-"))
+                fake = root / "fake"
+                action = "raise SystemExit(7)" if mode == "failure" else "import time; time.sleep(3)"
+                fake.write_text(f"#!/usr/bin/env python3\n{action}\n", encoding="utf-8")
+                fake.chmod(0o700)
+                adapter = CodexAdapter(Path(__file__).resolve().parents[1] / "schemas/codex-result.schema.json", ResourceLimits(timeout_seconds=1), str(fake))
+                with self.assertRaises(Exception):
+                    adapter.run(root, "codex-writer-cache1234", "probe")
+                self.assertIsNotNone(adapter.last_cache_directory)
+                self.assertFalse(adapter.last_cache_directory.exists())
+                shutil.rmtree(root, ignore_errors=True)
