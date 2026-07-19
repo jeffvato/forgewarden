@@ -230,9 +230,9 @@ def _deadline_test_command(worktree: Path) -> tuple[Path, list[str]]:
     return resolved_path, [sys.executable, "-m", "pytest", "-q", str(relative)]
 
 
-def _run_deadline_preflight(worktree: Path, limits) -> tuple[Path, list[str], dict[str, Any]]:
+def _run_deadline_preflight(worktree: Path, limits, validated: tuple[Path, list[str]] | None = None) -> tuple[Path, list[str], dict[str, Any]]:
     """Prove baseline pass and seeded defect failure before kill-switch clearance."""
-    test_path, test_command = _deadline_test_command(worktree)
+    test_path, test_command = validated or _deadline_test_command(worktree)
     baseline = limited_run(test_command, worktree, "", limits, {"SWARM_ROLE": "DETERMINISTIC_PREFLIGHT"}, use_cgroup=True)
     if baseline.returncode:
         raise SwarmError("baseline deadline test failed before defect introduction: " + redact(baseline.stdout + baseline.stderr))
@@ -288,7 +288,9 @@ def run_controlled_baseline(root: Path, repository: Path = REPOSITORY, runtime_r
                 raise SwarmError(redact(added.stderr))
             job.state = "WORKTREE_READY"
             audit.record(job, "worktree_ready", base_revision=BASELINE_SHA, network_policy="blocked-by-systemd-IPAddrDeny")
-            test_path, test_command, preflight = _run_deadline_preflight(worktree, limits)
+            test_path, test_command = _deadline_test_command(worktree)
+            audit.record(job, "deterministic_preflight_started", working_directory=str(worktree.resolve()), test_path=str(test_path), command=list(test_command), network_policy="blocked-by-systemd-IPAddrDeny")
+            test_path, test_command, preflight = _run_deadline_preflight(worktree, limits, (test_path, test_command))
             audit.record(job, "deterministic_preflight_passed", **preflight)
             with _AuthorizedKillSwitch(runtime_root, audit, job):
                 hermes = HermesAdapter(state_dir / "hermes")

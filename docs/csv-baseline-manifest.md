@@ -38,6 +38,11 @@ authorized retry also failed safely because its command omitted the
 The runner is now corrected to use the exact repository-relative command, but
 no further authorization was used.
 
+The final conditional v2 exercise then stopped before defect introduction or
+kill-switch clearance because the unchanged minimal test failed import
+collection (`ModuleNotFoundError: app`). See
+[`docs/first-controlled-repair-v2-final.md`](first-controlled-repair-v2-final.md).
+
 ## Source and independent clone
 
 ```text
