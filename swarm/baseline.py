@@ -18,6 +18,7 @@ REPOSITORY = Path("/home/jeff/swarm-repositories/n8n-csv-baseline-v2")
 WRITABLE_DEADLINE = "csv-processor/app/ai/deadline.py"
 WRITABLE_TEST_ROOT = "csv-processor/tests/swarm_regressions/"
 EXISTING_TEST_ROOT = "csv-processor/tests/"
+DEADLINE_TEST_COMMAND = "python3 -m pytest -q tests/swarm_regressions/test_deadline_contract.py"
 
 _PRIVATE_KEY = re.compile(r"BEGIN\s+(?:RSA |EC |OPENSSH )?PRIVATE KEY", re.I)
 _KNOWN_TOKEN = re.compile(r"\b(?:sk-[A-Za-z0-9]{20,}|ghp_[A-Za-z0-9]{30,}|xoxb-[A-Za-z0-9-]{20,}|AIza[A-Za-z0-9_-]{30,})\b")
@@ -255,7 +256,7 @@ def run_controlled_baseline(root: Path, repository: Path = REPOSITORY, runtime_r
                 hermes.prepare(job.job_id, job.evidence)
                 job.state = "CODEX_RUNNING"
                 audit.record(job, "codex_started", allowed_scope=[WRITABLE_DEADLINE, WRITABLE_TEST_ROOT], environment_policy="production-and-credential-vars-removed")
-                prompt = f"""You are the sole writer for controlled job {job.job_id}. Work only in this detached Git worktree. Repair the deliberate defect in {WRITABLE_DEADLINE}. Do not edit, delete, rename, or add any existing test. You may add a new regression test only below {WRITABLE_TEST_ROOT}, but do not add one unless needed. Do not touch any other path. Do not use network, Docker, production services, credentials, customer data, or environment secrets. Run only: python3 -m pytest -q tests/test_ai_watcher_deadline.py. Commit the repair. Return only the supplied Codex JSON schema with changed_files exactly matching the committed diff."""
+                prompt = f"""You are the sole writer for controlled job {job.job_id}. Work only in this detached Git worktree. Repair the deliberate defect in {WRITABLE_DEADLINE}. Do not edit, delete, rename, or add any existing test. You may add a new regression test only below {WRITABLE_TEST_ROOT}, but do not add one unless needed. Do not touch any other path. Do not use network, Docker, production services, credentials, customer data, or environment secrets. Run only: {DEADLINE_TEST_COMMAND}. Commit the repair. Return only the supplied Codex JSON schema with changed_files exactly matching the committed diff."""
                 codex = CodexAdapter(root / "schemas/codex-result.schema.json", limits, commands["codex"])
                 git_metadata = Path(run_command(["git", "rev-parse", "--git-common-dir"], worktree).stdout.strip())
                 codex_result = codex.run(worktree, job.job_id, prompt, git_metadata)
@@ -263,15 +264,15 @@ def run_controlled_baseline(root: Path, repository: Path = REPOSITORY, runtime_r
                 if gate["changed_files"] != [WRITABLE_DEADLINE]:
                     raise SwarmError(f"controlled exercise changed unexpected authorized files: {gate['changed_files']}")
                 job.state = "CHECKS_RUNNING"
-                audit.record(job, "deterministic_checks_started", command="python3 -m pytest -q tests/test_ai_watcher_deadline.py", network_policy="blocked-by-systemd-IPAddrDeny")
-                checks = limited_run(["python3", "-m", "pytest", "-q", "tests/test_ai_watcher_deadline.py"], worktree, "", limits, {"SWARM_ROLE": "DETERMINISTIC_CHECK"}, use_cgroup=True)
+                audit.record(job, "deterministic_checks_started", command=DEADLINE_TEST_COMMAND, network_policy="blocked-by-systemd-IPAddrDeny")
+                checks = limited_run(["python3", "-m", "pytest", "-q", "tests/swarm_regressions/test_deadline_contract.py"], worktree, "", limits, {"SWARM_ROLE": "DETERMINISTIC_CHECK"}, use_cgroup=True)
                 if checks.returncode:
                     raise SwarmError("narrow deadline tests failed: " + redact(checks.stdout + checks.stderr))
                 commit = run_command(["git", "rev-parse", "HEAD"], worktree).stdout.strip()
                 snapshot = _readonly_snapshot(worktree, state_dir, job.job_id)
                 job.state = "GEMINI_REVIEWING"
                 audit.record(job, "gemini_started", reviewed_commit=commit, network_policy="blocked-by-systemd-IPAddrDeny")
-                review_prompt = f"""You are an independent read-only reviewer. Review only commit {commit} in the supplied read-only snapshot for controlled job {job.job_id}. The allowed changed file is exactly {WRITABLE_DEADLINE}; existing tests must be byte-identical. Deterministic command passed: python3 -m pytest -q tests/test_ai_watcher_deadline.py. Do not use network, edit, commit, deploy, or access secrets. Return only valid review JSON with reviewed_commit exactly {commit}, verdict APPROVE only if the patch is narrow and safe, risk LOW, and proposed_rules empty."""
+                review_prompt = f"""You are an independent read-only reviewer. Review only commit {commit} in the supplied read-only snapshot for controlled job {job.job_id}. The allowed changed file is exactly {WRITABLE_DEADLINE}; existing tests must be byte-identical. Deterministic command passed: {DEADLINE_TEST_COMMAND}. Do not use network, edit, commit, deploy, or access secrets. Return only valid review JSON with reviewed_commit exactly {commit}, verdict APPROVE only if the patch is narrow and safe, risk LOW, and proposed_rules empty."""
                 gemini = GeminiAdapter(root / "schemas/gemini-review.schema.json", limits, commands["agy"])
                 gemini_result = gemini.run(snapshot, job.job_id, commit, review_prompt)
                 if gemini_result["verdict"] != "APPROVE" or gemini_result["risk"] != "LOW":

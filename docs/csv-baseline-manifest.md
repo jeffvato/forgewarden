@@ -28,6 +28,13 @@ fresh single-commit Git repository with no old `.git` directory, objects,
 alternates, history, or copied Docker/deployment/database/production files.
 The five prior high-confidence findings were excluded completely.
 
+The single v2 controlled exercise was attempted once. It failed safely at the
+deterministic stage because the runner referenced the superseded test path;
+the temporary worktree was removed and the kill switch was re-engaged. See
+[`docs/first-controlled-repair-v2.md`](first-controlled-repair-v2.md). The
+runner is corrected to use the v2 regression test path, but no second
+authorization or retry was performed.
+
 ## Source and independent clone
 
 ```text
