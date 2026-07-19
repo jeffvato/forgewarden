@@ -3,12 +3,13 @@ from pathlib import Path
 
 from .adapters import discover_commands, measure_resources, select_limits
 from .core import SwarmError
+from .baseline import run_controlled_baseline
 from .local_run import run_real_dry_run
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Local Hermes coding swarm (dry-run only)")
-    parser.add_argument("command", choices=["start", "stop", "status", "kill-switch", "dry-run", "run"], nargs="?", default="status")
+    parser.add_argument("command", choices=["start", "stop", "status", "kill-switch", "dry-run", "controlled-baseline", "run"], nargs="?", default="status")
     parser.add_argument("--state-dir", type=Path, default=Path(".swarm-state"))
     parser.add_argument("--runtime-root", type=Path)
     parser.add_argument("--audit-dir", type=Path)
@@ -30,6 +31,15 @@ def main() -> int:
     if args.command == "dry-run":
         try:
             print(run_real_dry_run(Path(__file__).resolve().parents[1], args.runtime_root, args.audit_dir))
+            return 0
+        except (SwarmError, OSError, ValueError) as exc:
+            print(f"FAILED: {exc}")
+            return 1
+    if args.command == "controlled-baseline":
+        if not args.repository:
+            parser.error("controlled-baseline requires --repository")
+        try:
+            print(run_controlled_baseline(Path(__file__).resolve().parents[1], args.repository, args.runtime_root, args.state_dir, args.audit_dir))
             return 0
         except (SwarmError, OSError, ValueError) as exc:
             print(f"FAILED: {exc}")

@@ -55,6 +55,30 @@ def _limited_preexec(limits: ResourceLimits):
     return apply
 
 
+_BLOCKED_ENV_TERMS = (
+    "secret", "token", "password", "credential", "api_key", "apikey", "authorization",
+    "database_url", "postgres", "mysql", "redis", "woocommerce", "distributor", "gunbroker",
+    "n8n", "docker", "production", "payment", "order", "customer", "aws_access", "private_key",
+)
+
+
+def _safe_agent_environment(env: dict[str, str] | None = None) -> dict[str, str]:
+    """Keep process basics while excluding production and credential-like variables."""
+    safe = {}
+    for key, value in os.environ.items():
+        lowered = key.lower()
+        if any(term in lowered for term in _BLOCKED_ENV_TERMS):
+            continue
+        safe[key] = value
+    safe.update(env or {})
+    safe["SWARM_NETWORK_BLOCKED"] = "1"
+    safe["NO_PROXY"] = "*"
+    safe.pop("HTTP_PROXY", None)
+    safe.pop("HTTPS_PROXY", None)
+    safe.pop("ALL_PROXY", None)
+    return safe
+
+
 _last_cgroup_peak_bytes = 0
 
 
@@ -63,15 +87,20 @@ def last_cgroup_peak_bytes() -> int:
 
 
 def limited_run(command: list[str], cwd: Path, prompt: str, limits: ResourceLimits, env: dict[str, str] | None = None, use_cgroup: bool = False) -> subprocess.CompletedProcess[str]:
-    child_env = os.environ.copy()
-    child_env.update(env or {})
+    child_env = _safe_agent_environment(env)
     global _last_cgroup_peak_bytes
     cgroup_path: Path | None = None
     wrapped_command = list(command)
     if use_cgroup:
         systemd_run = shutil.which("systemd-run")
         if systemd_run:
-            wrapped_command = [systemd_run, "--user", "--scope", "--quiet", "-p", f"MemoryMax={limits.memory_bytes}", "-p", "MemorySwapMax=0", "--", *command]
+            wrapped_command = [
+                systemd_run, "--user", "--scope", "--quiet",
+                "-p", f"MemoryMax={limits.memory_bytes}",
+                "-p", "MemorySwapMax=0",
+                "-p", "IPAddressDeny=any",
+                "--", *command,
+            ]
         else:
             cgroup_root = Path(os.environ.get("SWARM_CGROUP_ROOT", "/sys/fs/cgroup"))
             if not (cgroup_root / "cgroup.controllers").exists():
