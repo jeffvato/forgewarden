@@ -4,6 +4,7 @@ import hashlib
 import math
 import re
 import shutil
+import sys
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -18,7 +19,6 @@ REPOSITORY = Path("/home/jeff/swarm-repositories/n8n-csv-baseline-v2")
 WRITABLE_DEADLINE = "csv-processor/app/ai/deadline.py"
 WRITABLE_TEST_ROOT = "csv-processor/tests/swarm_regressions/"
 EXISTING_TEST_ROOT = "csv-processor/tests/"
-DEADLINE_TEST_COMMAND = "python3 -m pytest -q csv-processor/tests/swarm_regressions/test_deadline_contract.py"
 
 _PRIVATE_KEY = re.compile(r"BEGIN\s+(?:RSA |EC |OPENSSH )?PRIVATE KEY", re.I)
 _KNOWN_TOKEN = re.compile(r"\b(?:sk-[A-Za-z0-9]{20,}|ghp_[A-Za-z0-9]{30,}|xoxb-[A-Za-z0-9-]{20,}|AIza[A-Za-z0-9_-]{30,})\b")
@@ -215,6 +215,44 @@ def _introduce_deadline_defect(path: Path) -> None:
     path.write_text(original.replace(expected, replacement), encoding="utf-8")
 
 
+def _deadline_test_command(worktree: Path) -> tuple[Path, list[str]]:
+    """Resolve and validate the only deterministic test before any agent runs."""
+    relative = Path("csv-processor") / "tests" / "swarm_regressions" / "test_deadline_contract.py"
+    path = worktree / relative
+    resolved_root = worktree.resolve()
+    if path.is_symlink() or not path.is_file():
+        raise SwarmError(f"controlled test is not a regular file: {relative}")
+    resolved_path = path.resolve()
+    try:
+        resolved_path.relative_to(resolved_root)
+    except ValueError as exc:
+        raise SwarmError(f"controlled test escaped worktree: {resolved_path}") from exc
+    return resolved_path, [sys.executable, "-m", "pytest", "-q", str(relative)]
+
+
+def _run_deadline_preflight(worktree: Path, limits) -> tuple[Path, list[str], dict[str, Any]]:
+    """Prove baseline pass and seeded defect failure before kill-switch clearance."""
+    test_path, test_command = _deadline_test_command(worktree)
+    baseline = limited_run(test_command, worktree, "", limits, {"SWARM_ROLE": "DETERMINISTIC_PREFLIGHT"}, use_cgroup=True)
+    if baseline.returncode:
+        raise SwarmError("baseline deadline test failed before defect introduction: " + redact(baseline.stdout + baseline.stderr))
+    _introduce_deadline_defect(worktree / WRITABLE_DEADLINE)
+    seeded = limited_run(test_command, worktree, "", limits, {"SWARM_ROLE": "DETERMINISTIC_PREFLIGHT"}, use_cgroup=True)
+    seeded_output = seeded.stdout + seeded.stderr
+    if seeded.returncode == 0 or "AssertionError" not in seeded_output:
+        raise SwarmError("seeded deadline defect did not produce the expected assertion failure")
+    evidence = {
+        "working_directory": str(worktree.resolve()),
+        "test_path": str(test_path),
+        "test_command": list(test_command),
+        "baseline_exit_code": baseline.returncode,
+        "seeded_defect_exit_code": seeded.returncode,
+        "seeded_failure": "AssertionError",
+        "network_policy": "blocked-by-systemd-IPAddrDeny",
+    }
+    return test_path, test_command, evidence
+
+
 def run_controlled_baseline(root: Path, repository: Path = REPOSITORY, runtime_root: Path | None = None, state_dir: Path | None = None, audit_dir: Path | None = None) -> dict[str, Any]:
     runtime_root = runtime_root or Path("/home/jeff/hermes-swarm-runtime")
     state_dir = state_dir or runtime_root / "state"
@@ -250,13 +288,14 @@ def run_controlled_baseline(root: Path, repository: Path = REPOSITORY, runtime_r
                 raise SwarmError(redact(added.stderr))
             job.state = "WORKTREE_READY"
             audit.record(job, "worktree_ready", base_revision=BASELINE_SHA, network_policy="blocked-by-systemd-IPAddrDeny")
-            _introduce_deadline_defect(worktree / WRITABLE_DEADLINE)
+            test_path, test_command, preflight = _run_deadline_preflight(worktree, limits)
+            audit.record(job, "deterministic_preflight_passed", **preflight)
             with _AuthorizedKillSwitch(runtime_root, audit, job):
                 hermes = HermesAdapter(state_dir / "hermes")
                 hermes.prepare(job.job_id, job.evidence)
                 job.state = "CODEX_RUNNING"
                 audit.record(job, "codex_started", allowed_scope=[WRITABLE_DEADLINE, WRITABLE_TEST_ROOT], environment_policy="production-and-credential-vars-removed")
-                prompt = f"""You are the sole writer for controlled job {job.job_id}. Work only in this detached Git worktree. Repair the deliberate defect in {WRITABLE_DEADLINE}. Do not edit, delete, rename, or add any existing test. You may add a new regression test only below {WRITABLE_TEST_ROOT}, but do not add one unless needed. Do not touch any other path. Do not use network, Docker, production services, credentials, customer data, or environment secrets. Run only: {DEADLINE_TEST_COMMAND}. Commit the repair. Return only the supplied Codex JSON schema with changed_files exactly matching the committed diff."""
+                prompt = f"""You are the sole writer for controlled job {job.job_id}. Work only in this detached Git worktree. Repair the deliberate defect in {WRITABLE_DEADLINE}. Do not edit, delete, rename, or add any existing test. You may add a new regression test only below {WRITABLE_TEST_ROOT}, but do not add one unless needed. Do not touch any other path. Do not use network, Docker, production services, credentials, customer data, or environment secrets. Run only this argument-array test command: {test_command!r}. Commit the repair. Return only the supplied Codex JSON schema with changed_files exactly matching the committed diff."""
                 codex = CodexAdapter(root / "schemas/codex-result.schema.json", limits, commands["codex"])
                 git_metadata = Path(run_command(["git", "rev-parse", "--git-common-dir"], worktree).stdout.strip())
                 codex_result = codex.run(worktree, job.job_id, prompt, git_metadata)
@@ -264,15 +303,15 @@ def run_controlled_baseline(root: Path, repository: Path = REPOSITORY, runtime_r
                 if gate["changed_files"] != [WRITABLE_DEADLINE]:
                     raise SwarmError(f"controlled exercise changed unexpected authorized files: {gate['changed_files']}")
                 job.state = "CHECKS_RUNNING"
-                audit.record(job, "deterministic_checks_started", command=DEADLINE_TEST_COMMAND, network_policy="blocked-by-systemd-IPAddrDeny")
-                checks = limited_run(["python3", "-m", "pytest", "-q", "csv-processor/tests/swarm_regressions/test_deadline_contract.py"], worktree, "", limits, {"SWARM_ROLE": "DETERMINISTIC_CHECK"}, use_cgroup=True)
+                audit.record(job, "deterministic_checks_started", command=list(test_command), working_directory=str(worktree.resolve()), test_path=str(test_path), network_policy="blocked-by-systemd-IPAddrDeny")
+                checks = limited_run(test_command, worktree, "", limits, {"SWARM_ROLE": "DETERMINISTIC_CHECK"}, use_cgroup=True)
                 if checks.returncode:
                     raise SwarmError("narrow deadline tests failed: " + redact(checks.stdout + checks.stderr))
                 commit = run_command(["git", "rev-parse", "HEAD"], worktree).stdout.strip()
                 snapshot = _readonly_snapshot(worktree, state_dir, job.job_id)
                 job.state = "GEMINI_REVIEWING"
                 audit.record(job, "gemini_started", reviewed_commit=commit, network_policy="blocked-by-systemd-IPAddrDeny")
-                review_prompt = f"""You are an independent read-only reviewer. Review only commit {commit} in the supplied read-only snapshot for controlled job {job.job_id}. The allowed changed file is exactly {WRITABLE_DEADLINE}; existing tests must be byte-identical. Deterministic command passed: {DEADLINE_TEST_COMMAND}. Do not use network, edit, commit, deploy, or access secrets. Return only valid review JSON with reviewed_commit exactly {commit}, verdict APPROVE only if the patch is narrow and safe, risk LOW, and proposed_rules empty."""
+                review_prompt = f"""You are an independent read-only reviewer. Review only commit {commit} in the supplied read-only snapshot for controlled job {job.job_id}. The allowed changed file is exactly {WRITABLE_DEADLINE}; existing tests must be byte-identical. Deterministic argument-array command passed: {test_command!r}. Do not use network, edit, commit, deploy, or access secrets. Return only valid review JSON with reviewed_commit exactly {commit}, verdict APPROVE only if the patch is narrow and safe, risk LOW, and proposed_rules empty."""
                 gemini = GeminiAdapter(root / "schemas/gemini-review.schema.json", limits, commands["agy"])
                 gemini_result = gemini.run(snapshot, job.job_id, commit, review_prompt)
                 if gemini_result["verdict"] != "APPROVE" or gemini_result["risk"] != "LOW":

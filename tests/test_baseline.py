@@ -1,9 +1,11 @@
 import subprocess
 import tempfile
 import unittest
+from subprocess import CompletedProcess
 from pathlib import Path
+from unittest.mock import patch
 
-from swarm.baseline import enforce_diff_gate, scan_baseline_tree, scan_git_blobs
+from swarm.baseline import _deadline_test_command, _run_deadline_preflight, enforce_diff_gate, scan_baseline_tree, scan_git_blobs
 from swarm.core import SwarmError, run_command
 
 
@@ -68,6 +70,56 @@ class BaselineDiffGateTests(unittest.TestCase):
         scan = scan_git_blobs(self.repo)
         self.assertGreaterEqual(scan["blobs_scanned"], 2)
         self.assertEqual(scan["findings"], [])
+
+    def _preflight_tree(self):
+        root = self.root / "preflight"
+        (root / "csv-processor/app/ai").mkdir(parents=True)
+        (root / "csv-processor/tests/swarm_regressions").mkdir(parents=True)
+        (root / "csv-processor/app/ai/deadline.py").write_text(
+            "import time\ndeadline = time.monotonic() + 1\n\ndef f():\n    return max(0.0, deadline - time.monotonic())\n", encoding="utf-8"
+        )
+        (root / "csv-processor/tests/swarm_regressions/test_deadline_contract.py").write_text("def test_contract():\n    assert True\n", encoding="utf-8")
+        return root
+
+    def test_preflight_uses_resolved_path_and_identical_argument_arrays(self):
+        root = self._preflight_tree()
+        limits = object()
+        passing = CompletedProcess(["pytest"], 0, "2 passed", "")
+        failing = CompletedProcess(["pytest"], 1, "AssertionError", "")
+        with patch("swarm.baseline.limited_run", side_effect=[passing, failing]) as runner:
+            path, command, evidence = _run_deadline_preflight(root, limits)
+        self.assertTrue(path.is_file())
+        self.assertEqual(evidence["baseline_exit_code"], 0)
+        self.assertEqual(evidence["seeded_defect_exit_code"], 1)
+        self.assertEqual(runner.call_args_list[0].args[0], runner.call_args_list[1].args[0])
+        self.assertIsInstance(command, list)
+        self.assertEqual(evidence["test_path"], str(path))
+        self.assertTrue(str(path).startswith(str(root.resolve())))
+
+    def test_preflight_failure_prevents_second_phase_and_codex(self):
+        root = self._preflight_tree()
+        failed = CompletedProcess(["pytest"], 1, "baseline assertion failure", "")
+        with patch("swarm.baseline.limited_run", return_value=failed) as runner, patch("swarm.baseline._introduce_deadline_defect") as defect:
+            with self.assertRaises(SwarmError):
+                _run_deadline_preflight(root, object())
+        self.assertEqual(runner.call_count, 1)
+        defect.assert_not_called()
+
+    def test_preflight_rejects_non_assertion_seed_failure(self):
+        root = self._preflight_tree()
+        passing = CompletedProcess(["pytest"], 0, "2 passed", "")
+        wrong_failure = CompletedProcess(["pytest"], 1, "no tests ran", "")
+        with patch("swarm.baseline.limited_run", side_effect=[passing, wrong_failure]):
+            with self.assertRaises(SwarmError):
+                _run_deadline_preflight(root, object())
+
+    def test_preflight_rejects_symlinked_test_path(self):
+        root = self._preflight_tree()
+        test_path = root / "csv-processor/tests/swarm_regressions/test_deadline_contract.py"
+        test_path.unlink()
+        test_path.symlink_to("/tmp/outside-deadline-test.py")
+        with self.assertRaises(SwarmError):
+            _deadline_test_command(root)
 
 
 if __name__ == "__main__":
