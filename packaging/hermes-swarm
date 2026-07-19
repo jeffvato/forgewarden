@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+RUNTIME_ROOT="/home/jeff/hermes-swarm-runtime"
+SWARM_ROOT="/home/jeff/hermes-swarm-phase1"
+PYTHON="python3"
+
+usage() {
+  cat <<'EOF'
+Usage: hermes-swarm {start|status|prompt|enable-dry-run|dry-run|audit|stop|kill-switch}
+
+Parallel local-only Hermes coding swarm. Deployment is permanently disabled.
+EOF
+}
+
+ensure_runtime() {
+  test -f "$RUNTIME_ROOT/agents/hermes.md"
+  test -f "$RUNTIME_ROOT/config/policy.yaml"
+  test -f "$RUNTIME_ROOT/review/task.md"
+}
+
+case "${1:-status}" in
+  start)
+    ensure_runtime
+    mkdir -p "$RUNTIME_ROOT/state"
+    touch "$RUNTIME_ROOT/RUNNING"
+    touch "$RUNTIME_ROOT/KILL_SWITCH"
+    echo "started: DRY_RUN only; kill switch engaged; deployment disabled"
+    ;;
+  status)
+    ensure_runtime
+    if test -f "$RUNTIME_ROOT/KILL_SWITCH"; then kill_state=ENGAGED; else kill_state=CLEARED_FOR_DRY_RUN; fi
+    echo "launcher=hermes-swarm mode=DRY_RUN deployment=DISABLED kill_switch=$kill_state runtime=$RUNTIME_ROOT"
+    ;;
+  prompt)
+    ensure_runtime
+    cat <<EOF
+You are Hermes.
+
+Use this agent profile as your operating instructions:
+
+$(sed -n '1,260p' "$RUNTIME_ROOT/agents/hermes.md")
+
+Follow this sandbox policy exactly:
+
+$(sed -n '1,260p' "$RUNTIME_ROOT/config/policy.yaml")
+
+Current task:
+
+$(sed -n '1,260p' "$RUNTIME_ROOT/review/task.md")
+
+Session rules:
+- Stay inside $RUNTIME_ROOT and the disposable fixture allowlist.
+- Deployment is disabled. Codex is the only writer; agy/Gemini is read-only.
+EOF
+    ;;
+  enable-dry-run)
+    ensure_runtime
+    rm -f "$RUNTIME_ROOT/KILL_SWITCH"
+    echo "dry-run enabled; deployment remains disabled"
+    ;;
+  dry-run)
+    ensure_runtime
+    test ! -f "$RUNTIME_ROOT/KILL_SWITCH" || { echo "blocked: dry-run kill switch engaged" >&2; exit 1; }
+    exec env PYTHONPATH="$SWARM_ROOT" "$PYTHON" -m swarm.cli dry-run --runtime-root "$RUNTIME_ROOT" --state-dir "$RUNTIME_ROOT/state"
+    ;;
+  audit)
+    found=0
+    while IFS= read -r audit_file; do
+      found=1
+      echo "===== $audit_file"
+      sed -n '1,260p' "$audit_file"
+    done < <(find "$RUNTIME_ROOT" -type f -name audit.jsonl -print)
+    test "$found" -eq 1 || echo "no audit record"
+    ;;
+  stop|kill-switch)
+    mkdir -p "$RUNTIME_ROOT/state"
+    touch "$RUNTIME_ROOT/KILL_SWITCH"
+    echo "kill switch engaged; no production service stopped"
+    ;;
+  -h|--help)
+    usage
+    ;;
+  *)
+    usage >&2
+    exit 2
+    ;;
+esac

@@ -37,8 +37,8 @@ def _readonly_snapshot(worktree: Path, state_dir: Path, job_id: str) -> Path:
     return snapshot
 
 
-def run_real_dry_run(root: Path) -> dict:
-    runtime_root = root / ".integration-runtime"
+def run_real_dry_run(root: Path, runtime_root: Path | None = None) -> dict:
+    runtime_root = runtime_root or (root / ".integration-runtime")
     runtime_root.mkdir(parents=True, exist_ok=True)
     runtime = Path(tempfile.mkdtemp(prefix="run-", dir=runtime_root))
     resources = measure_resources()

@@ -10,6 +10,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Local Hermes coding swarm (dry-run only)")
     parser.add_argument("command", choices=["start", "stop", "status", "kill-switch", "dry-run", "run"], nargs="?", default="status")
     parser.add_argument("--state-dir", type=Path, default=Path(".swarm-state"))
+    parser.add_argument("--runtime-root", type=Path)
     parser.add_argument("--repository", type=Path)
     parser.add_argument("--service", default="fixture-parser")
     args = parser.parse_args()
@@ -27,7 +28,7 @@ def main() -> int:
         return 0
     if args.command == "dry-run":
         try:
-            print(run_real_dry_run(Path(__file__).resolve().parents[1]))
+            print(run_real_dry_run(Path(__file__).resolve().parents[1], args.runtime_root))
             return 0
         except (SwarmError, OSError, ValueError) as exc:
             print(f"FAILED: {exc}")
