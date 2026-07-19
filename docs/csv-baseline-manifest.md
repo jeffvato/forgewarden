@@ -68,6 +68,13 @@ rejected the result because no authorized change was committed
 SHA or Gemini verdict exists. The v2 baseline remained unchanged and the
 durable audit contains the full state sequence.
 
+The subsequent complete controlled deadline exercise was job
+`controlled-baseline-gwxk2slx`. Both deterministic preflight gates passed
+under the 2 GiB cgroup, but Codex produced no detected authorized working-tree
+change (`changed_files: []`). The trusted commit gate blocked the job, the
+kill switch re-engaged, and no repair commit or Gemini review exists. The
+baseline remained unchanged.
+
 ## Source and independent clone
 
 ```text

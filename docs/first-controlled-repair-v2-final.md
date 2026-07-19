@@ -144,3 +144,41 @@ temporary worktree was removed after the failure was recorded in the durable
 audit at `/home/jeff/hermes-swarm-audit/audit.jsonl`.
 
 No retry or automatic correction was performed.
+
+## Complete controlled deadline exercise: `controlled-baseline-gwxk2slx`
+
+The trusted-orchestrator runner correction was committed before this job and
+the required preconditions passed:
+
+```text
+runner: includes d09f65e
+baseline: bad64e7cf14e3c586d395341b25467841847dec6
+tree scan: 2 files, 0 findings
+Git-blob scan: 3 blobs, 0 findings
+unchanged deadline test: PASSED
+seeded defect: FAILED with expected AssertionError
+MemoryMax: 2147483648
+MemorySwapMax: 0
+```
+
+The kill switch was cleared for this job and Codex was invoked through the
+validated writer adapter with Git metadata hidden. The trusted diff gate then
+found no authorized working-tree change:
+
+```text
+controlled exercise changed unexpected authorized files: []
+```
+
+The kill switch automatically re-engaged. Because no validated repair change
+existed, no trusted commit was created and agy/Gemini was not invoked. The
+temporary worktree and external cache were removed after the durable audit
+record was written. No retry or automatic correction was performed.
+
+## Final state after the complete exercise
+
+- Kill switch: **ENGAGED**.
+- Deployment: **DISABLED**.
+- v2 baseline: unchanged at `bad64e7cf14e3c586d395341b25467841847dec6`.
+- `/home/jeff/n8n`: unchanged at `dd847c7e86ea62369537f46cf887aba799a441fa`.
+- Old baseline, Docker, active Hermes, and production: untouched.
+- Durable audit: `/home/jeff/hermes-swarm-audit/audit.jsonl`.
