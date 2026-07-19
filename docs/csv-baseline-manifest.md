@@ -60,6 +60,14 @@ Gemini review occurred. See
 [`docs/first-controlled-repair-v2-final.md`](first-controlled-repair-v2-final.md)
 for the final evidence.
 
+The subsequent authorized exercise was job `controlled-baseline-287uxzal`.
+It passed the unchanged-test and seeded-defect gates under the 2 GiB
+aggregate cgroup with `MemorySwapMax=0`, then invoked Codex. The diff gate
+rejected the result because no authorized change was committed
+(`changed_files: []`). The kill switch re-engaged automatically; no repair
+SHA or Gemini verdict exists. The v2 baseline remained unchanged and the
+durable audit contains the full state sequence.
+
 ## Source and independent clone
 
 ```text

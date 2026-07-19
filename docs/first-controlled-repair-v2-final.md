@@ -112,3 +112,31 @@ transient scope. The complete swarm test suite passed: **29 tests passed**.
 No repair job, Codex process, Gemini process, Docker command, or production
 operation was run. The kill switch remains engaged and deployment remains
 disabled.
+
+## Authorized exercise result: `controlled-baseline-287uxzal`
+
+The later explicit exercise passed every pre-agent gate:
+
+```text
+baseline: bad64e7cf14e3c586d395341b25467841847dec6
+tree scan: 2 files, 0 findings
+Git-blob scan: 3 blobs, 0 findings
+unchanged deterministic test: PASSED
+seeded defect: FAILED with expected AssertionError
+MemoryMax: 2147483648
+MemorySwapMax: 0
+```
+
+The kill switch was then cleared for this job and Codex was invoked. The
+post-agent diff gate found no committed authorized change:
+
+```text
+controlled exercise changed unexpected authorized files: []
+```
+
+The runner re-engaged the kill switch on this failure path. No repair commit
+SHA exists, so agy/Gemini did not review a commit and has no verdict. The
+temporary worktree was removed after the failure was recorded in the durable
+audit at `/home/jeff/hermes-swarm-audit/audit.jsonl`.
+
+No retry or automatic correction was performed.
