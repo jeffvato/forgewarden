@@ -78,6 +78,11 @@ def validate_contract(payload: Any, kind: str) -> None:
             raise SwarmError("Gemini may propose at most one rule")
 
 
+def require_exact_commit(expected: str, reviewed: str) -> None:
+    if not re.fullmatch(r"[0-9a-fA-F]{40,64}", str(reviewed)) or str(reviewed).lower() != expected.lower():
+        raise SwarmError(f"reviewed commit mismatch: expected {expected}, got {reviewed}")
+
+
 @dataclass
 class Job:
     job_id: str
@@ -272,8 +277,9 @@ class Orchestrator:
                     raise SwarmError("Gemini did not produce structured review JSON")
                 gemini = json.loads(review_file.read_text(encoding="utf-8"))
                 validate_contract(gemini, "gemini")
-                if gemini["job_id"] != job.job_id or gemini["reviewed_commit"].lower() != commit.lower():
+                if gemini["job_id"] != job.job_id:
                     raise SwarmError("stale or mismatched Gemini review rejected")
+                require_exact_commit(commit, gemini["reviewed_commit"])
                 if checks.returncode or gemini["verdict"] != "APPROVE" or gemini["risk"] != "LOW":
                     job.state = "AWAITING_JEFF" if gemini["verdict"] == "HUMAN_REQUIRED" else "REVISION_REQUIRED"
                     self.audit.record(job, "review_not_approved", verdict=gemini["verdict"], risk=gemini["risk"])

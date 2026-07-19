@@ -4,7 +4,7 @@ Status: DRY-RUN ONLY. Hermes configuration was not applied.
 
 ## Provider and model proof
 
-The successful review of commit `d01beac00d48aef2c286d1f5a9069cb18dbacb69`
+The successful review of commit `d01beac00d48aef1c286d1f5a9069cb18dbacb69`
 was executed by `/home/jeff/.local/bin/agy` version `1.1.4`.
 
 The matching agy log was:
@@ -21,9 +21,18 @@ Therefore the reviewer was Gemini through the Antigravity `agy` CLI, using
 Google Gemini 3.5 Flash (Medium). Credentials, tokens, trace IDs, and response
 IDs are intentionally omitted.
 
+SHA reconciliation for that historical fixture run:
+
+- Fixture Git repository `HEAD`: `d01beac00d48aef1c286d1f5a9069cb18dbacb69`
+- Audit record `commit`: `d01beac00d48aef1c286d1f5a9069cb18dbacb69`
+- Audit record `gemini.reviewed_commit`: `d01beac00d48aef1c286d1f5a9069cb18dbacb69`
+- One-character mismatch regression: PASS; `require_exact_commit` rejects the altered SHA.
+
+The alternate value ending `...aef2c...` was a report typo and is not authoritative.
+
 ## Acceptance results
 
-All 13 local negative/guard tests passed:
+All 14 local negative/guard tests passed:
 
 | Acceptance case | Result | Evidence |
 | --- | --- | --- |
@@ -37,7 +46,8 @@ All 13 local negative/guard tests passed:
 | kill switch prevents new jobs | PASS | `test_kill_switch_prevents_new_jobs` |
 | learned rule cannot self-activate | PASS | `test_learned_rule_cannot_activate_itself_and_protected_rule_requires_jeff` |
 | security rule requires Jeff | PASS | same rule-policy test; returns `HUMAN_REQUIRED` |
-| full fixture regression suite | PASS | `13 tests passed` |
+| one-character SHA mismatch blocks approval | PASS | `test_one_character_commit_mismatch_blocks_approval` |
+| full fixture regression suite | PASS | `14 tests passed` |
 
 The successful positive fixture also produced a non-empty Codex commit,
 deterministic pass, exact-SHA agy approval, and a final audit record.
@@ -47,16 +57,23 @@ deterministic pass, exact-SHA agy approval, and a final audit record.
 Successful fixture measurement:
 
 - WSL memory total: `16,771,153,920` bytes (`15.62 GiB`)
-- WSL memory available before run: `13,864,165,376` bytes (`12.91 GiB`)
-- Peak child RSS: `231,296 KiB` (`226 MiB`)
+- WSL memory available before repeated run: `13,777,154,048` bytes (`12.83 GiB`)
+- Peak child RSS in repeated run: `229,504 KiB` (`224 MiB`)
 - CPUs visible: `8`
-- Final per-agent virtual-memory limit: `10,398,124,032` bytes (`9.69 GiB`)
+- Final aggregate process-tree limit: `2,147,483,648` bytes (`2 GiB`)
 
-The limit is 75% of measured available memory, capped at 10 GiB, leaving at
-least 25% available for n8n, PostgreSQL, Docker, and the CSV processor. The
-observed RSS was only about 226 MiB; the larger virtual-address ceiling is
-required by the Node/WebAssembly runtime used by agy. Jobs remain serialized,
-with 45 CPU seconds, 180 seconds wall time, and 256 KiB captured logs.
+The limit is enforced by a transient `systemd-run --user --scope` cgroup over
+the complete Codex/agy process tree with `MemoryMax=2147483648` and
+`MemorySwapMax=0`. The 2 GiB limit succeeded despite Node/WebAssembly runtime
+behavior, so the former 9.69 GiB virtual-address cap was removed. Jobs remain
+serialized, with 45 CPU seconds, 180 seconds wall time, and 256 KiB captured
+logs. The observed RSS was about 224 MiB, leaving substantial headroom inside
+the 2 GiB job cap and reserving the rest of WSL for n8n, PostgreSQL, Docker,
+and the CSV processor.
+
+Repeated validation run: PASS. New fixture commit
+`8cfb33b2e42412a52169199d86f70950e72fda68` matched its audit and reviewer
+records exactly; deterministic tests passed and agy returned `APPROVE` / `LOW`.
 
 ## Proposed dedicated Hermes profile
 
@@ -87,7 +104,8 @@ following is the exact proposed future addition; it is shown for review only:
 +  max_concurrent_jobs: 1
 +  max_review_cycles: 3
 +  command_timeout_seconds: 180
-+  max_memory_bytes: 10398124032
++  max_memory_bytes: 2147483648
++  memory_control: systemd-user-cgroup
 +  max_log_bytes: 256000
 +kill_switch: /home/jeff/hermes-swarm-phase1/.swarm-state/KILL_SWITCH
 +deployment:

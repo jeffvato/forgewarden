@@ -6,6 +6,7 @@ import resource
 import shutil
 import subprocess
 import tempfile
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -16,7 +17,7 @@ from .core import SwarmError, redact, run_command, validate_contract
 @dataclass(frozen=True)
 class ResourceLimits:
     cpu_seconds: int = 45
-    memory_bytes: int = 1_073_741_824
+    memory_bytes: int = 2_147_483_648
     timeout_seconds: int = 180
     max_log_bytes: int = 256_000
     max_concurrent_jobs: int = 1
@@ -42,39 +43,87 @@ def measure_resources() -> dict[str, Any]:
 
 def select_limits(resources: dict[str, Any]) -> ResourceLimits:
     available = resources.get("memory_available_bytes") or 1_073_741_824
-    # Node/V8-based local CLIs reserve virtual address space before the model
-    # starts. Keep a hard cap, but leave enough headroom for their runtime.
-    # Reserve at least 25% of currently available memory for n8n, PostgreSQL,
-    # Docker, and the CSV processor while allowing the Node/Wasm reviewer to
-    # reserve its required address space.
-    memory = min(10_737_418_240, max(1_073_741_824, (available * 75) // 100))
+    # Aggregate cgroup memory, not per-process virtual address space. Start at
+    # 2 GiB; the real fixture run is the gate for whether this is sufficient.
+    memory = min(2_147_483_648, max(536_870_912, available // 4))
     return ResourceLimits(memory_bytes=memory)
 
 
 def _limited_preexec(limits: ResourceLimits):
     def apply():
         resource.setrlimit(resource.RLIMIT_CPU, (limits.cpu_seconds, limits.cpu_seconds))
-        resource.setrlimit(resource.RLIMIT_AS, (limits.memory_bytes, limits.memory_bytes))
     return apply
 
 
-def limited_run(command: list[str], cwd: Path, prompt: str, limits: ResourceLimits, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
+_last_cgroup_peak_bytes = 0
+
+
+def last_cgroup_peak_bytes() -> int:
+    return _last_cgroup_peak_bytes
+
+
+def limited_run(command: list[str], cwd: Path, prompt: str, limits: ResourceLimits, env: dict[str, str] | None = None, use_cgroup: bool = False) -> subprocess.CompletedProcess[str]:
     child_env = os.environ.copy()
     child_env.update(env or {})
+    global _last_cgroup_peak_bytes
+    cgroup_path: Path | None = None
+    wrapped_command = list(command)
+    if use_cgroup:
+        systemd_run = shutil.which("systemd-run")
+        if systemd_run:
+            wrapped_command = [systemd_run, "--user", "--scope", "--quiet", "-p", f"MemoryMax={limits.memory_bytes}", "-p", "MemorySwapMax=0", "--", *command]
+        else:
+            cgroup_root = Path(os.environ.get("SWARM_CGROUP_ROOT", "/sys/fs/cgroup"))
+            if not (cgroup_root / "cgroup.controllers").exists():
+                raise SwarmError("cgroup v2 is required for aggregate agent memory limits")
+            cgroup_path = cgroup_root / f"hermes-swarm-{os.getpid()}-{time.time_ns()}"
+            try:
+                cgroup_path.mkdir()
+                (cgroup_path / "memory.max").write_text(str(limits.memory_bytes), encoding="ascii")
+                if (cgroup_path / "memory.swap.max").exists():
+                    (cgroup_path / "memory.swap.max").write_text("0", encoding="ascii")
+            except OSError as exc:
+                raise SwarmError(f"cannot create writable aggregate cgroup at {cgroup_root}: {exc}") from exc
     try:
-        result = subprocess.run(
-            command,
+        process = subprocess.Popen(
+            wrapped_command,
             cwd=cwd,
-            input=prompt,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             text=True,
-            capture_output=True,
-            timeout=limits.timeout_seconds,
             env=child_env,
             preexec_fn=_limited_preexec(limits),
-            check=False,
         )
-    except subprocess.TimeoutExpired as exc:
-        raise SwarmError(f"agent timed out after {limits.timeout_seconds}s: {command[0]}") from exc
+        if cgroup_path is not None:
+            try:
+                (cgroup_path / "cgroup.procs").write_text(str(process.pid), encoding="ascii")
+            except OSError as exc:
+                process.kill()
+                process.wait()
+                raise SwarmError(f"cannot place agent process in aggregate cgroup: {exc}") from exc
+        try:
+            stdout, stderr = process.communicate(prompt, timeout=limits.timeout_seconds)
+        except subprocess.TimeoutExpired as exc:
+            process.kill()
+            process.wait()
+            raise SwarmError(f"agent timed out after {limits.timeout_seconds}s: {command[0]}") from exc
+        result = subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
+    finally:
+        if cgroup_path is not None:
+            try:
+                peak = int((cgroup_path / "memory.peak").read_text(encoding="ascii").strip())
+                _last_cgroup_peak_bytes = max(_last_cgroup_peak_bytes, peak)
+            except (OSError, ValueError):
+                pass
+            try:
+                (cgroup_path / "cgroup.kill").write_text("1", encoding="ascii")
+            except OSError:
+                pass
+            try:
+                cgroup_path.rmdir()
+            except OSError:
+                pass
     result.stdout = result.stdout[-limits.max_log_bytes:]
     result.stderr = result.stderr[-limits.max_log_bytes:]
     return result
@@ -148,7 +197,7 @@ class CodexAdapter:
             command.extend(["--add-dir", str(git_metadata)])
         command.extend(["--output-schema", str(schema_copy), "--output-last-message", str(external_output), "--color", "never", "--json", prompt])
         try:
-            result = limited_run(command, worktree, "", self.limits, {"SWARM_ROLE": "CODEX_WRITER", "SWARM_DRY_RUN": "1"})
+            result = limited_run(command, worktree, "", self.limits, {"SWARM_ROLE": "CODEX_WRITER", "SWARM_DRY_RUN": "1"}, use_cgroup=True)
             if result.returncode:
                 raise SwarmError(f"Codex failed ({result.returncode}): {redact(result.stderr + result.stdout)}")
             if not external_output.exists() or not external_output.read_text(encoding="utf-8").strip():
@@ -174,7 +223,7 @@ class GeminiAdapter:
         result_dir.mkdir(exist_ok=True)
         output = result_dir / "gemini-review.json"
         command = [self.executable, "--prompt", prompt, "--mode", "plan", "--sandbox", "--print-timeout", f"{self.limits.timeout_seconds}s"]
-        result = limited_run(command, snapshot, prompt, self.limits, {"SWARM_ROLE": "GEMINI_READ_ONLY", "SWARM_DRY_RUN": "1", "SWARM_REVIEWED_COMMIT": commit})
+        result = limited_run(command, snapshot, prompt, self.limits, {"SWARM_ROLE": "GEMINI_READ_ONLY", "SWARM_DRY_RUN": "1", "SWARM_REVIEWED_COMMIT": commit}, use_cgroup=True)
         if result.returncode:
             raise SwarmError(f"Gemini failed ({result.returncode}): {redact(result.stderr + result.stdout)}")
         payload = self._extract_json(result.stdout)
@@ -183,8 +232,10 @@ class GeminiAdapter:
             validate_contract(payload, "gemini")
         except SwarmError as exc:
             raise SwarmError(f"{exc}; Gemini payload: {redact(json.dumps(payload))}") from exc
-        if payload["job_id"] != job_id or payload["reviewed_commit"].lower() != commit.lower():
-            raise SwarmError("Gemini review is stale or bound to a different commit")
+        if payload["job_id"] != job_id:
+            raise SwarmError("Gemini review is stale or bound to a different job")
+        from .core import require_exact_commit
+        require_exact_commit(commit, payload["reviewed_commit"])
         return payload
 
     @staticmethod

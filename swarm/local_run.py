@@ -7,8 +7,8 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-from .adapters import CodexAdapter, GeminiAdapter, HermesAdapter, limited_run, measure_resources, select_limits
-from .core import Job, Orchestrator, SwarmError, redact, run_command
+from .adapters import CodexAdapter, GeminiAdapter, HermesAdapter, last_cgroup_peak_bytes, limited_run, measure_resources, select_limits
+from .core import Job, Orchestrator, SwarmError, redact, require_exact_commit, run_command
 
 
 def _fixture(root: Path) -> Path:
@@ -88,6 +88,7 @@ def run_real_dry_run(root: Path) -> dict:
                 orchestrator.rules.propose(rule, job)
             job.state = "SUCCEEDED"
             resources["peak_child_rss_kib"] = int(resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss)
+            resources["peak_cgroup_bytes"] = last_cgroup_peak_bytes()
             orchestrator.audit.record(job, "real_local_dry_run_succeeded", base=base, commit=commit, resources=resources, limits=limits.__dict__, codex=codex_result, gemini=gemini_result)
             return {"job_id": job.job_id, "state": job.state, "base": base, "commit": commit, "resources": resources, "limits": limits.__dict__, "codex": codex_result, "gemini": gemini_result}
         finally:

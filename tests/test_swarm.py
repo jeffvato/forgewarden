@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from swarm.core import DeploymentController, Job, Orchestrator, RuleStore, ServiceLock, SwarmError, redact, validate_contract
+from swarm.core import DeploymentController, Job, Orchestrator, RuleStore, ServiceLock, SwarmError, redact, require_exact_commit, validate_contract
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -58,6 +58,12 @@ class SwarmTests(unittest.TestCase):
         self.gemini.write_text("""import json, pathlib\npathlib.Path('.swarm').mkdir()\njson.dump({'job_id':'job-1','reviewed_commit':'0'*40,'verdict':'APPROVE','risk':'LOW','blocking_findings':[],'non_blocking_notes':[],'tests_missing':[],'reasoning_summary':'stale','proposed_rules':[]}, open('.swarm/gemini-review.json','w'))\n""", encoding="utf-8")
         with self.assertRaises(SwarmError):
             self.run_job()
+
+    def test_one_character_commit_mismatch_blocks_approval(self):
+        expected = "a" * 40
+        mismatched = "a" * 39 + "b"
+        with self.assertRaises(SwarmError):
+            require_exact_commit(expected, mismatched)
 
     def test_deployment_is_mechanically_disabled(self):
         with self.assertRaises(SwarmError):
