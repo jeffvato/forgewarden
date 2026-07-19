@@ -81,6 +81,33 @@ Reviewable file: `config/hermes-profile.yaml`. It specifies local-only
 dry-run mode, Hermes orchestration, Codex as sole writer, agy/Gemini as
 read-only reviewer, one concurrent job, three review cycles, and a kill switch.
 
+## Hermes activation proof
+
+Installed Hermes resolves to `/home/jeff/.local/bin/hermes` with SHA-256
+`8e364441fc54fff4f2ae5037a643faef632e61307a8612e806893fd289b40b76`.
+The wrapper hard-codes `ROOT=/home/jeff/hermes-sandbox` and reads:
+
+```text
+/home/jeff/hermes-sandbox/agents/hermes.md
+/home/jeff/hermes-sandbox/config/policy.yaml
+/home/jeff/hermes-sandbox/review/task.md
+```
+
+`hermes --help` exposes no `profile` or `config` subcommand. The attempted
+`hermes profile --help` and `hermes config --help` invocations fell through to
+the interactive launcher and refused to start because the validation shell had
+`TERM=dumb` and no TTY. The wrapper exposes `HERMES_MODEL`, but no profile-home
+or config-file selector. Therefore this installed Hermes has no officially
+supported dedicated-profile command or YAML location; the proposed YAML is a
+swarm-side review artifact, not an applied Hermes configuration.
+
+Disposable proof passed in `tests/test_hermes_profile.py`: a temporary copy of
+the actual wrapper selected a disposable root, rendered the unique marker
+`HERMES-SWARM-DISPOSABLE-MARKER-7F4C`, rendered `SWARM_POLICY_LOADED`, and
+rendered the disposable task. Removing the disposable root removed the marker.
+The active wrapper SHA was identical before and after. The active Hermes files
+were not changed.
+
 ## Exact Hermes configuration diff (NOT APPLIED)
 
 The current installed Hermes wrapper has no dedicated profile-file switch. The
@@ -115,6 +142,46 @@ following is the exact proposed future addition; it is shown for review only:
 ```
 
 No file at that target path was created or modified.
+
+## Exact future activation procedure (NOT EXECUTED)
+
+Because this wrapper has no profile selector, future activation must use a
+separate wrapper and separate Hermes root; it must not replace the active
+wrapper. After Jeff approves, the exact procedure is:
+
+```bash
+STAMP=$(date -u +%Y%m%dT%H%M%SZ)
+ACTIVE_WRAPPER=/home/jeff/.local/bin/hermes
+ACTIVE_ROOT=/home/jeff/hermes-sandbox
+DEDICATED_WRAPPER=/home/jeff/.local/bin/hermes-coding-swarm-phase1
+DEDICATED_ROOT=/home/jeff/hermes-sandbox-coding-swarm-phase1
+
+cp -a "$ACTIVE_WRAPPER" "$ACTIVE_WRAPPER.backup.$STAMP"
+cp -a "$ACTIVE_ROOT" "$DEDICATED_ROOT"
+cp "$ACTIVE_WRAPPER" "$DEDICATED_WRAPPER"
+# In the copied wrapper only, change ROOT to "$DEDICATED_ROOT".
+# Install the reviewed profile files under the copied root's existing
+# agents/, config/, and review/ paths. Do not create a YAML profile path.
+chmod 700 "$DEDICATED_WRAPPER"
+"$DEDICATED_WRAPPER" --print-prompt > /tmp/hermes-swarm-profile-$STAMP.txt
+rg -F 'HERMES-SWARM-DISPOSABLE-MARKER-7F4C' /tmp/hermes-swarm-profile-$STAMP.txt
+```
+
+The verification command is the final `--print-prompt` command plus the
+marker search. Activation must be rejected if the marker, policy, or dry-run
+mode is absent.
+
+Rollback commands for that future dedicated activation are:
+
+```bash
+rm -f /home/jeff/.local/bin/hermes-coding-swarm-phase1
+rm -rf /home/jeff/hermes-sandbox-coding-swarm-phase1
+mv /home/jeff/.local/bin/hermes.backup.$STAMP /home/jeff/.local/bin/hermes
+/home/jeff/.local/bin/hermes --print-prompt > /tmp/hermes-rollback-$STAMP.txt
+```
+
+Rollback must be limited to the timestamped dedicated wrapper/root and must
+not reset or clean unrelated files.
 
 ## Commands
 
