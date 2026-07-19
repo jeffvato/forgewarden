@@ -17,7 +17,7 @@ from .core import SwarmError, redact, run_command, validate_contract
 class ResourceLimits:
     cpu_seconds: int = 45
     memory_bytes: int = 1_073_741_824
-    timeout_seconds: int = 90
+    timeout_seconds: int = 180
     max_log_bytes: int = 256_000
     max_concurrent_jobs: int = 1
 
@@ -79,7 +79,7 @@ def limited_run(command: list[str], cwd: Path, prompt: str, limits: ResourceLimi
 
 def discover_commands() -> dict[str, Any]:
     commands = {}
-    for name in ("hermes", "codex", "gemini"):
+    for name in ("hermes", "codex", "agy"):
         path = shutil.which(name)
         commands[name] = {"path": path}
         if path:
@@ -131,7 +131,7 @@ class CodexAdapter:
         self.limits = limits
         self.executable = executable
 
-    def run(self, worktree: Path, job_id: str, prompt: str) -> dict[str, Any]:
+    def run(self, worktree: Path, job_id: str, prompt: str, git_metadata: Path | None = None) -> dict[str, Any]:
         result_dir = worktree / ".swarm"
         result_dir.mkdir(exist_ok=True)
         output = result_dir / "codex-result.json"
@@ -140,7 +140,10 @@ class CodexAdapter:
         external_output = Path(output_name)
         schema_copy = result_dir / "codex-result.schema.json"
         schema_copy.write_text(json.dumps(_codex_cli_schema(self.schema)), encoding="utf-8")
-        command = [self.executable, "exec", "--ephemeral", "--sandbox", "workspace-write", "--skip-git-repo-check", "--cd", str(worktree), "--output-schema", str(schema_copy), "--output-last-message", str(external_output), "--color", "never", "--json", prompt]
+        command = [self.executable, "exec", "--ephemeral", "--sandbox", "workspace-write", "--skip-git-repo-check", "--cd", str(worktree)]
+        if git_metadata:
+            command.extend(["--add-dir", str(git_metadata)])
+        command.extend(["--output-schema", str(schema_copy), "--output-last-message", str(external_output), "--color", "never", "--json", prompt])
         try:
             result = limited_run(command, worktree, "", self.limits, {"SWARM_ROLE": "CODEX_WRITER", "SWARM_DRY_RUN": "1"})
             if result.returncode:
@@ -153,12 +156,12 @@ class CodexAdapter:
             external_output.unlink(missing_ok=True)
         validate_contract(payload, "codex")
         if payload["job_id"] != job_id:
-            raise SwarmError("Codex result job ID mismatch")
+            raise SwarmError(f"Codex result job ID mismatch: expected {job_id}, got {payload['job_id']}")
         return payload
 
 
 class GeminiAdapter:
-    def __init__(self, schema: Path, limits: ResourceLimits, executable: str = "/home/jeff/.nvm/versions/node/v24.11.1/bin/gemini"):
+    def __init__(self, schema: Path, limits: ResourceLimits, executable: str = "/home/jeff/.local/bin/agy"):
         self.schema = schema
         self.limits = limits
         self.executable = executable
@@ -167,13 +170,16 @@ class GeminiAdapter:
         result_dir = snapshot / ".swarm"
         result_dir.mkdir(exist_ok=True)
         output = result_dir / "gemini-review.json"
-        command = [self.executable, "--prompt", prompt, "--approval-mode", "plan", "--sandbox", "--output-format", "json", "--skip-trust"]
+        command = [self.executable, "--prompt", prompt, "--mode", "plan", "--sandbox", "--print-timeout", f"{self.limits.timeout_seconds}s"]
         result = limited_run(command, snapshot, prompt, self.limits, {"SWARM_ROLE": "GEMINI_READ_ONLY", "SWARM_DRY_RUN": "1", "SWARM_REVIEWED_COMMIT": commit})
         if result.returncode:
             raise SwarmError(f"Gemini failed ({result.returncode}): {redact(result.stderr + result.stdout)}")
         payload = self._extract_json(result.stdout)
         output.write_text(json.dumps(payload, sort_keys=True), encoding="utf-8")
-        validate_contract(payload, "gemini")
+        try:
+            validate_contract(payload, "gemini")
+        except SwarmError as exc:
+            raise SwarmError(f"{exc}; Gemini payload: {redact(json.dumps(payload))}") from exc
         if payload["job_id"] != job_id or payload["reviewed_commit"].lower() != commit.lower():
             raise SwarmError("Gemini review is stale or bound to a different commit")
         return payload
