@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from swarm.core import DeploymentController, Job, Orchestrator, RuleStore, ServiceLock, SwarmError, redact, require_exact_commit, validate_contract
+from swarm.core import AuditLog, DeploymentController, Job, Orchestrator, RuleStore, ServiceLock, SwarmError, redact, require_exact_commit, validate_contract
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -109,6 +109,34 @@ class SwarmTests(unittest.TestCase):
     def test_redaction(self):
         self.assertNotIn("supersecret", redact("token=supersecret"))
         self.assertNotIn("4111111111111111", redact("card 4111111111111111"))
+
+    def test_durable_audit_survives_runtime_removal_and_is_restricted(self):
+        runtime = self.root / "runtime"
+        audit_dir = self.root / "durable-audit"
+        job = Job("audit-job", "fixture-parser", self.repo, "parser defect", state="SUCCEEDED")
+        AuditLog(audit_dir / "audit.jsonl").record(
+            job,
+            "dry_run_succeeded",
+            commit="a" * 40,
+            reviewer_decision="APPROVE",
+            checks="PASSED",
+            customer_email="customer@example.test",
+            output="token=supersecret customer order 123",
+        )
+        audit = audit_dir / "audit.jsonl"
+        self.assertEqual(audit_dir.stat().st_mode & 0o777, 0o700)
+        self.assertEqual(audit.stat().st_mode & 0o777, 0o600)
+        contents = audit.read_text(encoding="utf-8")
+        self.assertIn('"commit": "' + "a" * 40 + '"', contents)
+        self.assertIn('"reviewer_decision": "APPROVE"', contents)
+        self.assertNotIn("customer@example.test", contents)
+        self.assertNotIn("supersecret", contents)
+        runtime.mkdir()
+        (runtime / "KILL_SWITCH").write_text("engaged\n", encoding="utf-8")
+        for child in runtime.iterdir():
+            child.unlink()
+        runtime.rmdir()
+        self.assertTrue(audit.exists())
 
 
 if __name__ == "__main__":

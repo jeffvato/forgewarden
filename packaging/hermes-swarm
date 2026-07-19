@@ -2,6 +2,7 @@
 set -euo pipefail
 
 RUNTIME_ROOT="/home/jeff/hermes-swarm-runtime"
+AUDIT_ROOT="/home/jeff/hermes-swarm-audit"
 SWARM_ROOT="/home/jeff/hermes-swarm-phase1"
 PYTHON="python3"
 
@@ -62,7 +63,7 @@ EOF
   dry-run)
     ensure_runtime
     test ! -f "$RUNTIME_ROOT/KILL_SWITCH" || { echo "blocked: dry-run kill switch engaged" >&2; exit 1; }
-    exec env PYTHONPATH="$SWARM_ROOT" "$PYTHON" -m swarm.cli dry-run --runtime-root "$RUNTIME_ROOT" --state-dir "$RUNTIME_ROOT/state"
+    exec env PYTHONPATH="$SWARM_ROOT" "$PYTHON" -m swarm.cli dry-run --runtime-root "$RUNTIME_ROOT" --state-dir "$RUNTIME_ROOT/state" --audit-dir "$AUDIT_ROOT"
     ;;
   audit)
     found=0
@@ -70,7 +71,7 @@ EOF
       found=1
       echo "===== $audit_file"
       sed -n '1,260p' "$audit_file"
-    done < <(find "$RUNTIME_ROOT" -type f -name audit.jsonl -print)
+    done < <(find "$AUDIT_ROOT" -maxdepth 1 -type f -name audit.jsonl -print 2>/dev/null)
     test "$found" -eq 1 || echo "no audit record"
     ;;
   stop|kill-switch)

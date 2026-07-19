@@ -100,11 +100,39 @@ class AuditLog:
     def __init__(self, path: Path):
         self.path = path
         self.path.parent.mkdir(parents=True, exist_ok=True)
+        self.path.parent.chmod(0o700)
+        if self.path.exists():
+            self.path.chmod(0o600)
 
     def record(self, job: Job, event: str, **data: Any) -> None:
-        entry = {"timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "job_id": job.job_id, "state": job.state, "event": event, **data}
+        entry = {"timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "job_id": job.job_id, "state": job.state, "event": event, **_audit_data(data)}
         with self.path.open("a", encoding="utf-8") as handle:
             handle.write(json.dumps(entry, sort_keys=True) + "\n")
+        self.path.chmod(0o600)
+
+
+_AUDIT_SENSITIVE_KEYS = re.compile(
+    r"(?i)(credential|secret|token|password|authorization|customer|order|distributor|"
+    r"email|phone|address|card|cookie|session|payload|prompt|output|reasoning|summary|root_cause)"
+)
+
+
+def _audit_value(key: str, value: Any) -> Any:
+    if _AUDIT_SENSITIVE_KEYS.search(key):
+        return "[REDACTED]"
+    if isinstance(value, dict):
+        return {str(k): _audit_value(str(k), v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_audit_value(key, item) for item in value]
+    if isinstance(value, str):
+        return redact(value)[:512]
+    if isinstance(value, (int, float, bool)) or value is None:
+        return value
+    return redact(str(value))[:512]
+
+
+def _audit_data(data: dict[str, Any]) -> dict[str, Any]:
+    return {str(key): _audit_value(str(key), value) for key, value in data.items()}
 
 
 class ServiceLock:
@@ -169,11 +197,11 @@ def run_command(command: list[str], cwd: Path, timeout: int = 30, env: dict[str,
 
 
 class Orchestrator:
-    def __init__(self, state_dir: Path, dry_run: bool = True, max_cycles: int = 3):
+    def __init__(self, state_dir: Path, dry_run: bool = True, max_cycles: int = 3, audit_dir: Path | None = None):
         self.state_dir = state_dir
         self.dry_run = dry_run
         self.max_cycles = max_cycles
-        self.audit = AuditLog(state_dir / "audit.jsonl")
+        self.audit = AuditLog((audit_dir or state_dir) / "audit.jsonl")
         self.rules = RuleStore(state_dir / ".agent-rules")
         self.deployments = DeploymentController(dry_run=dry_run)
 

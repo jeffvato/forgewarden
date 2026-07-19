@@ -37,7 +37,7 @@ def _readonly_snapshot(worktree: Path, state_dir: Path, job_id: str) -> Path:
     return snapshot
 
 
-def run_real_dry_run(root: Path, runtime_root: Path | None = None) -> dict:
+def run_real_dry_run(root: Path, runtime_root: Path | None = None, audit_dir: Path | None = None) -> dict:
     runtime_root = runtime_root or (root / ".integration-runtime")
     runtime_root.mkdir(parents=True, exist_ok=True)
     runtime = Path(tempfile.mkdtemp(prefix="run-", dir=runtime_root))
@@ -49,7 +49,7 @@ def run_real_dry_run(root: Path, runtime_root: Path | None = None) -> dict:
         raise SwarmError("required local CLI not found: " + ", ".join(missing))
     repo = _fixture(runtime)
     job = Job("real-local-" + next(tempfile._get_candidate_names()), "fixture-parser", repo, "harmless parser normalization defect")
-    orchestrator = Orchestrator(runtime / "state", dry_run=True)
+    orchestrator = Orchestrator(runtime / "state", dry_run=True, audit_dir=audit_dir)
     hermes = HermesAdapter(runtime / "hermes", commands["hermes"])
     hermes.prepare(job.job_id, job.evidence)
     orchestrator.classify(job)
@@ -89,7 +89,22 @@ def run_real_dry_run(root: Path, runtime_root: Path | None = None) -> dict:
             job.state = "SUCCEEDED"
             resources["peak_child_rss_kib"] = int(resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss)
             resources["peak_cgroup_bytes"] = last_cgroup_peak_bytes()
-            orchestrator.audit.record(job, "real_local_dry_run_succeeded", base=base, commit=commit, resources=resources, limits=limits.__dict__, codex=codex_result, gemini=gemini_result)
+            orchestrator.audit.record(
+                job,
+                "real_local_dry_run_succeeded",
+                base=base,
+                commit=commit,
+                resources=resources,
+                limits=limits.__dict__,
+                codex_status=codex_result["status"],
+                changed_files=codex_result["changed_files"],
+                deterministic_checks="PASSED",
+                reviewer="agy-gemini-read-only",
+                reviewer_decision=gemini_result["verdict"],
+                reviewer_risk=gemini_result["risk"],
+                reviewed_commit=gemini_result["reviewed_commit"],
+                proposed_rule_count=len(gemini_result.get("proposed_rules", [])),
+            )
             return {"job_id": job.job_id, "state": job.state, "base": base, "commit": commit, "resources": resources, "limits": limits.__dict__, "codex": codex_result, "gemini": gemini_result}
         finally:
             run_command(["git", "worktree", "remove", "--force", str(worktree)], repo)
