@@ -71,7 +71,9 @@ csv-processor/tests/test_supplier_images.py
 ## Secret scan
 
 The complete sanitized baseline tree was scanned before the controlled
-exercise. The scan covered 420 regular files and reported these filename-only
+exercise. The scan covered 420 regular files. The initial audit matcher
+recorded 47 raw matches; a subsequent read-only calibration using
+high-confidence credential formats identified these five filename-only
 findings:
 
 ```text

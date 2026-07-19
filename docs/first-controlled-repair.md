@@ -14,13 +14,15 @@ agy/Gemini process ran.
 job_id: controlled-baseline-x_wvrqiy
 baseline: 1815f77634a81adfdb0383139f37cd663a951393
 files scanned: 420
-secret-scan findings: 5
+secret-scan findings: 47 raw matches; 5 high-confidence filename classifications
 audit: /home/jeff/hermes-swarm-audit/audit.jsonl
 kill switch after attempt: ENGAGED
 deployment: DISABLED
 ```
 
-The scan reported filenames and classifications only:
+The initial audit recorded 47 raw matches. A subsequent read-only calibration
+using high-confidence credential formats reduced the reportable findings to
+the following five filenames and classifications; no values were printed:
 
 ```text
 docker-compose.yml                  SECRET_OR_PRIVATE_MATERIAL
