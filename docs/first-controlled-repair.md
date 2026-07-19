@@ -30,8 +30,9 @@ vps/docker-compose.vps.yml          SECRET_OR_PRIVATE_MATERIAL
 csv-processor/app/templates/content_pipeline.html  SECRET_OR_PRIVATE_MATERIAL
 ```
 
-No secret values were displayed. The durable audit contains the scan and
-blocked-transition records; no repair commit or reviewer record was created.
+No secret values were displayed. The durable audit contains the scan record;
+the launcher returned the blocked result before the runner's later failure
+transition hook, so no repair commit or reviewer record was created.
 
 ## Control plane prepared
 
