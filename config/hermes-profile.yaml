@@ -2,14 +2,11 @@ profile: hermes-coding-swarm-phase1
 mode: DRY_RUN
 local_only: true
 automatic_deployment: false
-repository_roots:
-  - /home/jeff/swarm-repositories/n8n-csv-baseline
-eligible_scopes:
-  - /home/jeff/swarm-repositories/n8n-csv-baseline/csv-processor/app/ai/deadline.py
-  - /home/jeff/swarm-repositories/n8n-csv-baseline/csv-processor/tests/swarm_regressions/
+repository_roots: []
+eligible_scopes: []
 read_only:
-  existing_tests: /home/jeff/swarm-repositories/n8n-csv-baseline/csv-processor/tests/
-  other_source_and_configuration: /home/jeff/swarm-repositories/n8n-csv-baseline/csv-processor/
+  existing_tests: none
+  other_source_and_configuration: none
 human_required_scopes:
   - database
   - migrations
