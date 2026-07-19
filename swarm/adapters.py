@@ -76,6 +76,7 @@ def _safe_agent_environment(env: dict[str, str] | None = None) -> dict[str, str]
     safe.pop("HTTP_PROXY", None)
     safe.pop("HTTPS_PROXY", None)
     safe.pop("ALL_PROXY", None)
+    safe.update(_user_systemd_bus_environment())
     return safe
 
 
@@ -88,7 +89,21 @@ def _minimal_test_environment(env: dict[str, str] | None = None) -> dict[str, st
     allowed.pop("HTTP_PROXY", None)
     allowed.pop("HTTPS_PROXY", None)
     allowed.pop("ALL_PROXY", None)
+    allowed.update(_user_systemd_bus_environment())
     return allowed
+
+
+def _user_systemd_bus_environment() -> dict[str, str]:
+    """Expose only the derived user-bus variables when a real socket exists."""
+    uid = os.getuid()
+    runtime_dir = Path("/run/user") / str(uid)
+    bus = runtime_dir / "bus"
+    if runtime_dir.is_dir() and bus.is_socket():
+        return {
+            "XDG_RUNTIME_DIR": str(runtime_dir),
+            "DBUS_SESSION_BUS_ADDRESS": f"unix:path={bus}",
+        }
+    return {}
 
 
 _last_cgroup_peak_bytes = 0

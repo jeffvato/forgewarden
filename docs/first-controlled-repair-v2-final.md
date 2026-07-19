@@ -72,3 +72,43 @@ exercise.
 
 The runner, baseline manifest, and this evidence document were updated in the
 swarm repository only. No repair authorization remains to be executed.
+
+## Systemd user-bus diagnosis and harmless scope proof
+
+The earlier failure was environment-related, not a missing WSL systemd
+installation. In the normal WSL shell, read-only diagnostics showed:
+
+```text
+PID 1: systemd
+cgroup filesystem: cgroup2fs
+systemctl is-system-running: degraded
+uid: 1000 (derived by id -u)
+/run/user/1000: present
+/run/user/1000/bus: Unix socket
+XDG_RUNTIME_DIR: /run/user/1000
+DBUS_SESSION_BUS_ADDRESS: unix:path=/run/user/1000/bus
+systemctl --user: responsive (degraded)
+```
+
+The earlier sandbox had PID 1 `bwrap` and denied bus access; it was not a
+valid normal WSL systemd context. The swarm had also omitted the two bus
+variables from its child environment. The runner now derives the UID and
+adds only `XDG_RUNTIME_DIR` and `DBUS_SESSION_BUS_ADDRESS` when the matching
+runtime directory and bus socket exist. No other environment expansion was
+added.
+
+A real process-level integration test now runs a harmless Python probe inside
+the transient scope and verifies through cgroup files:
+
+```text
+MemoryMax: 2147483648
+MemorySwapMax: 0
+scope process: inside the transient cgroup
+scope after exit: removed cleanly
+```
+
+The same corrected launcher executed `/bin/true` successfully in the
+transient scope. The complete swarm test suite passed: **29 tests passed**.
+No repair job, Codex process, Gemini process, Docker command, or production
+operation was run. The kill switch remains engaged and deployment remains
+disabled.
