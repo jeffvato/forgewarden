@@ -76,9 +76,11 @@ class BaselineDiffGateTests(unittest.TestCase):
         (root / "csv-processor/app/ai").mkdir(parents=True)
         (root / "csv-processor/tests/swarm_regressions").mkdir(parents=True)
         (root / "csv-processor/app/ai/deadline.py").write_text(
-            "import time\ndeadline = time.monotonic() + 1\n\ndef f():\n    return max(0.0, deadline - time.monotonic())\n", encoding="utf-8"
+            "import time\ndeadline = time.monotonic() + 0.1\n\ndef f():\n    return max(0.0, deadline - time.monotonic())\n", encoding="utf-8"
         )
-        (root / "csv-processor/tests/swarm_regressions/test_deadline_contract.py").write_text("def test_contract():\n    assert True\n", encoding="utf-8")
+        (root / "csv-processor/tests/swarm_regressions/test_deadline_contract.py").write_text(
+            "from app.ai.deadline import f\n\n\ndef test_contract():\n    assert f() <= 0.5\n", encoding="utf-8"
+        )
         return root
 
     def test_preflight_uses_resolved_path_and_identical_argument_arrays(self):
@@ -87,7 +89,8 @@ class BaselineDiffGateTests(unittest.TestCase):
         passing = CompletedProcess(["pytest"], 0, "2 passed", "")
         failing = CompletedProcess(["pytest"], 1, "AssertionError", "")
         with patch("swarm.baseline.limited_run", side_effect=[passing, failing]) as runner:
-            path, command, evidence = _run_deadline_preflight(root, limits)
+            working_directory, path, command, evidence = _run_deadline_preflight(root, limits)
+        self.assertEqual(working_directory, root / "csv-processor")
         self.assertTrue(path.is_file())
         self.assertEqual(evidence["baseline_exit_code"], 0)
         self.assertEqual(evidence["seeded_defect_exit_code"], 1)
@@ -120,6 +123,18 @@ class BaselineDiffGateTests(unittest.TestCase):
         test_path.symlink_to("/tmp/outside-deadline-test.py")
         with self.assertRaises(SwarmError):
             _deadline_test_command(root)
+
+    def test_process_level_preflight_uses_real_pytest_environment(self):
+        root = self._preflight_tree()
+        limits = type("Limits", (), {"cpu_seconds": 45, "memory_bytes": 2_147_483_648, "timeout_seconds": 60, "max_log_bytes": 256_000})()
+        working_directory, path, command, evidence = _run_deadline_preflight(root, limits, use_cgroup=False)
+        self.assertEqual(working_directory, root / "csv-processor")
+        self.assertEqual(path, (root / "csv-processor/tests/swarm_regressions/test_deadline_contract.py").resolve())
+        self.assertEqual(command[1:7], ["-m", "pytest", "-q", "-p", "no:cacheprovider", "tests/swarm_regressions/test_deadline_contract.py"])
+        self.assertEqual(evidence["baseline_exit_code"], 0)
+        self.assertEqual(evidence["seeded_defect_exit_code"], 1)
+        self.assertFalse(any(root.rglob("__pycache__")))
+        self.assertFalse(any(root.rglob(".pytest_cache")))
 
 
 if __name__ == "__main__":

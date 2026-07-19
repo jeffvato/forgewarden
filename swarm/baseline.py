@@ -215,10 +215,11 @@ def _introduce_deadline_defect(path: Path) -> None:
     path.write_text(original.replace(expected, replacement), encoding="utf-8")
 
 
-def _deadline_test_command(worktree: Path) -> tuple[Path, list[str]]:
+def _deadline_test_command(worktree: Path) -> tuple[Path, Path, list[str]]:
     """Resolve and validate the only deterministic test before any agent runs."""
-    relative = Path("csv-processor") / "tests" / "swarm_regressions" / "test_deadline_contract.py"
-    path = worktree / relative
+    project_root = worktree / "csv-processor"
+    relative = Path("tests") / "swarm_regressions" / "test_deadline_contract.py"
+    path = project_root / relative
     resolved_root = worktree.resolve()
     if path.is_symlink() or not path.is_file():
         raise SwarmError(f"controlled test is not a regular file: {relative}")
@@ -227,22 +228,22 @@ def _deadline_test_command(worktree: Path) -> tuple[Path, list[str]]:
         resolved_path.relative_to(resolved_root)
     except ValueError as exc:
         raise SwarmError(f"controlled test escaped worktree: {resolved_path}") from exc
-    return resolved_path, [sys.executable, "-m", "pytest", "-q", str(relative)]
+    return project_root, resolved_path, [sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", str(relative)]
 
 
-def _run_deadline_preflight(worktree: Path, limits, validated: tuple[Path, list[str]] | None = None) -> tuple[Path, list[str], dict[str, Any]]:
+def _run_deadline_preflight(worktree: Path, limits, validated: tuple[Path, Path, list[str]] | None = None, use_cgroup: bool = True) -> tuple[Path, Path, list[str], dict[str, Any]]:
     """Prove baseline pass and seeded defect failure before kill-switch clearance."""
-    test_path, test_command = validated or _deadline_test_command(worktree)
-    baseline = limited_run(test_command, worktree, "", limits, {"SWARM_ROLE": "DETERMINISTIC_PREFLIGHT"}, use_cgroup=True)
+    working_directory, test_path, test_command = validated or _deadline_test_command(worktree)
+    baseline = limited_run(test_command, working_directory, "", limits, {"SWARM_ROLE": "DETERMINISTIC_PREFLIGHT"}, use_cgroup=use_cgroup, minimal_environment=True)
     if baseline.returncode:
         raise SwarmError("baseline deadline test failed before defect introduction: " + redact(baseline.stdout + baseline.stderr))
     _introduce_deadline_defect(worktree / WRITABLE_DEADLINE)
-    seeded = limited_run(test_command, worktree, "", limits, {"SWARM_ROLE": "DETERMINISTIC_PREFLIGHT"}, use_cgroup=True)
+    seeded = limited_run(test_command, working_directory, "", limits, {"SWARM_ROLE": "DETERMINISTIC_PREFLIGHT"}, use_cgroup=use_cgroup, minimal_environment=True)
     seeded_output = seeded.stdout + seeded.stderr
     if seeded.returncode == 0 or "AssertionError" not in seeded_output:
         raise SwarmError("seeded deadline defect did not produce the expected assertion failure")
     evidence = {
-        "working_directory": str(worktree.resolve()),
+        "working_directory": str(working_directory.resolve()),
         "test_path": str(test_path),
         "test_command": list(test_command),
         "baseline_exit_code": baseline.returncode,
@@ -250,7 +251,7 @@ def _run_deadline_preflight(worktree: Path, limits, validated: tuple[Path, list[
         "seeded_failure": "AssertionError",
         "network_policy": "blocked-by-systemd-IPAddrDeny",
     }
-    return test_path, test_command, evidence
+    return working_directory, test_path, test_command, evidence
 
 
 def run_controlled_baseline(root: Path, repository: Path = REPOSITORY, runtime_root: Path | None = None, state_dir: Path | None = None, audit_dir: Path | None = None) -> dict[str, Any]:
@@ -288,16 +289,16 @@ def run_controlled_baseline(root: Path, repository: Path = REPOSITORY, runtime_r
                 raise SwarmError(redact(added.stderr))
             job.state = "WORKTREE_READY"
             audit.record(job, "worktree_ready", base_revision=BASELINE_SHA, network_policy="blocked-by-systemd-IPAddrDeny")
-            test_path, test_command = _deadline_test_command(worktree)
-            audit.record(job, "deterministic_preflight_started", working_directory=str(worktree.resolve()), test_path=str(test_path), command=list(test_command), network_policy="blocked-by-systemd-IPAddrDeny")
-            test_path, test_command, preflight = _run_deadline_preflight(worktree, limits, (test_path, test_command))
+            working_directory, test_path, test_command = _deadline_test_command(worktree)
+            audit.record(job, "deterministic_preflight_started", working_directory=str(working_directory.resolve()), test_path=str(test_path), command=list(test_command), environment_policy="minimal-allowlist-PYTHONDONTWRITEBYTECODE", network_policy="blocked-by-systemd-IPAddrDeny")
+            working_directory, test_path, test_command, preflight = _run_deadline_preflight(worktree, limits, (working_directory, test_path, test_command))
             audit.record(job, "deterministic_preflight_passed", **preflight)
             with _AuthorizedKillSwitch(runtime_root, audit, job):
                 hermes = HermesAdapter(state_dir / "hermes")
                 hermes.prepare(job.job_id, job.evidence)
                 job.state = "CODEX_RUNNING"
                 audit.record(job, "codex_started", allowed_scope=[WRITABLE_DEADLINE, WRITABLE_TEST_ROOT], environment_policy="production-and-credential-vars-removed")
-                prompt = f"""You are the sole writer for controlled job {job.job_id}. Work only in this detached Git worktree. Repair the deliberate defect in {WRITABLE_DEADLINE}. Do not edit, delete, rename, or add any existing test. You may add a new regression test only below {WRITABLE_TEST_ROOT}, but do not add one unless needed. Do not touch any other path. Do not use network, Docker, production services, credentials, customer data, or environment secrets. Run only this argument-array test command: {test_command!r}. Commit the repair. Return only the supplied Codex JSON schema with changed_files exactly matching the committed diff."""
+                prompt = f"""You are the sole writer for controlled job {job.job_id}. Work only in this detached Git worktree. Repair the deliberate defect in {WRITABLE_DEADLINE}. Do not edit, delete, rename, or add any existing test. You may add a new regression test only below {WRITABLE_TEST_ROOT}, but do not add one unless needed. Do not touch any other path. Do not use network, Docker, production services, credentials, customer data, or environment secrets. Run only this argument-array test command from {working_directory!s}: {test_command!r}. Commit the repair. Return only the supplied Codex JSON schema with changed_files exactly matching the committed diff."""
                 codex = CodexAdapter(root / "schemas/codex-result.schema.json", limits, commands["codex"])
                 git_metadata = Path(run_command(["git", "rev-parse", "--git-common-dir"], worktree).stdout.strip())
                 codex_result = codex.run(worktree, job.job_id, prompt, git_metadata)
@@ -305,8 +306,8 @@ def run_controlled_baseline(root: Path, repository: Path = REPOSITORY, runtime_r
                 if gate["changed_files"] != [WRITABLE_DEADLINE]:
                     raise SwarmError(f"controlled exercise changed unexpected authorized files: {gate['changed_files']}")
                 job.state = "CHECKS_RUNNING"
-                audit.record(job, "deterministic_checks_started", command=list(test_command), working_directory=str(worktree.resolve()), test_path=str(test_path), network_policy="blocked-by-systemd-IPAddrDeny")
-                checks = limited_run(test_command, worktree, "", limits, {"SWARM_ROLE": "DETERMINISTIC_CHECK"}, use_cgroup=True)
+                audit.record(job, "deterministic_checks_started", command=list(test_command), working_directory=str(working_directory.resolve()), test_path=str(test_path), environment_policy="minimal-allowlist-PYTHONDONTWRITEBYTECODE", network_policy="blocked-by-systemd-IPAddrDeny")
+                checks = limited_run(test_command, working_directory, "", limits, {"SWARM_ROLE": "DETERMINISTIC_CHECK"}, use_cgroup=True, minimal_environment=True)
                 if checks.returncode:
                     raise SwarmError("narrow deadline tests failed: " + redact(checks.stdout + checks.stderr))
                 commit = run_command(["git", "rev-parse", "HEAD"], worktree).stdout.strip()

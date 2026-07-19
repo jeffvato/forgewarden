@@ -79,6 +79,18 @@ def _safe_agent_environment(env: dict[str, str] | None = None) -> dict[str, str]
     return safe
 
 
+def _minimal_test_environment(env: dict[str, str] | None = None) -> dict[str, str]:
+    """Build the deterministic test environment from an explicit allowlist."""
+    allowed = {key: os.environ[key] for key in ("PATH", "HOME", "LANG", "LC_ALL") if key in os.environ}
+    allowed.update({"PYTHONDONTWRITEBYTECODE": "1", "PYTHONNOUSERSITE": "1", "PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1"})
+    allowed.update(env or {})
+    allowed["SWARM_NETWORK_BLOCKED"] = "1"
+    allowed.pop("HTTP_PROXY", None)
+    allowed.pop("HTTPS_PROXY", None)
+    allowed.pop("ALL_PROXY", None)
+    return allowed
+
+
 _last_cgroup_peak_bytes = 0
 
 
@@ -86,8 +98,8 @@ def last_cgroup_peak_bytes() -> int:
     return _last_cgroup_peak_bytes
 
 
-def limited_run(command: list[str], cwd: Path, prompt: str, limits: ResourceLimits, env: dict[str, str] | None = None, use_cgroup: bool = False) -> subprocess.CompletedProcess[str]:
-    child_env = _safe_agent_environment(env)
+def limited_run(command: list[str], cwd: Path, prompt: str, limits: ResourceLimits, env: dict[str, str] | None = None, use_cgroup: bool = False, minimal_environment: bool = False) -> subprocess.CompletedProcess[str]:
+    child_env = _minimal_test_environment(env) if minimal_environment else _safe_agent_environment(env)
     global _last_cgroup_peak_bytes
     cgroup_path: Path | None = None
     wrapped_command = list(command)

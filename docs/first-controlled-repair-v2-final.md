@@ -1,57 +1,81 @@
-# Final conditional v2 repair exercise
+# Final v2 deterministic environment proof
 
-Result: **STOPPED at deterministic preflight**.
+Result: **STOPPED at the unchanged-baseline test gate.**
 
-The preconditions were verified and the final conditional exercise was
-started once. The v2 tree and Git-object scans passed. A temporary worktree
-was created from the exact baseline, and the test path was constructed from
-that worktree root. The unchanged baseline test did not pass because the
-minimal v2 tree has no importable `app` package on pytest's default path:
+The runner now configures deterministic pytest with the same project working
+directory, argument array, and minimal environment that a future authorized
+repair would use. No repair authorization was consumed.
 
-```text
-ModuleNotFoundError: No module named 'app'
-```
+## Configuration proved
 
-The runner stopped before introducing the defect, clearing the kill switch,
-or invoking Codex. No automatic correction or additional exercise was
-attempted.
-
-## Job evidence
+For a temporary worktree rooted at `<worktree>`:
 
 ```text
-job_id: controlled-baseline-nwn7jjot
-baseline: 9cf4d5933b5563fe079e17ccdd8d33b8169de2db
-tree scan: 2 files, 0 findings
-Git blob scan: 2 blobs, 0 findings
-temporary worktree: created, then removed
-test path: constructed as csv-processor/tests/swarm_regressions/test_deadline_contract.py
-baseline test: FAILED during import collection
-defect introduced: no
-Codex: not invoked
-deterministic post-repair test: not run
-repair commit: none
-agy/Gemini: not invoked
-audit: /home/jeff/hermes-swarm-audit/audit.jsonl
+working directory: <worktree>/csv-processor
+argument array: [<resolved-python-executable>, -m, pytest, -q, -p, no:cacheprovider, tests/swarm_regressions/test_deadline_contract.py]
+PYTHONDONTWRITEBYTECODE=1
+PYTHONNOUSERSITE=1
+PYTEST_DISABLE_PLUGIN_AUTOLOAD=1
+network: blocked by the repair runner's systemd scope
 ```
 
-Because the first preflight gate failed, the kill switch was never cleared;
-there is no kill-switch-clear event for this job. The durable audit contains
-the scan, exact baseline SHA, worktree, and failure state. The path and
-working-directory audit event is now emitted before baseline execution for
-future authorized runs; this failed run predates that audit-placement fix.
+The environment is constructed from an explicit allowlist containing only
+`PATH`, `HOME`, `LANG`, and `LC_ALL` when present, plus the deterministic
+Python variables above. Proxy variables are removed. Production, database,
+credential, token, customer, order, WooCommerce, distributor, Docker, and
+unrelated environment variables are not passed.
 
-## Final safety state
+## Disposable baseline proof
 
-- Kill switch: `ENGAGED`.
-- Deployment: `DISABLED`.
-- v2 baseline branch: unchanged at
-  `9cf4d5933b5563fe079e17ccdd8d33b8169de2db`.
-- Existing tests: read-only; no test was modified.
-- Old baseline: not accessed, deleted, or modified.
-- `/home/jeff/n8n`: unchanged at HEAD `dd847c7e…` with its prior working
-  state intact.
-- Docker and production: untouched.
-- No Codex, networked repair, or reviewer process ran.
+The temporary worktree was created from exactly:
 
-The runner and integration tests were committed after this stopped exercise;
-another explicit authorization would be required before any further run.
+```text
+9cf4d5933b5563fe079e17ccdd8d33b8169de2db
+```
+
+The resolved Python executable was `/home/jeff/anaconda3/bin/python3`. The
+unchanged test command reached pytest successfully, proving the import path
+correction, but the baseline test itself failed:
+
+```text
+1 failed, 1 passed
+app.ai.deadline.ProductDeadlineExceeded: Product deadline exhausted before product processing
+```
+
+The failure occurs while entering `product_deadline(0)` in
+`test_expired_deadline_is_authoritative`, before that test’s inner exception
+handler. The baseline was not changed to compensate. Because the unchanged
+baseline did not pass, no defect was introduced, the kill switch was not
+cleared, and Codex and Gemini were not invoked.
+
+The worktree was removed afterward. No `__pycache__`, `.pyc`, pytest cache,
+log, or source file was written to the baseline repository. The v2 baseline
+remains clean at the exact SHA above.
+
+## Tests and changes
+
+The process-level integration test creates the same disposable layout and
+executes real pytest using the corrected command. The complete swarm test
+suite passes: **28 tests passed**.
+
+Changed and committed only in the swarm repository:
+
+- `swarm/adapters.py`: explicit minimal deterministic test environment.
+- `swarm/baseline.py`: project working directory and exact pytest argument
+  array, including cache suppression and bytecode policy.
+- `tests/test_baseline.py`: real process-level pytest proof and preflight
+  coverage.
+- this documentation.
+
+## Safety state
+
+- Kill switch: **ENGAGED**.
+- Deployment: **DISABLED**.
+- Codex: not invoked.
+- agy/Gemini: not invoked.
+- v2 baseline: unchanged.
+- Old baseline, `/home/jeff/n8n`, Docker, and production: untouched.
+
+The baseline test must be corrected through a separately authorized,
+human-reviewed baseline change before any future repair exercise can pass
+this gate. No further exercise was attempted.
