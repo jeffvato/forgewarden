@@ -182,3 +182,38 @@ record was written. No retry or automatic correction was performed.
 - `/home/jeff/n8n`: unchanged at `dd847c7e86ea62369537f46cf887aba799a441fa`.
 - Old baseline, Docker, active Hermes, and production: untouched.
 - Durable audit: `/home/jeff/hermes-swarm-audit/audit.jsonl`.
+
+## Final synthetic two-commit exercise: `controlled-baseline-g0g6tlzy`
+
+Final state: **FAILED CLOSED during deterministic preflight**.
+
+The runner implementation was updated to model this disposable exercise as:
+
+```text
+clean baseline -> trusted seeded-defect commit -> trusted repair commit
+```
+
+The single authorized job verified the exact v2 baseline, clean tree scan,
+Git-blob scan, and temporary worktree creation. The unchanged test subprocess
+then failed to connect to the systemd user bus with:
+
+```text
+Failed to connect to bus: Operation not permitted
+```
+
+Because the clean baseline test did not produce a valid pass, the runner
+stopped before introducing the defect. Consequently:
+
+- no synthetic defect commit was created;
+- Codex was not invoked;
+- no repair commit exists;
+- agy/Gemini was not invoked;
+- the kill switch was never cleared;
+- the temporary worktree was removed;
+- no retry was attempted.
+
+The durable audit entry is in `/home/jeff/hermes-swarm-audit/audit.jsonl`.
+This is an execution-environment failure, not evidence of a writer failure.
+The final safety state remains kill switch **ENGAGED**, deployment
+**DISABLED**, and the v2 baseline unchanged at
+`bad64e7cf14e3c586d395341b25467841847dec6`.
