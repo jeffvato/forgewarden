@@ -1,5 +1,8 @@
 import json
+import hashlib
 import os
+import re
+import time
 import subprocess
 import sys
 import unittest
@@ -20,7 +23,7 @@ class FakeProcessAdapters:
             "import json, pathlib, sys\n"
             "worktree, job_id, output = map(pathlib.Path, sys.argv[1:])\n"
             "target = worktree / 'csv-processor/app/ai/deadline.py'\n"
-            "target.write_text(target.read_text() + '\\n# fake Phase 2A source edit\\n')\n"
+            "target.write_text(target.read_text().replace('deadline - time.monotonic() + 1.0', 'deadline - time.monotonic()'))\n"
             "json.dump({'job_id': str(job_id), 'status': 'FIXED', 'root_cause': 'fixture', "
             "'summary': 'fake adapter edit', 'changed_files': ['app/ai/deadline.py'], "
             "'tests_added_or_changed': [], 'commands_run': [{'command': 'fake-check', 'exit_code': 0}], "
@@ -130,20 +133,22 @@ class Phase2ATests(unittest.TestCase):
             (runtime / "KILL_SWITCH").touch()
             phase2a.set_activation(True, runtime)
             (runtime / "KILL_SWITCH").unlink()
-            with patch.object(phase2a, "_user_bus_and_cgroup_ready"), patch.object(
+            with patch.object(phase2a, "_user_bus_and_cgroup_ready"), patch.object(phase2a, "_start_worker"), patch.object(
                 phase2a, "validate_deterministic_interpreter",
                 return_value={"validation": "PASSED", "interpreter": "/home/jeff/anaconda3/bin/python3"},
-            ), patch.object(
-                phase2a, "limited_run",
-                return_value=subprocess.CompletedProcess(["pytest"], 0, "1 passed\n", ""),
-            ):
-                result = phase2a.run_preapproved_job(
+            ), patch.object(phase2a, "_run_test", side_effect=[
+                subprocess.CompletedProcess(["pytest"], 0, "2 passed\n", ""),
+                subprocess.CompletedProcess(["pytest"], 1, "E assert 30.999 <= 30\n", ""),
+                subprocess.CompletedProcess(["pytest"], 0, "2 passed\n", ""),
+            ]):
+                queued = phase2a.run_preapproved_job(
                     phase2a.PROFILE_ID,
                     "Correct the deadline utility contract while preserving its existing behavior.",
                     runtime_root=runtime,
                     audit_path=audit,
                     adapters=FakeProcessAdapters(temp_root),
                 )
+                result = phase2a.run_worker_job(queued["job_id"], runtime_root=runtime, audit_path=audit, adapters=FakeProcessAdapters(temp_root))
             self.assertEqual(result["final_state"], "SUCCEEDED")
             self.assertEqual(result["deterministic_test"], "PASSED")
             self.assertEqual(result["gemini_verdict"], "APPROVE")
@@ -166,6 +171,124 @@ class Phase2ATests(unittest.TestCase):
             phase2a.recover_abandoned(runtime, runtime / "audit.jsonl")
             self.assertTrue((runtime / "KILL_SWITCH").is_file())
             self.assertEqual(phase2a.activation_status(runtime), "DISABLED")
+
+    def _enabled_runtime(self, root: Path) -> Path:
+        runtime = root / "runtime"
+        runtime.mkdir()
+        (runtime / "KILL_SWITCH").touch()
+        phase2a.set_activation(True, runtime)
+        (runtime / "KILL_SWITCH").unlink()
+        return runtime
+
+    def test_enqueue_is_durable_before_worker_and_replay_is_rejected(self):
+        with TemporaryDirectory() as temp:
+            root = Path(temp)
+            runtime = self._enabled_runtime(root)
+            audit = root / "audit.jsonl"
+            with patch.object(phase2a, "_user_bus_and_cgroup_ready"), patch.object(phase2a, "_start_worker"):
+                queued = phase2a.run_preapproved_job(
+                    phase2a.PROFILE_ID,
+                    "Correct the deadline utility contract while preserving its existing behavior.",
+                    runtime_root=runtime,
+                    audit_path=audit,
+                )
+                self.assertEqual(queued["final_state"], "QUEUED")
+                state = json.loads((runtime / phase2a.STATE_FILE).read_text(encoding="utf-8"))
+                self.assertEqual(state["state"], "QUEUED")
+                self.assertIn('"event": "queued"', audit.read_text(encoding="utf-8"))
+                with self.assertRaises(SwarmError):
+                    phase2a.run_preapproved_job(
+                        phase2a.PROFILE_ID,
+                        "Correct the deadline utility contract while preserving its existing behavior.",
+                        runtime_root=runtime,
+                        audit_path=audit,
+                    )
+
+    def test_live_worker_is_not_recovered_but_stale_heartbeat_is(self):
+        with TemporaryDirectory() as temp:
+            root = Path(temp)
+            runtime = root / "runtime"
+            runtime.mkdir()
+            state = {"state": "RUNNING", "job_id": "phase2a-" + "a" * 24, "worker_pid": os.getpid(), "worker_start_ticks": phase2a._worker_start_ticks(os.getpid()), "heartbeat_at": 0}
+            (runtime / phase2a.STATE_FILE).write_text(json.dumps(state), encoding="utf-8")
+            phase2a.recover_abandoned(runtime, runtime / "audit.jsonl")
+            self.assertEqual(json.loads((runtime / phase2a.STATE_FILE).read_text(encoding="utf-8"))["state"], "RUNNING")
+            state.update({"worker_pid": 99999999, "worker_start_ticks": "1"})
+            (runtime / phase2a.STATE_FILE).write_text(json.dumps(state), encoding="utf-8")
+            phase2a.recover_abandoned(runtime, runtime / "audit.jsonl")
+            self.assertEqual(json.loads((runtime / phase2a.STATE_FILE).read_text(encoding="utf-8"))["state"], "ABANDONED")
+
+    def test_new_admission_never_marks_or_overwrites_live_job(self):
+        with TemporaryDirectory() as temp:
+            root = Path(temp)
+            runtime = self._enabled_runtime(root)
+            state = {"state": "RUNNING", "job_id": "phase2a-" + "d" * 24, "worker_pid": os.getpid(), "worker_start_ticks": phase2a._worker_start_ticks(os.getpid()), "heartbeat_at": time.time()}
+            (runtime / phase2a.STATE_FILE).write_text(json.dumps(state), encoding="utf-8")
+            with self.assertRaises(SwarmError):
+                phase2a.run_preapproved_job(
+                    phase2a.PROFILE_ID,
+                    "Correct the deadline utility contract while preserving its existing behavior.",
+                    runtime_root=runtime,
+                    audit_path=root / "audit.jsonl",
+                )
+            self.assertEqual(json.loads((runtime / phase2a.STATE_FILE).read_text(encoding="utf-8"))["state"], "RUNNING")
+
+    def test_kill_switch_cancels_queued_job_and_disables_lease(self):
+        with TemporaryDirectory() as temp:
+            root = Path(temp)
+            runtime = self._enabled_runtime(root)
+            state = {"state": "QUEUED", "job_id": "phase2a-" + "b" * 24}
+            (runtime / phase2a.STATE_FILE).write_text(json.dumps(state), encoding="utf-8")
+            result = phase2a.engage_kill_switch(runtime, runtime / "audit.jsonl")
+            self.assertEqual(result["kill_switch"], "ENGAGED")
+            self.assertEqual(json.loads((runtime / phase2a.STATE_FILE).read_text(encoding="utf-8"))["state"], "CANCELLED")
+            self.assertEqual(phase2a.activation_status(runtime), "DISABLED")
+
+    def test_clean_code_cannot_reach_codex_when_seed_hash_is_not_created(self):
+        class CountingAdapters:
+            calls = 0
+            def codex(self, *args):
+                self.calls += 1
+                raise AssertionError("Codex must not run")
+            def gemini(self, *args):
+                raise AssertionError("Gemini must not run")
+
+        with TemporaryDirectory() as temp:
+            root = Path(temp)
+            runtime = self._enabled_runtime(root)
+            audit = root / "audit.jsonl"
+            adapters = CountingAdapters()
+            with patch.object(phase2a, "_user_bus_and_cgroup_ready"), patch.object(phase2a, "_start_worker"), patch.object(phase2a, "_introduce_deadline_defect"):
+                queued = phase2a.run_preapproved_job(
+                    phase2a.PROFILE_ID,
+                    "Correct the deadline utility contract while preserving its existing behavior.",
+                    runtime_root=runtime,
+                    audit_path=audit,
+                )
+                with patch.object(phase2a, "validate_deterministic_interpreter", return_value={"validation": "PASSED"}), patch.object(phase2a, "_run_test", return_value=subprocess.CompletedProcess(["pytest"], 0, "2 passed", "")):
+                    result = phase2a.run_worker_job(queued["job_id"], runtime_root=runtime, audit_path=audit, adapters=adapters)
+            self.assertEqual(result["final_state"], "FAILED")
+            self.assertEqual(adapters.calls, 0)
+
+    def test_real_fixture_seed_hash_and_approved_failure_fingerprint(self):
+        with TemporaryDirectory() as temp:
+            worktree = Path(temp) / "worktree"
+            subprocess.run(["git", "worktree", "add", "--detach", str(worktree), phase2a.BASELINE_SHA], cwd=phase2a.REPOSITORY, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            try:
+                target = worktree / "csv-processor/app/ai/deadline.py"
+                phase2a._introduce_deadline_defect(target)
+                self.assertEqual(hashlib.sha256(target.read_bytes()).hexdigest(), phase2a.SEEDED_DEFECT_SHA)
+                profile = phase2a.validate_profile()
+                result = subprocess.run(
+                    [str(profile.interpreter), "-m", "pytest", "-q", "-p", "no:cacheprovider", phase2a.TEST_PATH],
+                    cwd=worktree / "csv-processor",
+                    env={"PATH": "/usr/bin:/bin", "HOME": "/home/jeff", "LANG": "C", "LC_ALL": "C", "PYTHONDONTWRITEBYTECODE": "1", "PYTHONNOUSERSITE": "1", "PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1", "SWARM_NETWORK_BLOCKED": "1"},
+                    text=True, capture_output=True, shell=False, check=False,
+                )
+                self.assertEqual(result.returncode, 1)
+                self.assertRegex(result.stdout + result.stderr, re.compile(r"assert 30\.[0-9]+ <= 30"))
+            finally:
+                subprocess.run(["git", "worktree", "remove", "--force", str(worktree)], cwd=phase2a.REPOSITORY, check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
     def test_interpreter_failure_blocks_codex_and_gemini(self):
         class CountingAdapters:
@@ -190,14 +313,15 @@ class Phase2ATests(unittest.TestCase):
             (runtime / "KILL_SWITCH").unlink()
             adapters = CountingAdapters()
             failure = phase2a.DeterministicInterpreterError("missing pytest", {"validation": "FAILED", "stderr": "pytest unavailable"})
-            with patch.object(phase2a, "_user_bus_and_cgroup_ready"), patch.object(phase2a, "validate_deterministic_interpreter", side_effect=failure):
-                result = phase2a.run_preapproved_job(
+            with patch.object(phase2a, "_user_bus_and_cgroup_ready"), patch.object(phase2a, "_start_worker"), patch.object(phase2a, "validate_deterministic_interpreter", side_effect=failure):
+                queued = phase2a.run_preapproved_job(
                     phase2a.PROFILE_ID,
                     "Correct the deadline utility contract while preserving its existing behavior.",
                     runtime_root=runtime,
                     audit_path=audit,
                     adapters=adapters,
                 )
+                result = phase2a.run_worker_job(queued["job_id"], runtime_root=runtime, audit_path=audit, adapters=adapters)
             self.assertEqual(result["final_state"], "FAILED")
             self.assertEqual(adapters.codex_calls, 0)
             self.assertEqual(adapters.gemini_calls, 0)

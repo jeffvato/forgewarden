@@ -65,6 +65,17 @@ class DesktopBridgeTests(unittest.TestCase):
         self.assertNotIn("customer_email", record)
         self.assertNotIn("supersecret", json.dumps(recent))
 
+    def test_job_status_reports_durable_queued_state_after_bridge_restart(self):
+        job_id = "phase2a-" + "c" * 24
+        self.write_audit({"timestamp": "2026-01-01T00:00:00Z", "job_id": job_id, "state": "QUEUED", "event": "queued"})
+        runtime = Path(self.audit_dir.name) / "runtime"
+        runtime.mkdir()
+        (runtime / "phase2a-state.json").write_text(json.dumps({"job_id": job_id, "state": "QUEUED", "worker_pid": 99999999}), encoding="utf-8")
+        with patch.object(bridge, "AUDIT_PATH", self.audit), patch.object(bridge, "RUNTIME_ROOT", runtime):
+            result = bridge.job_status(job_id)
+        self.assertEqual(result["state"], "QUEUED")
+        self.assertEqual(result["records"][0]["state"], "QUEUED")
+
     def test_corrupted_audit_fails_without_partial_results(self):
         self.audit.write_text('{"job_id":"job-1"}\nnot-json\n', encoding="utf-8")
         with patch.object(bridge, "AUDIT_PATH", self.audit):

@@ -11,6 +11,10 @@ deterministic_test:
   working_directory: <worktree>/csv-processor
   path: tests/swarm_regressions/test_deadline_contract.py
   interpreter: /home/jeff/anaconda3/bin/python3
+synthetic_defect:
+  path: csv-processor/app/ai/deadline.py
+  sha256: 8546054f0e2542f77afa975b1ba8dbe3561059537d2252ae0a290e0e02966d17
+  failure_fingerprint: assert 30.x <= 30
 limits:
   max_concurrent_jobs: 1
   max_codex_attempts: 1

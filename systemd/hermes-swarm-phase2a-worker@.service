@@ -1,0 +1,19 @@
+[Unit]
+Description=Hermes Swarm Phase 2A worker %i
+After=default.target
+
+[Service]
+Type=simple
+Environment=PYTHONPATH=/home/jeff/hermes-swarm-phase1
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=PYTHONNOUSERSITE=1
+ExecStart=/home/jeff/anaconda3/bin/python3 -m swarm.cli phase2a-worker --job-id %i --runtime-root /home/jeff/hermes-swarm-runtime --audit-dir /home/jeff/hermes-swarm-audit
+KillMode=control-group
+Restart=no
+TimeoutStartSec=infinity
+MemoryMax=2147483648
+MemorySwapMax=0
+IPAddressDeny=any
+
+[Install]
+WantedBy=default.target

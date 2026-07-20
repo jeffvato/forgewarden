@@ -1,7 +1,7 @@
 {
   "type": "object",
   "additionalProperties": false,
-  "required": ["profile_id", "repository", "expected_baseline", "writable", "read_only", "deterministic_test", "limits", "deployment"],
+  "required": ["profile_id", "repository", "expected_baseline", "writable", "read_only", "deterministic_test", "synthetic_defect", "limits", "deployment"],
   "properties": {
     "profile_id": {"const": "csv_deadline_dry_run_v1"},
     "repository": {"const": "/home/jeff/swarm-repositories/n8n-csv-baseline-v2"},
@@ -16,6 +16,16 @@
         "working_directory": {"const": "<worktree>/csv-processor"},
         "path": {"const": "tests/swarm_regressions/test_deadline_contract.py"},
         "interpreter": {"type": "string", "pattern": "^/[^/].*$"}
+      }
+    },
+    "synthetic_defect": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "failure_fingerprint"],
+      "properties": {
+        "path": {"const": "csv-processor/app/ai/deadline.py"},
+        "sha256": {"const": "8546054f0e2542f77afa975b1ba8dbe3561059537d2252ae0a290e0e02966d17"},
+        "failure_fingerprint": {"const": "assert 30.x <= 30"}
       }
     },
     "limits": {

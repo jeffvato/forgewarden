@@ -6,12 +6,12 @@ from .core import SwarmError
 from .baseline import run_controlled_baseline
 from .gemini_recovery import recover_gemini_review
 from .local_run import run_real_dry_run
-from .phase2a import activation_status, disable_autonomous_dry_run, enable_autonomous_dry_run
+from .phase2a import activation_status, disable_autonomous_dry_run, enable_autonomous_dry_run, engage_kill_switch, run_worker_job
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Local Hermes coding swarm (dry-run only)")
-    parser.add_argument("command", choices=["start", "stop", "status", "kill-switch", "dry-run", "controlled-baseline", "gemini-review-recovery", "run", "autonomous-dry-run-status", "autonomous-dry-run-enable", "autonomous-dry-run-disable"], nargs="?", default="status")
+    parser.add_argument("command", choices=["start", "stop", "status", "kill-switch", "dry-run", "controlled-baseline", "gemini-review-recovery", "phase2a-worker", "run", "autonomous-dry-run-status", "autonomous-dry-run-enable", "autonomous-dry-run-disable"], nargs="?", default="status")
     parser.add_argument("--state-dir", type=Path, default=Path(".swarm-state"))
     parser.add_argument("--runtime-root", type=Path)
     parser.add_argument("--audit-dir", type=Path)
@@ -36,15 +36,27 @@ def main() -> int:
     if args.command == "autonomous-dry-run-disable":
         print(disable_autonomous_dry_run())
         return 0
+    if args.command == "phase2a-worker":
+        if not args.job_id:
+            parser.error("phase2a-worker requires --job-id")
+        try:
+            print(run_worker_job(args.job_id, runtime_root=args.runtime_root or Path("/home/jeff/hermes-swarm-runtime"), audit_path=(args.audit_dir or Path("/home/jeff/hermes-swarm-audit")) / "audit.jsonl"))
+            return 0
+        except (SwarmError, OSError, ValueError) as exc:
+            print(f"FAILED: {exc}")
+            return 1
     args.state_dir.mkdir(parents=True, exist_ok=True)
     if args.command == "start":
         (args.state_dir / "RUNNING").write_text("dry-run\n", encoding="utf-8")
         print("dry-run controller marked started; no daemon or production service was launched")
         return 0
     if args.command in {"stop", "kill-switch"}:
-        (args.state_dir / "KILL_SWITCH").write_text("disabled\n", encoding="utf-8")
-        print("kill switch enabled; no production service was stopped")
-        return 0
+        try:
+            print(engage_kill_switch(args.runtime_root or Path("/home/jeff/hermes-swarm-runtime"), (args.audit_dir or Path("/home/jeff/hermes-swarm-audit")) / "audit.jsonl"))
+            return 0
+        except (SwarmError, OSError, ValueError) as exc:
+            print(f"FAILED: {exc}")
+            return 1
     if args.command == "dry-run":
         try:
             print(run_real_dry_run(Path(__file__).resolve().parents[1], args.runtime_root, args.audit_dir))

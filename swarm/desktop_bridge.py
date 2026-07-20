@@ -25,6 +25,7 @@ COMMAND_TIMEOUT = 10
 JOB_ID_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,127}$")
 SHA_RE = re.compile(r"^[0-9a-f]{40,64}$")
 SAFE_STATES = {
+    "QUEUED", "RUNNING", "ABANDONED", "RECOVERED_ABANDONED", "CANCELLED",
     "RECEIVED", "CLASSIFIED", "WORKTREE_READY", "CODEX_RUNNING", "CHECKS_RUNNING",
     "GEMINI_REVIEWING", "REVISION_REQUIRED", "READY_TO_DEPLOY", "AWAITING_JEFF",
     "DEPLOYING", "VERIFYING_PRODUCTION", "SUCCEEDED", "ROLLED_BACK", "FAILED",
@@ -156,7 +157,16 @@ def job_status(job_id: str) -> dict[str, Any]:
     """Return sanitized audit records for one strictly validated job ID."""
     requested = _validate_job_id(job_id)
     records = [_safe_record(entry) for entry in _read_audit() if entry.get("job_id") == requested]
-    return {"job_id": requested, "records": records}
+    result: dict[str, Any] = {"job_id": requested, "records": records}
+    state_path = RUNTIME_ROOT / "phase2a-state.json"
+    if state_path.is_file():
+        try:
+            state = json.loads(state_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise RuntimeError("corrupted Phase 2A state") from exc
+        if isinstance(state, dict) and state.get("job_id") == requested and state.get("state") in SAFE_STATES:
+            result["state"] = state["state"]
+    return result
 
 
 def recent_audit(limit: int = 10) -> dict[str, Any]:

@@ -54,12 +54,51 @@ switch and never starts a job. The MCP bridge cannot enable the lease or clear
 the kill switch. Every execution path re-engages the kill switch and consumes
 the lease.
 
+## Durable queue and worker
+
+The MCP tool performs admission, atomically consumes the one-job lease, writes
+QUEUED state and audit evidence, starts the local
+hermes-swarm-phase2a-worker@JOB.service user unit, and returns the canonical
+job ID without owning the repair lifetime. The worker performs the complete
+clean-baseline -> trusted synthetic defect commit -> Codex -> deterministic
+checks -> trusted repair commit -> Gemini sequence.
+
+The unit is installed at
+/home/jeff/.config/systemd/user/hermes-swarm-phase2a-worker@.service and is
+not enabled or started by installation. It uses the fixed local Python,
+control-group termination, MemoryMax=2 GiB, MemorySwapMax=0, and no network
+for worker-owned commands. Provider communication remains confined to the
+existing adapters and their controls. A bridge disconnect or restart does not
+cancel a worker. Recovery requires both an expired heartbeat and the absence
+of the verified worker PID/start-time identity; a new bridge never abandons a
+live worker.
+
+The trusted worker seeds and commits exactly one synthetic defect before Codex.
+The required seed hash is
+8546054f0e2542f77afa975b1ba8dbe3561059537d2252ae0a290e0e02966d17, and the
+approved deterministic failure fingerprint is the first assertion line
+matching `assert 30.x <= 30`. Codex is never invoked unless both the hash and
+exit-1 fingerprint gates pass. The repair is measured against the synthetic
+defect parent and must restore the complete clean baseline tree.
+
 ## Local-only commands
 
     hermes-swarm autonomous-dry-run-status
     hermes-swarm autonomous-dry-run-enable
     hermes-swarm autonomous-dry-run-disable
     hermes-swarm kill-switch
+
+Worker service inspection and rollback:
+
+    systemctl --user status 'hermes-swarm-phase2a-worker@*.service'
+    systemctl --user daemon-reload
+    systemctl --user disable --now hermes-swarm-phase2a-worker@JOB.service
+
+The last command is only for an explicitly identified worker instance. To
+remove the inactive template after stopping all identified instances, move
+the unit file out of the user-unit directory, run daemon-reload, and verify
+that no Phase 2A worker unit is active. The swarm launcher and MCP bridge
+remain installed; the kill switch is the emergency stop.
 
 Enable validates the exact profile, clean baseline, scans, user bus, cgroup
 v2, deployment-disabled state, and profile/implementation hashes. To execute
