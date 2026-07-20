@@ -230,6 +230,27 @@ def _introduce_deadline_defect(path: Path) -> None:
     path.write_text(original.replace(expected, replacement), encoding="utf-8")
 
 
+def _trusted_synthetic_commit(repo: Path, message: str) -> str:
+    """Commit only the seeded synthetic defect; never used for real jobs."""
+    if not message.startswith("Synthetic seeded defect "):
+        raise SwarmError("synthetic defect commits require an explicit synthetic evidence message")
+    staged = run_command(["git", "diff", "--cached", "--name-only", "-z"], repo).stdout.split("\0")
+    staged = [item for item in staged if item]
+    if staged != [WRITABLE_DEADLINE]:
+        raise SwarmError(f"synthetic defect commit staged unexpected files: {staged}")
+    committed = run_command(
+        [
+            "git", "-c", "core.hooksPath=/dev/null", "-c", "commit.gpgSign=false",
+            "-c", "user.name=Hermes Swarm", "-c", "user.email=hermes-swarm@localhost",
+            "commit", "-m", message,
+        ],
+        repo,
+    )
+    if committed.returncode:
+        raise SwarmError(redact(committed.stderr))
+    return run_command(["git", "rev-parse", "HEAD"], repo).stdout.strip()
+
+
 def _deadline_test_command(worktree: Path) -> tuple[Path, Path, list[str]]:
     """Resolve and validate the only deterministic test before any agent runs."""
     project_root = worktree / "csv-processor"
@@ -270,7 +291,9 @@ def _run_deadline_preflight(worktree: Path, limits, validated: tuple[Path, Path,
     return working_directory, test_path, test_command, evidence
 
 
-def run_controlled_baseline(root: Path, repository: Path = REPOSITORY, runtime_root: Path | None = None, state_dir: Path | None = None, audit_dir: Path | None = None) -> dict[str, Any]:
+def run_controlled_baseline(root: Path, repository: Path = REPOSITORY, runtime_root: Path | None = None, state_dir: Path | None = None, audit_dir: Path | None = None, *, synthetic_exercise: bool = False) -> dict[str, Any]:
+    if not synthetic_exercise:
+        raise SwarmError("real repair jobs cannot create synthetic seeded-defect commits")
     runtime_root = runtime_root or Path("/home/jeff/hermes-swarm-runtime")
     state_dir = state_dir or runtime_root / "state"
     audit_dir = audit_dir or Path("/home/jeff/hermes-swarm-audit")
@@ -304,12 +327,22 @@ def run_controlled_baseline(root: Path, repository: Path = REPOSITORY, runtime_r
             if added.returncode:
                 raise SwarmError(redact(added.stderr))
             job.state = "WORKTREE_READY"
-            audit.record(job, "worktree_ready", base_revision=BASELINE_SHA, network_policy="blocked-by-systemd-IPAddrDeny")
+            clean_tree = run_command(["git", "rev-parse", f"{BASELINE_SHA}^{{tree}}"], worktree).stdout.strip()
+            audit.record(job, "worktree_ready", base_revision=BASELINE_SHA, clean_baseline_commit=BASELINE_SHA, clean_baseline_tree=clean_tree, network_policy="blocked-by-systemd-IPAddrDeny")
             working_directory, test_path, test_command = _deadline_test_command(worktree)
             audit.record(job, "deterministic_preflight_started", working_directory=str(working_directory.resolve()), test_path=str(test_path), command=list(test_command), environment_policy="minimal-allowlist-PYTHONDONTWRITEBYTECODE", network_policy="blocked-by-systemd-IPAddrDeny")
             working_directory, test_path, test_command, preflight = _run_deadline_preflight(worktree, limits, (working_directory, test_path, test_command))
             audit.record(job, "deterministic_preflight_passed", **preflight)
             seeded_hash = hashlib.sha256((worktree / WRITABLE_DEADLINE).read_bytes()).hexdigest()
+            seed_stage = run_command(["git", "add", "--", WRITABLE_DEADLINE], worktree)
+            if seed_stage.returncode:
+                raise SwarmError(redact(seed_stage.stderr))
+            defect_commit = _trusted_synthetic_commit(worktree, f"Synthetic seeded defect {job.job_id}")
+            defect_tree = run_command(["git", "rev-parse", f"{defect_commit}^{{tree}}"], worktree).stdout.strip()
+            defect_diff = run_command(["git", "diff", "--name-only", BASELINE_SHA, defect_commit], worktree).stdout.splitlines()
+            if defect_diff != [WRITABLE_DEADLINE]:
+                raise SwarmError(f"synthetic defect commit changed unexpected files: {defect_diff}")
+            audit.record(job, "synthetic_defect_committed", synthetic_evidence=True, clean_baseline_commit=BASELINE_SHA, clean_baseline_tree=clean_tree, defect_commit=defect_commit, defect_tree=defect_tree, changed_files=defect_diff, identity="Hermes Swarm", hooks="disabled", signing="disabled", remote_interaction="none")
             writer_spec = WriterInvocationSpec(
                 job.job_id,
                 worktree,
@@ -345,7 +378,7 @@ def run_controlled_baseline(root: Path, repository: Path = REPOSITORY, runtime_r
                     shutil.move(hidden_git_pointer, git_pointer)
                     if created_git_metadata:
                         raise SwarmError("Codex created Git metadata in the writer worktree")
-                gate = enforce_diff_gate(worktree, BASELINE_SHA, original_test_hashes)
+                gate = enforce_diff_gate(worktree, defect_commit, original_test_hashes)
                 if gate["changed_files"] != [WRITABLE_DEADLINE]:
                     raise SwarmError(f"controlled exercise changed unexpected authorized files: {gate['changed_files']}")
                 normalized_claims = normalize_changed_paths(writer_spec, codex_result["changed_files"])
@@ -389,18 +422,24 @@ def run_controlled_baseline(root: Path, repository: Path = REPOSITORY, runtime_r
                 if commit_result.returncode:
                     raise SwarmError(redact(commit_result.stderr))
                 commit = run_command(["git", "rev-parse", "HEAD"], worktree).stdout.strip()
-                audit.record(job, "trusted_commit_created", commit=commit, staged_files=staged, hooks="disabled", signing="disabled", identity="Hermes Swarm")
+                repair_tree = run_command(["git", "rev-parse", f"{commit}^{{tree}}"], worktree).stdout.strip()
+                synthetic_repair_diff = run_command(["git", "diff", "--name-only", defect_commit, commit], worktree).stdout.splitlines()
+                if repair_tree != clean_tree:
+                    raise SwarmError("synthetic repair tree does not equal the clean baseline tree")
+                if synthetic_repair_diff != [WRITABLE_DEADLINE]:
+                    raise SwarmError(f"synthetic repair changed unexpected files: {synthetic_repair_diff}")
+                audit.record(job, "trusted_commit_created", synthetic_evidence=True, commit=commit, repair_commit=commit, repair_tree=repair_tree, clean_baseline_tree=clean_tree, repair_parent=defect_commit, repair_diff=synthetic_repair_diff, staged_files=staged, hooks="disabled", signing="disabled", identity="Hermes Swarm")
                 snapshot = _readonly_snapshot(worktree, state_dir, job.job_id)
                 job.state = "GEMINI_REVIEWING"
                 audit.record(job, "gemini_started", reviewed_commit=commit, network_policy="blocked-by-systemd-IPAddrDeny")
-                review_prompt = f"""You are an independent read-only reviewer. Review only commit {commit} in the supplied read-only snapshot for controlled job {job.job_id}. The allowed changed file is exactly {WRITABLE_DEADLINE}; existing tests must be byte-identical. Deterministic argument-array command passed: {test_command!r}. Do not use network, edit, commit, deploy, or access secrets. Return only valid review JSON with reviewed_commit exactly {commit}, verdict APPROVE only if the patch is narrow and safe, risk LOW, and proposed_rules empty."""
+                review_prompt = f"""You are an independent read-only reviewer. Review only repair commit {commit} against its synthetic defect parent {defect_commit} in the supplied read-only snapshot for controlled synthetic job {job.job_id}. The clean baseline is {BASELINE_SHA}; the exact repair tree must equal the clean baseline tree {clean_tree}. The allowed changed file is exactly {WRITABLE_DEADLINE}; existing tests must be byte-identical. Deterministic argument-array command passed: {test_command!r}. Do not use network, edit, commit, deploy, or access secrets. Return only valid review JSON with reviewed_commit exactly {commit}, verdict APPROVE only if the patch is narrow and safe, risk LOW, no blocking findings, no missing tests, and proposed_rules empty."""
                 gemini = GeminiAdapter(root / "schemas/gemini-review.schema.json", limits, commands["agy"])
                 gemini_result = gemini.run(snapshot, job.job_id, commit, review_prompt)
                 if gemini_result["verdict"] != "APPROVE" or gemini_result["risk"] != "LOW":
                     raise SwarmError("agy/Gemini did not approve controlled baseline repair")
                 job.state = "SUCCEEDED"
-                audit.record(job, "controlled_baseline_succeeded", base=BASELINE_SHA, commit=commit, deterministic_checks="PASSED", reviewer="agy-gemini-read-only", reviewer_decision=gemini_result["verdict"], reviewed_commit=gemini_result["reviewed_commit"], diff_gate=gate, network_policy="blocked-by-systemd-IPAddrDeny", environment_policy="production-and-credential-vars-removed", limits=limits.__dict__)
-                result = {"job_id": job.job_id, "state": job.state, "base": BASELINE_SHA, "commit": commit, "diff_gate": gate, "limits": limits.__dict__, "gemini": gemini_result}
+                audit.record(job, "controlled_baseline_succeeded", synthetic_evidence=True, clean_baseline_commit=BASELINE_SHA, clean_baseline_tree=clean_tree, defect_commit=defect_commit, defect_tree=defect_tree, repair_commit=commit, repair_tree=repair_tree, base=BASELINE_SHA, commit=commit, deterministic_checks="PASSED", reviewer="agy-gemini-read-only", reviewer_decision=gemini_result["verdict"], reviewed_commit=gemini_result["reviewed_commit"], review_parent=defect_commit, diff_gate=gate, network_policy="blocked-by-systemd-IPAddrDeny", environment_policy="production-and-credential-vars-removed", limits=limits.__dict__)
+                result = {"job_id": job.job_id, "state": job.state, "synthetic": True, "clean_baseline_commit": BASELINE_SHA, "clean_baseline_tree": clean_tree, "defect_commit": defect_commit, "defect_tree": defect_tree, "repair_commit": commit, "repair_tree": repair_tree, "base": BASELINE_SHA, "commit": commit, "diff_gate": gate, "limits": limits.__dict__, "gemini": gemini_result}
         except Exception as exc:
             job.state = "FAILED"
             audit.record(job, "controlled_baseline_failed", error=redact(str(exc)), network_policy="blocked-by-systemd-IPAddrDeny")

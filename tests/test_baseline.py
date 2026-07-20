@@ -5,7 +5,7 @@ from subprocess import CompletedProcess
 from pathlib import Path
 from unittest.mock import patch
 
-from swarm.baseline import _deadline_test_command, _run_deadline_preflight, enforce_diff_gate, scan_baseline_tree, scan_git_blobs
+from swarm.baseline import _deadline_test_command, _run_deadline_preflight, _trusted_synthetic_commit, enforce_diff_gate, scan_baseline_tree, scan_git_blobs, WRITABLE_DEADLINE
 from swarm.core import SwarmError, run_command
 
 
@@ -37,6 +37,27 @@ class BaselineDiffGateTests(unittest.TestCase):
         self.commit("csv-processor/app/ai/deadline.py", "VALUE = 2\n")
         result = enforce_diff_gate(self.repo, self.base, self.hashes)
         self.assertEqual(result["changed_files"], ["csv-processor/app/ai/deadline.py"])
+
+    def test_synthetic_defect_commit_is_single_file_and_repair_is_measured_from_it(self):
+        clean_tree = run_command(["git", "rev-parse", f"{self.base}^{{tree}}"], self.repo).stdout.strip()
+        self.commit(WRITABLE_DEADLINE, "VALUE = 2\n")
+        defect = run_command(["git", "rev-parse", "HEAD"], self.repo).stdout.strip()
+        defect_tree = run_command(["git", "rev-parse", f"{defect}^{{tree}}"], self.repo).stdout.strip()
+        self.assertEqual(run_command(["git", "diff", "--name-only", self.base, defect], self.repo).stdout.splitlines(), [WRITABLE_DEADLINE])
+        self.assertNotEqual(defect_tree, clean_tree)
+
+        (self.repo / WRITABLE_DEADLINE).write_text("VALUE = 1\n", encoding="utf-8")
+        subprocess.run(["git", "add", "--", WRITABLE_DEADLINE], cwd=self.repo, check=True)
+        repair = _trusted_synthetic_commit(self.repo, "Synthetic seeded defect repair-fixture")
+        repair_tree = run_command(["git", "rev-parse", f"{repair}^{{tree}}"], self.repo).stdout.strip()
+        self.assertEqual(repair_tree, clean_tree)
+        self.assertEqual(run_command(["git", "diff", "--name-only", defect, repair], self.repo).stdout.splitlines(), [WRITABLE_DEADLINE])
+
+    def test_synthetic_commit_helper_rejects_unvalidated_staging(self):
+        (self.repo / "extra.py").write_text("x = 1\n", encoding="utf-8")
+        subprocess.run(["git", "add", "--", "extra.py"], cwd=self.repo, check=True)
+        with self.assertRaises(SwarmError):
+            _trusted_synthetic_commit(self.repo, "must reject")
 
     def test_existing_test_mutation_is_rejected(self):
         self.commit("csv-processor/tests/existing.py", "def test_existing():\n    assert 2 == 2\n")

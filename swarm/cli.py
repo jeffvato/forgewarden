@@ -39,7 +39,7 @@ def main() -> int:
         if not args.repository:
             parser.error("controlled-baseline requires --repository")
         try:
-            print(run_controlled_baseline(Path(__file__).resolve().parents[1], args.repository, args.runtime_root, args.state_dir, args.audit_dir))
+            print(run_controlled_baseline(Path(__file__).resolve().parents[1], args.repository, args.runtime_root, args.state_dir, args.audit_dir, synthetic_exercise=True))
             return 0
         except (SwarmError, OSError, ValueError) as exc:
             print(f"FAILED: {exc}")
