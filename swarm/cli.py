@@ -4,17 +4,20 @@ from pathlib import Path
 from .adapters import discover_commands, measure_resources, select_limits
 from .core import SwarmError
 from .baseline import run_controlled_baseline
+from .gemini_recovery import recover_gemini_review
 from .local_run import run_real_dry_run
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Local Hermes coding swarm (dry-run only)")
-    parser.add_argument("command", choices=["start", "stop", "status", "kill-switch", "dry-run", "controlled-baseline", "run"], nargs="?", default="status")
+    parser.add_argument("command", choices=["start", "stop", "status", "kill-switch", "dry-run", "controlled-baseline", "gemini-review-recovery", "run"], nargs="?", default="status")
     parser.add_argument("--state-dir", type=Path, default=Path(".swarm-state"))
     parser.add_argument("--runtime-root", type=Path)
     parser.add_argument("--audit-dir", type=Path)
     parser.add_argument("--repository", type=Path)
     parser.add_argument("--service", default="fixture-parser")
+    parser.add_argument("--job-id")
+    parser.add_argument("--repair-commit")
     args = parser.parse_args()
     if args.command == "status":
         print({"mode": "DRY_RUN", "deployment": "DISABLED", "commands": discover_commands(), "resources": measure_resources(), "limits": select_limits(measure_resources()).__dict__})
@@ -40,6 +43,23 @@ def main() -> int:
             parser.error("controlled-baseline requires --repository")
         try:
             print(run_controlled_baseline(Path(__file__).resolve().parents[1], args.repository, args.runtime_root, args.state_dir, args.audit_dir, synthetic_exercise=True))
+            return 0
+        except (SwarmError, OSError, ValueError) as exc:
+            print(f"FAILED: {exc}")
+            return 1
+    if args.command == "gemini-review-recovery":
+        if not args.repository or not args.job_id or not args.repair_commit:
+            parser.error("gemini-review-recovery requires --repository, --job-id, and --repair-commit")
+        try:
+            result = recover_gemini_review(
+                Path(__file__).resolve().parents[1],
+                args.repository,
+                args.runtime_root or Path("/home/jeff/hermes-swarm-runtime"),
+                args.audit_dir or Path("/home/jeff/hermes-swarm-audit"),
+                args.job_id,
+                args.repair_commit,
+            )
+            print(result)
             return 0
         except (SwarmError, OSError, ValueError) as exc:
             print(f"FAILED: {exc}")

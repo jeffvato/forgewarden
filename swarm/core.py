@@ -49,7 +49,7 @@ def redact(value: str) -> str:
     return result
 
 
-def validate_contract(payload: Any, kind: str, expected_job_id: str | None = None) -> None:
+def validate_contract(payload: Any, kind: str, expected_job_id: str | None = None, expected_commit: str | None = None) -> None:
     if not isinstance(payload, dict):
         raise SwarmError(f"{kind} result must be a JSON object")
     required = {
@@ -72,10 +72,23 @@ def validate_contract(payload: Any, kind: str, expected_job_id: str | None = Non
         if expected_job_id is not None and payload["job_id"] != expected_job_id:
             raise SwarmError(f"Codex result job ID mismatch: expected {expected_job_id}, got {payload['job_id']}")
     else:
+        allowed = set(required)
+        extras = sorted(set(payload) - allowed)
+        if extras:
+            raise SwarmError(f"Gemini result contains forbidden fields: {', '.join(extras)}")
+        if expected_job_id is not None and payload["job_id"] != expected_job_id:
+            raise SwarmError(f"Gemini result job ID mismatch: expected {expected_job_id}, got {payload['job_id']}")
         if not re.fullmatch(r"[0-9a-fA-F]{40,64}", str(payload["reviewed_commit"])):
             raise SwarmError("Gemini reviewed_commit is not a full SHA")
+        if expected_commit is not None:
+            require_exact_commit(expected_commit, payload["reviewed_commit"])
         if payload["verdict"] not in {"APPROVE", "REJECT", "HUMAN_REQUIRED"} or payload["risk"] not in {"LOW", "MEDIUM", "HIGH"}:
             raise SwarmError("invalid Gemini verdict or risk")
+        for key in ("blocking_findings", "non_blocking_notes", "tests_missing", "proposed_rules"):
+            if not isinstance(payload[key], list):
+                raise SwarmError(f"Gemini {key} must be an array")
+        if not isinstance(payload["reasoning_summary"], str) or not payload["reasoning_summary"].strip():
+            raise SwarmError("Gemini reasoning_summary must be a non-empty string")
         if not isinstance(payload["proposed_rules"], list) or len(payload["proposed_rules"]) > 1:
             raise SwarmError("Gemini may propose at most one rule")
 

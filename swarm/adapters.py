@@ -521,26 +521,86 @@ class GeminiAdapter:
         self.schema = schema
         self.limits = limits
         self.executable = executable
+        self.last_attempts: list[dict[str, Any]] = []
+        self.last_schema: dict[str, Any] | None = None
 
-    def run(self, snapshot: Path, job_id: str, commit: str, prompt: str) -> dict[str, Any]:
+    def _job_schema(self, job_id: str, commit: str) -> dict[str, Any]:
+        value = json.loads(self.schema.read_text(encoding="utf-8"))
+        if not isinstance(value, dict):
+            raise SwarmError("Gemini schema must be a JSON object")
+        value["additionalProperties"] = False
+        value["required"] = [
+            "job_id", "reviewed_commit", "verdict", "risk", "blocking_findings",
+            "non_blocking_notes", "tests_missing", "reasoning_summary", "proposed_rules",
+        ]
+        properties = value.setdefault("properties", {})
+        properties.setdefault("job_id", {})["const"] = job_id
+        properties.setdefault("reviewed_commit", {})["const"] = commit
+        return value
+
+    @staticmethod
+    def _required_structure(job_id: str, commit: str) -> str:
+        return json.dumps({
+            "job_id": job_id,
+            "reviewed_commit": commit,
+            "verdict": "APPROVE|REJECT|HUMAN_REQUIRED",
+            "risk": "LOW|MEDIUM|HIGH",
+            "blocking_findings": [],
+            "non_blocking_notes": [],
+            "tests_missing": [],
+            "reasoning_summary": "concise explanation",
+            "proposed_rules": [],
+        }, indent=2)
+
+    def run(self, snapshot: Path, job_id: str, commit: str, prompt: str, *, formatting_retry: bool = True) -> dict[str, Any]:
         result_dir = snapshot / ".swarm"
         result_dir.mkdir(exist_ok=True)
         output = result_dir / "gemini-review.json"
-        command = [self.executable, "--prompt", prompt, "--mode", "plan", "--sandbox", "--print-timeout", f"{self.limits.timeout_seconds}s"]
-        result = limited_run(command, snapshot, prompt, self.limits, {"SWARM_ROLE": "GEMINI_READ_ONLY", "SWARM_DRY_RUN": "1", "SWARM_REVIEWED_COMMIT": commit}, use_cgroup=True)
-        if result.returncode:
-            raise SwarmError(f"Gemini failed ({result.returncode}): {redact(result.stderr + result.stdout)}")
-        payload = self._extract_json(result.stdout)
-        output.write_text(json.dumps(payload, sort_keys=True), encoding="utf-8")
-        try:
-            validate_contract(payload, "gemini")
-        except SwarmError as exc:
-            raise SwarmError(f"{exc}; Gemini payload: {redact(json.dumps(payload))}") from exc
-        if payload["job_id"] != job_id:
-            raise SwarmError("Gemini review is stale or bound to a different job")
-        from .core import require_exact_commit
-        require_exact_commit(commit, payload["reviewed_commit"])
-        return payload
+        schema = self._job_schema(job_id, commit)
+        self.last_schema = schema
+        schema_path = result_dir / f"gemini-review-{job_id}.schema.json"
+        schema_path.write_text(json.dumps(schema, indent=2, sort_keys=True), encoding="utf-8")
+        self.last_attempts = []
+        required = self._required_structure(job_id, commit)
+        base_prompt = (
+            f"{prompt}\n\nIMPORTANT: Return exactly one JSON object. The alias `missing_tests` is forbidden; "
+            "the required field is `tests_missing`. Do not omit any required field. The exact required structure is:\n"
+            f"{required}"
+        )
+        current_prompt = base_prompt
+        for attempt in range(2 if formatting_retry else 1):
+            command = [self.executable, "--prompt", current_prompt, "--mode", "plan", "--sandbox", "--print-timeout", f"{self.limits.timeout_seconds}s"]
+            result = limited_run(command, snapshot, current_prompt, self.limits, {"SWARM_ROLE": "GEMINI_READ_ONLY", "SWARM_DRY_RUN": "1", "SWARM_REVIEWED_COMMIT": commit}, use_cgroup=True)
+            attempt_record: dict[str, Any] = {"attempt": attempt + 1, "exit_code": result.returncode, "schema_path": str(schema_path)}
+            if result.returncode:
+                attempt_record["validation"] = "PROCESS_FAILED"
+                attempt_record["error"] = redact(result.stderr + result.stdout)[:2000]
+                self.last_attempts.append(attempt_record)
+                raise SwarmError(f"Gemini failed ({result.returncode}): {redact(result.stderr + result.stdout)}")
+            try:
+                payload = self._extract_json(result.stdout)
+                attempt_record["payload"] = redact(json.dumps(payload, sort_keys=True))[:12000]
+                validate_contract(payload, "gemini", expected_job_id=job_id, expected_commit=commit)
+                if payload["verdict"] == "APPROVE" and (payload["blocking_findings"] or payload["tests_missing"]):
+                    raise SwarmError("Gemini APPROVE cannot contain blocking findings or missing tests")
+                attempt_record["validation"] = "PASSED"
+                self.last_attempts.append(attempt_record)
+                output.write_text(json.dumps(payload, sort_keys=True), encoding="utf-8")
+                return payload
+            except (SwarmError, json.JSONDecodeError) as exc:
+                attempt_record["validation"] = "FAILED"
+                attempt_record["error"] = redact(str(exc))[:2000]
+                self.last_attempts.append(attempt_record)
+                if attempt == 0 and formatting_retry:
+                    current_prompt = (
+                        f"{base_prompt}\n\nYour previous response was rejected for schema validation: "
+                        f"{attempt_record['error']}. Return the exact required structure above, with job_id exactly "
+                        f"{job_id}, reviewed_commit exactly {commit}, and no additional fields. This is a formatting-only "
+                        "retry: review the same evidence and commit; do not change the review basis."
+                    )
+                    continue
+                raise SwarmError(f"Gemini review rejected after formatting validation: {attempt_record['error']}") from exc
+        raise SwarmError("Gemini review did not return a valid response")
 
     @staticmethod
     def _extract_json(output: str) -> dict[str, Any]:
