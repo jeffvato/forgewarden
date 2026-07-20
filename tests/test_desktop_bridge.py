@@ -101,7 +101,7 @@ class DesktopBridgeTests(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 bridge.engage_kill_switch()
 
-    def test_stdio_handshake_registers_exactly_four_tools_and_no_protocol_corruption(self):
+    def test_stdio_handshake_registers_exactly_five_tools_and_no_protocol_corruption(self):
         script = r'''
 import asyncio, json
 from mcp import ClientSession, StdioServerParameters
@@ -176,6 +176,7 @@ async def exercise():
             ]
             modes = []
             for _ in range(3):
+                await session.send_ping()
                 result = await session.call_tool("status", {})
                 assert not result.isError
                 modes.append(result.structuredContent["mode"])
@@ -201,6 +202,41 @@ print(json.dumps(asyncio.run(exercise())))
         )
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(json.loads(result.stdout), {"calls": 3, "mode": "DRY_RUN", "error_is_error": True})
+        self.assert_no_bridge_children()
+
+    def test_stdio_ping_and_status_repetitions_share_one_session(self):
+        script = r'''
+import asyncio, json
+from mcp import ClientSession, StdioServerParameters
+from mcp.client.stdio import stdio_client
+
+async def exercise():
+    params = StdioServerParameters(
+        command="/home/jeff/.local/bin/hermes-swarm-mcp", args=[],
+        env={"PYTHONPATH": "/home/jeff/hermes-swarm-phase1"},
+        cwd="/home/jeff/hermes-swarm-phase1",
+    )
+    async with stdio_client(params) as (read, write):
+        async with ClientSession(read, write) as session:
+            await session.initialize()
+            for _ in range(5):
+                await session.send_ping()
+                result = await session.call_tool("status", {})
+                assert not result.isError
+                assert result.structuredContent["kill_switch"] == "ENGAGED"
+            return True
+
+print(json.dumps(asyncio.run(exercise())))
+'''
+        result = subprocess.run(
+            ["/home/jeff/.local/share/hermes-swarm-desktop-backend/venv/bin/python", "-c", script],
+            cwd="/home/jeff/hermes-swarm-phase1",
+            env={"PATH": "/usr/bin:/bin", "PYTHONPATH": "/home/jeff/hermes-swarm-phase1"},
+            stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            text=True, shell=False, timeout=30, check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout), True)
         self.assert_no_bridge_children()
 
     def test_independent_stdio_session_survives_other_session_close(self):

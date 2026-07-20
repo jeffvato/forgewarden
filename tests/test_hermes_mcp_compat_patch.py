@@ -7,6 +7,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from scripts import hermes_mcp_compat_patch as patch
+from scripts import hermes_mcp_generation_patch as generation_patch
 
 
 class HermesMcpCompatPatchTests(unittest.TestCase):
@@ -83,6 +84,19 @@ print(json.dumps(asyncio.run(check())))
         self.assertEqual(len(patch.EXPECTED_POSTPATCH_SHA256), 64)
         self.assertEqual(patch.TARGET.name, "mcp_tool.py")
         self.assertEqual(patch.EXPECTED_HERMES_VERSION, "0.18.2")
+
+    def test_generation_patch_has_fixed_hash_contract_and_is_idempotent(self):
+        self.assertEqual(generation_patch.EXPECTED_HERMES_VERSION, "0.18.2")
+        self.assertEqual(len(generation_patch.EXPECTED_PREPATCH_SHA256), 64)
+        self.assertEqual(len(generation_patch.EXPECTED_POSTPATCH_SHA256), 64)
+        source = generation_patch.TARGET.read_bytes()
+        self.assertEqual(
+            generation_patch.sha256(generation_patch.patched_source(
+                Path("/home/jeff/hermes-swarm-desktop-backend-backups/mcp_tool.py.backup-20260720T170408Z-generation").read_bytes()
+            )),
+            generation_patch.EXPECTED_POSTPATCH_SHA256,
+        )
+        self.assertEqual(generation_patch.sha256(source), generation_patch.EXPECTED_POSTPATCH_SHA256)
 
 
 if __name__ == "__main__":

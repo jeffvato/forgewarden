@@ -254,7 +254,10 @@ async def _persistent_stdio_server():
                             await read_writer.send(exc)
                             continue
                         await read_writer.send(SessionMessage(message))
-        except anyio.ClosedResourceError:
+        except (anyio.ClosedResourceError, BrokenPipeError, OSError):
+            # EOF and a closed peer are normal teardown paths.  Do not emit
+            # diagnostics on stdout and do not turn a client cancellation
+            # into a process-wide protocol failure.
             await anyio.lowlevel.checkpoint()
 
     async def stdout_writer() -> None:
@@ -268,7 +271,9 @@ async def _persistent_stdio_server():
                         if written <= 0:
                             raise BrokenPipeError("MCP stdout closed")
                         offset += written
-        except anyio.ClosedResourceError:
+        except (anyio.ClosedResourceError, BrokenPipeError, OSError):
+            # A disconnected client closes only this session's writer.  The
+            # exception is deliberately contained by the transport task.
             await anyio.lowlevel.checkpoint()
 
     async with anyio.create_task_group() as task_group:
