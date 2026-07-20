@@ -13,7 +13,6 @@ Restart=no
 TimeoutStartSec=infinity
 MemoryMax=2147483648
 MemorySwapMax=0
-IPAddressDeny=any
 
 [Install]
 WantedBy=default.target
