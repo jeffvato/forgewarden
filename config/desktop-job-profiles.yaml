@@ -1,0 +1,30 @@
+profile_id: csv_deadline_dry_run_v1
+repository: /home/jeff/swarm-repositories/n8n-csv-baseline-v2
+expected_baseline: bad64e7cf14e3c586d395341b25467841847dec6
+writable:
+  - csv-processor/app/ai/deadline.py
+  - csv-processor/tests/swarm_regressions/
+read_only:
+  - csv-processor/tests/
+  - everything_else
+deterministic_test:
+  working_directory: <worktree>/csv-processor
+  path: tests/swarm_regressions/test_deadline_contract.py
+limits:
+  max_concurrent_jobs: 1
+  max_codex_attempts: 1
+  max_gemini_attempts: 2
+  memory_bytes: 2147483648
+  memory_swap_bytes: 0
+  cpu_seconds: 45
+  wall_clock_seconds: 180
+  max_log_bytes: 256000
+  max_changed_files: 2
+  max_changed_lines: 300
+  max_patch_bytes: 65536
+  binary_files: false
+  symlinks: false
+  submodules: false
+  generated_caches: false
+  network: blocked_except_controlled_adapters
+deployment: forbidden

@@ -1,13 +1,14 @@
 # Hermes Desktop coding-swarm bridge
 
 The Desktop backend now loads a local stdio MCP server named
-`coding_swarm`. The bridge is intentionally limited to four tools:
+`coding_swarm`. The bridge is intentionally limited to five tools:
 
 ```text
 status
 job_status
 recent_audit
 engage_kill_switch
+run_preapproved_job
 ```
 
 No repair, deployment, merge, push, shell, Git, filesystem, prompt,
@@ -61,7 +62,7 @@ returned.
 ## Hermes configuration
 
 The Desktop configuration contains the additive `mcp_servers.coding_swarm`
-entry with four selected tools, resources disabled, prompts disabled, and
+entry with five selected tools, resources disabled, prompts disabled, and
 sampling disabled. A timestamped pre-change backup was created at:
 
 ```text
@@ -79,8 +80,8 @@ pip check: No broken requirements found
 import mcp: passed (1.26.0)
 MCP_SERVER_AVAILABLE: True
 YAML parse: valid
-hermes mcp test coding_swarm: connected; 4 tools discovered (594ms)
-complete swarm suite: 66 tests passed, 7 skipped
+hermes mcp test coding_swarm: connected; 5 tools discovered
+complete swarm suite: 76 tests passed, 7 skipped
 ```
 
 The lifecycle regression additionally verifies three repeated `status` calls,

@@ -9,7 +9,7 @@ import re
 import subprocess
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Any, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING, Literal
 
 if TYPE_CHECKING:
     from mcp.server.fastmcp import FastMCP
@@ -178,6 +178,19 @@ def engage_kill_switch() -> dict[str, str]:
     return verified
 
 
+def run_preapproved_job(
+    profile_id: Literal["csv_deadline_dry_run_v1"],
+    issue_summary: str,
+) -> dict[str, Any]:
+    """Run one committed-profile dry-run job after local activation.
+
+    The profile is a literal MCP enum; all repository, command, model,
+    writable-path, and environment choices remain server-side constants.
+    """
+    from .phase2a import run_preapproved_job as execute
+    return execute(profile_id, issue_summary)
+
+
 def create_server() -> "FastMCP":
     from mcp.server.fastmcp import FastMCP
     server = FastMCP("hermes-swarm", instructions="Read-only dry-run swarm status and audit bridge.")
@@ -185,6 +198,7 @@ def create_server() -> "FastMCP":
     server.tool(name="job_status", structured_output=True)(job_status)
     server.tool(name="recent_audit", structured_output=True)(recent_audit)
     server.tool(name="engage_kill_switch", structured_output=True)(engage_kill_switch)
+    server.tool(name="run_preapproved_job", structured_output=True)(run_preapproved_job)
     return server
 
 

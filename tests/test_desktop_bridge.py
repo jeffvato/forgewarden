@@ -125,11 +125,24 @@ print(json.dumps(asyncio.run(handshake())))
         )
         self.assertEqual(result.returncode, 0, result.stderr)
         names = json.loads(result.stdout)
-        self.assertEqual(names, ["engage_kill_switch", "job_status", "recent_audit", "status"])
+        self.assertEqual(names, ["engage_kill_switch", "job_status", "recent_audit", "run_preapproved_job", "status"])
         self.assertNotIn("repair", names)
         self.assertNotIn("deploy", names)
         self.assertNotIn("shell", names)
         self.assertNotIn("git", names)
+        self.assert_no_bridge_children()
+
+    def assert_no_bridge_children(self):
+        import psutil
+        self.assertFalse(
+            [
+                process.pid
+                for process in psutil.process_iter(["pid", "cmdline"])
+                if process.info.get("cmdline")
+                and "swarm.desktop_bridge" in " ".join(process.info["cmdline"])
+            ],
+            "MCP fixture child was not reaped",
+        )
 
     def test_stdio_session_is_persistent_and_tool_errors_do_not_kill_it(self):
         script = r'''
@@ -148,7 +161,7 @@ async def exercise():
             await session.initialize()
             tools = await session.list_tools()
             assert sorted(t.name for t in tools.tools) == [
-                "engage_kill_switch", "job_status", "recent_audit", "status"
+                "engage_kill_switch", "job_status", "recent_audit", "run_preapproved_job", "status"
             ]
             modes = []
             for _ in range(3):
@@ -177,6 +190,7 @@ print(json.dumps(asyncio.run(exercise())))
         )
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(json.loads(result.stdout), {"calls": 3, "mode": "DRY_RUN", "error_is_error": True})
+        self.assert_no_bridge_children()
 
     def test_independent_stdio_session_survives_other_session_close(self):
         script = r'''

@@ -1,0 +1,45 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["profile_id", "repository", "expected_baseline", "writable", "read_only", "deterministic_test", "limits", "deployment"],
+  "properties": {
+    "profile_id": {"const": "csv_deadline_dry_run_v1"},
+    "repository": {"const": "/home/jeff/swarm-repositories/n8n-csv-baseline-v2"},
+    "expected_baseline": {"const": "bad64e7cf14e3c586d395341b25467841847dec6"},
+    "writable": {"type": "array", "const": ["csv-processor/app/ai/deadline.py", "csv-processor/tests/swarm_regressions/"]},
+    "read_only": {"type": "array", "const": ["csv-processor/tests/", "everything_else"]},
+    "deterministic_test": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["working_directory", "path"],
+      "properties": {
+        "working_directory": {"const": "<worktree>/csv-processor"},
+        "path": {"const": "tests/swarm_regressions/test_deadline_contract.py"}
+      }
+    },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["max_concurrent_jobs", "max_codex_attempts", "max_gemini_attempts", "memory_bytes", "memory_swap_bytes", "cpu_seconds", "wall_clock_seconds", "max_log_bytes", "max_changed_files", "max_changed_lines", "max_patch_bytes", "binary_files", "symlinks", "submodules", "generated_caches", "network"],
+      "properties": {
+        "max_concurrent_jobs": {"const": 1},
+        "max_codex_attempts": {"const": 1},
+        "max_gemini_attempts": {"const": 2},
+        "memory_bytes": {"const": 2147483648},
+        "memory_swap_bytes": {"const": 0},
+        "cpu_seconds": {"const": 45},
+        "wall_clock_seconds": {"const": 180},
+        "max_log_bytes": {"const": 256000},
+        "max_changed_files": {"const": 2},
+        "max_changed_lines": {"const": 300},
+        "max_patch_bytes": {"const": 65536},
+        "binary_files": {"const": false},
+        "symlinks": {"const": false},
+        "submodules": {"const": false},
+        "generated_caches": {"const": false},
+        "network": {"const": "blocked_except_controlled_adapters"}
+      }
+    },
+    "deployment": {"const": "forbidden"}
+  }
+}
