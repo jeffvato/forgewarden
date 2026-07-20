@@ -1,11 +1,12 @@
 import subprocess
 import tempfile
 import unittest
+import os
 from subprocess import CompletedProcess
 from pathlib import Path
 from unittest.mock import patch
 
-from swarm.baseline import _deadline_test_command, _run_deadline_preflight, _trusted_synthetic_commit, enforce_diff_gate, scan_baseline_tree, scan_git_blobs, WRITABLE_DEADLINE
+from swarm.baseline import DETERMINISTIC_INTERPRETER, DeterministicInterpreterError, _deadline_test_command, _run_deadline_preflight, _trusted_synthetic_commit, enforce_diff_gate, scan_baseline_tree, scan_git_blobs, validate_deterministic_interpreter, WRITABLE_DEADLINE
 from swarm.core import SwarmError, run_command
 
 
@@ -156,6 +157,35 @@ class BaselineDiffGateTests(unittest.TestCase):
         self.assertEqual(evidence["seeded_defect_exit_code"], 1)
         self.assertFalse(any(root.rglob("__pycache__")))
         self.assertFalse(any(root.rglob(".pytest_cache")))
+
+    def test_deterministic_interpreter_is_fixed_even_with_poisoned_path(self):
+        root = self._preflight_tree()
+        command = _deadline_test_command(root)[2]
+        self.assertEqual(command[0], str(DETERMINISTIC_INTERPRETER))
+        with patch.dict(os.environ, {"PATH": "/usr/bin:/bin", "PYTHON": "/usr/bin/python3"}, clear=True):
+            evidence = validate_deterministic_interpreter(DETERMINISTIC_INTERPRETER, type("Limits", (), {"max_log_bytes": 256000, "cpu_seconds": 45, "memory_bytes": 2147483648, "timeout_seconds": 60})(), cwd=root / "csv-processor", use_cgroup=False)
+        self.assertEqual(evidence["validation"], "PASSED")
+        self.assertEqual(evidence["interpreter"], str(DETERMINISTIC_INTERPRETER))
+        self.assertNotIn("PYTHONPATH", evidence["argv"])
+
+    def test_missing_pytest_fails_during_interpreter_preflight_with_output(self):
+        root = self._preflight_tree()
+        limits = type("Limits", (), {"max_log_bytes": 256000, "cpu_seconds": 45, "memory_bytes": 2147483648, "timeout_seconds": 60})()
+        with patch("swarm.baseline.DETERMINISTIC_INTERPRETER", Path("/usr/bin/python3")), patch("swarm.baseline.DETERMINISTIC_INTERPRETER_TARGET", Path("/usr/bin/python3.12")):
+            with self.assertRaises(DeterministicInterpreterError) as raised:
+                validate_deterministic_interpreter(Path("/usr/bin/python3"), limits, cwd=root / "csv-processor", use_cgroup=False)
+        self.assertEqual(raised.exception.evidence["exit_code"], 1)
+        self.assertIn("pytest", raised.exception.evidence["stderr"])
+
+    def test_wrong_interpreter_and_symlink_substitution_fail_closed(self):
+        root = self._preflight_tree()
+        limits = type("Limits", (), {"max_log_bytes": 256000, "cpu_seconds": 45, "memory_bytes": 2147483648, "timeout_seconds": 60})()
+        with self.assertRaises(DeterministicInterpreterError):
+            validate_deterministic_interpreter(Path("/usr/bin/python3"), limits, cwd=root / "csv-processor", use_cgroup=False)
+        link = root / "python3"
+        link.symlink_to(DETERMINISTIC_INTERPRETER)
+        with self.assertRaises(DeterministicInterpreterError):
+            validate_deterministic_interpreter(link, limits, cwd=root / "csv-processor", use_cgroup=False)
 
 
 if __name__ == "__main__":

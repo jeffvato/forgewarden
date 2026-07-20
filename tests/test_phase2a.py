@@ -83,6 +83,15 @@ class Phase2ATests(unittest.TestCase):
             )
             with self.assertRaises(SwarmError):
                 phase2a.validate_profile(bad)
+            relative = Path(temp) / "relative.yaml"
+            relative.write_text(
+                phase2a.PROFILE_PATH.read_text(encoding="utf-8").replace(
+                    "interpreter: /home/jeff/anaconda3/bin/python3", "interpreter: python3"
+                ),
+                encoding="utf-8",
+            )
+            with self.assertRaises(SwarmError):
+                phase2a.validate_profile(relative)
 
     def test_issue_summary_rejects_injection_and_path_inputs(self):
         valid = "Correct the deadline utility contract while preserving its existing behavior."
@@ -122,6 +131,9 @@ class Phase2ATests(unittest.TestCase):
             phase2a.set_activation(True, runtime)
             (runtime / "KILL_SWITCH").unlink()
             with patch.object(phase2a, "_user_bus_and_cgroup_ready"), patch.object(
+                phase2a, "validate_deterministic_interpreter",
+                return_value={"validation": "PASSED", "interpreter": "/home/jeff/anaconda3/bin/python3"},
+            ), patch.object(
                 phase2a, "limited_run",
                 return_value=subprocess.CompletedProcess(["pytest"], 0, "1 passed\n", ""),
             ):
@@ -154,6 +166,42 @@ class Phase2ATests(unittest.TestCase):
             phase2a.recover_abandoned(runtime, runtime / "audit.jsonl")
             self.assertTrue((runtime / "KILL_SWITCH").is_file())
             self.assertEqual(phase2a.activation_status(runtime), "DISABLED")
+
+    def test_interpreter_failure_blocks_codex_and_gemini(self):
+        class CountingAdapters:
+            codex_calls = 0
+            gemini_calls = 0
+
+            def codex(self, *args):
+                self.codex_calls += 1
+                raise AssertionError("Codex must not be invoked")
+
+            def gemini(self, *args):
+                self.gemini_calls += 1
+                raise AssertionError("Gemini must not be invoked")
+
+        with TemporaryDirectory() as temp:
+            root = Path(temp)
+            runtime = root / "runtime"
+            audit = root / "audit.jsonl"
+            runtime.mkdir()
+            (runtime / "KILL_SWITCH").touch()
+            phase2a.set_activation(True, runtime)
+            (runtime / "KILL_SWITCH").unlink()
+            adapters = CountingAdapters()
+            failure = phase2a.DeterministicInterpreterError("missing pytest", {"validation": "FAILED", "stderr": "pytest unavailable"})
+            with patch.object(phase2a, "_user_bus_and_cgroup_ready"), patch.object(phase2a, "validate_deterministic_interpreter", side_effect=failure):
+                result = phase2a.run_preapproved_job(
+                    phase2a.PROFILE_ID,
+                    "Correct the deadline utility contract while preserving its existing behavior.",
+                    runtime_root=runtime,
+                    audit_path=audit,
+                    adapters=adapters,
+                )
+            self.assertEqual(result["final_state"], "FAILED")
+            self.assertEqual(adapters.codex_calls, 0)
+            self.assertEqual(adapters.gemini_calls, 0)
+            self.assertIn('"event": "deterministic_interpreter_rejected"', audit.read_text(encoding="utf-8"))
 
     def test_output_shape_is_exactly_the_safe_return_contract(self):
         expected = {"job_id", "profile_id", "final_state", "repair_commit", "deterministic_test", "gemini_verdict", "gemini_risk", "blocking_reason", "kill_switch", "deployment"}

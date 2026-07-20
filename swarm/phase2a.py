@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any, Protocol
 
 from .adapters import CodexAdapter, GeminiAdapter, ResourceLimits, WriterInvocationSpec, limited_run, normalize_changed_paths
-from .baseline import _tracked_test_hashes, enforce_diff_gate, scan_baseline_tree, scan_git_blobs
+from .baseline import DeterministicInterpreterError, _deadline_test_command, _tracked_test_hashes, enforce_diff_gate, scan_baseline_tree, scan_git_blobs, validate_deterministic_interpreter
 from .core import AuditLog, Job, SwarmError, redact, run_command, validate_contract
 
 PROFILE_ID = "csv_deadline_dry_run_v1"
@@ -54,6 +54,7 @@ class Profile:
     expected_baseline: str
     writable: tuple[str, ...]
     deterministic_path: str
+    interpreter: Path
     limits: ResourceLimits
 
 
@@ -85,7 +86,7 @@ def validate_profile(path: Path = PROFILE_PATH, schema_path: Path = PROFILE_SCHE
             raise SwarmError("profile contains a noncanonical writable path")
     return Profile(
         value["profile_id"], Path(value["repository"]), value["expected_baseline"],
-        tuple(value["writable"]), value["deterministic_test"]["path"],
+        tuple(value["writable"]), value["deterministic_test"]["path"], Path(value["deterministic_test"]["interpreter"]),
         ResourceLimits(
             cpu_seconds=value["limits"]["cpu_seconds"],
             memory_bytes=value["limits"]["memory_bytes"],
@@ -319,8 +320,15 @@ def run_preapproved_job(profile_id: str, issue_summary: str, *, runtime_root: Pa
         if result.returncode:
             raise SwarmError(redact(result.stderr))
         test_cwd = worktree / "csv-processor"
-        test_command = [os.environ.get("PYTHON", "python3"), "-m", "pytest", "-q", "-p", "no:cacheprovider", TEST_PATH]
+        try:
+            interpreter_evidence = validate_deterministic_interpreter(profile.interpreter, profile.limits, cwd=test_cwd, use_cgroup=True)
+            audit.record(job, "deterministic_interpreter_validated", **interpreter_evidence)
+        except DeterministicInterpreterError as exc:
+            audit.record(job, "deterministic_interpreter_rejected", **exc.evidence)
+            raise
+        _, _, test_command = _deadline_test_command(worktree, profile.interpreter)
         baseline_test = limited_run(test_command, test_cwd, "", profile.limits, {"SWARM_ROLE": "DETERMINISTIC_CHECK"}, minimal_environment=True, use_cgroup=True)
+        audit.record(job, "deterministic_baseline_test", command=list(test_command), cwd=str(test_cwd.resolve()), exit_code=baseline_test.returncode, stdout=baseline_test.stdout[-profile.limits.max_log_bytes:], stderr=baseline_test.stderr[-profile.limits.max_log_bytes:], timed_out=False)
         if baseline_test.returncode:
             raise SwarmError("deterministic baseline test failed")
         spec = WriterInvocationSpec(job_id, worktree, test_cwd, "app/ai/deadline.py", "csv-processor/app/ai/deadline.py", issue_summary, "deadline contract assertion", WRITABLE)
@@ -336,6 +344,7 @@ def run_preapproved_job(profile_id: str, issue_summary: str, *, runtime_root: Pa
             raise SwarmError("Codex claimed changed paths differ from actual paths")
         _enforce_profile_limits(worktree, actual)
         checks = limited_run(test_command, test_cwd, "", profile.limits, {"SWARM_ROLE": "DETERMINISTIC_CHECK"}, minimal_environment=True, use_cgroup=True)
+        audit.record(job, "deterministic_repair_test", command=list(test_command), cwd=str(test_cwd.resolve()), exit_code=checks.returncode, stdout=checks.stdout[-profile.limits.max_log_bytes:], stderr=checks.stderr[-profile.limits.max_log_bytes:], timed_out=False)
         if checks.returncode:
             raise SwarmError("deterministic test failed")
         commit = _commit_validated(worktree, actual, job_id)

@@ -11,10 +11,11 @@
     "deterministic_test": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["working_directory", "path"],
+      "required": ["working_directory", "path", "interpreter"],
       "properties": {
         "working_directory": {"const": "<worktree>/csv-processor"},
-        "path": {"const": "tests/swarm_regressions/test_deadline_contract.py"}
+        "path": {"const": "tests/swarm_regressions/test_deadline_contract.py"},
+        "interpreter": {"type": "string", "pattern": "^/[^/].*$"}
       }
     },
     "limits": {

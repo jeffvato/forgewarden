@@ -22,7 +22,14 @@ Only csv-processor/app/ai/deadline.py and new files beneath
 csv-processor/tests/swarm_regressions/ are eligible. Existing tests and all
 other files are read-only. The exact deterministic test runs from
 <worktree>/csv-processor using
-tests/swarm_regressions/test_deadline_contract.py.
+tests/swarm_regressions/test_deadline_contract.py. The current local profile
+binds its interpreter to the absolute path
+/home/jeff/anaconda3/bin/python3. The runner never uses PATH lookup, shell
+activation, /usr/bin/env, or an ambient python3. Before pytest starts it
+verifies the canonical executable target, interpreter SHA-256, sys.executable,
+Python version, pytest import/version, and bounded stdout/stderr. A future
+public profile may replace this machine-specific binding only with a separately
+reviewed absolute interpreter configuration validated by the same checks.
 
 The runner enforces one concurrent job, one Codex attempt, the existing
 Gemini schema-correction retry limit, aggregate 2 GiB memory, no swap, CPU and

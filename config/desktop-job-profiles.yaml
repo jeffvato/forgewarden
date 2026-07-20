@@ -10,6 +10,7 @@ read_only:
 deterministic_test:
   working_directory: <worktree>/csv-processor
   path: tests/swarm_regressions/test_deadline_contract.py
+  interpreter: /home/jeff/anaconda3/bin/python3
 limits:
   max_concurrent_jobs: 1
   max_codex_attempts: 1

@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import math
+import os
 import re
 import shutil
 import sys
@@ -19,6 +21,8 @@ REPOSITORY = Path("/home/jeff/swarm-repositories/n8n-csv-baseline-v2")
 WRITABLE_DEADLINE = "csv-processor/app/ai/deadline.py"
 WRITABLE_TEST_ROOT = "csv-processor/tests/swarm_regressions/"
 EXISTING_TEST_ROOT = "csv-processor/tests/"
+DETERMINISTIC_INTERPRETER = Path("/home/jeff/anaconda3/bin/python3")
+DETERMINISTIC_INTERPRETER_TARGET = Path("/home/jeff/anaconda3/bin/python3.11")
 
 _PRIVATE_KEY = re.compile(r"BEGIN\s+(?:RSA |EC |OPENSSH )?PRIVATE KEY", re.I)
 _KNOWN_TOKEN = re.compile(r"\b(?:sk-[A-Za-z0-9]{20,}|ghp_[A-Za-z0-9]{30,}|xoxb-[A-Za-z0-9-]{20,}|AIza[A-Za-z0-9_-]{30,})\b")
@@ -251,7 +255,78 @@ def _trusted_synthetic_commit(repo: Path, message: str) -> str:
     return run_command(["git", "rev-parse", "HEAD"], repo).stdout.strip()
 
 
-def _deadline_test_command(worktree: Path) -> tuple[Path, Path, list[str]]:
+class DeterministicInterpreterError(SwarmError):
+    def __init__(self, message: str, evidence: dict[str, Any]):
+        super().__init__(message)
+        self.evidence = evidence
+
+
+def validate_deterministic_interpreter(interpreter: Path, limits, *, cwd: Path, use_cgroup: bool = True) -> dict[str, Any]:
+    """Validate the fixed local interpreter before any deterministic test runs."""
+    configured = Path(interpreter)
+    evidence: dict[str, Any] = {
+        "interpreter": str(configured),
+        "interpreter_canonical": None,
+        "interpreter_sha256": None,
+        "python_version": None,
+        "pytest_version": None,
+        "argv": [],
+        "cwd": str(cwd.resolve()),
+        "exit_code": None,
+        "stdout": "",
+        "stderr": "",
+        "timed_out": False,
+        "validation": "FAILED",
+    }
+    if not configured.is_absolute() or configured != DETERMINISTIC_INTERPRETER:
+        raise DeterministicInterpreterError("deterministic interpreter is not the approved absolute path", evidence)
+    try:
+        resolved = configured.resolve(strict=True)
+    except OSError as exc:
+        raise DeterministicInterpreterError("deterministic interpreter cannot be resolved", evidence) from exc
+    evidence["interpreter_canonical"] = str(resolved)
+    if resolved != DETERMINISTIC_INTERPRETER_TARGET or not resolved.is_file() or not os.access(resolved, os.X_OK):
+        raise DeterministicInterpreterError("deterministic interpreter is not a regular executable file", evidence)
+    evidence["interpreter_sha256"] = hashlib.sha256(configured.read_bytes()).hexdigest()
+    command = [
+        str(configured), "-c",
+        "import json,sys; from pathlib import Path; import pytest; print(json.dumps({'sys_executable':str(Path(sys.executable).resolve()),'python_version':'.'.join(map(str,sys.version_info[:3])),'pytest_version':pytest.__version__}))",
+    ]
+    evidence["argv"] = list(command)
+    try:
+        result = limited_run(command, cwd, "", limits, {"SWARM_ROLE": "DETERMINISTIC_INTERPRETER_PREFLIGHT"}, use_cgroup=use_cgroup, minimal_environment=True)
+    except SwarmError as exc:
+        evidence["timed_out"] = "timed out" in str(exc).lower()
+        evidence["stderr"] = redact(str(exc))[: limits.max_log_bytes]
+        raise DeterministicInterpreterError("deterministic interpreter preflight failed", evidence) from exc
+    evidence.update({
+        "exit_code": result.returncode,
+        "stdout": redact(result.stdout)[-limits.max_log_bytes:],
+        "stderr": redact(result.stderr)[-limits.max_log_bytes:],
+    })
+    if result.returncode:
+        raise DeterministicInterpreterError("deterministic interpreter exited unsuccessfully", evidence)
+    try:
+        details = json.loads(result.stdout)
+    except (json.JSONDecodeError, TypeError) as exc:
+        raise DeterministicInterpreterError("deterministic interpreter returned invalid validation output", evidence) from exc
+    evidence.update({"python_version": details.get("python_version"), "pytest_version": details.get("pytest_version")})
+    expected_executable = str(resolved)
+    try:
+        version_parts = tuple(int(part) for part in str(details.get("python_version", "")).split("."))
+    except ValueError:
+        version_parts = ()
+    if details.get("sys_executable") != expected_executable:
+        raise DeterministicInterpreterError("sys.executable did not match the approved interpreter", evidence)
+    if len(version_parts) < 2 or not (3, 11) <= version_parts[:2] < (3, 14):
+        raise DeterministicInterpreterError("deterministic interpreter Python version is unsupported", evidence)
+    if not details.get("pytest_version"):
+        raise DeterministicInterpreterError("pytest is unavailable in the deterministic interpreter", evidence)
+    evidence["validation"] = "PASSED"
+    return evidence
+
+
+def _deadline_test_command(worktree: Path, interpreter: Path = DETERMINISTIC_INTERPRETER) -> tuple[Path, Path, list[str]]:
     """Resolve and validate the only deterministic test before any agent runs."""
     project_root = worktree / "csv-processor"
     relative = Path("tests") / "swarm_regressions" / "test_deadline_contract.py"
@@ -264,7 +339,9 @@ def _deadline_test_command(worktree: Path) -> tuple[Path, Path, list[str]]:
         resolved_path.relative_to(resolved_root)
     except ValueError as exc:
         raise SwarmError(f"controlled test escaped worktree: {resolved_path}") from exc
-    return project_root, resolved_path, [sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", str(relative)]
+    if not interpreter.is_absolute() or interpreter != DETERMINISTIC_INTERPRETER:
+        raise SwarmError("deterministic test interpreter must be the approved absolute path")
+    return project_root, resolved_path, [str(interpreter), "-m", "pytest", "-q", "-p", "no:cacheprovider", str(relative)]
 
 
 def _run_deadline_preflight(worktree: Path, limits, validated: tuple[Path, Path, list[str]] | None = None, use_cgroup: bool = True) -> tuple[Path, Path, list[str], dict[str, Any]]:
