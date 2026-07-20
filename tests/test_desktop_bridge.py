@@ -131,6 +131,89 @@ print(json.dumps(asyncio.run(handshake())))
         self.assertNotIn("shell", names)
         self.assertNotIn("git", names)
 
+    def test_stdio_session_is_persistent_and_tool_errors_do_not_kill_it(self):
+        script = r'''
+import asyncio, json, psutil
+from mcp import ClientSession, StdioServerParameters
+from mcp.client.stdio import stdio_client
+
+async def exercise():
+    server = StdioServerParameters(
+        command="/home/jeff/.local/bin/hermes-swarm-mcp", args=[],
+        env={"PYTHONPATH": "/home/jeff/hermes-swarm-phase1"},
+        cwd="/home/jeff/hermes-swarm-phase1",
+    )
+    async with stdio_client(server) as (read, write):
+        async with ClientSession(read, write) as session:
+            await session.initialize()
+            tools = await session.list_tools()
+            assert sorted(t.name for t in tools.tools) == [
+                "engage_kill_switch", "job_status", "recent_audit", "status"
+            ]
+            modes = []
+            for _ in range(3):
+                result = await session.call_tool("status", {})
+                assert not result.isError
+                modes.append(result.structuredContent["mode"])
+            bad = await session.call_tool("job_status", {"job_id": "not valid"})
+            assert bad.isError
+            after_error = await session.call_tool("status", {})
+            assert not after_error.isError
+            live = [
+                p for p in psutil.process_iter(["pid", "cmdline"])
+                if p.info.get("cmdline") and "swarm.desktop_bridge" in " ".join(p.info["cmdline"])
+            ]
+            assert live, "bridge process ended before the session closed"
+            return {"calls": len(modes), "mode": modes[-1], "error_is_error": bad.isError}
+
+print(json.dumps(asyncio.run(exercise())))
+'''
+        result = subprocess.run(
+            ["/home/jeff/.local/share/hermes-swarm-desktop-backend/venv/bin/python", "-c", script],
+            cwd="/home/jeff/hermes-swarm-phase1",
+            env={"PATH": "/usr/bin:/bin", "PYTHONPATH": "/home/jeff/hermes-swarm-phase1"},
+            stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            text=True, shell=False, timeout=30, check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout), {"calls": 3, "mode": "DRY_RUN", "error_is_error": True})
+
+    def test_independent_stdio_session_survives_other_session_close(self):
+        script = r'''
+import asyncio, json
+from mcp import ClientSession, StdioServerParameters
+from mcp.client.stdio import stdio_client
+
+PARAMS = StdioServerParameters(
+    command="/home/jeff/.local/bin/hermes-swarm-mcp", args=[],
+    env={"PYTHONPATH": "/home/jeff/hermes-swarm-phase1"},
+    cwd="/home/jeff/hermes-swarm-phase1",
+)
+
+async def exercise():
+    async with stdio_client(PARAMS) as (read_one, write_one):
+        async with ClientSession(read_one, write_one) as session_one:
+            await session_one.initialize()
+            assert not (await session_one.call_tool("status", {})).isError
+    async with stdio_client(PARAMS) as (read_two, write_two):
+        async with ClientSession(read_two, write_two) as session_two:
+            await session_two.initialize()
+            result = await session_two.call_tool("status", {})
+            assert not result.isError
+            return result.structuredContent["kill_switch"]
+
+print(json.dumps(asyncio.run(exercise())))
+'''
+        result = subprocess.run(
+            ["/home/jeff/.local/share/hermes-swarm-desktop-backend/venv/bin/python", "-c", script],
+            cwd="/home/jeff/hermes-swarm-phase1",
+            env={"PATH": "/usr/bin:/bin", "PYTHONPATH": "/home/jeff/hermes-swarm-phase1"},
+            stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            text=True, shell=False, timeout=30, check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout), "ENGAGED")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -14,6 +14,30 @@ No repair, deployment, merge, push, shell, Git, filesystem, prompt,
 resource, or sampling tool is registered. MCP protocol traffic is written only
 to stdout; diagnostics use stderr.
 
+The bridge uses FastMCP's persistent `stdio` transport. It remains alive for
+the lifetime of its client session, handles repeated tool calls on that same
+session, and converts tool exceptions into MCP `isError` results. A normal
+client close, cancellation, or EOF is handled as session shutdown without a
+traceback or protocol corruption. Each Desktop stdio connection has its own
+bridge process, so closing one connection cannot terminate an independent
+connection.
+
+## ClosedResourceError / WSL pipe validation
+
+The initial failure was a transport-level stall during initialization rather
+than a repair-tool failure. In this WSL environment, the pinned MCP 1.26.0
+server helper did not reliably consume the child stdin pipe through its
+`anyio.wrap_file(TextIOWrapper)` reader. The bridge therefore uses a small
+fd-based reader/writer shim around the official MCP memory streams. It keeps
+newline-delimited JSON-RPC framing unchanged, reads only fd 0, writes only
+protocol frames to fd 1, and leaves diagnostics on stderr.
+
+The bridge's MCP server handler remains the official FastMCP handler. Its
+exception path returns structured MCP `CallToolResult` responses with
+`isError=true`; malformed audit data and invalid arguments therefore do not
+terminate the session. A client cancellation is isolated to that stdio child.
+The Desktop service and any other independent MCP child are unaffected.
+
 ## Fixed runtime contract
 
 The launcher is:
@@ -55,9 +79,14 @@ pip check: No broken requirements found
 import mcp: passed (1.26.0)
 MCP_SERVER_AVAILABLE: True
 YAML parse: valid
-hermes mcp test coding_swarm: connected; 4 tools discovered
-complete swarm suite: 64 tests passed
+hermes mcp test coding_swarm: connected; 4 tools discovered (594ms)
+complete swarm suite: 66 tests passed, 7 skipped
 ```
+
+The lifecycle regression additionally verifies three repeated `status` calls,
+an invalid `job_status` call returning `isError=true`, continued operation
+after that error, and survival of a separate stdio session after the first
+session closes.
 
 The Desktop service was restarted only after these validations. Its backend
 continues to bind to `127.0.0.1:9120` and use the dedicated Desktop Hermes

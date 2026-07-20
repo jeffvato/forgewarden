@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import re
 import subprocess
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, TYPE_CHECKING
 
@@ -186,9 +188,85 @@ def create_server() -> "FastMCP":
     return server
 
 
+@asynccontextmanager
+async def _persistent_stdio_server():
+    """Use fd I/O for WSL pipes while preserving MCP's normal session streams.
+
+    The pinned MCP release's ``anyio.wrap_file(TextIOWrapper)`` reader does not
+    consume this WSL stdio pipe reliably. Readiness-aware fd I/O avoids that
+    transport-specific stall without changing MCP framing or exposing any
+    additional process capability.
+    """
+    import anyio
+    import mcp.types as types
+    from mcp.shared.message import SessionMessage
+
+    read_writer, read_stream = anyio.create_memory_object_stream(0)
+    write_stream, write_reader = anyio.create_memory_object_stream(0)
+
+    async def stdin_reader() -> None:
+        buffer = b""
+        try:
+            async with read_writer:
+                while True:
+                    try:
+                        await anyio.wait_readable(0)
+                    except PermissionError:
+                        # Some launchers attach stdin to /dev/null, which
+                        # epoll refuses to register. A direct read is safe for
+                        # that EOF-only fallback and preserves clean shutdown.
+                        pass
+                    chunk = os.read(0, 65536)
+                    if not chunk:
+                        return
+                    buffer += chunk
+                    while b"\n" in buffer:
+                        raw, buffer = buffer.split(b"\n", 1)
+                        if not raw:
+                            continue
+                        try:
+                            message = types.JSONRPCMessage.model_validate_json(raw)
+                        except Exception as exc:
+                            await read_writer.send(exc)
+                            continue
+                        await read_writer.send(SessionMessage(message))
+        except anyio.ClosedResourceError:
+            await anyio.lowlevel.checkpoint()
+
+    async def stdout_writer() -> None:
+        try:
+            async with write_reader:
+                async for session_message in write_reader:
+                    payload = (session_message.message.model_dump_json(by_alias=True, exclude_none=True) + "\n").encode()
+                    offset = 0
+                    while offset < len(payload):
+                        written = os.write(1, payload[offset:])
+                        if written <= 0:
+                            raise BrokenPipeError("MCP stdout closed")
+                        offset += written
+        except anyio.ClosedResourceError:
+            await anyio.lowlevel.checkpoint()
+
+    async with anyio.create_task_group() as task_group:
+        task_group.start_soon(stdin_reader)
+        task_group.start_soon(stdout_writer)
+        yield read_stream, write_stream
+
+
+async def _run_persistent_stdio(server: "FastMCP") -> None:
+    async with _persistent_stdio_server() as (read_stream, write_stream):
+        await server._mcp_server.run(
+            read_stream,
+            write_stream,
+            server._mcp_server.create_initialization_options(),
+        )
+
+
 def main() -> None:
     logging.basicConfig(stream=__import__("sys").stderr, level=logging.WARNING)
-    create_server().run("stdio")
+    import anyio
+
+    anyio.run(_run_persistent_stdio, create_server())
 
 
 if __name__ == "__main__":
