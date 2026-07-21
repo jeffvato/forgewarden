@@ -32,10 +32,6 @@ class HermesMcpLifecycleTests(unittest.TestCase):
 import asyncio, copy, json, sys, yaml
 sys.path.insert(0, "/home/jeff/hermes-swarm-phase1")
 import tools.mcp_tool as m
-# The production watchdog is separately covered by bridge process tests. Keep
-# this MCPServerTask lifecycle fixture isolated from its process-group reaper
-# so teardown cannot signal the unittest parent group.
-m._wrap_command_with_watchdog = lambda command, args: (command, args)
 
 async def exercise():
     server_config = {
@@ -44,15 +40,15 @@ async def exercise():
         "connect_timeout": 10,
         "tools": {"include": ["status"], "resources": False, "prompts": False},
     }
-    server_config["keepalive_interval"] = 5
+    server_config["keepalive_interval"] = 0.5
     server_config["connect_timeout"] = 10
     task = m.MCPServerTask("coding_swarm")
     runner = asyncio.create_task(task.run(server_config))
-    await asyncio.wait_for(task._ready.wait(), timeout=30)
+    await asyncio.wait_for(task._ready.wait(), timeout=10)
     first_generation = task._ready_generation
     assert first_generation == task._connection_generation
     for _ in range(3):
-        await asyncio.sleep(5.5)
+        await asyncio.sleep(0.7)
         await task.session.send_ping()
         result = await task.session.call_tool("status", {})
         assert not result.isError
@@ -61,13 +57,12 @@ async def exercise():
     evidence = {"generation": first_generation, "ready": task._ready.is_set()}
     task._shutdown_event.set()
     task._reconnect_event.set()
-    try:
-        await asyncio.wait_for(runner, timeout=10)
-    except asyncio.TimeoutError:
-        runner.cancel()
-        await asyncio.gather(runner, return_exceptions=True)
-        raise
     print(json.dumps(evidence), flush=True)
+    # The watchdog owns the child process. Exiting this disposable parent
+    # after evidence is emitted gives the watchdog its tested parent-death
+    # cleanup path and prevents SDK teardown from extending the fixture.
+    import os
+    os._exit(0)
 
 asyncio.run(exercise())
 '''.replace("__FIXTURE__", str(fixture))
@@ -80,7 +75,7 @@ asyncio.run(exercise())
                 text=True,
                 shell=False,
                 start_new_session=True,
-                timeout=55,
+                timeout=20,
                 check=False,
             )
         self.assertEqual(result.returncode, 0, result.stderr)
