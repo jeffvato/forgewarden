@@ -32,6 +32,10 @@ class HermesMcpLifecycleTests(unittest.TestCase):
 import asyncio, copy, json, sys, yaml
 sys.path.insert(0, "/home/jeff/hermes-swarm-phase1")
 import tools.mcp_tool as m
+# The production watchdog is separately covered by bridge process tests. Keep
+# this MCPServerTask lifecycle fixture isolated from its process-group reaper
+# so teardown cannot signal the unittest parent group.
+m._wrap_command_with_watchdog = lambda command, args: (command, args)
 
 async def exercise():
     server_config = {
@@ -57,13 +61,13 @@ async def exercise():
     evidence = {"generation": first_generation, "ready": task._ready.is_set()}
     task._shutdown_event.set()
     task._reconnect_event.set()
-    runner.cancel()
+    try:
+        await asyncio.wait_for(runner, timeout=10)
+    except asyncio.TimeoutError:
+        runner.cancel()
+        await asyncio.gather(runner, return_exceptions=True)
+        raise
     print(json.dumps(evidence), flush=True)
-    # The watchdog owns the child process. Exiting this disposable parent
-    # after evidence is emitted gives the watchdog its tested parent-death
-    # cleanup path and prevents SDK teardown from extending the fixture.
-    import os
-    os._exit(0)
 
 asyncio.run(exercise())
 '''.replace("__FIXTURE__", str(fixture))
@@ -75,6 +79,7 @@ asyncio.run(exercise())
                 stderr=subprocess.PIPE,
                 text=True,
                 shell=False,
+                start_new_session=True,
                 timeout=55,
                 check=False,
             )
@@ -82,6 +87,32 @@ asyncio.run(exercise())
         evidence = json.loads(result.stdout)
         self.assertGreaterEqual(evidence["generation"], 1)
         self.assertTrue(evidence["ready"])
+
+    def test_official_hermes_probe_discovers_five_tools_under_five_seconds(self):
+        env = {
+            "PATH": "/usr/bin:/bin",
+            "PYTHONNOUSERSITE": "1",
+            "HERMES_HOME": "/home/jeff/hermes-swarm-desktop-home",
+        }
+        result = subprocess.run(
+            [
+                "/home/jeff/.local/share/hermes-swarm-desktop-backend/venv/bin/hermes",
+                "mcp",
+                "test",
+                "coding_swarm",
+            ],
+            cwd="/home/jeff/hermes-swarm-phase1",
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            shell=False,
+            timeout=10,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("Connected (", result.stdout)
+        self.assertIn("Tools discovered: 5", result.stdout)
 
     def test_readiness_requires_strictly_newer_generation(self):
         script = r'''

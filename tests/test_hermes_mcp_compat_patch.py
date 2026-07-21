@@ -8,6 +8,9 @@ from tempfile import TemporaryDirectory
 
 from scripts import hermes_mcp_compat_patch as patch
 from scripts import hermes_mcp_generation_patch as generation_patch
+from scripts import hermes_mcp_local_startup_patch as local_startup_patch
+from scripts import hermes_mcp_loop_owner_patch as loop_owner_patch
+from scripts import hermes_mcp_loop_wakeup_patch as wakeup_patch
 
 
 class HermesMcpCompatPatchTests(unittest.TestCase):
@@ -96,7 +99,22 @@ print(json.dumps(asyncio.run(check())))
             )),
             generation_patch.EXPECTED_POSTPATCH_SHA256,
         )
-        self.assertEqual(generation_patch.sha256(source), generation_patch.EXPECTED_POSTPATCH_SHA256)
+        self.assertEqual(
+            generation_patch.sha256(source),
+            wakeup_patch.EXPECTED_POSTPATCH_SHA256,
+        )
+
+    def test_startup_compatibility_chain_has_fixed_hashes(self):
+        source = Path(
+            "/home/jeff/hermes-swarm-desktop-backend-backups/"
+            "mcp_tool.py.backup-20260720T175425Z-local-osv"
+        ).read_bytes()
+        local = local_startup_patch.transform(source)
+        owner = loop_owner_patch.transform(local)
+        wakeup = wakeup_patch.transform(owner)
+        self.assertEqual(local_startup_patch.sha256(local), local_startup_patch.EXPECTED_POSTPATCH_SHA256)
+        self.assertEqual(loop_owner_patch.sha256(owner), loop_owner_patch.EXPECTED_POSTPATCH_SHA256)
+        self.assertEqual(wakeup_patch.sha256(wakeup), wakeup_patch.EXPECTED_POSTPATCH_SHA256)
 
 
 if __name__ == "__main__":

@@ -107,7 +107,7 @@ class WriterWiringValidationTests(unittest.TestCase):
         self.assertEqual(result["changed_files"], ["app/ai/deadline.py"])
         self.assertEqual(normalize_changed_paths(self.spec, result["changed_files"]), ["csv-processor/app/ai/deadline.py"])
         deterministic = subprocess.run(
-            [sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", "tests/swarm_regressions/test_deadline_contract.py"],
+            ["/home/jeff/anaconda3/bin/python3", "-m", "pytest", "-q", "-p", "no:cacheprovider", "tests/swarm_regressions/test_deadline_contract.py"],
             cwd=self.repo / "csv-processor",
             env={"PATH": os.environ["PATH"], "PYTHONDONTWRITEBYTECODE": "1", "PYTEST_ADDOPTS": "-p no:cacheprovider"},
             text=True,
