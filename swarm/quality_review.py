@@ -143,6 +143,23 @@ class _PythonReview(ast.NodeVisitor):
                 rationale="Versioned or temporary names can preserve historical ambiguity, but may be intentional API compatibility.",
                 suggested_action="Trace callers and compatibility requirements before choosing a stable name.",
             )
+        if (
+            not node.name.startswith("_")
+            and len(node.body) == 1
+            and isinstance(node.body[0], ast.Return)
+            and isinstance(node.body[0].value, ast.Attribute)
+            and isinstance(node.body[0].value.value, ast.Name)
+            and node.body[0].value.value.id == "self"
+            and node.body[0].value.attr.startswith("_")
+        ):
+            self.add(
+                category="leaky_abstraction", tier="CAREFUL", confidence="LOW",
+                line=node.lineno, symbol=node.name,
+                summary=f"public method {node.name} directly exposes private storage",
+                evidence=_line(self.source, node.body[0].lineno),
+                rationale="Returning internal storage directly can couple callers to representation details.",
+                suggested_action="Confirm the value is intentionally part of the contract before adding a stable boundary.",
+            )
         if end - node.lineno + 1 > 80:
             self.add(
                 category="structural_bloat", tier="CAREFUL", confidence="HIGH",

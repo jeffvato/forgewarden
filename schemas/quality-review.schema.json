@@ -97,6 +97,7 @@
               "ai_slop",
               "concurrency_risk",
               "duplicate_logic",
+              "leaky_abstraction",
               "n_plus_one_query",
               "naming_rot",
               "nested_ternary",

@@ -135,6 +135,22 @@ def test_quality_review_flags_naming_rot_as_careful(tmp_path):
     assert finding["confidence"] == "LOW"
 
 
+def test_quality_review_flags_private_storage_leak_as_careful(tmp_path):
+    (tmp_path / "model.py").write_text(
+        """\nclass Model:
+    def value(self):
+        return self._value
+""",
+        encoding="utf-8",
+    )
+
+    result = scan_repository(tmp_path)
+    finding = _finding(result, "leaky_abstraction")
+
+    assert finding["tier"] == "CAREFUL"
+    assert finding["confidence"] == "LOW"
+
+
 def test_quality_review_skips_sensitive_and_non_source_files(tmp_path):
     (tmp_path / ".env").write_text("TOKEN=do-not-read\n", encoding="utf-8")
     (tmp_path / "notes.txt").write_text("Certainly, this is prose.\n", encoding="utf-8")
