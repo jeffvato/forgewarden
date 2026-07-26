@@ -221,6 +221,16 @@ def test_quality_review_cli_refuses_symlink_output(tmp_path):
     assert target.read_text(encoding="utf-8") == "preserve\n"
 
 
+def test_quality_review_reports_unreadable_source_instead_of_skipping(tmp_path):
+    (tmp_path / "broken.py").write_bytes(b"def broken():\n\xff\n")
+
+    result = scan_repository(tmp_path)
+    finding = _finding(result, "unreadable_source")
+
+    assert finding["tier"] == "RISKY"
+    assert finding["confidence"] == "HIGH"
+
+
 def test_quality_review_skips_sensitive_and_non_source_files(tmp_path):
     (tmp_path / ".env").write_text("TOKEN=do-not-read\n", encoding="utf-8")
     (tmp_path / "notes.txt").write_text("Certainly, this is prose.\n", encoding="utf-8")

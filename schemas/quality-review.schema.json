@@ -106,6 +106,7 @@
               "silent_failure",
               "stale_state",
               "structural_bloat",
+              "unreadable_source",
               "unbounded_growth",
               "unreachable_code",
               "unused_import"

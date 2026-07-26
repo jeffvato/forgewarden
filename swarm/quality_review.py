@@ -347,7 +347,7 @@ def _scan_text(relative: str, source: str) -> list[dict[str, Any]]:
     return findings
 
 
-def _source_files(root: Path) -> Iterable[tuple[Path, str]]:
+def _source_files(root: Path) -> Iterable[tuple[Path, str, str | None]]:
     root = root.resolve()
     for path in sorted(root.rglob("*")):
         if not path.is_file() or path.is_symlink() or path.suffix.lower() not in SOURCE_SUFFIXES:
@@ -361,9 +361,10 @@ def _source_files(root: Path) -> Iterable[tuple[Path, str]]:
             continue
         try:
             source = path.read_text(encoding="utf-8")
-        except (OSError, UnicodeError):
+        except (OSError, UnicodeError) as exc:
+            yield path, "", redact(str(exc))[:240]
             continue
-        yield path, source
+        yield path, source, None
 
 
 def consolidate_report(report: dict[str, Any]) -> dict[str, Any]:
@@ -416,8 +417,17 @@ def scan_repository(repository: Path) -> dict[str, Any]:
         raise ValueError(f"repository is not a directory: {repository}")
     findings: list[dict[str, Any]] = []
     duplicate_candidates: dict[str, list[tuple[str, int, str]]] = defaultdict(list)
-    for path, source in _source_files(root):
+    for path, source, read_error in _source_files(root):
         relative = path.relative_to(root).as_posix()
+        if read_error is not None:
+            findings.append(_finding(
+                category="unreadable_source", tier="RISKY", confidence="HIGH", file=relative,
+                line=1, summary="source file could not be read as UTF-8",
+                evidence=read_error,
+                rationale="A review that cannot read a source file must not infer that the repository is clean.",
+                suggested_action="Quarantine or decode the file explicitly before continuing automated review.",
+            ))
+            continue
         findings.extend(_scan_text(relative, source))
         if path.suffix.lower() == ".py":
             findings.extend(_scan_python(path, relative, source))
