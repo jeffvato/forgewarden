@@ -2,6 +2,7 @@ import json
 import os
 import subprocess
 import tempfile
+import threading
 import unittest
 from pathlib import Path
 
@@ -137,6 +138,28 @@ class SwarmTests(unittest.TestCase):
             child.unlink()
         runtime.rmdir()
         self.assertTrue(audit.exists())
+
+    def test_audit_records_are_serialized_and_fsynced(self):
+        audit_dir = self.root / "concurrent-audit"
+        audit = audit_dir / "audit.jsonl"
+        job = Job("concurrent-audit-job", "fixture-parser", self.repo, "parser defect")
+        writers = [AuditLog(audit) for _ in range(4)]
+
+        def write_records(writer_index):
+            for record_index in range(10):
+                writers[writer_index].record(job, "concurrent_event", writer=writer_index, record=record_index)
+
+        threads = [threading.Thread(target=write_records, args=(index,)) for index in range(4)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+
+        lines = audit.read_text(encoding="utf-8").splitlines()
+        self.assertEqual(len(lines), 40)
+        self.assertTrue(all(json.loads(line)["event"] == "concurrent_event" for line in lines))
+        self.assertEqual(audit.stat().st_mode & 0o777, 0o600)
+        self.assertEqual((audit_dir / "audit.jsonl.lock").stat().st_mode & 0o777, 0o600)
 
 
 if __name__ == "__main__":

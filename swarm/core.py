@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import fcntl
 import json
 import os
 import re
@@ -114,15 +115,23 @@ class Job:
 class AuditLog:
     def __init__(self, path: Path):
         self.path = path
+        self.lock_path = path.with_name(path.name + ".lock")
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.path.parent.chmod(0o700)
         if self.path.exists():
             self.path.chmod(0o600)
+        self.lock_path.touch(mode=0o600, exist_ok=True)
+        self.lock_path.chmod(0o600)
 
     def record(self, job: Job, event: str, **data: Any) -> None:
         entry = {"timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "job_id": job.job_id, "state": job.state, "event": event, **_audit_data(data)}
-        with self.path.open("a", encoding="utf-8") as handle:
-            handle.write(json.dumps(entry, sort_keys=True) + "\n")
+        with self.lock_path.open("a+", encoding="ascii") as lock:
+            fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+            with self.path.open("a", encoding="utf-8") as handle:
+                handle.write(json.dumps(entry, sort_keys=True) + "\n")
+                handle.flush()
+                os.fsync(handle.fileno())
+            fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
         self.path.chmod(0o600)
 
 
