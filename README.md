@@ -53,12 +53,17 @@ PYTHONPATH=. python3 -m swarm.cli quality-apply-safe \
   --repository /path/to/isolated-worktree \
   --report /tmp/hermes-quality-review.json \
   --check-command "python3 -m pytest -q" \
+  --job-id safe-review-001 \
+  --audit /tmp/hermes-swarm-audit/audit.jsonl \
   --finding-id <safe-finding-id>
 ```
 
 The command reports `APPLIED_VERIFIED` only when the check succeeds. A failed
 or timed-out check restores the exact original bytes and reports
 `ROLLED_BACK_VERIFICATION_FAILED`.
+The audit event records only status, finding IDs, changed-file names, and
+hashes; the command text, output, and source contents are not written to the
+audit log.
 
 ## Boundaries
 

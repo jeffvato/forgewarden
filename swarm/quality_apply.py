@@ -14,6 +14,33 @@ from typing import Any, Iterable
 SAFE_TRANSFORMERS = {"unused_import"}
 
 
+def _assert_audit_path(audit_path: Path) -> Path:
+    path = audit_path.expanduser()
+    if path.is_symlink() or any(parent.is_symlink() for parent in (path.parent, *path.parent.parents)):
+        raise ValueError(f"refusing symlink audit path: {path}")
+    return path
+
+
+def _record_audit(audit_path: Path, job_id: str, root: Path, result: dict[str, Any]) -> None:
+    from .core import AuditLog, Job
+
+    command_hash = hashlib.sha256("\0".join(result["verification"]["command"]).encode("utf-8")).hexdigest()
+    AuditLog(_assert_audit_path(audit_path)).record(
+        Job(job_id, "quality-apply", root, "safe application", state=result["state"]),
+        "safe_application_completed",
+        repository=str(root),
+        applied_finding_ids=result["applied_finding_ids"],
+        changed_files=result["changed_files"],
+        state=result["state"],
+        verification_passed=result["verification"]["passed"],
+        verification_exit_code=result["verification"]["exit_code"],
+        verification_command_sha256=command_hash,
+        rollback_performed=result["rollback_performed"],
+        before_sha256=result["before_sha256"],
+        after_sha256=result["after_sha256"],
+    )
+
+
 def build_safe_application_plan(report: dict[str, Any]) -> dict[str, Any]:
     """Describe eligible SAFE findings without authorizing any mutation."""
     eligible = [
@@ -93,6 +120,9 @@ def apply_safe_findings(
     report: dict[str, Any],
     finding_ids: Iterable[str],
     verification_command: list[str],
+    *,
+    job_id: str,
+    audit_path: Path,
 ) -> dict[str, Any]:
     """Apply only explicit SAFE allowlisted findings in a clean Git worktree.
 
@@ -103,6 +133,9 @@ def apply_safe_findings(
     root = repository.expanduser().resolve()
     if not root.is_dir():
         raise ValueError(f"repository is not a directory: {repository}")
+    if not job_id.strip():
+        raise ValueError("SAFE application requires a non-empty job ID")
+    audit_path = _assert_audit_path(audit_path)
     _assert_isolated_clean_worktree(root)
     if report.get("repository") != str(root):
         raise ValueError("quality report does not belong to this worktree")
@@ -150,9 +183,10 @@ def apply_safe_findings(
             path.chmod(modes[path])
         if _git(root, "status", "--porcelain", "--untracked-files=all").strip():
             raise ValueError("verification failed and SAFE rollback could not restore a clean worktree")
-        return {
+        result = {
             "mode": "SAFE_ONLY_ISOLATED_WORKTREE",
             "state": "ROLLED_BACK_VERIFICATION_FAILED",
+            "job_id": job_id,
             "repository": str(root),
             "applied_finding_ids": [],
             "changed_files": expected,
@@ -160,12 +194,17 @@ def apply_safe_findings(
             "after_sha256": {path.relative_to(root).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest() for path in originals},
             "verification": {"command": verification_command, "passed": False, "exit_code": None if verification is None else verification.returncode},
             "rollback_performed": True,
+            "audit_recorded": False,
             "committed": False,
             "pushed": False,
         }
-    return {
+        _record_audit(audit_path, job_id, root, result)
+        result["audit_recorded"] = True
+        return result
+    result = {
         "mode": "SAFE_ONLY_ISOLATED_WORKTREE",
         "state": "APPLIED_VERIFIED",
+        "job_id": job_id,
         "repository": str(root),
         "applied_finding_ids": [finding["id"] for _, _, finding in operations],
         "changed_files": expected,
@@ -173,9 +212,13 @@ def apply_safe_findings(
         "after_sha256": {path: hashlib.sha256((root / path).read_bytes()).hexdigest() for path in expected},
         "verification": {"command": verification_command, "passed": True, "exit_code": verification.returncode},
         "rollback_performed": False,
+        "audit_recorded": False,
         "committed": False,
         "pushed": False,
     }
+    _record_audit(audit_path, job_id, root, result)
+    result["audit_recorded"] = True
+    return result
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -186,11 +229,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--finding-id", action="append", required=True)
     parser.add_argument("--check-command", required=True, help="shell-free command string used for deterministic verification")
+    parser.add_argument("--job-id", required=True)
+    parser.add_argument("--audit", type=Path, required=True)
     args = parser.parse_args(argv)
     try:
         report = json.loads(args.report.read_text(encoding="utf-8"))
         command = shlex.split(args.check_command)
-        result = apply_safe_findings(args.repository, report, args.finding_id, command)
+        result = apply_safe_findings(args.repository, report, args.finding_id, command, job_id=args.job_id, audit_path=args.audit)
         print(json.dumps(result, indent=2, sort_keys=True))
         return 0 if result["state"] == "APPLIED_VERIFIED" else 1
     except (OSError, ValueError, json.JSONDecodeError) as exc:

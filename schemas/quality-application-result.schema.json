@@ -6,6 +6,7 @@
   "required": [
     "mode",
     "state",
+    "job_id",
     "repository",
     "applied_finding_ids",
     "changed_files",
@@ -13,12 +14,14 @@
     "after_sha256",
     "verification",
     "rollback_performed",
+    "audit_recorded",
     "committed",
     "pushed"
   ],
   "properties": {
     "mode": { "const": "SAFE_ONLY_ISOLATED_WORKTREE" },
     "state": { "enum": ["APPLIED_VERIFIED", "ROLLED_BACK_VERIFICATION_FAILED"] },
+    "job_id": { "type": "string", "minLength": 1 },
     "repository": { "type": "string", "minLength": 1 },
     "applied_finding_ids": { "type": "array", "items": { "type": "string", "pattern": "^[0-9a-f]{16}$" } },
     "changed_files": { "type": "array", "items": { "type": "string", "pattern": "^(?!/).+" } },
@@ -35,6 +38,7 @@
       }
     },
     "rollback_performed": { "type": "boolean" },
+    "audit_recorded": { "const": true },
     "committed": { "const": false },
     "pushed": { "const": false }
   }

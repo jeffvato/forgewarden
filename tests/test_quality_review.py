@@ -416,12 +416,21 @@ def test_safe_apply_changes_only_explicit_unused_import_in_isolated_worktree(tmp
         report,
         [finding["id"]],
         ["python3", "-c", "from pathlib import Path; assert 'import unused' not in Path('module.py').read_text()"],
+        job_id="safe-job-1",
+        audit_path=tmp_path / "audit" / "audit.jsonl",
     )
 
     jsonschema.validate(result, json.loads(APPLICATION_RESULT_SCHEMA.read_text(encoding="utf-8")))
     assert result["committed"] is False
     assert result["state"] == "APPLIED_VERIFIED"
     assert result["verification"]["passed"] is True
+    audit = tmp_path / "audit" / "audit.jsonl"
+    assert audit.stat().st_mode & 0o777 == 0o600
+    audit_entry = json.loads(audit.read_text(encoding="utf-8").strip())
+    assert audit_entry["job_id"] == "safe-job-1"
+    assert audit_entry["event"] == "safe_application_completed"
+    assert audit_entry["verification_passed"] is True
+    assert "command" not in audit_entry
     assert result["changed_files"] == ["module.py"]
     assert "import unused" not in (isolated / "module.py").read_text(encoding="utf-8")
     assert "import unused" in (source_repo / "module.py").read_text(encoding="utf-8")
@@ -442,7 +451,7 @@ def test_safe_apply_rejects_repository_root_and_non_safe_finding(tmp_path):
     finding = _finding(report, "pass_through_wrapper")
 
     with pytest.raises(ValueError, match="isolated Git worktree"):
-        apply_safe_findings(repository, report, [finding["id"]], ["true"])
+        apply_safe_findings(repository, report, [finding["id"]], ["true"], job_id="root-job", audit_path=tmp_path / "audit.jsonl")
 
 
 def test_safe_apply_rolls_back_when_verification_fails(tmp_path):
@@ -462,10 +471,18 @@ def test_safe_apply_rolls_back_when_verification_fails(tmp_path):
     report = scan_repository(isolated)
     finding = _finding(report, "unused_import")
 
-    result = apply_safe_findings(isolated, report, [finding["id"]], ["python3", "-c", "raise SystemExit(7)"])
+    result = apply_safe_findings(
+        isolated,
+        report,
+        [finding["id"]],
+        ["python3", "-c", "raise SystemExit(7)"],
+        job_id="rollback-job",
+        audit_path=tmp_path / "audit" / "audit.jsonl",
+    )
 
     jsonschema.validate(result, json.loads(APPLICATION_RESULT_SCHEMA.read_text(encoding="utf-8")))
     assert result["state"] == "ROLLED_BACK_VERIFICATION_FAILED"
+    assert result["audit_recorded"] is True
     assert result["rollback_performed"] is True
     assert (isolated / "module.py").read_text(encoding="utf-8") == original
     assert subprocess.run(["git", "status", "--porcelain"], cwd=isolated, capture_output=True, text=True, check=True).stdout == ""
