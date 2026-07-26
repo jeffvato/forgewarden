@@ -33,6 +33,22 @@ class FableAdapterTests(unittest.TestCase):
                 with self.assertRaises(f.FableAdapterError):
                     f._reserve(f.FableInvocation("fable-" + "b" * 24, target_usd=35.0))
 
+    def test_budget_reservation_accounts_for_outstanding_reservations(self):
+        with TemporaryDirectory() as temp:
+            ledger = Path(temp) / "budget.json"
+            with patch.object(f, "LEDGER", ledger):
+                f._write_ledger({"version": 1, "hard_budget_usd": 100.0, "spent_usd": 0.0, "reserved_usd": 70.0, "invocations": []})
+                with self.assertRaises(f.FableAdapterError):
+                    f._reserve(f.FableInvocation("fable-" + "b" * 24, target_usd=35.0))
+
+    def test_non_finite_budget_values_fail_closed(self):
+        with TemporaryDirectory() as temp:
+            ledger = Path(temp) / "budget.json"
+            with patch.object(f, "LEDGER", ledger):
+                f._write_ledger({"version": 1, "hard_budget_usd": 100.0, "spent_usd": 0.0, "invocations": []})
+                with self.assertRaises(f.FableAdapterError):
+                    f._reserve(f.FableInvocation("fable-" + "b" * 24, target_usd=float("nan")))
+
     def test_extract_and_validate_structured_result(self):
         job = "fable-" + "c" * 24
         inv = f.FableInvocation(job)

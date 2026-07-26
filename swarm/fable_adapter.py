@@ -10,6 +10,7 @@ from __future__ import annotations
 import fcntl
 import hashlib
 import json
+import math
 import os
 import re
 import subprocess
@@ -119,8 +120,12 @@ def _load_ledger() -> dict[str, Any]:
         value = json.loads(LEDGER.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
         raise FableAdapterError("Fable budget ledger is invalid") from exc
-    if not isinstance(value, dict) or value.get("hard_budget_usd") != HARD_BUDGET_USD or not isinstance(value.get("spent_usd"), (int, float)) or not isinstance(value.get("invocations"), list):
+    if not isinstance(value, dict) or value.get("hard_budget_usd") != HARD_BUDGET_USD or not isinstance(value.get("spent_usd"), (int, float)) or not isinstance(value.get("reserved_usd", 0.0), (int, float)) or not isinstance(value.get("invocations"), list):
         raise FableAdapterError("Fable budget ledger has an invalid contract")
+    spent = float(value["spent_usd"])
+    reserved = float(value.get("reserved_usd", 0.0))
+    if not math.isfinite(spent) or not math.isfinite(reserved) or spent < 0 or reserved < 0 or spent + reserved > HARD_BUDGET_USD + 1e-9:
+        raise FableAdapterError("Fable budget ledger has invalid totals")
     return value
 
 
@@ -140,7 +145,9 @@ def _reserve(invocation: FableInvocation) -> None:
     with lock_path.open("a+", encoding="ascii") as lock:
         fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
         ledger = _load_ledger()
-        remaining = HARD_BUDGET_USD - float(ledger["spent_usd"])
+        if not math.isfinite(invocation.target_usd) or invocation.target_usd <= 0 or invocation.target_usd > HARD_BUDGET_USD:
+            raise FableAdapterError("Fable invocation cap is invalid")
+        remaining = HARD_BUDGET_USD - float(ledger["spent_usd"]) - float(ledger.get("reserved_usd", 0.0))
         if invocation.target_usd > remaining + 1e-9:
             raise FableAdapterError("Fable invocation cap exceeds remaining approved budget")
         ledger["reserved_usd"] = float(ledger.get("reserved_usd", 0.0)) + invocation.target_usd
@@ -148,7 +155,7 @@ def _reserve(invocation: FableInvocation) -> None:
 
 
 def _settle(invocation: FableInvocation, actual_cost: float, state: str) -> None:
-    if actual_cost < 0 or actual_cost > invocation.target_usd + 1e-9:
+    if not math.isfinite(actual_cost) or actual_cost < 0 or actual_cost > invocation.target_usd + 1e-9:
         raise FableAdapterError("Fable reported cost exceeds the invocation cap")
     lock_path = LEDGER.with_suffix(".lock")
     with lock_path.open("a+", encoding="ascii") as lock:
@@ -198,13 +205,14 @@ def _validate(payload: dict[str, Any], invocation: FableInvocation) -> None:
         raise FableAdapterError("Fable structured result failed schema validation") from exc
     if payload["job_id"] != invocation.job_id or payload["model"] != MODEL:
         raise FableAdapterError("Fable job or model binding mismatch")
-    if float(payload["total_cost_usd"]) > invocation.target_usd + 1e-9:
+    actual_cost = float(payload["total_cost_usd"])
+    if not math.isfinite(actual_cost) or actual_cost > invocation.target_usd + 1e-9:
         raise FableAdapterError("Fable reported cost exceeds configured task cap")
 
 
 def run_fable(invocation: FableInvocation | None = None, *, context: str | None = None) -> dict[str, Any]:
     invocation = invocation or FableInvocation(job_id=_new_job_id())
-    if invocation.model != MODEL or not JOB_RE.fullmatch(invocation.job_id) or invocation.target_usd <= 0 or invocation.target_usd > HARD_BUDGET_USD:
+    if invocation.model != MODEL or not JOB_RE.fullmatch(invocation.job_id) or not math.isfinite(invocation.target_usd) or invocation.target_usd <= 0 or invocation.target_usd > HARD_BUDGET_USD:
         raise FableAdapterError("invalid Fable invocation specification")
     if not CLAUDE.is_file() or not os.access(CLAUDE, os.X_OK):
         raise FableAdapterError("Claude CLI is unavailable")
