@@ -12,6 +12,7 @@ from swarm.quality_apply import apply_safe_findings, build_safe_application_plan
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA = ROOT / "schemas" / "quality-review.schema.json"
+APPLICATION_PLAN_SCHEMA = ROOT / "schemas" / "quality-application-plan.schema.json"
 
 
 def _finding(result, category):
@@ -369,15 +370,16 @@ def test_application_gate_requires_human_for_risky_findings():
 def test_safe_application_plan_is_explicit_and_allowlisted():
     report = {
         "findings": [
-            {"id": "safe-id", "tier": "SAFE", "category": "unused_import"},
-            {"id": "risky-id", "tier": "RISKY", "category": "silent_failure"},
+            {"id": "a" * 16, "tier": "SAFE", "category": "unused_import"},
+            {"id": "b" * 16, "tier": "RISKY", "category": "silent_failure"},
         ]
     }
 
     plan = build_safe_application_plan(report)
 
-    assert plan["eligible_finding_ids"] == ["safe-id"]
-    assert plan["blocked_finding_ids"] == ["risky-id"]
+    jsonschema.validate(plan, json.loads(APPLICATION_PLAN_SCHEMA.read_text(encoding="utf-8")))
+    assert plan["eligible_finding_ids"] == ["a" * 16]
+    assert plan["blocked_finding_ids"] == ["b" * 16]
     assert plan["requires_explicit_invocation"] is True
     assert plan["mutation_allowed"] is False
 
@@ -386,7 +388,10 @@ def test_application_gate_requires_tests_for_careful_findings():
     report = {"counts": {"SAFE": 0, "CAREFUL": 1, "RISKY": 0}}
 
     assert evaluate_application_gate(report)["decision"] == "HUMAN_REQUIRED"
-    assert evaluate_application_gate(report, tests_added_or_changed=["test.py"])["decision"] == "ALLOW_DRY_RUN"
+    assert evaluate_application_gate(report, tests_added_or_changed=["test.py"])["decision"] == "HUMAN_REQUIRED"
+    assert evaluate_application_gate(
+        report, tests_added_or_changed=["test.py"], changed_files=["module.py", "test.py"]
+    )["decision"] == "ALLOW_DRY_RUN"
 
 
 def test_safe_apply_changes_only_explicit_unused_import_in_isolated_worktree(tmp_path):

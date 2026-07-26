@@ -47,6 +47,11 @@ changes files in that isolated worktree only; it does not commit, push, deploy,
 or restart anything. A deterministic test run and human review remain required
 before any later application step.
 
+The application plan is validated by `schemas/quality-application-plan.schema.json`.
+For CAREFUL findings, the orchestrator compares Codex's
+`tests_added_or_changed` list against its verified changed-file list; a test
+name that is not actually changed cannot satisfy the gate.
+
 During an orchestrated dry-run, the report is also supplied to Gemini as
 read-only evidence. The final application gate is mechanical: any RISKY
 finding produces `AWAITING_JEFF`, while CAREFUL findings require at least one

@@ -459,6 +459,7 @@ def evaluate_application_gate(
     report: dict[str, Any],
     *,
     tests_added_or_changed: Iterable[str] = (),
+    changed_files: Iterable[str] = (),
 ) -> dict[str, Any]:
     """Return the mechanical disposition for a proposed isolated repair.
 
@@ -471,6 +472,8 @@ def evaluate_application_gate(
     risky = int(counts.get("RISKY", 0))
     careful = int(counts.get("CAREFUL", 0))
     tests = tuple(str(item) for item in tests_added_or_changed if str(item).strip())
+    changed = {str(item) for item in changed_files if str(item).strip()}
+    unmatched_tests = sorted(set(tests) - changed)
     if risky:
         return {
             "decision": "HUMAN_REQUIRED",
@@ -479,15 +482,19 @@ def evaluate_application_gate(
             "tests_required": False,
             "risky_findings": risky,
             "careful_findings": careful,
+            "tests_claimed": list(tests),
+            "tests_unmatched": unmatched_tests,
         }
-    if careful and not tests:
+    if careful and (not tests or unmatched_tests):
         return {
             "decision": "HUMAN_REQUIRED",
-            "reason": "CAREFUL findings have no Codex-listed test change",
+            "reason": "CAREFUL findings lack a test path in Codex's changed-file set",
             "mutation_allowed": False,
             "tests_required": True,
             "risky_findings": 0,
             "careful_findings": careful,
+            "tests_claimed": list(tests),
+            "tests_unmatched": unmatched_tests,
         }
     return {
         "decision": "ALLOW_DRY_RUN",
@@ -496,6 +503,8 @@ def evaluate_application_gate(
         "tests_required": bool(careful),
         "risky_findings": 0,
         "careful_findings": careful,
+        "tests_claimed": list(tests),
+        "tests_unmatched": unmatched_tests,
     }
 
 

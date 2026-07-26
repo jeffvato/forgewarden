@@ -25,6 +25,7 @@ def build_safe_application_plan(report: dict[str, Any]) -> dict[str, Any]:
         if item.get("id") not in eligible
     ]
     return {
+        "schema_version": "1",
         "mode": "EXPLICIT_SAFE_ONLY",
         "eligible_finding_ids": eligible,
         "blocked_finding_ids": blocked,

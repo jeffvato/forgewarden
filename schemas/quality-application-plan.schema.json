@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SafeApplicationPlan",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "mode",
+    "eligible_finding_ids",
+    "blocked_finding_ids",
+    "mutation_allowed",
+    "requires_explicit_invocation",
+    "committed",
+    "pushed"
+  ],
+  "properties": {
+    "schema_version": { "const": "1" },
+    "mode": { "const": "EXPLICIT_SAFE_ONLY" },
+    "eligible_finding_ids": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^[0-9a-f]{16}$" },
+      "uniqueItems": true
+    },
+    "blocked_finding_ids": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^[0-9a-f]{16}$" },
+      "uniqueItems": true
+    },
+    "mutation_allowed": { "const": false },
+    "requires_explicit_invocation": { "const": true },
+    "committed": { "const": false },
+    "pushed": { "const": false }
+  }
+}

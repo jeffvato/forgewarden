@@ -324,6 +324,7 @@ class Orchestrator:
                 quality_gate = evaluate_application_gate(
                     quality_review,
                     tests_added_or_changed=codex_result["tests_added_or_changed"],
+                    changed_files=codex_result["changed_files"],
                 )
                 self.audit.record(
                     job,
