@@ -118,6 +118,47 @@ def _unused_import_operation(root: Path, finding: dict[str, Any]) -> tuple[Path,
     return path, lines[: line_number - 1] + lines[line_number:]
 
 
+def _rollback_result(
+    *,
+    audit_path: Path,
+    job_id: str,
+    root: Path,
+    approval: dict[str, Any],
+    originals: dict[Path, bytes],
+    modes: dict[Path, int],
+    expected: list[str],
+    verification_command: list[str],
+    verification_exit_code: int | None,
+) -> dict[str, Any]:
+    """Restore original bytes/modes and record a failed post-approval attempt."""
+    for path, data in originals.items():
+        path.write_bytes(data)
+        path.chmod(modes[path])
+    if _git(root, "status", "--porcelain", "--untracked-files=all").strip():
+        raise ValueError("SAFE rollback could not restore a clean worktree")
+    result = {
+        "mode": "SAFE_ONLY_ISOLATED_WORKTREE",
+        "state": "ROLLED_BACK_VERIFICATION_FAILED",
+        "job_id": job_id,
+        "approval_id": approval["approval_id"],
+        "approval_consumed": approval["consumed"],
+        "approval_evidence_sha256": approval["evidence_sha256"],
+        "repository": str(root),
+        "applied_finding_ids": [],
+        "changed_files": expected,
+        "before_sha256": {path.relative_to(root).as_posix(): hashlib.sha256(data).hexdigest() for path, data in originals.items()},
+        "after_sha256": {path.relative_to(root).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest() for path in originals},
+        "verification": {"command": verification_command, "passed": False, "exit_code": verification_exit_code},
+        "rollback_performed": True,
+        "audit_recorded": False,
+        "committed": False,
+        "pushed": False,
+    }
+    _record_audit(audit_path, job_id, root, result)
+    result["audit_recorded"] = True
+    return result
+
+
 def apply_safe_findings(
     repository: Path,
     report: dict[str, Any],
@@ -166,67 +207,54 @@ def apply_safe_findings(
     modes: dict[Path, int] = {path: path.stat().st_mode for path in originals}
     from .approval import verify_approval
 
+    expected = sorted({path.relative_to(root).as_posix() for path, _, _ in operations})
     approval = verify_approval(
         approval_path,
         approval_evidence_path,
         expected_job_id=job_id,
         consume=True,
     )
-    # Each operation was validated against the original file.  Apply all
-    # removals for a file in one pass so a second finding cannot overwrite the
-    # first finding's edit with a stale snapshot.
-    removals: dict[Path, set[int]] = {}
-    for path, _, finding in operations:
-        removals.setdefault(path, set()).add(finding["line"])
-    for path, line_numbers in removals.items():
-        source_lines = path.read_text(encoding="utf-8").splitlines(keepends=True)
-        path.write_text(
-            "".join(line for number, line in enumerate(source_lines, 1) if number not in line_numbers),
-            encoding="utf-8",
-        )
-    changed = _git(root, "diff", "--name-only").splitlines()
-    expected = sorted({path.relative_to(root).as_posix() for path, _, _ in operations})
-    if sorted(changed) != expected:
-        raise ValueError("SAFE application changed an unexpected file set")
     try:
-        verification = subprocess.run(
-            verification_command,
-            cwd=root,
-            text=True,
-            capture_output=True,
-            check=False,
-            timeout=60,
-            env={"PATH": os.environ.get("PATH", ""), "PYTHONPATH": os.environ.get("PYTHONPATH", "")},
+        # Each operation was validated against the original file. Apply all
+        # removals for a file in one pass so a later edit cannot restore an
+        # earlier edit from a stale snapshot.
+        removals: dict[Path, set[int]] = {}
+        for path, _, finding in operations:
+            removals.setdefault(path, set()).add(finding["line"])
+        for path, line_numbers in removals.items():
+            source_lines = path.read_text(encoding="utf-8").splitlines(keepends=True)
+            path.write_text(
+                "".join(line for number, line in enumerate(source_lines, 1) if number not in line_numbers),
+                encoding="utf-8",
+            )
+        changed = _git(root, "diff", "--name-only").splitlines()
+        if sorted(changed) != expected:
+            raise ValueError("SAFE application changed an unexpected file set")
+        try:
+            verification = subprocess.run(
+                verification_command,
+                cwd=root,
+                text=True,
+                capture_output=True,
+                check=False,
+                timeout=60,
+                env={"PATH": os.environ.get("PATH", ""), "PYTHONPATH": os.environ.get("PYTHONPATH", "")},
+            )
+        except subprocess.TimeoutExpired:
+            verification = None
+        if verification is None or verification.returncode != 0:
+            return _rollback_result(
+                audit_path=audit_path, job_id=job_id, root=root, approval=approval,
+                originals=originals, modes=modes, expected=expected,
+                verification_command=verification_command,
+                verification_exit_code=None if verification is None else verification.returncode,
+            )
+    except Exception:
+        return _rollback_result(
+            audit_path=audit_path, job_id=job_id, root=root, approval=approval,
+            originals=originals, modes=modes, expected=expected,
+            verification_command=verification_command, verification_exit_code=None,
         )
-    except subprocess.TimeoutExpired:
-        verification = None
-    if verification is None or verification.returncode != 0:
-        for path, data in originals.items():
-            path.write_bytes(data)
-            path.chmod(modes[path])
-        if _git(root, "status", "--porcelain", "--untracked-files=all").strip():
-            raise ValueError("verification failed and SAFE rollback could not restore a clean worktree")
-        result = {
-            "mode": "SAFE_ONLY_ISOLATED_WORKTREE",
-            "state": "ROLLED_BACK_VERIFICATION_FAILED",
-            "job_id": job_id,
-            "approval_id": approval["approval_id"],
-            "approval_consumed": approval["consumed"],
-            "approval_evidence_sha256": approval["evidence_sha256"],
-            "repository": str(root),
-            "applied_finding_ids": [],
-            "changed_files": expected,
-            "before_sha256": {path.relative_to(root).as_posix(): hashlib.sha256(data).hexdigest() for path, data in originals.items()},
-            "after_sha256": {path.relative_to(root).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest() for path in originals},
-            "verification": {"command": verification_command, "passed": False, "exit_code": None if verification is None else verification.returncode},
-            "rollback_performed": True,
-            "audit_recorded": False,
-            "committed": False,
-            "pushed": False,
-        }
-        _record_audit(audit_path, job_id, root, result)
-        result["audit_recorded"] = True
-        return result
     result = {
         "mode": "SAFE_ONLY_ISOLATED_WORKTREE",
         "state": "APPLIED_VERIFIED",

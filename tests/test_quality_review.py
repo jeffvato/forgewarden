@@ -2,6 +2,7 @@ import json
 import os
 import subprocess
 from pathlib import Path
+from unittest.mock import patch
 
 import jsonschema
 import pytest
@@ -515,6 +516,44 @@ def test_safe_apply_removes_multiple_findings_from_one_file_without_losing_edits
     assert "unused_one" not in text
     assert "unused_two" not in text
     assert "def ok" in text
+
+
+def test_safe_apply_rolls_back_and_audits_when_mutation_fails_after_approval(tmp_path):
+    source_repo = tmp_path / "source"
+    source_repo.mkdir()
+    original = "import unused\n\ndef ok():\n    return True\n"
+    (source_repo / "module.py").write_text(original, encoding="utf-8")
+    subprocess.run(["git", "init", "-q", "-b", "main"], cwd=source_repo, check=True)
+    subprocess.run(["git", "add", "."], cwd=source_repo, check=True)
+    subprocess.run(
+        ["git", "-c", "user.name=fixture", "-c", "user.email=fixture@example.test", "commit", "-qm", "initial"],
+        cwd=source_repo,
+        check=True,
+    )
+    isolated = tmp_path / "isolated"
+    subprocess.run(["git", "worktree", "add", "--detach", "-q", str(isolated), "HEAD"], cwd=source_repo, check=True)
+    report = scan_repository(isolated)
+    finding = _finding(report, "unused_import")
+    approval_path, approval_evidence_path = _approval(tmp_path, "mutation-failure-job")
+
+    with patch.object(Path, "write_text", side_effect=OSError("simulated mutation failure")):
+        result = apply_safe_findings(
+            isolated,
+            report,
+            [finding["id"]],
+            ["true"],
+            job_id="mutation-failure-job",
+            audit_path=tmp_path / "audit" / "audit.jsonl",
+            approval_path=approval_path,
+            approval_evidence_path=approval_evidence_path,
+        )
+
+    jsonschema.validate(result, json.loads(APPLICATION_RESULT_SCHEMA.read_text(encoding="utf-8")))
+    assert result["state"] == "ROLLED_BACK_VERIFICATION_FAILED"
+    assert result["approval_consumed"] is True
+    assert result["audit_recorded"] is True
+    assert (isolated / "module.py").read_text(encoding="utf-8") == original
+    assert subprocess.run(["git", "status", "--porcelain"], cwd=isolated, capture_output=True, text=True, check=True).stdout == ""
 
 
 def test_safe_apply_rejects_repository_root_and_non_safe_finding(tmp_path):
