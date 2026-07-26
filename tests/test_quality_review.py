@@ -253,6 +253,8 @@ def test_quality_review_reports_unreadable_source_instead_of_skipping(tmp_path):
     result = scan_repository(tmp_path)
     finding = _finding(result, "unreadable_source")
 
+    assert result["source_files_scanned"] == 1
+    assert result["source_files_read"] == 0
     assert finding["tier"] == "RISKY"
     assert finding["confidence"] == "HIGH"
 
