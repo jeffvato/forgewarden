@@ -31,7 +31,8 @@ class SwarmTests(unittest.TestCase):
 
     def run_job(self, evidence="parser defect"):
         state = self.root / "state"
-        return Orchestrator(state).run(Job("job-1", "fixture-parser", self.repo, evidence), ["python3", str(self.codex)], ["python3", "-m", "unittest", "test_parser.py"], ["python3", str(self.gemini)])
+        check = ["python3", "-c", "from parser import parse; assert parse(' X ') == 'x'"]
+        return Orchestrator(state).run(Job("job-1", "fixture-parser", self.repo, evidence), ["python3", str(self.codex)], check, ["python3", str(self.gemini)])
 
     def test_disposable_fixture_dry_run_succeeds(self):
         result = self.run_job()
