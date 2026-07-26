@@ -20,7 +20,7 @@ from typing import Any, Protocol
 
 from .adapters import CodexAdapter, GeminiAdapter, ResourceLimits, WriterInvocationSpec, limited_run, normalize_changed_paths
 from .baseline import DeterministicInterpreterError, _deadline_test_command, _introduce_deadline_defect, _tracked_test_hashes, _trusted_synthetic_commit, enforce_diff_gate, scan_baseline_tree, scan_git_blobs, validate_deterministic_interpreter
-from .core import AuditLog, Job, SwarmError, redact, run_command, validate_contract
+from .core import AuditLog, Job, SwarmError, redact, run_command, touch_restricted, validate_contract, write_restricted_text
 from .paths import audit_path, project_root, runtime_root
 
 PROFILE_ID = "csv_deadline_dry_run_v1"
@@ -185,8 +185,7 @@ def workflow_status(runtime_root: Path = DEFAULT_RUNTIME) -> dict[str, Any]:
 
 def set_activation(enabled: bool, runtime_root: Path = DEFAULT_RUNTIME) -> None:
     path = _runtime_file(runtime_root, ACTIVATION_FILE, create_root=True)
-    path.write_text("ENABLED\n" if enabled else "DISABLED\n", encoding="ascii")
-    path.chmod(0o600)
+    write_restricted_text(path, "ENABLED\n" if enabled else "DISABLED\n", "Phase 2A activation marker")
 
 
 def _repo_head_and_clean(profile: Profile) -> str:
@@ -517,7 +516,7 @@ def recover_abandoned(runtime_root: Path = DEFAULT_RUNTIME, audit_path: Path = D
         if not _deployment_disabled(runtime_root):
             raise SwarmError("deployment must be disabled for orphaned lock recovery")
         audit = AuditLog(audit_path)
-        _runtime_file(runtime_root, "KILL_SWITCH").touch(mode=0o600, exist_ok=True)
+        touch_restricted(_runtime_file(runtime_root, "KILL_SWITCH"), "Phase 2A kill switch")
         set_activation(False, runtime_root)
         lock_path.unlink()
         audit.record(Job("phase2a-orphan-lock-recovery", PROFILE_ID, REPOSITORY, "orphaned admission lock recovery"), "orphan_lock_recovered", reason="lock owner is not alive and no state was committed")
@@ -529,7 +528,7 @@ def recover_abandoned(runtime_root: Path = DEFAULT_RUNTIME, audit_path: Path = D
         return
     job = _job_from_state(state)
     audit = AuditLog(audit_path)
-    _runtime_file(runtime_root, "KILL_SWITCH").touch(mode=0o600, exist_ok=True)
+    touch_restricted(_runtime_file(runtime_root, "KILL_SWITCH"), "Phase 2A kill switch")
     set_activation(False, runtime_root)
     _transition(runtime_root, audit, job, "ABANDONED", recovery_reason="expired heartbeat and no live verified worker")
     _runtime_file(runtime_root, LOCK_FILE).unlink(missing_ok=True)
@@ -571,7 +570,7 @@ def recover_terminal_abandoned(runtime_root: Path = DEFAULT_RUNTIME, audit_path:
 
 def engage_kill_switch(runtime_root: Path = DEFAULT_RUNTIME, audit_path: Path = DEFAULT_AUDIT) -> dict[str, str]:
     """Engage the switch and cancel only the verified Phase 2A worker."""
-    _runtime_file(runtime_root, "KILL_SWITCH", create_root=True).touch(mode=0o600, exist_ok=True)
+    touch_restricted(_runtime_file(runtime_root, "KILL_SWITCH", create_root=True), "Phase 2A kill switch")
     set_activation(False, runtime_root)
     state = _read_state(runtime_root)
     if state.get("state") in {"QUEUED", "RUNNING"}:
@@ -650,12 +649,12 @@ def run_preapproved_job(
         return _safe_job_result(job_id, "QUEUED", deterministic="QUEUED")
     except Exception:
         if cleared_for_job and not worker_owns_lock:
-            _runtime_file(runtime_root, "KILL_SWITCH", create_root=True).touch(mode=0o600, exist_ok=True)
+            touch_restricted(_runtime_file(runtime_root, "KILL_SWITCH", create_root=True), "Phase 2A kill switch")
             set_activation(False, runtime_root)
         raise
     finally:
         if cleared_for_job and not worker_owns_lock:
-            _runtime_file(runtime_root, "KILL_SWITCH", create_root=True).touch(mode=0o600, exist_ok=True)
+            touch_restricted(_runtime_file(runtime_root, "KILL_SWITCH", create_root=True), "Phase 2A kill switch")
             set_activation(False, runtime_root)
         if not worker_owns_lock:
             _runtime_file(runtime_root, LOCK_FILE).unlink(missing_ok=True)
@@ -808,7 +807,7 @@ def run_worker_job(job_id: str, *, runtime_root: Path = DEFAULT_RUNTIME, audit_p
     finally:
         stop_heartbeat.set()
         thread.join(timeout=2)
-        _runtime_file(runtime_root, "KILL_SWITCH", create_root=True).touch(mode=0o600, exist_ok=True)
+        touch_restricted(_runtime_file(runtime_root, "KILL_SWITCH", create_root=True), "Phase 2A kill switch")
         set_activation(False, runtime_root)
         current = _read_state(runtime_root)
         if current.get("job_id") == job_id and current.get("state") not in {"CANCELLED", "ABANDONED"}:

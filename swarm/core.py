@@ -138,6 +138,21 @@ def write_restricted_text(path: Path, content: str, label: str) -> None:
     path.chmod(0o600)
 
 
+def touch_restricted(path: Path, label: str) -> None:
+    """Create a mode-0600 marker without following a symlink."""
+    _reject_symlink_path(path, label)
+    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    path.parent.chmod(0o700)
+    _reject_symlink_path(path, label)
+    flags = os.O_WRONLY | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        descriptor = os.open(path, flags, 0o600)
+    except OSError as exc:
+        raise SwarmError(f"unable to create {label} safely: {path}") from exc
+    os.close(descriptor)
+    path.chmod(0o600)
+
+
 def validate_snapshot_symlinks(snapshot: Path) -> None:
     """Permit only symlinks whose targets remain inside the disposable snapshot."""
     root = snapshot.resolve()

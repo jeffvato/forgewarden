@@ -30,8 +30,9 @@ guidance without changing runtime files. Use the separate guarded recovery
 command only after reviewing its output and safety prerequisites.
 All Phase 2A runtime roots and marker/state files must be local regular paths;
 symlinked roots or markers are rejected before reads, writes, lock acquisition,
-or recovery. Runtime state is kept separate from the repository and is not
-checked into Git.
+or recovery. Activation and kill-switch markers are created with no-follow,
+mode-`0600` operations. Runtime state is kept separate from the repository and
+is not checked into Git.
 `start` only marks the dry-run controller as started; it launches no daemon.
 `dry-run` creates a disposable fixture, invokes the real local adapters, and
 records audit state under ignored runtime directories.
