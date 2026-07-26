@@ -27,7 +27,7 @@ class SwarmTests(unittest.TestCase):
         self.codex = self.scripts / "codex.py"
         self.codex.write_text("""import json, pathlib, subprocess\np=pathlib.Path('parser.py')\np.write_text(p.read_text().replace('return value.strip()', 'return value.strip().lower()'))\npathlib.Path('.swarm').mkdir()\nsubprocess.run(['git','add','parser.py'])\nsubprocess.run(['git','-c','user.name=codex','-c','user.email=codex@example.test','commit','-qm','repair'])\njson.dump({'job_id': 'job-1', 'status':'FIXED','root_cause':'parser omitted normalization','summary':'normalize parser output','changed_files':['parser.py'],'tests_added_or_changed':[],'commands_run':[{'command':'fixture repair','exit_code':0}],'remaining_risks':[],'requires_human_approval':False}, open('.swarm/codex-result.json','w'))\n""", encoding="utf-8")
         self.gemini = self.scripts / "gemini.py"
-        self.gemini.write_text("""import json, os, pathlib\npathlib.Path('.swarm').mkdir(exist_ok=True)\nassert pathlib.Path('.swarm/quality-review.json').is_file()\njson.dump({'job_id':'job-1','reviewed_commit':os.environ['SWARM_REVIEWED_COMMIT'],'verdict':'APPROVE','risk':'LOW','blocking_findings':[],'non_blocking_notes':[],'tests_missing':[],'reasoning_summary':'fixture patch is narrow and tested','proposed_rules':[]}, open('.swarm/gemini-review.json','w'))\n""", encoding="utf-8")
+        self.gemini.write_text("""import json, os, pathlib\npathlib.Path('.swarm').mkdir(exist_ok=True)\nassert pathlib.Path('.swarm/quality-review.json').is_file()\nassert pathlib.Path('.swarm/quality-application-plan.json').is_file()\njson.dump({'job_id':'job-1','reviewed_commit':os.environ['SWARM_REVIEWED_COMMIT'],'verdict':'APPROVE','risk':'LOW','blocking_findings':[],'non_blocking_notes':[],'tests_missing':[],'reasoning_summary':'fixture patch is narrow and tested','proposed_rules':[]}, open('.swarm/gemini-review.json','w'))\n""", encoding="utf-8")
 
     def run_job(self, evidence="parser defect"):
         state = self.root / "state"
@@ -40,6 +40,8 @@ class SwarmTests(unittest.TestCase):
         self.assertEqual(result["quality_review"]["mode"], "READ_ONLY")
         self.assertFalse(result["quality_review"]["auto_apply_enabled"])
         self.assertEqual(result["quality_gate"]["decision"], "ALLOW_DRY_RUN")
+        self.assertTrue(result["safe_application_plan"]["requires_explicit_invocation"])
+        self.assertEqual(result["safe_application_plan"]["eligible_finding_ids"], [])
         self.assertRegex(result["commit"], r"^[0-9a-f]{40}$")
         self.assertFalse((self.repo / "parser.py").read_text().endswith("lower()\n"))
         self.assertTrue((self.root / "state/audit.jsonl").exists())

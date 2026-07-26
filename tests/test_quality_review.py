@@ -7,7 +7,7 @@ import jsonschema
 import pytest
 
 from swarm.quality_review import consolidate_report, evaluate_application_gate, scan_repository
-from swarm.quality_apply import apply_safe_findings
+from swarm.quality_apply import apply_safe_findings, build_safe_application_plan
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -364,6 +364,22 @@ def test_application_gate_requires_human_for_risky_findings():
 
     assert gate["decision"] == "HUMAN_REQUIRED"
     assert gate["mutation_allowed"] is False
+
+
+def test_safe_application_plan_is_explicit_and_allowlisted():
+    report = {
+        "findings": [
+            {"id": "safe-id", "tier": "SAFE", "category": "unused_import"},
+            {"id": "risky-id", "tier": "RISKY", "category": "silent_failure"},
+        ]
+    }
+
+    plan = build_safe_application_plan(report)
+
+    assert plan["eligible_finding_ids"] == ["safe-id"]
+    assert plan["blocked_finding_ids"] == ["risky-id"]
+    assert plan["requires_explicit_invocation"] is True
+    assert plan["mutation_allowed"] is False
 
 
 def test_application_gate_requires_tests_for_careful_findings():

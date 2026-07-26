@@ -309,6 +309,7 @@ class Orchestrator:
                     job.state = "FAILED"
                     self.audit.record(job, "deterministic_check_failed", output=redact(checks.stdout + checks.stderr))
                     return {"job_id": job.job_id, "state": job.state, "reason": "deterministic check failed"}
+                from .quality_apply import build_safe_application_plan
                 from .quality_review import evaluate_application_gate, scan_repository
 
                 quality_review = scan_repository(worktree)
@@ -332,6 +333,14 @@ class Orchestrator:
                     risky_findings=quality_gate["risky_findings"],
                     careful_findings=quality_gate["careful_findings"],
                 )
+                safe_application_plan = build_safe_application_plan(quality_review)
+                self.audit.record(
+                    job,
+                    "safe_application_plan_created",
+                    eligible_finding_count=len(safe_application_plan["eligible_finding_ids"]),
+                    blocked_finding_count=len(safe_application_plan["blocked_finding_ids"]),
+                    requires_explicit_invocation=safe_application_plan["requires_explicit_invocation"],
+                )
                 commit = self._git(worktree, "rev-parse", "HEAD")
                 snapshot = Path(tempfile.mkdtemp(prefix=f"review-{job.job_id}-", dir=self.state_dir))
                 # A separate checkout is created from the exact commit; Gemini never receives the writer worktree.
@@ -345,6 +354,9 @@ class Orchestrator:
                 quality_report_path = output_dir / "quality-review.json"
                 quality_report_path.write_text(json.dumps(quality_review, indent=2, sort_keys=True) + "\n", encoding="utf-8")
                 quality_report_path.chmod(0o600)
+                plan_path = output_dir / "quality-application-plan.json"
+                plan_path.write_text(json.dumps(safe_application_plan, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+                plan_path.chmod(0o600)
                 for item in snapshot.rglob("*"):
                     if item == output_dir or output_dir in item.parents:
                         continue
@@ -365,7 +377,7 @@ class Orchestrator:
                 if checks.returncode or gemini["verdict"] != "APPROVE" or gemini["risk"] != "LOW":
                     job.state = "AWAITING_JEFF" if gemini["verdict"] == "HUMAN_REQUIRED" else "REVISION_REQUIRED"
                     self.audit.record(job, "review_not_approved", verdict=gemini["verdict"], risk=gemini["risk"])
-                    return {"job_id": job.job_id, "state": job.state, "commit": commit, "gemini": gemini, "quality_review": quality_review, "quality_gate": quality_gate}
+                    return {"job_id": job.job_id, "state": job.state, "commit": commit, "gemini": gemini, "quality_review": quality_review, "quality_gate": quality_gate, "safe_application_plan": safe_application_plan}
                 if quality_gate["decision"] != "ALLOW_DRY_RUN":
                     job.state = "AWAITING_JEFF"
                     self.audit.record(
@@ -374,13 +386,13 @@ class Orchestrator:
                         decision=quality_gate["decision"],
                         reason=quality_gate["reason"],
                     )
-                    return {"job_id": job.job_id, "state": job.state, "commit": commit, "gemini": gemini, "quality_review": quality_review, "quality_gate": quality_gate}
+                    return {"job_id": job.job_id, "state": job.state, "commit": commit, "gemini": gemini, "quality_review": quality_review, "quality_gate": quality_gate, "safe_application_plan": safe_application_plan}
                 if gemini["proposed_rules"]:
                     decision = self.rules.propose(gemini["proposed_rules"][0], job)
                     self.audit.record(job, "learned_rule_decision", decision=decision)
                 job.state = "READY_TO_DEPLOY" if not self.dry_run else "SUCCEEDED"
                 self.audit.record(job, "dry_run_succeeded", commit=commit)
-                return {"job_id": job.job_id, "state": job.state, "commit": commit, "base": base, "gemini": gemini, "quality_review": quality_review, "quality_gate": quality_gate}
+                return {"job_id": job.job_id, "state": job.state, "commit": commit, "base": base, "gemini": gemini, "quality_review": quality_review, "quality_gate": quality_gate, "safe_application_plan": safe_application_plan}
             finally:
                 cleanup = run_command(["git", "worktree", "remove", "--force", str(worktree)], job.repository)
                 if cleanup.returncode:

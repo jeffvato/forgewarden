@@ -12,6 +12,29 @@ from typing import Any, Iterable
 SAFE_TRANSFORMERS = {"unused_import"}
 
 
+def build_safe_application_plan(report: dict[str, Any]) -> dict[str, Any]:
+    """Describe eligible SAFE findings without authorizing any mutation."""
+    eligible = [
+        item["id"]
+        for item in report.get("findings", [])
+        if item.get("tier") == "SAFE" and item.get("category") in SAFE_TRANSFORMERS
+    ]
+    blocked = [
+        item["id"]
+        for item in report.get("findings", [])
+        if item.get("id") not in eligible
+    ]
+    return {
+        "mode": "EXPLICIT_SAFE_ONLY",
+        "eligible_finding_ids": eligible,
+        "blocked_finding_ids": blocked,
+        "mutation_allowed": False,
+        "requires_explicit_invocation": True,
+        "committed": False,
+        "pushed": False,
+    }
+
+
 def _git(root: Path, *args: str) -> str:
     result = subprocess.run(
         ["git", *args], cwd=root, text=True, capture_output=True, check=False,
