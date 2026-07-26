@@ -82,14 +82,23 @@ def ensure_private_directory(path: Path, label: str) -> Path:
     return path
 
 
+def read_restricted_bytes(path: Path, label: str) -> bytes:
+    """Read a regular file through a no-follow descriptor."""
+    _reject_symlink_path(path, label)
+    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        descriptor = os.open(path, flags)
+    except OSError as exc:
+        raise SwarmError(f"unable to read {label} safely: {path}") from exc
+    with os.fdopen(descriptor, "rb") as handle:
+        return handle.read()
+
+
 def read_mailbox_json(path: Path, label: str) -> dict[str, Any]:
     """Read one structured mailbox result only from a regular, non-symlink file."""
-    _reject_symlink_path(path, label)
-    if not path.is_file():
-        raise SwarmError(f"{label} is missing or not a regular file: {path}")
     try:
-        payload = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        payload = json.loads(read_restricted_bytes(path, label))
+    except (SwarmError, UnicodeError, json.JSONDecodeError) as exc:
         raise SwarmError(f"{label} is not valid UTF-8 JSON: {path}") from exc
     if not isinstance(payload, dict):
         raise SwarmError(f"{label} must be a JSON object")
@@ -182,18 +191,6 @@ def restore_restricted_bytes(path: Path, content: bytes, label: str) -> None:
         path.chmod(0o600)
     finally:
         temporary.unlink(missing_ok=True)
-
-
-def read_restricted_bytes(path: Path, label: str) -> bytes:
-    """Read a regular file through a no-follow descriptor."""
-    _reject_symlink_path(path, label)
-    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
-    try:
-        descriptor = os.open(path, flags)
-    except OSError as exc:
-        raise SwarmError(f"unable to read {label} safely: {path}") from exc
-    with os.fdopen(descriptor, "rb") as handle:
-        return handle.read()
 
 
 def validate_snapshot_symlinks(snapshot: Path) -> None:

@@ -14,7 +14,7 @@ from typing import Any, TYPE_CHECKING, Literal
 if TYPE_CHECKING:
     from mcp.server.fastmcp import FastMCP
 
-from .core import redact
+from .core import SwarmError, _reject_symlink_path, read_restricted_bytes, redact
 from .phase2a import workflow_status as phase2a_workflow_status
 from .paths import audit_path, launcher_path, project_root, runtime_root
 
@@ -134,10 +134,18 @@ def _safe_record(entry: dict[str, Any]) -> dict[str, Any]:
 
 
 def _read_audit() -> list[dict[str, Any]]:
+    try:
+        _reject_symlink_path(AUDIT_PATH, "desktop audit")
+    except SwarmError as exc:
+        raise RuntimeError(str(exc)) from exc
     if not AUDIT_PATH.is_file():
         return []
     records: list[dict[str, Any]] = []
-    for line_number, line in enumerate(AUDIT_PATH.read_text(encoding="utf-8", errors="strict").splitlines(), 1):
+    try:
+        lines = read_restricted_bytes(AUDIT_PATH, "desktop audit").decode("utf-8", errors="strict").splitlines()
+    except (SwarmError, UnicodeError) as exc:
+        raise RuntimeError("corrupted audit record") from exc
+    for line_number, line in enumerate(lines, 1):
         if not line.strip():
             continue
         try:
@@ -166,10 +174,14 @@ def job_status(job_id: str) -> dict[str, Any]:
     records = [_safe_record(entry) for entry in _read_audit() if entry.get("job_id") == requested]
     result: dict[str, Any] = {"job_id": requested, "records": records}
     state_path = RUNTIME_ROOT / "phase2a-state.json"
+    try:
+        _reject_symlink_path(state_path, "Phase 2A state")
+    except SwarmError as exc:
+        raise RuntimeError(str(exc)) from exc
     if state_path.is_file():
         try:
-            state = json.loads(state_path.read_text(encoding="utf-8"))
-        except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+            state = json.loads(read_restricted_bytes(state_path, "Phase 2A state"))
+        except (SwarmError, UnicodeError, json.JSONDecodeError) as exc:
             raise RuntimeError("corrupted Phase 2A state") from exc
         if isinstance(state, dict) and state.get("job_id") == requested:
             state_value = state.get("state")

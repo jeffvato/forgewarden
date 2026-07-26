@@ -125,6 +125,25 @@ class DesktopBridgeTests(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 bridge.recent_audit(10)
 
+    def test_audit_symlink_is_rejected(self):
+        outside = Path(self.audit_dir.name) / "outside.jsonl"
+        outside.write_text('{"job_id":"job-1"}\n', encoding="utf-8")
+        self.audit.symlink_to(outside)
+        with patch.object(bridge, "AUDIT_PATH", self.audit):
+            with self.assertRaises(RuntimeError):
+                bridge.recent_audit(1)
+
+    def test_state_symlink_is_rejected(self):
+        job_id = "phase2a-" + "d" * 24
+        runtime = Path(self.audit_dir.name) / "runtime"
+        runtime.mkdir()
+        outside = Path(self.audit_dir.name) / "outside-state.json"
+        outside.write_text(json.dumps({"job_id": job_id, "state": "QUEUED"}), encoding="utf-8")
+        (runtime / "phase2a-state.json").symlink_to(outside)
+        with patch.object(bridge, "AUDIT_PATH", self.audit), patch.object(bridge, "RUNTIME_ROOT", runtime):
+            with self.assertRaises(RuntimeError):
+                bridge.job_status(job_id)
+
     def test_kill_switch_uses_fixed_command_and_verifies_engaged(self):
         output = "launcher=hermes-swarm mode=DRY_RUN deployment=DISABLED kill_switch=ENGAGED runtime=/home/jeff/hermes-swarm-runtime\n"
         calls = [subprocess.CompletedProcess([], 0, "engaged\n", ""), subprocess.CompletedProcess([], 0, output, "")]
