@@ -16,9 +16,10 @@ production data, or `/home/jeff/n8n`. The child receives only the normal Claude
 Code authentication environment, fixed locale/path settings, and no copied
 credential values.
 
-The process runs from the fixed empty-purpose `/tmp` working directory rather
-than any repository checkout, so Claude Code cannot infer a project from the
-swarm’s caller working directory.
+The process runs from a fresh temporary directory under `/tmp` rather than any
+repository checkout, so Claude Code cannot infer a project from the swarm’s
+caller working directory. MCP configuration is strict and empty, slash
+commands and Chrome integration are disabled.
 
 Each invocation is bounded to three turns and 180 seconds, uses plan mode,
 disables tools, disables session persistence, and requires strict structured

@@ -42,14 +42,14 @@ class ClaudeAdapterTests(unittest.TestCase):
                 f"proof = {str(proof)!r}\n"
                 f"payload = {payload!r}\n"
                 "args = sys.argv[1:]\n"
-                "required = ['--model', 'sonnet', '--output-format', 'json', '--json-schema', '--tools', '', '--permission-mode', 'plan', '--no-session-persistence', '--max-turns', '3']\n"
+                "required = ['--model', 'sonnet', '--output-format', 'json', '--json-schema', '--tools', '', '--permission-mode', 'plan', '--no-session-persistence', '--max-turns', '3', '--strict-mcp-config', '--disable-slash-commands', '--no-chrome']\n"
                 "if any(item not in args for item in required): sys.exit(9)\n"
                 "json.dump({'args': args, 'env_names': sorted(os.environ)}, open(proof, 'w'))\n"
                 "print(json.dumps({'result': json.dumps(payload)}))\n",
                 encoding="utf-8",
             )
             fake.chmod(0o700)
-            with patch.object(claude, "CLAUDE", fake), patch.object(claude, "REVIEW_CWD", root):
+            with patch.object(claude, "CLAUDE", fake):
                 result = claude.run_claude(job, "token=do-not-send password=do-not-send", model="sonnet")
             self.assertEqual(result["job_id"], job)
             observed = json.loads(proof.read_text(encoding="utf-8"))
@@ -61,6 +61,9 @@ class ClaudeAdapterTests(unittest.TestCase):
             self.assertNotIn("Bash", observed["args"])
             self.assertNotIn("Edit", observed["args"])
             self.assertNotIn("Write", observed["args"])
+            self.assertIn("--strict-mcp-config", observed["args"])
+            self.assertIn("--disable-slash-commands", observed["args"])
+            self.assertIn("--no-chrome", observed["args"])
 
     def test_invalid_model_and_wrong_result_fail_closed(self):
         job = "claude-" + "c" * 24

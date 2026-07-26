@@ -103,7 +103,7 @@ def build_mcp_context() -> str:
         "Project: Hermes local coding swarm, Phase 2A readiness diagnosis.",
         "Safety: DRY_RUN only; deployment disabled; autonomous lease disabled; emergency kill switch engaged; no repair authorized.",
         "Question: diagnose the disposable MCPServerTask startup/readiness, keepalive, generation-bound reconnect, and post-reconnect fake enqueue/replay path.",
-        "Known evidence: official Hermes MCP discovery succeeds under five seconds with five tools; direct SDK ping/status succeeds; only the disposable MCPServerTask fixture remains unresolved.",
+        "Known evidence: official Hermes MCP discovery succeeds under five seconds with seven tools; direct SDK ping/status succeeds; only the disposable MCPServerTask fixture remains unresolved.",
         "Required output: ranked hypotheses, discriminating read-only tests, smallest safe correction plan, limitations. Do not recommend a repair execution or any production action.",
     ]
     for relative in ("docs/mcpserver-task-fixture-postmortem.md", "docs/hermes-mcp-generation-reconnect.md", "tests/test_hermes_mcp_lifecycle.py"):

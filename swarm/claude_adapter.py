@@ -11,6 +11,7 @@ import json
 import os
 import re
 import subprocess
+import tempfile
 import uuid
 from pathlib import Path
 from typing import Any
@@ -18,7 +19,6 @@ from typing import Any
 from .core import SwarmError, redact
 
 CLAUDE = Path("/home/jeff/.local/bin/claude")
-REVIEW_CWD = Path("/tmp")
 DEFAULT_MODEL = "sonnet"
 ALLOWED_MODELS = frozenset({"sonnet", "opus", "haiku"})
 MAX_TURNS = 3
@@ -117,13 +117,15 @@ def run_claude(job_id: str, context: str, *, model: str = DEFAULT_MODEL) -> dict
         str(CLAUDE), "-p", prompt, "--model", model, "--output-format", "json",
         "--json-schema", schema_json, "--tools", "", "--permission-mode", "plan",
         "--no-session-persistence", "--max-turns", str(MAX_TURNS),
+        "--strict-mcp-config", "--disable-slash-commands", "--no-chrome",
     ]
     try:
-        completed = subprocess.run(
-            argv, cwd=REVIEW_CWD, env=minimal_environment(), stdin=subprocess.DEVNULL,
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=False,
-            timeout=TIMEOUT_SECONDS, check=False,
-        )
+        with tempfile.TemporaryDirectory(prefix="hermes-claude-review-", dir="/tmp") as review_dir:
+            completed = subprocess.run(
+                argv, cwd=review_dir, env=minimal_environment(), stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=False,
+                timeout=TIMEOUT_SECONDS, check=False,
+            )
     except subprocess.TimeoutExpired as exc:
         raise ClaudeAdapterError("Claude review timed out") from exc
     if completed.returncode != 0:
