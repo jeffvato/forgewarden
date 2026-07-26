@@ -16,6 +16,11 @@ The tests create a disposable Git repository, seed a low-risk defect, run a
 fake Codex writer and fake Gemini reviewer, and exercise rejection paths.
 No live repository is used.
 
+Every push and pull request runs the portable deterministic fixture suite on
+Python 3.11 and 3.12 through GitHub Actions. The workflow also validates both
+shell launchers. Machine-specific Hermes/Desktop lifecycle tests remain a
+separate local validation gate because they require the pinned WSL runtime.
+
 ## Boundaries
 
 - Hermes owns job state and orchestration; it never edits application files.
