@@ -1,0 +1,28 @@
+program_id: fable5-credit-program-v1
+model: claude-fable-5
+hard_budget_usd: 100.0
+retention_days: 30
+tasks:
+  - id: mcp_lifecycle_blocker
+    target_usd: 35.0
+    purpose: read-only analysis of MCPServerTask startup, loop ownership, keepalive, reconnect, and fake replay evidence
+  - id: phase2a_adversarial_audit
+    target_usd: 25.0
+    purpose: read-only audit of sanitized Phase 2A evidence
+  - id: deterministic_test_design
+    target_usd: 20.0
+    purpose: read-only deterministic and fault-injection test design
+  - id: reproducibility_public_release
+    target_usd: 15.0
+    purpose: read-only portability and reproducibility audit
+  - id: synthesis
+    target_usd: 5.0
+    purpose: read-only synthesis of prior findings
+restrictions:
+  tools: []
+  edits: false
+  shell: false
+  git: false
+  deployment: false
+  policy_changes: false
+  network: provider_only

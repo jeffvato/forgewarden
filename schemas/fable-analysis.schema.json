@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["job_id", "model", "total_cost_usd", "findings", "hypotheses", "tests", "safe_correction_plan", "limitations"],
+  "properties": {
+    "job_id": {"type": "string"},
+    "model": {"const": "claude-fable-5"},
+    "total_cost_usd": {"type": "number", "minimum": 0, "maximum": 100},
+    "findings": {"type": "array", "items": {"type": "string"}},
+    "hypotheses": {"type": "array"},
+    "tests": {"type": "array"},
+    "safe_correction_plan": {"type": "string"},
+    "limitations": {"type": "array", "items": {"type": "string"}}
+  }
+}
