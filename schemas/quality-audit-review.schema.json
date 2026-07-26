@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "QualityAuditReview",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "mode",
+    "job_id",
+    "audit_sha256",
+    "events_seen",
+    "matching_event_count",
+    "integrity",
+    "latest_state",
+    "verification_passed",
+    "rollback_performed",
+    "review_required",
+    "review_reason",
+    "mutation_allowed"
+  ],
+  "properties": {
+    "schema_version": { "const": "1" },
+    "mode": { "const": "READ_ONLY_AUDIT_REVIEW" },
+    "job_id": { "type": "string", "minLength": 1 },
+    "audit_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "events_seen": { "type": "integer", "minimum": 0 },
+    "matching_event_count": { "type": "integer", "minimum": 0 },
+    "integrity": { "enum": ["VALID", "INCOMPLETE", "INVALID"] },
+    "latest_state": { "type": ["string", "null"] },
+    "verification_passed": { "type": ["boolean", "null"] },
+    "rollback_performed": { "type": ["boolean", "null"] },
+    "review_required": { "const": true },
+    "review_reason": { "type": "string", "minLength": 1 },
+    "mutation_allowed": { "const": false }
+  }
+}

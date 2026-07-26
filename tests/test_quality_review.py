@@ -8,12 +8,14 @@ import pytest
 
 from swarm.quality_review import consolidate_report, evaluate_application_gate, scan_repository
 from swarm.quality_apply import apply_safe_findings, build_safe_application_plan
+from swarm.quality_audit import review_audit
 
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA = ROOT / "schemas" / "quality-review.schema.json"
 APPLICATION_PLAN_SCHEMA = ROOT / "schemas" / "quality-application-plan.schema.json"
 APPLICATION_RESULT_SCHEMA = ROOT / "schemas" / "quality-application-result.schema.json"
+AUDIT_REVIEW_SCHEMA = ROOT / "schemas" / "quality-audit-review.schema.json"
 
 
 def _finding(result, category):
@@ -486,3 +488,45 @@ def test_safe_apply_rolls_back_when_verification_fails(tmp_path):
     assert result["rollback_performed"] is True
     assert (isolated / "module.py").read_text(encoding="utf-8") == original
     assert subprocess.run(["git", "status", "--porcelain"], cwd=isolated, capture_output=True, text=True, check=True).stdout == ""
+
+
+def test_audit_consumer_returns_only_review_safe_summary(tmp_path):
+    audit = tmp_path / "audit.jsonl"
+    audit.write_text(
+        json.dumps({
+            "timestamp": "2026-01-01T00:00:00Z",
+            "job_id": "safe-job-1",
+            "state": "APPLIED_VERIFIED",
+            "event": "safe_application_completed",
+            "repository": "/tmp/isolated",
+            "applied_finding_ids": ["a" * 16],
+            "changed_files": ["module.py"],
+            "verification_passed": True,
+            "verification_exit_code": 0,
+            "rollback_performed": False,
+            "output": "must not be echoed",
+        }) + "\n",
+        encoding="utf-8",
+    )
+    audit.chmod(0o600)
+
+    result = review_audit(audit, "safe-job-1")
+
+    jsonschema.validate(result, json.loads(AUDIT_REVIEW_SCHEMA.read_text(encoding="utf-8")))
+    assert result["integrity"] == "VALID"
+    assert result["latest_state"] == "APPLIED_VERIFIED"
+    assert result["review_required"] is True
+    assert result["mutation_allowed"] is False
+    assert "must not be echoed" not in json.dumps(result)
+    assert "changed_files" not in result
+
+
+def test_audit_consumer_marks_missing_job_incomplete(tmp_path):
+    audit = tmp_path / "audit.jsonl"
+    audit.write_text(json.dumps({"job_id": "other", "event": "safe_application_completed"}) + "\n", encoding="utf-8")
+    audit.chmod(0o600)
+
+    result = review_audit(audit, "missing-job")
+
+    assert result["integrity"] == "INCOMPLETE"
+    assert result["matching_event_count"] == 0

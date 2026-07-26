@@ -65,6 +65,14 @@ The audit event records only status, finding IDs, changed-file names, and
 hashes; the command text, output, and source contents are not written to the
 audit log.
 
+Review that evidence without exposing the audit contents:
+
+```bash
+PYTHONPATH=. python3 -m swarm.cli quality-audit \
+  --audit /tmp/hermes-swarm-audit/audit.jsonl \
+  --job-id safe-review-001
+```
+
 ## Boundaries
 
 - Hermes owns job state and orchestration; it never edits application files.

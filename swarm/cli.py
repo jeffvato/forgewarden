@@ -12,11 +12,12 @@ from .phase2a import disable_autonomous_dry_run, enable_autonomous_dry_run, enga
 from .paths import audit_root, runtime_root
 from .quality_review import scan_repository, write_report
 from .quality_apply import apply_safe_findings
+from .quality_audit import review_audit
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Local Hermes coding swarm (dry-run only)")
-    parser.add_argument("command", choices=["start", "stop", "status", "kill-switch", "dry-run", "controlled-baseline", "gemini-review-recovery", "quality-review", "quality-apply-safe", "phase2a-worker", "phase2a-recover-terminal", "run", "autonomous-dry-run-status", "autonomous-dry-run-enable", "autonomous-dry-run-disable"], nargs="?", default="status")
+    parser.add_argument("command", choices=["start", "stop", "status", "kill-switch", "dry-run", "controlled-baseline", "gemini-review-recovery", "quality-review", "quality-apply-safe", "quality-audit", "phase2a-worker", "phase2a-recover-terminal", "run", "autonomous-dry-run-status", "autonomous-dry-run-enable", "autonomous-dry-run-disable"], nargs="?", default="status")
     parser.add_argument("--state-dir", type=Path, default=Path(".swarm-state"))
     parser.add_argument("--runtime-root", type=Path)
     parser.add_argument("--audit-dir", type=Path)
@@ -68,6 +69,15 @@ def main() -> int:
             print(json.dumps(result, indent=2, sort_keys=True))
             return 0 if result["state"] == "APPLIED_VERIFIED" else 1
         except (OSError, ValueError, json.JSONDecodeError) as exc:
+            print(f"FAILED: {exc}")
+            return 1
+    if args.command == "quality-audit":
+        if not args.audit or not args.job_id:
+            parser.error("quality-audit requires --audit and --job-id")
+        try:
+            print(json.dumps(review_audit(args.audit, args.job_id), indent=2, sort_keys=True))
+            return 0
+        except (OSError, ValueError) as exc:
             print(f"FAILED: {exc}")
             return 1
     if args.command == "phase2a-worker":
