@@ -41,3 +41,18 @@ def test_launcher_rejects_relative_external_path_override(tmp_path):
     )
     assert result.returncode != 0
     assert "must be absolute" in result.stderr
+
+
+def test_launcher_rejects_unavailable_python_override(tmp_path):
+    env = os.environ.copy()
+    env["HERMES_SWARM_PYTHON"] = str(tmp_path / "missing-python")
+    result = subprocess.run(
+        ["/bin/bash", str(LAUNCHER), "--help"],
+        cwd=ROOT,
+        env=env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert result.returncode != 0
+    assert "python executable is unavailable" in result.stderr.lower()

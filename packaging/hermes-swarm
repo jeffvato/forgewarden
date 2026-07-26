@@ -20,6 +20,11 @@ resolve_swarm_root() {
 
 SWARM_ROOT="$(resolve_swarm_root)"
 
+if ! command -v "$PYTHON" >/dev/null 2>&1 && ! test -x "$PYTHON"; then
+  echo "hermes-swarm: configured Python executable is unavailable" >&2
+  exit 1
+fi
+
 for configured_path in "$RUNTIME_ROOT" "$AUDIT_ROOT" "$BASELINE_REPOSITORY"; do
   case "$configured_path" in
     /*) ;;
