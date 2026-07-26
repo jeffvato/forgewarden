@@ -197,6 +197,30 @@ def test_quality_review_does_not_follow_external_symlinks(tmp_path):
     assert all(item["file"] != "linked.py" for item in result["findings"])
 
 
+def test_quality_review_cli_refuses_symlink_output(tmp_path):
+    source = tmp_path / "safe.py"
+    source.write_text("def ok():\n    return True\n", encoding="utf-8")
+    target = tmp_path.parent / f"quality-review-target-{tmp_path.name}.json"
+    target.write_text("preserve\n", encoding="utf-8")
+    output = tmp_path / "review.json"
+    try:
+        output.symlink_to(target)
+    except OSError:
+        return
+
+    result = subprocess.run(
+        ["python3", "-m", "swarm.quality_review", str(tmp_path), "--output", str(output)],
+        cwd=ROOT,
+        text=True,
+        capture_output=True,
+        check=False,
+        env={**os.environ, "PYTHONPATH": str(ROOT)},
+    )
+
+    assert result.returncode != 0
+    assert target.read_text(encoding="utf-8") == "preserve\n"
+
+
 def test_quality_review_skips_sensitive_and_non_source_files(tmp_path):
     (tmp_path / ".env").write_text("TOKEN=do-not-read\n", encoding="utf-8")
     (tmp_path / "notes.txt").write_text("Certainly, this is prose.\n", encoding="utf-8")

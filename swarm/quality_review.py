@@ -10,6 +10,7 @@ import argparse
 import ast
 import hashlib
 import json
+import os
 import re
 import sys
 from collections import defaultdict
@@ -448,6 +449,22 @@ def scan_repository(repository: Path) -> dict[str, Any]:
     return consolidate_report(report)
 
 
+def write_report(path: Path, rendered: str) -> None:
+    """Write a report without following an output symlink."""
+    path = path.expanduser()
+    if path.is_symlink():
+        raise ValueError(f"refusing symlink output path: {path}")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        descriptor = os.open(path, flags, 0o600)
+    except OSError as exc:
+        raise ValueError(f"unable to open report output safely: {path}") from exc
+    with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+        handle.write(rendered)
+    path.chmod(0o600)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Run a read-only Hermes code-quality review")
     parser.add_argument("repository", type=Path)
@@ -459,9 +476,7 @@ def main(argv: list[str] | None = None) -> int:
         parser.error(str(exc))
     rendered = json.dumps(payload, indent=2, sort_keys=True) + "\n"
     if args.output:
-        args.output.parent.mkdir(parents=True, exist_ok=True)
-        args.output.write_text(rendered, encoding="utf-8")
-        args.output.chmod(0o600)
+        write_report(args.output, rendered)
     else:
         sys.stdout.write(rendered)
     return 0

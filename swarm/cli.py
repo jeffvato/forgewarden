@@ -9,7 +9,7 @@ from .gemini_recovery import recover_gemini_review
 from .local_run import run_real_dry_run
 from .phase2a import disable_autonomous_dry_run, enable_autonomous_dry_run, engage_kill_switch, recover_terminal_abandoned, run_worker_job, safety_status
 from .paths import audit_root, runtime_root
-from .quality_review import scan_repository
+from .quality_review import scan_repository, write_report
 
 
 def main() -> int:
@@ -46,9 +46,7 @@ def main() -> int:
         try:
             rendered = json.dumps(scan_repository(args.repository), indent=2, sort_keys=True) + "\n"
             if args.output:
-                args.output.parent.mkdir(parents=True, exist_ok=True)
-                args.output.write_text(rendered, encoding="utf-8")
-                args.output.chmod(0o600)
+                write_report(args.output, rendered)
             else:
                 print(rendered, end="")
             return 0
