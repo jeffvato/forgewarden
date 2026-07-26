@@ -114,6 +114,11 @@ disposable snapshot is checked for symlinks that resolve outside that snapshot;
 such a snapshot fails closed. This protects review evidence from stale or
 model-created path redirection.
 
+Codex telemetry evidence is persisted beneath a restricted directory using an
+atomic, mode-`0600`, no-follow replacement. A symlinked evidence directory or
+evidence file fails closed, and the evidence write completes before disposable
+adapter cleanup.
+
 The implementation does not alter Hermes configuration. Before a later phase
 changes an existing Hermes configuration, take a timestamped copy, display the
 proposed diff, and obtain Jeff's approval. No OS package, network, remote host,

@@ -80,6 +80,16 @@ class CodexTelemetryTests(unittest.TestCase):
                 adapter.last_evidence = CodexRunEvidence("job", "v", [], str(self.root), [], "h", "p", str(self.root / "value.py"))
                 adapter.persist_evidence()
 
+    def test_telemetry_evidence_directory_symlink_is_rejected(self):
+        real = self.root / "real-evidence"
+        real.mkdir()
+        linked = self.root / "linked-evidence"
+        linked.symlink_to(real, target_is_directory=True)
+        adapter = CodexAdapter(self.schema, ResourceLimits(timeout_seconds=5), "/not-a-real-codex", linked)
+        adapter.last_evidence = CodexRunEvidence("job", "v", [], str(self.root), [], "h", "p", str(self.root / "value.py"))
+        with self.assertRaises(SwarmError):
+            adapter.persist_evidence()
+
 
 if __name__ == "__main__":
     unittest.main()

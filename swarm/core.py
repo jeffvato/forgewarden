@@ -109,6 +109,35 @@ def write_mailbox_json(path: Path, payload: dict[str, Any], label: str) -> None:
     path.chmod(0o600)
 
 
+def write_restricted_text(path: Path, content: str, label: str) -> None:
+    """Atomically replace a restricted text artifact without following symlinks."""
+    _reject_symlink_path(path, label)
+    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    path.parent.chmod(0o700)
+    _reject_symlink_path(path, label)
+    temporary = path.parent / f".{path.name}.{os.getpid()}.{uuid.uuid4().hex}.tmp"
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        descriptor = os.open(temporary, flags, 0o600)
+    except OSError as exc:
+        raise SwarmError(f"unable to write {label} safely: {path}") from exc
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+            handle.write(content)
+            handle.flush()
+            os.fsync(handle.fileno())
+        temporary.chmod(0o600)
+        os.replace(temporary, path)
+        directory_fd = os.open(path.parent, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
+        try:
+            os.fsync(directory_fd)
+        finally:
+            os.close(directory_fd)
+    finally:
+        temporary.unlink(missing_ok=True)
+    path.chmod(0o600)
+
+
 def validate_snapshot_symlinks(snapshot: Path) -> None:
     """Permit only symlinks whose targets remain inside the disposable snapshot."""
     root = snapshot.resolve()

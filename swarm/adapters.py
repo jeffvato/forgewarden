@@ -15,7 +15,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
-from .core import SwarmError, ensure_mailbox_directory, redact, run_command, validate_contract, write_mailbox_json
+from .core import SwarmError, ensure_mailbox_directory, redact, run_command, validate_contract, write_mailbox_json, write_restricted_text
 from .paths import runtime_root
 
 
@@ -410,14 +410,9 @@ class CodexAdapter:
     def persist_evidence(self) -> Path | None:
         if self.last_evidence is None or self.evidence_dir is None:
             return None
-        self.evidence_dir.mkdir(parents=True, exist_ok=True)
-        self.evidence_dir.chmod(0o700)
         path = self.evidence_dir / f"{self.last_evidence.job_id}.json"
-        path.write_text(json.dumps(self.last_evidence.to_dict(), sort_keys=True), encoding="utf-8")
-        path.chmod(0o600)
         self.last_evidence.persisted_path = str(path)
-        path.write_text(json.dumps(self.last_evidence.to_dict(), sort_keys=True), encoding="utf-8")
-        path.chmod(0o600)
+        write_restricted_text(path, json.dumps(self.last_evidence.to_dict(), sort_keys=True), "Codex telemetry evidence")
         return path
 
     def record_actual_paths(self, paths: list[str]) -> None:
