@@ -85,6 +85,28 @@ class DesktopBridgeTests(unittest.TestCase):
         self.assertEqual(result["state"], "QUEUED")
         self.assertEqual(result["records"][0]["state"], "QUEUED")
 
+    def test_workflow_status_is_read_only_and_uses_phase2a_contract(self):
+        runtime = Path(self.audit_dir.name) / "runtime"
+        runtime.mkdir()
+        state = {"job_id": "phase2a-" + "f" * 24, "state": "RECOVERED_ABANDONED"}
+        state_path = runtime / "phase2a-state.json"
+        state_path.write_text(json.dumps(state), encoding="utf-8")
+        lock_path = runtime / "phase2a-job.lock"
+        lock_path.write_text("99999999:1\n", encoding="ascii")
+        running_path = runtime / "RUNNING"
+        running_path.write_text("1\n", encoding="ascii")
+        before = {path: path.read_bytes() for path in (state_path, lock_path, running_path)}
+        with patch.object(bridge, "RUNTIME_ROOT", runtime):
+            result = bridge.workflow_status()
+        self.assertEqual(result["state"], "RECOVERED_ABANDONED")
+        self.assertEqual(result["lock"], "STALE")
+        self.assertTrue(result["running_marker"])
+        self.assertTrue(result["stale_markers"])
+        self.assertFalse(result["replay_blocked"])
+        self.assertEqual(result["next_action"], "REVIEW_THEN_RUN_GUARDED_TERMINAL_RECOVERY")
+        self.assertTrue(result["read_only"])
+        self.assertEqual(before, {path: path.read_bytes() for path in before})
+
     def test_job_status_rejects_malformed_state_encoding_and_type(self):
         job_id = "phase2a-" + "e" * 24
         runtime = Path(self.audit_dir.name) / "runtime"
@@ -122,7 +144,7 @@ class DesktopBridgeTests(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 bridge.engage_kill_switch()
 
-    def test_stdio_handshake_registers_exactly_six_tools_and_no_protocol_corruption(self):
+    def test_stdio_handshake_registers_exactly_seven_tools_and_no_protocol_corruption(self):
         script = r'''
 import asyncio, json
 from mcp import ClientSession, StdioServerParameters
@@ -157,7 +179,7 @@ print(json.dumps(asyncio.run(handshake())))
         )
         self.assertEqual(result.returncode, 0, result.stderr)
         names = json.loads(result.stdout)
-        self.assertEqual(names, ["engage_kill_switch", "job_status", "recent_audit", "run_preapproved_job", "status", "submit_preapproved_job"])
+        self.assertEqual(names, ["engage_kill_switch", "job_status", "recent_audit", "run_preapproved_job", "status", "submit_preapproved_job", "workflow_status"])
         self.assertNotIn("repair", names)
         self.assertNotIn("deploy", names)
         self.assertNotIn("shell", names)
@@ -200,7 +222,7 @@ async def exercise():
             await session.initialize()
             tools = await session.list_tools()
             assert sorted(t.name for t in tools.tools) == [
-                "engage_kill_switch", "job_status", "recent_audit", "run_preapproved_job", "status", "submit_preapproved_job"
+                "engage_kill_switch", "job_status", "recent_audit", "run_preapproved_job", "status", "submit_preapproved_job", "workflow_status"
             ]
             modes = []
             for _ in range(3):

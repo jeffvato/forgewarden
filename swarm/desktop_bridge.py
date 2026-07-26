@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from mcp.server.fastmcp import FastMCP
 
 from .core import redact
+from .phase2a import workflow_status as phase2a_workflow_status
 from .paths import audit_path, launcher_path, project_root, runtime_root
 
 LOG = logging.getLogger("hermes_swarm.desktop_bridge")
@@ -154,6 +155,11 @@ def status() -> dict[str, str]:
     return _status()
 
 
+def workflow_status() -> dict[str, Any]:
+    """Return read-only Phase 2A state and stale-marker guidance."""
+    return phase2a_workflow_status(RUNTIME_ROOT)
+
+
 def job_status(job_id: str) -> dict[str, Any]:
     """Return sanitized audit records for one strictly validated job ID."""
     requested = _validate_job_id(job_id)
@@ -217,6 +223,7 @@ def create_server() -> "FastMCP":
     from mcp.server.fastmcp import FastMCP
     server = FastMCP("hermes-swarm", instructions="Read-only dry-run swarm status and audit bridge.")
     server.tool(name="status", structured_output=True)(status)
+    server.tool(name="workflow_status", structured_output=True)(workflow_status)
     server.tool(name="job_status", structured_output=True)(job_status)
     server.tool(name="recent_audit", structured_output=True)(recent_audit)
     server.tool(name="engage_kill_switch", structured_output=True)(engage_kill_switch)
