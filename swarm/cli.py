@@ -14,12 +14,12 @@ from .quality_review import scan_repository, write_report
 from .quality_apply import apply_safe_findings
 from .quality_audit import review_audit
 from .review_evidence import build_review_evidence
-from .approval import create_approval_record, verify_approval
+from .approval import create_approval_record, reconcile_approval, verify_approval
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Local Hermes coding swarm (dry-run only)")
-    parser.add_argument("command", choices=["start", "stop", "status", "kill-switch", "dry-run", "controlled-baseline", "gemini-review-recovery", "quality-review", "quality-apply-safe", "quality-audit", "review-evidence", "approval-create", "approval-verify", "phase2a-worker", "phase2a-recover-terminal", "run", "autonomous-dry-run-status", "autonomous-dry-run-enable", "autonomous-dry-run-disable"], nargs="?", default="status")
+    parser.add_argument("command", choices=["start", "stop", "status", "kill-switch", "dry-run", "controlled-baseline", "gemini-review-recovery", "quality-review", "quality-apply-safe", "quality-audit", "review-evidence", "approval-create", "approval-verify", "approval-reconcile", "phase2a-worker", "phase2a-recover-terminal", "run", "autonomous-dry-run-status", "autonomous-dry-run-enable", "autonomous-dry-run-disable"], nargs="?", default="status")
     parser.add_argument("--state-dir", type=Path, default=Path(".swarm-state"))
     parser.add_argument("--runtime-root", type=Path)
     parser.add_argument("--audit-dir", type=Path)
@@ -120,6 +120,15 @@ def main() -> int:
             parser.error("approval-verify requires --approval, --evidence, and --job-id")
         try:
             print(json.dumps(verify_approval(args.approval, args.evidence, expected_job_id=args.job_id, consume=args.consume), indent=2, sort_keys=True))
+            return 0
+        except (OSError, ValueError, json.JSONDecodeError) as exc:
+            print(f"FAILED: {exc}")
+            return 1
+    if args.command == "approval-reconcile":
+        if not args.approval or not args.evidence or not args.audit or not args.job_id:
+            parser.error("approval-reconcile requires --approval, --evidence, --audit, and --job-id")
+        try:
+            print(json.dumps(reconcile_approval(args.approval, args.evidence, args.audit, expected_job_id=args.job_id), indent=2, sort_keys=True))
             return 0
         except (OSError, ValueError, json.JSONDecodeError) as exc:
             print(f"FAILED: {exc}")

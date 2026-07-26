@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ApprovalAuditReconciliation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "mode", "approval_id", "job_id", "evidence_sha256", "audit_state", "reconciled", "replay_protected", "mutation_allowed", "deployment"],
+  "properties": {
+    "schema_version": { "const": "1" },
+    "mode": { "const": "APPROVAL_AUDIT_RECONCILIATION" },
+    "approval_id": { "type": "string", "pattern": "^[0-9a-f]{32}$" },
+    "job_id": { "type": "string", "minLength": 1 },
+    "evidence_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "audit_state": { "enum": ["APPLIED_VERIFIED", "ROLLED_BACK_VERIFICATION_FAILED"] },
+    "reconciled": { "const": true },
+    "replay_protected": { "const": true },
+    "mutation_allowed": { "const": false },
+    "deployment": { "const": "DISABLED" }
+  }
+}

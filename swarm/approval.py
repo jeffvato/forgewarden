@@ -138,6 +138,59 @@ def verify_approval(
     }
 
 
+def reconcile_approval(
+    approval_path: Path,
+    evidence_path: Path,
+    audit_path: Path,
+    *,
+    expected_job_id: str,
+) -> dict[str, Any]:
+    """Reconcile a consumed approval with its durable application audit event."""
+    approval_path = _safe_path(approval_path)
+    audit_path = _safe_path(audit_path)
+    if approval_path.stat().st_mode & 0o777 != 0o600 or approval_path.parent.stat().st_mode & 0o777 != 0o700:
+        raise ValueError("approval record permissions are not restricted")
+    if not audit_path.is_file() or audit_path.stat().st_mode & 0o777 != 0o600 or audit_path.parent.stat().st_mode & 0o777 != 0o700:
+        raise ValueError("audit permissions are not restricted")
+    record, _ = _read_json(approval_path)
+    evidence_hash = hashlib.sha256(_safe_path(evidence_path).read_bytes()).hexdigest()
+    if record.get("job_id") != expected_job_id or record.get("decision") != "APPROVED":
+        raise ValueError("approval cannot be reconciled for this job")
+    if record.get("evidence_sha256") != evidence_hash:
+        raise ValueError("approval evidence hash mismatch")
+    marker = approval_path.parent / f".{record.get('approval_id')}.consumed"
+    if not marker.is_file():
+        raise ValueError("approval has not been consumed")
+    matching: list[dict[str, Any]] = []
+    for line in audit_path.read_bytes().splitlines():
+        try:
+            event = json.loads(line)
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            continue
+        if (
+            isinstance(event, dict)
+            and event.get("event") == "safe_application_completed"
+            and event.get("job_id") == expected_job_id
+            and event.get("approval_id") == record.get("approval_id")
+            and event.get("approval_evidence_sha256") == evidence_hash
+        ):
+            matching.append(event)
+    if not matching:
+        raise ValueError("no matching SAFE application audit event")
+    return {
+        "schema_version": "1",
+        "mode": "APPROVAL_AUDIT_RECONCILIATION",
+        "approval_id": record["approval_id"],
+        "job_id": expected_job_id,
+        "evidence_sha256": evidence_hash,
+        "audit_state": matching[-1].get("state"),
+        "reconciled": True,
+        "replay_protected": True,
+        "mutation_allowed": False,
+        "deployment": "DISABLED",
+    }
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Create or verify one-time non-authorizing review approvals")
     sub = parser.add_subparsers(dest="command", required=True)

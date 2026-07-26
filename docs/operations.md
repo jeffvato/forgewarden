@@ -76,6 +76,9 @@ file hash and writes a mode-`0600` record under a mode-`0700` directory.
 non-authorizing flags, then atomically creates a consumption marker. A second
 consumption attempt is rejected as replay; approval records do not enable
 mutation or deployment.
+`approval-reconcile` additionally confirms that the consumed approval ID and
+evidence hash appear in the durable SAFE-application audit event for the same
+job.
 
 The application plan is validated by `schemas/quality-application-plan.schema.json`.
 For CAREFUL findings, the orchestrator compares Codex's

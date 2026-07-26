@@ -10,7 +10,7 @@ from swarm.quality_review import consolidate_report, evaluate_application_gate, 
 from swarm.quality_apply import apply_safe_findings, build_safe_application_plan
 from swarm.quality_audit import review_audit
 from swarm.review_evidence import build_review_evidence
-from swarm.approval import create_approval_record
+from swarm.approval import create_approval_record, reconcile_approval
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -440,6 +440,7 @@ def test_safe_apply_changes_only_explicit_unused_import_in_isolated_worktree(tmp
     assert result["committed"] is False
     assert result["state"] == "APPLIED_VERIFIED"
     assert result["verification"]["passed"] is True
+    assert result["approval_consumed"] is True
     audit = tmp_path / "audit" / "audit.jsonl"
     assert audit.stat().st_mode & 0o777 == 0o600
     audit_entry = json.loads(audit.read_text(encoding="utf-8").strip())
@@ -450,6 +451,14 @@ def test_safe_apply_changes_only_explicit_unused_import_in_isolated_worktree(tmp
     assert result["changed_files"] == ["module.py"]
     assert "import unused" not in (isolated / "module.py").read_text(encoding="utf-8")
     assert "import unused" in (source_repo / "module.py").read_text(encoding="utf-8")
+    reconciliation = reconcile_approval(
+        approval_path,
+        approval_evidence_path,
+        audit,
+        expected_job_id="safe-job-1",
+    )
+    jsonschema.validate(reconciliation, json.loads((ROOT / "schemas" / "approval-reconciliation.schema.json").read_text(encoding="utf-8")))
+    assert reconciliation["reconciled"] is True
 
 
 def test_safe_apply_rejects_repository_root_and_non_safe_finding(tmp_path):

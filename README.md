@@ -98,10 +98,16 @@ PYTHONPATH=. python3 -m swarm.cli approval-verify \
   --approval /tmp/approval/record.json \
   --evidence /tmp/combined-review-evidence.json \
   --job-id safe-review-001 --consume
+PYTHONPATH=. python3 -m swarm.cli approval-reconcile \
+  --approval /tmp/approval/record.json \
+  --evidence /tmp/combined-review-evidence.json \
+  --audit /tmp/hermes-swarm-audit/audit.jsonl \
+  --job-id safe-review-001
 ```
 
 Consumption is atomic and replay-protected; this record never enables
-mutation or deployment.
+mutation or deployment. Reconciliation confirms that the consumed approval
+and durable application audit refer to the same evidence hash.
 
 ## Boundaries
 

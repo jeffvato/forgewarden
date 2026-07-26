@@ -148,3 +148,4 @@ def test_launcher_exposes_approval_routes_without_runtime_activation():
     assert result.returncode == 0
     assert "approval-create" in result.stdout
     assert "approval-verify" in result.stdout
+    assert "approval-reconcile" in result.stdout
