@@ -714,3 +714,33 @@ def test_combined_review_evidence_is_hash_bound_and_non_mutating(tmp_path):
     assert result["mutation_allowed"] is False
     assert "do-not-echo" not in json.dumps(result)
     assert result["quality_report_sha256"]
+
+
+def test_review_evidence_cli_refuses_symlink_output(tmp_path):
+    quality = tmp_path / "quality.json"
+    plan = tmp_path / "plan.json"
+    audit_review = tmp_path / "audit-review.json"
+    quality.write_text(json.dumps({"schema_version": "1", "mode": "READ_ONLY", "auto_apply_enabled": False, "counts": {"SAFE": 0, "CAREFUL": 0, "RISKY": 0}}), encoding="utf-8")
+    plan.write_text(json.dumps({"schema_version": "1", "mode": "EXPLICIT_SAFE_ONLY", "mutation_allowed": False, "requires_explicit_invocation": True, "committed": False, "pushed": False, "eligible_finding_ids": [], "blocked_finding_ids": []}), encoding="utf-8")
+    audit_review.write_text(json.dumps({
+        "schema_version": "1", "mode": "READ_ONLY_AUDIT_REVIEW", "mutation_allowed": False,
+        "review_required": True, "job_id": "safe-job-1", "integrity": "VALID",
+        "latest_state": "APPLIED_VERIFIED", "latest_event_sha256": "b" * 64,
+        "verification_passed": True, "rollback_performed": False,
+    }), encoding="utf-8")
+    target = tmp_path.parent / f"review-evidence-target-{tmp_path.name}.json"
+    target.write_text("preserve\n", encoding="utf-8")
+    output = tmp_path / "evidence.json"
+    try:
+        output.symlink_to(target)
+    except OSError:
+        return
+
+    result = subprocess.run(
+        ["python3", "-m", "swarm.cli", "review-evidence", "--quality-report", str(quality), "--application-plan", str(plan), "--audit-review", str(audit_review), "--output", str(output)],
+        cwd=ROOT, text=True, capture_output=True, check=False,
+        env={**os.environ, "PYTHONPATH": str(ROOT)},
+    )
+
+    assert result.returncode != 0
+    assert target.read_text(encoding="utf-8") == "preserve\n"
