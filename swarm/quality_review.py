@@ -222,6 +222,25 @@ class _PythonReview(ast.NodeVisitor):
             )
         self.generic_visit(node)
 
+    def visit_While(self, node: ast.While) -> None:
+        is_literal_true = isinstance(node.test, ast.Constant) and node.test.value is True
+        has_break = any(isinstance(child, ast.Break) for child in ast.walk(node))
+        grows_collection = any(
+            isinstance(child, ast.Call)
+            and _call_name(child) in {"append", "extend", "add", "put"}
+            for child in ast.walk(node)
+        )
+        if is_literal_true and not has_break and grows_collection:
+            self.add(
+                category="unbounded_growth", tier="RISKY", confidence="LOW",
+                line=node.lineno, symbol=None,
+                summary="non-terminating loop appears to grow a collection",
+                evidence=_line(self.source, node.lineno),
+                rationale="This can be an intentional worker loop or an unbounded memory-growth path.",
+                suggested_action="Review termination, backpressure, and collection lifetime with a runtime test.",
+            )
+        self.generic_visit(node)
+
 
 def _scan_python(path: Path, relative: str, source: str) -> list[dict[str, Any]]:
     try:

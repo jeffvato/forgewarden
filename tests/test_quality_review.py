@@ -92,6 +92,23 @@ def test_quality_review_reports_duplicate_logic_as_careful(tmp_path):
     assert all(item["confidence"] == "MEDIUM" for item in duplicates)
 
 
+def test_quality_review_flags_unbounded_loop_growth_as_risky(tmp_path):
+    (tmp_path / "worker.py").write_text(
+        """\ndef worker(queue):
+    while True:
+        queue.append(next_item())
+""",
+        encoding="utf-8",
+    )
+
+    result = scan_repository(tmp_path)
+    finding = _finding(result, "unbounded_growth")
+
+    assert finding["tier"] == "RISKY"
+    assert finding["confidence"] == "LOW"
+    assert finding["auto_apply"] is False
+
+
 def test_quality_review_skips_sensitive_and_non_source_files(tmp_path):
     (tmp_path / ".env").write_text("TOKEN=do-not-read\n", encoding="utf-8")
     (tmp_path / "notes.txt").write_text("Certainly, this is prose.\n", encoding="utf-8")

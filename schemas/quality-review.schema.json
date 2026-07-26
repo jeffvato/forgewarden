@@ -86,6 +86,7 @@
               "pass_through_wrapper",
               "silent_failure",
               "structural_bloat",
+              "unbounded_growth",
               "unreachable_code",
               "unused_import"
             ]
