@@ -33,6 +33,7 @@ case "${1:---portable}" in
       "$ROOT/tests/test_gemini_reviewer.py" \
       "$ROOT/tests/test_packaging.py" \
       "$ROOT/tests/test_paths.py" \
+      "$ROOT/tests/test_quality_review.py" \
       "$ROOT/tests/test_repository_hygiene.py" \
       "$ROOT/tests/test_systemd_scope.py::SystemdScopeSafetyTests" \
       "$ROOT/tests/test_systemd_unit.py"

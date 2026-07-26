@@ -24,6 +24,20 @@ separate local validation gate because they require the pinned WSL runtime.
 The same checks are available locally through `bash scripts/validate-swarm.sh
 --portable`; use `--full` for the complete local suite.
 
+The advisory code-quality review is read-only and produces structured,
+risk-tiered findings. Run it against an isolated worktree or disposable
+checkout:
+
+```bash
+PYTHONPATH=. python3 -m swarm.cli quality-review \
+  --repository /path/to/isolated-worktree \
+  --output /tmp/hermes-quality-review.json
+```
+
+It currently reports heuristic SAFE, CAREFUL, and RISKY findings; every
+finding has `auto_apply: false`. It does not edit, commit, deploy, or invoke
+an external model.
+
 ## Boundaries
 
 - Hermes owns job state and orchestration; it never edits application files.

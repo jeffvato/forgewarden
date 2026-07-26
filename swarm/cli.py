@@ -1,4 +1,5 @@
 import argparse
+import json
 from pathlib import Path
 
 from .adapters import discover_commands, measure_resources, select_limits
@@ -8,11 +9,12 @@ from .gemini_recovery import recover_gemini_review
 from .local_run import run_real_dry_run
 from .phase2a import disable_autonomous_dry_run, enable_autonomous_dry_run, engage_kill_switch, recover_terminal_abandoned, run_worker_job, safety_status
 from .paths import audit_root, runtime_root
+from .quality_review import scan_repository
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Local Hermes coding swarm (dry-run only)")
-    parser.add_argument("command", choices=["start", "stop", "status", "kill-switch", "dry-run", "controlled-baseline", "gemini-review-recovery", "phase2a-worker", "phase2a-recover-terminal", "run", "autonomous-dry-run-status", "autonomous-dry-run-enable", "autonomous-dry-run-disable"], nargs="?", default="status")
+    parser.add_argument("command", choices=["start", "stop", "status", "kill-switch", "dry-run", "controlled-baseline", "gemini-review-recovery", "quality-review", "phase2a-worker", "phase2a-recover-terminal", "run", "autonomous-dry-run-status", "autonomous-dry-run-enable", "autonomous-dry-run-disable"], nargs="?", default="status")
     parser.add_argument("--state-dir", type=Path, default=Path(".swarm-state"))
     parser.add_argument("--runtime-root", type=Path)
     parser.add_argument("--audit-dir", type=Path)
@@ -20,6 +22,7 @@ def main() -> int:
     parser.add_argument("--service", default="fixture-parser")
     parser.add_argument("--job-id")
     parser.add_argument("--repair-commit")
+    parser.add_argument("--output", type=Path)
     args = parser.parse_args()
     if args.command == "status":
         print({**safety_status(args.runtime_root or runtime_root()), "commands": discover_commands(), "resources": measure_resources(), "limits": select_limits(measure_resources()).__dict__})
@@ -37,6 +40,21 @@ def main() -> int:
     if args.command == "autonomous-dry-run-disable":
         print(disable_autonomous_dry_run(runtime_root=args.runtime_root or runtime_root()))
         return 0
+    if args.command == "quality-review":
+        if not args.repository:
+            parser.error("quality-review requires --repository")
+        try:
+            rendered = json.dumps(scan_repository(args.repository), indent=2, sort_keys=True) + "\n"
+            if args.output:
+                args.output.parent.mkdir(parents=True, exist_ok=True)
+                args.output.write_text(rendered, encoding="utf-8")
+                args.output.chmod(0o600)
+            else:
+                print(rendered, end="")
+            return 0
+        except (OSError, ValueError) as exc:
+            print(f"FAILED: {exc}")
+            return 1
     if args.command == "phase2a-worker":
         if not args.job_id:
             parser.error("phase2a-worker requires --job-id")

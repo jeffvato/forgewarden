@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "mode",
+    "repository",
+    "generated_at",
+    "findings",
+    "counts",
+    "auto_apply_enabled"
+  ],
+  "properties": {
+    "schema_version": { "const": "1" },
+    "mode": { "const": "READ_ONLY" },
+    "repository": { "type": "string", "minLength": 1 },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "auto_apply_enabled": { "const": false },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["SAFE", "CAREFUL", "RISKY"],
+      "properties": {
+        "SAFE": { "type": "integer", "minimum": 0 },
+        "CAREFUL": { "type": "integer", "minimum": 0 },
+        "RISKY": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "category",
+          "tier",
+          "confidence",
+          "file",
+          "line",
+          "symbol",
+          "summary",
+          "evidence",
+          "rationale",
+          "suggested_action",
+          "auto_apply"
+        ],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[0-9a-f]{16}$" },
+          "category": {
+            "type": "string",
+            "enum": [
+              "ai_slop",
+              "concurrency_risk",
+              "n_plus_one_query",
+              "nested_ternary",
+              "parse_failure",
+              "pass_through_wrapper",
+              "silent_failure",
+              "structural_bloat",
+              "unreachable_code",
+              "unused_import"
+            ]
+          },
+          "tier": { "enum": ["SAFE", "CAREFUL", "RISKY"] },
+          "confidence": { "enum": ["LOW", "MEDIUM", "HIGH"] },
+          "file": { "type": "string", "pattern": "^(?!/).+" },
+          "line": { "type": "integer", "minimum": 1 },
+          "symbol": { "type": ["string", "null"] },
+          "summary": { "type": "string", "minLength": 1, "maxLength": 512 },
+          "evidence": { "type": "string", "maxLength": 512 },
+          "rationale": { "type": "string", "minLength": 1, "maxLength": 1024 },
+          "suggested_action": { "type": "string", "minLength": 1, "maxLength": 1024 },
+          "auto_apply": { "const": false }
+        }
+      }
+    }
+  }
+}

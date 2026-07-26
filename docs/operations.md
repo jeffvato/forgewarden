@@ -9,6 +9,9 @@ PYTHONPATH=. python3 -m swarm.cli status
 PYTHONPATH=. python3 -m swarm.cli start
 PYTHONPATH=. python3 -m swarm.cli dry-run
 PYTHONPATH=. python3 -m swarm.cli stop --state-dir .swarm-state
+PYTHONPATH=. python3 -m swarm.cli quality-review \
+  --repository /path/to/isolated-worktree \
+  --output /tmp/hermes-quality-review.json
 ```
 
 `stop` writes a local kill-switch marker. It does not stop Hermes, n8n, Docker,
@@ -20,6 +23,9 @@ which unconditionally rejects deployment.
 `start` only marks the dry-run controller as started; it launches no daemon.
 `dry-run` creates a disposable fixture, invokes the real local adapters, and
 records audit state under ignored runtime directories.
+`quality-review` reads source files and emits a structured report without
+editing the repository, invoking an external model, or enabling auto-apply.
+Use an isolated worktree or disposable checkout as its input.
 
 The implementation does not alter Hermes configuration. Before a later phase
 changes an existing Hermes configuration, take a timestamped copy, display the

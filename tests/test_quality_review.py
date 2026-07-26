@@ -1,0 +1,125 @@
+import json
+import os
+import subprocess
+from pathlib import Path
+
+import jsonschema
+
+from swarm.quality_review import scan_repository
+
+
+ROOT = Path(__file__).resolve().parents[1]
+SCHEMA = ROOT / "schemas" / "quality-review.schema.json"
+
+
+def _finding(result, category):
+    return next(item for item in result["findings"] if item["category"] == category)
+
+
+def test_quality_review_returns_structured_read_only_findings(tmp_path):
+    source = tmp_path / "sample.py"
+    source.write_text(
+        """\ndef passthrough(value):
+    return normalize(value)
+
+
+def risky(value):
+    try:
+        return value[0]
+    except Exception:
+        pass
+
+
+def nested(value):
+    return 1 if value else 2 if value > 0 else 3
+""",
+        encoding="utf-8",
+    )
+    before = source.read_bytes()
+
+    result = scan_repository(tmp_path)
+
+    jsonschema.validate(result, json.loads(SCHEMA.read_text(encoding="utf-8")))
+    assert result["mode"] == "READ_ONLY"
+    assert result["repository"] == str(tmp_path.resolve())
+    assert {item["category"] for item in result["findings"]} >= {
+        "pass_through_wrapper",
+        "silent_failure",
+        "nested_ternary",
+    }
+    assert all(item["auto_apply"] is False for item in result["findings"])
+    assert source.read_bytes() == before
+
+
+def test_quality_review_classifies_suspected_n_plus_one_and_ai_slop(tmp_path):
+    source = tmp_path / "service.py"
+    source.write_text(
+        """\ndef load_all(items, db):
+    # Certainly, this important function performs the requested operation.
+    for item in items:
+        db.execute("select * from items where id = ?", (item.id,))
+
+
+def do_work():
+    return "ok"
+    return "unreachable"
+""",
+        encoding="utf-8",
+    )
+
+    result = scan_repository(tmp_path)
+
+    n_plus_one = _finding(result, "n_plus_one_query")
+    assert n_plus_one["tier"] == "RISKY"
+    assert n_plus_one["confidence"] in {"MEDIUM", "HIGH"}
+    assert _finding(result, "ai_slop") ["tier"] == "SAFE"
+    assert _finding(result, "unreachable_code")["tier"] == "SAFE"
+
+
+def test_quality_review_skips_sensitive_and_non_source_files(tmp_path):
+    (tmp_path / ".env").write_text("TOKEN=do-not-read\n", encoding="utf-8")
+    (tmp_path / "notes.txt").write_text("Certainly, this is prose.\n", encoding="utf-8")
+    (tmp_path / "safe.py").write_text("def ok():\n    return True\n", encoding="utf-8")
+
+    result = scan_repository(tmp_path)
+
+    assert all(item["file"] == "safe.py" for item in result["findings"])
+
+
+def test_quality_review_cli_writes_only_requested_report(tmp_path):
+    source = tmp_path / "safe.py"
+    source.write_text("def ok():\n    return True\n", encoding="utf-8")
+    report = tmp_path / "review.json"
+
+    result = subprocess.run(
+        ["python3", "-m", "swarm.quality_review", str(tmp_path), "--output", str(report)],
+        cwd=ROOT,
+        text=True,
+        capture_output=True,
+        check=False,
+        env={**os.environ, "PYTHONPATH": str(ROOT)},
+    )
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(report.read_text(encoding="utf-8"))
+    jsonschema.validate(payload, json.loads(SCHEMA.read_text(encoding="utf-8")))
+    assert "review.json" not in {item["file"] for item in payload["findings"]}
+
+
+def test_swarm_cli_exposes_quality_review_without_creating_state(tmp_path):
+    (tmp_path / "safe.py").write_text("def ok():\n    return True\n", encoding="utf-8")
+    state = tmp_path / "unused-state"
+
+    result = subprocess.run(
+        ["python3", "-m", "swarm.cli", "quality-review", "--repository", str(tmp_path)],
+        cwd=ROOT,
+        text=True,
+        capture_output=True,
+        check=False,
+        env={**os.environ, "PYTHONPATH": str(ROOT)},
+    )
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    jsonschema.validate(payload, json.loads(SCHEMA.read_text(encoding="utf-8")))
+    assert not state.exists()
