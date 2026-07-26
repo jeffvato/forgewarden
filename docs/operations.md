@@ -63,6 +63,9 @@ The command requires a shell-free verification command, records its exit
 status, and restores the original bytes and modes if verification fails. Its
 structured result is defined by
 `schemas/quality-application-result.schema.json`.
+Rollback replaces affected directory entries atomically without following a
+verifier-created symlink, so a failed check cannot redirect restoration data
+outside the isolated worktree.
 It also requires a job ID and durable audit path. The audit is mode `0600` and
 records only hashes, finding IDs, changed-file names, status, and verification
 outcome; it excludes command text, command output, and source contents.

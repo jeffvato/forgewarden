@@ -131,8 +131,10 @@ def _rollback_result(
     verification_exit_code: int | None,
 ) -> dict[str, Any]:
     """Restore original bytes/modes and record a failed post-approval attempt."""
+    from .core import restore_restricted_bytes
+
     for path, data in originals.items():
-        path.write_bytes(data)
+        restore_restricted_bytes(path, data, "SAFE application rollback")
         path.chmod(modes[path])
     if _git(root, "status", "--porcelain", "--untracked-files=all").strip():
         raise ValueError("SAFE rollback could not restore a clean worktree")

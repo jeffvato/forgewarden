@@ -164,6 +164,26 @@ def touch_restricted(path: Path, label: str) -> None:
     path.chmod(0o600)
 
 
+def restore_restricted_bytes(path: Path, content: bytes, label: str) -> None:
+    """Restore a file by replacing its directory entry, never following its leaf."""
+    path = path.expanduser()
+    if any(parent.is_symlink() for parent in (path.parent, *path.parent.parents)):
+        raise SwarmError(f"refusing symlink parent for {label}: {path}")
+    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    temporary = path.parent / f".{path.name}.{os.getpid()}.{uuid.uuid4().hex}.restore"
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        descriptor = os.open(temporary, flags, 0o600)
+        with os.fdopen(descriptor, "wb") as handle:
+            handle.write(content)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary, path)
+        path.chmod(0o600)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
 def validate_snapshot_symlinks(snapshot: Path) -> None:
     """Permit only symlinks whose targets remain inside the disposable snapshot."""
     root = snapshot.resolve()

@@ -611,6 +611,36 @@ def test_safe_apply_rolls_back_when_verification_fails(tmp_path):
     assert subprocess.run(["git", "status", "--porcelain"], cwd=isolated, capture_output=True, text=True, check=True).stdout == ""
 
 
+def test_safe_apply_rollback_replaces_verifier_symlink_without_writing_outside(tmp_path):
+    source_repo = tmp_path / "source"
+    source_repo.mkdir()
+    original = "import unused\n\ndef ok():\n    return True\n"
+    (source_repo / "module.py").write_text(original, encoding="utf-8")
+    outside = tmp_path / "outside.txt"
+    outside.write_text("must remain unchanged\n", encoding="utf-8")
+    subprocess.run(["git", "init", "-q", "-b", "main"], cwd=source_repo, check=True)
+    subprocess.run(["git", "add", "."], cwd=source_repo, check=True)
+    subprocess.run(["git", "-c", "user.name=fixture", "-c", "user.email=fixture@example.test", "commit", "-qm", "initial"], cwd=source_repo, check=True)
+    isolated = tmp_path / "isolated"
+    subprocess.run(["git", "worktree", "add", "--detach", "-q", str(isolated), "HEAD"], cwd=source_repo, check=True)
+    report = scan_repository(isolated)
+    finding = _finding(report, "unused_import")
+    approval_path, approval_evidence_path = _approval(tmp_path, "rollback-symlink-job")
+    verifier = "from pathlib import Path; p=Path('module.py'); p.unlink(); p.symlink_to(Path(%r)); raise SystemExit(7)" % str(outside)
+
+    result = apply_safe_findings(
+        isolated, report, [finding["id"]], ["python3", "-c", verifier],
+        job_id="rollback-symlink-job", audit_path=tmp_path / "audit" / "audit.jsonl",
+        approval_path=approval_path, approval_evidence_path=approval_evidence_path,
+    )
+
+    assert result["state"] == "ROLLED_BACK_VERIFICATION_FAILED"
+    assert (isolated / "module.py").is_file()
+    assert not (isolated / "module.py").is_symlink()
+    assert (isolated / "module.py").read_text(encoding="utf-8") == original
+    assert outside.read_text(encoding="utf-8") == "must remain unchanged\n"
+
+
 def test_audit_consumer_returns_only_review_safe_summary(tmp_path):
     audit_dir = tmp_path / "audit"
     audit_dir.mkdir(mode=0o700)
