@@ -21,6 +21,9 @@ Python 3.11 and 3.12 through GitHub Actions. The workflow also validates both
 shell launchers. Machine-specific Hermes/Desktop lifecycle tests remain a
 separate local validation gate because they require the pinned WSL runtime.
 
+The same checks are available locally through `bash scripts/validate-swarm.sh
+--portable`; use `--full` for the complete local suite.
+
 ## Boundaries
 
 - Hermes owns job state and orchestration; it never edits application files.

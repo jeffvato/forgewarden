@@ -5,6 +5,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 LAUNCHER = ROOT / "packaging" / "hermes-swarm"
+VALIDATOR = ROOT / "scripts" / "validate-swarm.sh"
 
 
 def test_launcher_accepts_absolute_external_path_overrides(tmp_path):
@@ -56,3 +57,15 @@ def test_launcher_rejects_unavailable_python_override(tmp_path):
     )
     assert result.returncode != 0
     assert "python executable is unavailable" in result.stderr.lower()
+
+
+def test_validation_script_rejects_unknown_mode():
+    result = subprocess.run(
+        ["/bin/bash", str(VALIDATOR), "--unknown"],
+        cwd=ROOT,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert result.returncode == 2
+    assert "unknown mode" in result.stderr
