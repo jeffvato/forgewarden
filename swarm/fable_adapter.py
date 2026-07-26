@@ -20,8 +20,9 @@ from pathlib import Path
 from typing import Any
 
 from .core import SwarmError, redact
+from .paths import project_root
 
-PROJECT_ROOT = Path("/home/jeff/hermes-swarm-phase1")
+PROJECT_ROOT = project_root()
 CLAUDE = Path("/home/jeff/.local/bin/claude")
 MODEL = "claude-fable-5"
 PROGRAM_VERSION = "fable5-credit-program-v1"

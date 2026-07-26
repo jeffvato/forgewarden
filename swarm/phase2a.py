@@ -19,11 +19,12 @@ from typing import Any, Protocol
 from .adapters import CodexAdapter, GeminiAdapter, ResourceLimits, WriterInvocationSpec, limited_run, normalize_changed_paths
 from .baseline import DeterministicInterpreterError, _deadline_test_command, _introduce_deadline_defect, _tracked_test_hashes, _trusted_synthetic_commit, enforce_diff_gate, scan_baseline_tree, scan_git_blobs, validate_deterministic_interpreter
 from .core import AuditLog, Job, SwarmError, redact, run_command, validate_contract
+from .paths import project_root
 
 PROFILE_ID = "csv_deadline_dry_run_v1"
 BASELINE_SHA = "bad64e7cf14e3c586d395341b25467841847dec6"
 REPOSITORY = Path("/home/jeff/swarm-repositories/n8n-csv-baseline-v2")
-PROJECT_ROOT = Path("/home/jeff/hermes-swarm-phase1")
+PROJECT_ROOT = project_root()
 DEFAULT_RUNTIME = Path("/home/jeff/hermes-swarm-runtime")
 DEFAULT_AUDIT = Path("/home/jeff/hermes-swarm-audit/audit.jsonl")
 PROFILE_PATH = PROJECT_ROOT / "config/desktop-job-profiles.yaml"

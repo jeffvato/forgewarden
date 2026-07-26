@@ -15,12 +15,13 @@ if TYPE_CHECKING:
     from mcp.server.fastmcp import FastMCP
 
 from .core import redact
+from .paths import project_root
 
 LOG = logging.getLogger("hermes_swarm.desktop_bridge")
 LAUNCHER = Path("/home/jeff/.local/bin/hermes-swarm")
 RUNTIME_ROOT = Path("/home/jeff/hermes-swarm-runtime")
 AUDIT_PATH = Path("/home/jeff/hermes-swarm-audit/audit.jsonl")
-PROJECT_ROOT = Path("/home/jeff/hermes-swarm-phase1")
+PROJECT_ROOT = project_root()
 COMMAND_TIMEOUT = 10
 JOB_ID_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,127}$")
 SHA_RE = re.compile(r"^[0-9a-f]{40,64}$")
