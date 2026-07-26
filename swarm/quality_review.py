@@ -43,6 +43,8 @@ QUERY_CALL_RE = re.compile(
     re.IGNORECASE,
 )
 BLOCKING_ASYNC_RE = re.compile(r"\b(?:time\.sleep|requests\.|urllib\.)")
+TRANSIENT_STATE_RE = re.compile(r"\b(?:QUEUED|RUNNING|IN_PROGRESS|STARTED|PENDING)\b")
+TERMINAL_STATE_RE = re.compile(r"\b(?:SUCCEEDED|FAILED|COMPLETED|CANCELLED|ABANDONED|DONE)\b")
 
 _TIER_ORDER = {"SAFE": 0, "CAREFUL": 1, "RISKY": 2}
 
@@ -295,6 +297,16 @@ def _scan_text(relative: str, source: str) -> list[dict[str, Any]]:
                 rationale="Generic filler can obscure intent, but the detector is heuristic and non-authoritative.",
                 suggested_action="Review for precise project-specific wording; do not rewrite behavior automatically.",
             ))
+    transient = TRANSIENT_STATE_RE.search(source)
+    if transient and not TERMINAL_STATE_RE.search(source):
+        line_number = source.count("\n", 0, transient.start()) + 1
+        findings.append(_finding(
+            category="stale_state", tier="RISKY", confidence="LOW", file=relative,
+            line=line_number, summary="transient state marker has no visible terminal state in this file",
+            evidence=_line(source, line_number),
+            rationale="A persisted transient marker without terminal reconciliation can strand work as stale.",
+            suggested_action="Trace all lifecycle transitions and recovery paths before changing state handling.",
+        ))
     return findings
 
 

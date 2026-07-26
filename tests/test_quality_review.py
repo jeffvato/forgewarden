@@ -109,6 +109,19 @@ def test_quality_review_flags_unbounded_loop_growth_as_risky(tmp_path):
     assert finding["auto_apply"] is False
 
 
+def test_quality_review_flags_possible_stale_state_marker(tmp_path):
+    (tmp_path / "lifecycle.py").write_text(
+        "def start():\n    state = \"RUNNING\"\n    return state\n",
+        encoding="utf-8",
+    )
+
+    result = scan_repository(tmp_path)
+    finding = _finding(result, "stale_state")
+
+    assert finding["tier"] == "RISKY"
+    assert finding["confidence"] == "LOW"
+
+
 def test_quality_review_skips_sensitive_and_non_source_files(tmp_path):
     (tmp_path / ".env").write_text("TOKEN=do-not-read\n", encoding="utf-8")
     (tmp_path / "notes.txt").write_text("Certainly, this is prose.\n", encoding="utf-8")

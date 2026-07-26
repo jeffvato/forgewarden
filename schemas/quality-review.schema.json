@@ -102,6 +102,7 @@
               "parse_failure",
               "pass_through_wrapper",
               "silent_failure",
+              "stale_state",
               "structural_bloat",
               "unbounded_growth",
               "unreachable_code",
