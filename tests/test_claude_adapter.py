@@ -12,6 +12,9 @@ class ClaudeAdapterTests(unittest.TestCase):
     def test_default_is_sonnet_and_models_are_narrowly_allowlisted(self):
         self.assertEqual(claude.DEFAULT_MODEL, "sonnet")
         self.assertEqual(claude.ALLOWED_MODELS, {"sonnet", "opus", "haiku"})
+        self.assertEqual(claude.resolve_model("sonnet"), "claude-sonnet-4-6")
+        self.assertEqual(claude.resolve_model("opus"), "claude-opus-4-5")
+        self.assertEqual(claude.resolve_model("haiku"), "claude-haiku-4-5-20251001")
 
     def test_context_is_required_bounded_and_redacted(self):
         with self.assertRaises(ValueError):
@@ -35,14 +38,14 @@ class ClaudeAdapterTests(unittest.TestCase):
             root = Path(temp)
             proof = root / "proof.json"
             fake = root / "fake-claude.py"
-            payload = {"job_id": job, "model": "sonnet", "findings": [], "recommendations": [], "limitations": []}
+            payload = {"job_id": job, "model": "claude-sonnet-4-6", "findings": [], "recommendations": [], "limitations": []}
             fake.write_text(
                 "#!/home/jeff/anaconda3/bin/python3\n"
                 "import json, os, sys\n"
                 f"proof = {str(proof)!r}\n"
                 f"payload = {payload!r}\n"
                 "args = sys.argv[1:]\n"
-                "required = ['--model', 'sonnet', '--output-format', 'json', '--json-schema', '--tools', '', '--permission-mode', 'plan', '--no-session-persistence', '--max-turns', '3', '--strict-mcp-config', '--disable-slash-commands', '--no-chrome']\n"
+                "required = ['--model', 'claude-sonnet-4-6', '--output-format', 'json', '--json-schema', '--tools', '', '--permission-mode', 'plan', '--no-session-persistence', '--max-turns', '3', '--strict-mcp-config', '--disable-slash-commands', '--no-chrome']\n"
                 "if any(item not in args for item in required): sys.exit(9)\n"
                 "json.dump({'args': args, 'env_names': sorted(os.environ)}, open(proof, 'w'))\n"
                 "print(json.dumps({'result': json.dumps(payload)}))\n",
@@ -69,7 +72,7 @@ class ClaudeAdapterTests(unittest.TestCase):
         job = "claude-" + "c" * 24
         with self.assertRaises(ValueError):
             claude.run_claude(job, "context", model="sonnet-5")
-        payload = {"job_id": job, "model": "opus", "findings": [], "recommendations": [], "limitations": []}
+        payload = {"job_id": job, "model": "claude-opus-4-5", "findings": [], "recommendations": [], "limitations": []}
         with self.assertRaises(claude.ClaudeAdapterError):
             claude.validate_result(payload, job, "sonnet")
 

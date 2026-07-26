@@ -4,11 +4,18 @@ The swarm has an explicit, opt-in reviewer for the installed Claude Code CLI.
 It is separate from the Fable credit adapter and is not connected to Phase 2A,
 the MCP bridge, job submission, recovery, or deployment.
 
-The default model is the official Claude CLI `sonnet` alias. `opus` and `haiku`
-are the only other accepted choices. The alias is intentional: it lets the
-installed Claude CLI select the account’s current Sonnet release without the
-swarm hard-coding an unverified future model ID such as “Sonnet 4.6” or
-“Sonnet 5”.
+The accepted aliases are bound to these exact full model strings:
+
+```text
+sonnet -> claude-sonnet-4-6
+opus   -> claude-opus-4-5
+haiku  -> claude-haiku-4-5-20251001
+```
+
+The adapter validates the alias and binds the same full model string into both
+the CLI request and the structured-output schema, so a provider response from
+a different model is rejected. Sonnet 5 is not configured because the
+installed CLI did not expose it.
 
 The adapter sends only the caller-provided context after local redaction and a
 24,000-byte bound. It does not read repository files, audit logs, credentials,

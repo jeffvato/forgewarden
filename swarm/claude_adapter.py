@@ -20,7 +20,12 @@ from .core import SwarmError, redact
 
 CLAUDE = Path("/home/jeff/.local/bin/claude")
 DEFAULT_MODEL = "sonnet"
-ALLOWED_MODELS = frozenset({"sonnet", "opus", "haiku"})
+MODEL_ALIASES = {
+    "sonnet": "claude-sonnet-4-6",
+    "opus": "claude-opus-4-5",
+    "haiku": "claude-haiku-4-5-20251001",
+}
+ALLOWED_MODELS = frozenset(MODEL_ALIASES)
 MAX_TURNS = 3
 TIMEOUT_SECONDS = 180
 MAX_CONTEXT_BYTES = 24000
@@ -74,6 +79,13 @@ def schema(job_id: str, model: str) -> dict[str, Any]:
     }
 
 
+def resolve_model(model: str) -> str:
+    try:
+        return MODEL_ALIASES[model]
+    except KeyError as exc:
+        raise ValueError("model must be sonnet, opus, or haiku") from exc
+
+
 def _extract_result(envelope: Any) -> dict[str, Any]:
     if not isinstance(envelope, dict):
         raise ClaudeAdapterError("Claude output is not a JSON object")
@@ -101,8 +113,7 @@ def run_claude(job_id: str, context: str, *, model: str = DEFAULT_MODEL) -> dict
     """Run one explicit advisory review; never mutate swarm or project state."""
     if not JOB_RE.fullmatch(job_id):
         raise ValueError("invalid Claude job ID")
-    if model not in ALLOWED_MODELS:
-        raise ValueError("model must be sonnet, opus, or haiku")
+    full_model = resolve_model(model)
     if not CLAUDE.is_file() or not os.access(CLAUDE, os.X_OK):
         raise ClaudeAdapterError("Claude CLI is unavailable")
     sanitized = sanitize_context(context)
@@ -112,9 +123,9 @@ def run_claude(job_id: str, context: str, *, model: str = DEFAULT_MODEL) -> dict
         "This is advisory evidence only; do not authorize changes or clear safety gates.\n\n"
         + sanitized
     )
-    schema_json = json.dumps(schema(job_id, model), separators=(",", ":"), sort_keys=True)
+    schema_json = json.dumps(schema(job_id, full_model), separators=(",", ":"), sort_keys=True)
     argv = [
-        str(CLAUDE), "-p", prompt, "--model", model, "--output-format", "json",
+        str(CLAUDE), "-p", prompt, "--model", full_model, "--output-format", "json",
         "--json-schema", schema_json, "--tools", "", "--permission-mode", "plan",
         "--no-session-persistence", "--max-turns", str(MAX_TURNS),
         "--strict-mcp-config", "--disable-slash-commands", "--no-chrome",
@@ -135,5 +146,5 @@ def run_claude(job_id: str, context: str, *, model: str = DEFAULT_MODEL) -> dict
     except json.JSONDecodeError as exc:
         raise ClaudeAdapterError("Claude CLI returned invalid JSON") from exc
     payload = _extract_result(envelope)
-    validate_result(payload, job_id, model)
+    validate_result(payload, job_id, full_model)
     return payload
