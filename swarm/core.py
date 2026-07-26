@@ -28,6 +28,10 @@ HIGH_RISK_TERMS = (
 )
 FORBIDDEN_DIFF_TERMS = (".env", "private key", "credential", "migration", "deployment policy", "risk policy")
 SECRET_PATTERNS = (
+    re.compile(r"(?is)-----BEGIN\s+(?:RSA\s+|EC\s+|OPENSSH\s+)?PRIVATE\s+KEY-----.*?-----END\s+(?:RSA\s+|EC\s+|OPENSSH\s+)?PRIVATE\s+KEY-----"),
+    re.compile(r"(?i)(?:authorization|proxy-authorization)\s*[:=]\s*(?:bearer|basic)\s+[^\s,;]+"),
+    re.compile(r"(?i)(?:cookie|set-cookie)\s*[:=]\s*[^\s,;]+"),
+    re.compile(r"(?i)(?:https?|postgres(?:ql)?|mysql|redis)://[^\s/@:]+:[^\s/@]+@[^\s]+"),
     re.compile(r"(?i)(api[_-]?key|token|password|secret|authorization)\s*[:=]\s*[^\s,;]+"),
     re.compile(r"\b(?:sk|ghp|xoxb|AIza)[-_A-Za-z0-9]{12,}\b"),
     re.compile(r"\b\d{13,19}\b"),
