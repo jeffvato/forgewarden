@@ -11,6 +11,8 @@ import uuid
 from pathlib import Path
 from typing import Any
 
+from .core import SwarmError, read_restricted_bytes
+
 
 def _safe_path(path: Path) -> Path:
     path = path.expanduser()
@@ -21,7 +23,10 @@ def _safe_path(path: Path) -> Path:
 
 def _read_json(path: Path) -> tuple[dict[str, Any], bytes]:
     path = _safe_path(path)
-    raw = path.read_bytes()
+    try:
+        raw = read_restricted_bytes(path, "approval record")
+    except SwarmError as exc:
+        raise ValueError(str(exc)) from exc
     payload = json.loads(raw)
     if not isinstance(payload, dict):
         raise ValueError(f"approval input must be a JSON object: {path}")
@@ -45,7 +50,10 @@ def create_approval_record(
         raise ValueError("approval TTL must be between 1 and 86400 seconds")
     evidence_path = _safe_path(evidence_path)
     output_path = _safe_path(output_path)
-    raw = evidence_path.read_bytes()
+    try:
+        raw = read_restricted_bytes(evidence_path, "approval evidence")
+    except SwarmError as exc:
+        raise ValueError(str(exc)) from exc
     now = int(time.time())
     record = {
         "schema_version": "1",
@@ -91,7 +99,10 @@ def verify_approval(
     if approval_path.parent.stat().st_mode & 0o777 != 0o700:
         raise ValueError("approval directory must be mode 0700")
     record, _ = _read_json(approval_path)
-    evidence = _safe_path(evidence_path).read_bytes()
+    try:
+        evidence = read_restricted_bytes(_safe_path(evidence_path), "approval evidence")
+    except SwarmError as exc:
+        raise ValueError(str(exc)) from exc
     required = {"schema_version", "mode", "approval_id", "job_id", "reviewer", "decision", "evidence_sha256", "issued_at", "expires_at", "one_time", "consumed", "mutation_allowed", "deployment"}
     if not required.issubset(record):
         raise ValueError("approval record is incomplete")
@@ -153,7 +164,10 @@ def reconcile_approval(
     if not audit_path.is_file() or audit_path.stat().st_mode & 0o777 != 0o600 or audit_path.parent.stat().st_mode & 0o777 != 0o700:
         raise ValueError("audit permissions are not restricted")
     record, _ = _read_json(approval_path)
-    evidence_hash = hashlib.sha256(_safe_path(evidence_path).read_bytes()).hexdigest()
+    try:
+        evidence_hash = hashlib.sha256(read_restricted_bytes(_safe_path(evidence_path), "approval evidence")).hexdigest()
+    except SwarmError as exc:
+        raise ValueError(str(exc)) from exc
     if record.get("job_id") != expected_job_id or record.get("decision") != "APPROVED":
         raise ValueError("approval cannot be reconciled for this job")
     if record.get("evidence_sha256") != evidence_hash:
@@ -162,7 +176,11 @@ def reconcile_approval(
     if not marker.is_file():
         raise ValueError("approval has not been consumed")
     matching: list[dict[str, Any]] = []
-    for line in audit_path.read_bytes().splitlines():
+    try:
+        audit_bytes = read_restricted_bytes(audit_path, "approval audit")
+    except SwarmError as exc:
+        raise ValueError(str(exc)) from exc
+    for line in audit_bytes.splitlines():
         try:
             event = json.loads(line)
         except (UnicodeDecodeError, json.JSONDecodeError):
