@@ -33,7 +33,7 @@ Jeff is building a local, reproducible coding swarm in WSL2 with strict separati
 
 The project currently operates only in `DRY_RUN`. Deployment is disabled. The emergency kill switch is engaged. A restricted Hermes Desktop MCP bridge is installed and can expose status, audit, emergency-stop, and a preapproved job-submission interface.
 
-Phase 2A—the single-use, preapproved, dry-run job path—is implemented. Commit `7a582369…` resolved the disposable `MCPServerTask` fixture blocker and proved production-style persistent transport, public `start()`, three accelerated keepalive cycles, forced transport closure, strictly newer-generation reconnect, post-reconnect status, idempotent fake enqueue/replay, and a terminal fake worker. The lifecycle fixture passed in 6.3 seconds; official discovery passed three of three runs; the full suite passed 93 tests with 8 skipped; and `pip check` passed. The remaining activation step is one separately authorized real synthetic Phase 2A job through the durable worker with Codex, deterministic validation, and Gemini exact-commit review.
+Phase 2A—the single-use, preapproved, dry-run job path—is implemented and has completed one real synthetic job. Commit `7a582369…` resolved the disposable `MCPServerTask` fixture blocker; commit `b119b4f…` added guarded submission and terminal recovery. Job `phase2a-1ab6c00f50704fd782e06e8d` completed with deterministic validation passed, Gemini verdict `APPROVE`, low risk, repair commit `3d3b9d8…`, and the final safety state restored to deployment disabled, autonomous dry run disabled, and kill switch engaged. The current swarm suite passes 108 tests with 1 skip.
 
 ## Mission and design position
 
@@ -437,21 +437,21 @@ Always verify rather than assume:
 systemctl --user list-units 'hermes-swarm-phase2a-worker@*' --all --no-pager
 ```
 
-## Current gate: one controlled real synthetic Phase 2A job
+## Current gate: Phase 2A post-run hardening and release preparation
 
 ### What works
 
 - The Desktop backend is reachable from WSL and Windows on loopback.
 - Hermes Desktop successfully called `mcp__coding_swarm__status` and received structured status.
-- Direct MCP SDK initialization, five-tool discovery, repeated ping, and repeated status calls have passed.
+- Direct MCP SDK initialization, six-tool discovery, repeated ping, and repeated status calls have passed.
 - The bridge has closed-peer and `OSError` containment.
 - Hermes’ local compatibility patch recognizes empty-string `ClosedResourceError` values.
 - A generation-aware compatibility patch requires a strictly newer connection before reconnect readiness.
 - Commit `989ed97d93bde8a6847b51c2043e9bc92d10ae03` removed the fixed-local-bridge OSV delay and corrected asyncio loop ownership/wakeup behavior under WSL.
 - Commit `7a582369eebdb18cf76acf01b7adcb101e161542` corrected the disposable fixture to use the production persistent fd transport, public `MCPServerTask.start()`, and the production-style filtered environment.
-- The official MCP probe now passes in 1.31 seconds, connects in 656 ms, and discovers five tools.
+- The official MCP probe now passes in 1.31 seconds, connects in 656 ms, and discovers six tools.
 - The production-equivalent lifecycle fixture passes in 6.3 seconds, including three accelerated keepalives, forced closure, newer-generation reconnect, post-reconnect status, replay-safe fake enqueue, and a fake worker reaching `SUCCEEDED`.
-- The full suite reported 93 passed and 8 skipped; the bridge suite reported 12 passed; `pip check` passed.
+- The full swarm suite reports 108 passed and 1 skipped; the bridge suite reports 12 passed; `pip check` passed.
 
 ### Resolved root causes
 
@@ -479,12 +479,12 @@ Historical logs showed the first Hermes keepalive failing approximately every 20
 
 The disposable acceptance fixture originally failed because it used plain FastMCP stdio, called `MCPServerTask.run()` directly, and omitted `HOME`, locale, `PYTHONNOUSERSITE`, and a dedicated `HERMES_HOME`. It stalled at generation 1 with `_ready_generation=0`. Commit `7a582369…` aligned the fixture with production and proved the lifecycle sequence.
 
-### Remaining pre-activation evidence
+### Completed Phase 2A evidence
 
 Proven through commit `7a582369…`:
 
 - official discovery passed three of three runs;
-- each run discovered five tools;
+- each run discovered six tools;
 - connection times were 0.6–0.9 seconds and total runtimes were 1.2–1.6 seconds;
 - no MCP children leaked;
 - a real Hermes Desktop status call succeeded after the normal keepalive boundary;
@@ -500,17 +500,18 @@ Proven through commit `7a582369…`:
 - the fake lease finished `CONSUMED`;
 - the final kill switch was engaged, autonomous dry run disabled, and deployment disabled;
 - no orphan MCP processes remained;
-- no real Codex/Gemini job ran.
+- one real synthetic job ran through Codex, deterministic validation, trusted commit creation, and Gemini exact-commit review;
+- job `phase2a-1ab6c00f50704fd782e06e8d` received Gemini verdict `APPROVE` with low risk;
+- repair commit `3d3b9d8fd1071bf3c4196c19d5a547d355d13795` was produced in the isolated baseline worktree;
+- the baseline repository remained unchanged.
 
-Still required:
+Next gates:
 
-1. Preserve a committed acceptance report containing the exact commands, environment, hashes, timings, and final safety state.
-2. Verify the repository status and preserve the known untracked postmortem.
-3. Obtain explicit authorization for exactly one real synthetic Phase 2A job.
-4. Run that job through the durable worker with Codex, deterministic validation, trusted commit creation, and Gemini exact-commit review.
-5. Require final lease consumed, kill switch engaged, autonomous dry run disabled, deployment disabled, worker inactive, baseline unchanged, and no orphan processes.
-
-The completed fake acceptance evidence does not itself authorize the real synthetic job.
+1. Keep the swarm repository separate from application repositories and publish only swarm source, tests, and documentation.
+2. Add reproducible clean-machine installation and verification instructions.
+3. Add bounded fault-injection coverage for worker, bridge, audit, and reviewer failures.
+4. Design—but do not enable—additional Phase 2B profiles.
+5. Keep deployment disabled and require separate authorization before any production-capable phase.
 
 ## Compatibility patches and backups
 
@@ -712,7 +713,7 @@ Status: completed with multiple fail-closed corrections.
 
 ### Phase 2A — Hermes Desktop single-use dry-run
 
-Status: lifecycle and fake-worker acceptance completed. One separately authorized real synthetic job remains before Phase 2A can be considered fully exercised.
+Status: lifecycle, fake-worker acceptance, and one real synthetic dry-run completed. Deployment remains disabled.
 
 Required completion evidence:
 
@@ -721,7 +722,7 @@ Required completion evidence:
 - status succeeds afterward (proven);
 - forced transport closure reconnects to a strictly newer generation (proven);
 - fake enqueue succeeds after reconnect without duplication (proven);
-- one real synthetic job queues promptly and completes through the worker;
+- one real synthetic job queued promptly and completed through the worker (proven: `phase2a-1ab6c00f50704fd782e06e8d`);
 - final lease disabled, kill switch engaged, deployment disabled, worker inactive, baseline unchanged.
 
 ### Phase 2B — Additional preapproved repair profiles
@@ -889,7 +890,7 @@ First perform read-only verification only:
 
 Do not activate a job, invoke Codex/Gemini, access /home/jeff/n8n, Docker, or production, or modify anything until the current state matches the record.
 
-The lifecycle blocker is resolved in commit `7a582369eebdb18cf76acf01b7adcb101e161542`. The immediate task is to verify and document that committed evidence, preserve the untracked postmortem, and prepare—but do not start—one real synthetic Phase 2A worker exercise. Starting it requires explicit authorization. Leave all safety states disabled/engaged until that authorization.
+The lifecycle blocker and first real synthetic exercise are resolved. The immediate task is now post-run hardening: keep the swarm repository self-contained, improve reproducibility and fault-injection coverage, and preserve the fail-closed safety state. Do not start another Phase 2A job without separate authorization.
 
 Preserve the phone/Android decisions in this record: Hermes is the single front door; unattended work uses the durable supervised queue; notifications are limited to approval, blocker, security/resource events, and completion; Tailscale is transport rather than authorization; and the future managed customer platform remains a separate project boundary.
 
@@ -898,13 +899,13 @@ Claude CLI is available. The lifecycle blocker is resolved, so the isolated read
 Jeff has authorized up to $100 of Fable 5 credits under the recorded budget program. Verify the installed Claude CLI version, authentication, exact resolved Fable model identifier, structured `total_cost_usd` reporting, and 30-day-retention warning before the first call. Use only sanitized inputs and enforce the aggregate $100 ceiling.
 ```
 
-## Evidence required before the next real job
+## Evidence required before any next real job
 
 Do not run another controlled Phase 2A exercise until one report proves all of the following:
 
 - official Hermes MCP test passes repeatedly (proven 3/3);
 - startup is under five seconds (proven);
-- exactly five tools are discovered (proven);
+- exactly six tools are discovered (proven);
 - real Desktop status works after the normal keepalive boundary (proven);
 - the disposable `MCPServerTask` fixture reaches ready through the production-equivalent loop/ownership path (proven);
 - three accelerated keepalive cycles pass through that task (proven);
@@ -913,7 +914,7 @@ Do not run another controlled Phase 2A exercise until one report proves all of t
 - fake queue admission after reconnect returns promptly (proven);
 - duplicate/replayed admission returns the same job ID without duplication (proven);
 - no orphaned bridge or worker processes remain after the fake exercise (proven);
-- all swarm tests and `pip check` pass;
+- all swarm tests and `pip check` pass (108 tests passed, 1 skipped in the current environment);
 - compatibility patch hashes and backups are recorded;
 - baseline and protected repositories are unchanged;
 - autonomous dry run is disabled;
@@ -921,7 +922,7 @@ Do not run another controlled Phase 2A exercise until one report proves all of t
 - kill switch is engaged;
 - no queued or running worker exists.
 
-After the above evidence is confirmed in the real WSL repository, the next operation is exactly one explicitly authorized real synthetic Phase 2A job. It is not authorized by this record alone.
+After the above evidence is reconfirmed, any additional real synthetic Phase 2A job still requires explicit authorization. This record does not authorize execution.
 
 ## Definition of project success
 
