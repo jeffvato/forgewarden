@@ -10,6 +10,7 @@ from swarm.quality_review import consolidate_report, evaluate_application_gate, 
 from swarm.quality_apply import apply_safe_findings, build_safe_application_plan
 from swarm.quality_audit import review_audit
 from swarm.review_evidence import build_review_evidence
+from swarm.approval import create_approval_record
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -22,6 +23,14 @@ COMBINED_EVIDENCE_SCHEMA = ROOT / "schemas" / "combined-review-evidence.schema.j
 
 def _finding(result, category):
     return next(item for item in result["findings"] if item["category"] == category)
+
+
+def _approval(tmp_path, job_id):
+    evidence = tmp_path / f"{job_id}-evidence.json"
+    evidence.write_text('{"mutation_allowed": false}\n', encoding="utf-8")
+    approval = tmp_path / f"{job_id}-approval" / "record.json"
+    create_approval_record(evidence, approval, job_id=job_id, reviewer="fixture", decision="APPROVED")
+    return approval, evidence
 
 
 def test_quality_review_returns_structured_read_only_findings(tmp_path):
@@ -414,6 +423,7 @@ def test_safe_apply_changes_only_explicit_unused_import_in_isolated_worktree(tmp
     subprocess.run(["git", "worktree", "add", "--detach", "-q", str(isolated), "HEAD"], cwd=source_repo, check=True)
     report = scan_repository(isolated)
     finding = _finding(report, "unused_import")
+    approval_path, approval_evidence_path = _approval(tmp_path, "safe-job-1")
 
     result = apply_safe_findings(
         isolated,
@@ -422,6 +432,8 @@ def test_safe_apply_changes_only_explicit_unused_import_in_isolated_worktree(tmp
         ["python3", "-c", "from pathlib import Path; assert 'import unused' not in Path('module.py').read_text()"],
         job_id="safe-job-1",
         audit_path=tmp_path / "audit" / "audit.jsonl",
+        approval_path=approval_path,
+        approval_evidence_path=approval_evidence_path,
     )
 
     jsonschema.validate(result, json.loads(APPLICATION_RESULT_SCHEMA.read_text(encoding="utf-8")))
@@ -455,7 +467,7 @@ def test_safe_apply_rejects_repository_root_and_non_safe_finding(tmp_path):
     finding = _finding(report, "pass_through_wrapper")
 
     with pytest.raises(ValueError, match="isolated Git worktree"):
-        apply_safe_findings(repository, report, [finding["id"]], ["true"], job_id="root-job", audit_path=tmp_path / "audit.jsonl")
+        apply_safe_findings(repository, report, [finding["id"]], ["true"], job_id="root-job", audit_path=tmp_path / "audit.jsonl", approval_path=tmp_path / "approval.json", approval_evidence_path=tmp_path / "evidence.json")
 
 
 def test_safe_apply_rolls_back_when_verification_fails(tmp_path):
@@ -474,6 +486,7 @@ def test_safe_apply_rolls_back_when_verification_fails(tmp_path):
     subprocess.run(["git", "worktree", "add", "--detach", "-q", str(isolated), "HEAD"], cwd=source_repo, check=True)
     report = scan_repository(isolated)
     finding = _finding(report, "unused_import")
+    approval_path, approval_evidence_path = _approval(tmp_path, "rollback-job")
 
     result = apply_safe_findings(
         isolated,
@@ -482,6 +495,8 @@ def test_safe_apply_rolls_back_when_verification_fails(tmp_path):
         ["python3", "-c", "raise SystemExit(7)"],
         job_id="rollback-job",
         audit_path=tmp_path / "audit" / "audit.jsonl",
+        approval_path=approval_path,
+        approval_evidence_path=approval_evidence_path,
     )
 
     jsonschema.validate(result, json.loads(APPLICATION_RESULT_SCHEMA.read_text(encoding="utf-8")))

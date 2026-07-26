@@ -55,6 +55,8 @@ PYTHONPATH=. python3 -m swarm.cli quality-apply-safe \
   --check-command "python3 -m pytest -q" \
   --job-id safe-review-001 \
   --audit /tmp/hermes-swarm-audit/audit.jsonl \
+  --approval /tmp/approval/record.json \
+  --evidence /tmp/combined-review-evidence.json \
   --finding-id <safe-finding-id>
 ```
 

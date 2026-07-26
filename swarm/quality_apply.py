@@ -29,6 +29,8 @@ def _record_audit(audit_path: Path, job_id: str, root: Path, result: dict[str, A
         Job(job_id, "quality-apply", root, "safe application", state=result["state"]),
         "safe_application_completed",
         repository=str(root),
+        approval_id=result["approval_id"],
+        approval_consumed=result["approval_consumed"],
         applied_finding_ids=result["applied_finding_ids"],
         changed_files=result["changed_files"],
         state=result["state"],
@@ -123,6 +125,8 @@ def apply_safe_findings(
     *,
     job_id: str,
     audit_path: Path,
+    approval_path: Path,
+    approval_evidence_path: Path,
 ) -> dict[str, Any]:
     """Apply only explicit SAFE allowlisted findings in a clean Git worktree.
 
@@ -159,6 +163,14 @@ def apply_safe_findings(
 
     originals: dict[Path, bytes] = {path: path.read_bytes() for path, _, _ in operations}
     modes: dict[Path, int] = {path: path.stat().st_mode for path in originals}
+    from .approval import verify_approval
+
+    approval = verify_approval(
+        approval_path,
+        approval_evidence_path,
+        expected_job_id=job_id,
+        consume=True,
+    )
     for path, lines, _ in operations:
         path.write_text("".join(lines), encoding="utf-8")
     changed = _git(root, "diff", "--name-only").splitlines()
@@ -187,6 +199,8 @@ def apply_safe_findings(
             "mode": "SAFE_ONLY_ISOLATED_WORKTREE",
             "state": "ROLLED_BACK_VERIFICATION_FAILED",
             "job_id": job_id,
+            "approval_id": approval["approval_id"],
+            "approval_consumed": approval["consumed"],
             "repository": str(root),
             "applied_finding_ids": [],
             "changed_files": expected,
@@ -205,6 +219,8 @@ def apply_safe_findings(
         "mode": "SAFE_ONLY_ISOLATED_WORKTREE",
         "state": "APPLIED_VERIFIED",
         "job_id": job_id,
+        "approval_id": approval["approval_id"],
+        "approval_consumed": approval["consumed"],
         "repository": str(root),
         "applied_finding_ids": [finding["id"] for _, _, finding in operations],
         "changed_files": expected,
@@ -231,11 +247,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--check-command", required=True, help="shell-free command string used for deterministic verification")
     parser.add_argument("--job-id", required=True)
     parser.add_argument("--audit", type=Path, required=True)
+    parser.add_argument("--approval", type=Path, required=True)
+    parser.add_argument("--evidence", type=Path, required=True)
     args = parser.parse_args(argv)
     try:
         report = json.loads(args.report.read_text(encoding="utf-8"))
         command = shlex.split(args.check_command)
-        result = apply_safe_findings(args.repository, report, args.finding_id, command, job_id=args.job_id, audit_path=args.audit)
+        result = apply_safe_findings(args.repository, report, args.finding_id, command, job_id=args.job_id, audit_path=args.audit, approval_path=args.approval, approval_evidence_path=args.evidence)
         print(json.dumps(result, indent=2, sort_keys=True))
         return 0 if result["state"] == "APPLIED_VERIFIED" else 1
     except (OSError, ValueError, json.JSONDecodeError) as exc:
