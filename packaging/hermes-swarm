@@ -3,8 +3,21 @@ set -euo pipefail
 
 RUNTIME_ROOT="/home/jeff/hermes-swarm-runtime"
 AUDIT_ROOT="/home/jeff/hermes-swarm-audit"
-SWARM_ROOT="/home/jeff/hermes-swarm-phase1"
 PYTHON="python3"
+
+resolve_swarm_root() {
+  local script_dir candidate
+  script_dir="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+  candidate="$(CDPATH= cd -- "$script_dir/.." && pwd -P)"
+  if test -f "$candidate/swarm/__init__.py" && test -d "$candidate/config" && test -d "$candidate/schemas"; then
+    printf '%s\n' "$candidate"
+    return 0
+  fi
+  echo "hermes-swarm: launcher is not inside a valid swarm checkout" >&2
+  return 1
+}
+
+SWARM_ROOT="$(resolve_swarm_root)"
 
 usage() {
   cat <<'EOF'
