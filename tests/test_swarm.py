@@ -110,11 +110,12 @@ class SwarmTests(unittest.TestCase):
     def test_redaction(self):
         self.assertNotIn("supersecret", redact("token=supersecret"))
         self.assertNotIn("4111111111111111", redact("card 4111111111111111"))
+        private_key = "-----BEGIN " + "PRIVATE KEY-----\nprivate-key-secret\n-----END " + "PRIVATE KEY-----"
         value = redact(
             "Authorization: Bearer bearer-secret "
             "Cookie: session-cookie "
             "postgres://user:database-secret@db.example.test/app "
-            "-----BEGIN PRIVATE KEY-----\nprivate-key-secret\n-----END PRIVATE KEY-----"
+            + private_key
         )
         for secret in ("bearer-secret", "session-cookie", "database-secret", "private-key-secret"):
             self.assertNotIn(secret, value)

@@ -32,6 +32,17 @@ jobs:
         run: |
           bash -n packaging/hermes-swarm
           bash -n packaging/hermes-swarm-mcp
+      - name: Reject tracked runtime or secret artifacts
+        shell: bash
+        run: |
+          if git ls-files | grep -Eq '(^|/)(\.env($|\.)|.*\.(pem|key|p12|sqlite|sqlite3|jsonl|log)$|__pycache__/|\.pytest_cache/)'; then
+            echo "tracked runtime or secret artifact detected" >&2
+            exit 1
+          fi
+          if git grep -n -I -E -- '-----BEGIN[[:space:]]+([^[:space:]]+[[:space:]]+)?PRIVATE[[:space:]]+KEY-----' -- .; then
+            echo "tracked private-key block detected" >&2
+            exit 1
+          fi
       - name: Run portable deterministic fixture suite
         run: >-
           python -m pytest -q
