@@ -417,8 +417,11 @@ def scan_repository(repository: Path) -> dict[str, Any]:
         raise ValueError(f"repository is not a directory: {repository}")
     findings: list[dict[str, Any]] = []
     duplicate_candidates: dict[str, list[tuple[str, int, str]]] = defaultdict(list)
+    source_files_scanned = 0
+    source_files_read = 0
     for path, source, read_error in _source_files(root):
         relative = path.relative_to(root).as_posix()
+        source_files_scanned += 1
         if read_error is not None:
             findings.append(_finding(
                 category="unreadable_source", tier="RISKY", confidence="HIGH", file=relative,
@@ -428,6 +431,7 @@ def scan_repository(repository: Path) -> dict[str, Any]:
                 suggested_action="Quarantine or decode the file explicitly before continuing automated review.",
             ))
             continue
+        source_files_read += 1
         findings.extend(_scan_text(relative, source))
         if path.suffix.lower() == ".py":
             findings.extend(_scan_python(path, relative, source))
@@ -452,6 +456,8 @@ def scan_repository(repository: Path) -> dict[str, Any]:
         "mode": "READ_ONLY",
         "repository": str(root),
         "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "source_files_scanned": source_files_scanned,
+        "source_files_read": source_files_read,
         "findings": findings,
         "counts": {tier: 0 for tier in _TIER_ORDER},
         "auto_apply_enabled": False,

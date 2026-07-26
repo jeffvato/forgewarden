@@ -42,6 +42,8 @@ def nested(value):
     jsonschema.validate(result, json.loads(SCHEMA.read_text(encoding="utf-8")))
     assert result["mode"] == "READ_ONLY"
     assert result["repository"] == str(tmp_path.resolve())
+    assert result["source_files_scanned"] == 1
+    assert result["source_files_read"] == 1
     assert {item["category"] for item in result["findings"]} >= {
         "pass_through_wrapper",
         "silent_failure",

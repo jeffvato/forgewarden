@@ -7,6 +7,8 @@
     "mode",
     "repository",
     "generated_at",
+    "source_files_scanned",
+    "source_files_read",
     "findings",
     "counts",
     "consolidation",
@@ -18,6 +20,8 @@
     "mode": { "const": "READ_ONLY" },
     "repository": { "type": "string", "minLength": 1 },
     "generated_at": { "type": "string", "format": "date-time" },
+    "source_files_scanned": { "type": "integer", "minimum": 0 },
+    "source_files_read": { "type": "integer", "minimum": 0 },
     "auto_apply_enabled": { "const": false },
     "application_policy": {
       "type": "array",
