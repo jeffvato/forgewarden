@@ -51,6 +51,30 @@ JS_EMPTY_CATCH_RE = re.compile(r"\bcatch\s*(?:\([^)]*\))?\s*\{\s*\}")
 JS_TERNARY_RE = re.compile(r"(?<![?.])\?(?![?.])")
 
 _TIER_ORDER = {"SAFE": 0, "CAREFUL": 1, "RISKY": 2}
+DETECTOR_COVERAGE = [
+    {
+        "language": "python",
+        "extensions": [".py"],
+        "mode": "SYNTAX_AWARE",
+        "detectors": [
+            "concurrency_risk", "duplicate_logic", "leaky_abstraction", "n_plus_one_query",
+            "naming_rot", "nested_ternary", "pass_through_wrapper", "silent_failure",
+            "structural_bloat", "unbounded_growth", "unreachable_code", "unused_import",
+        ],
+    },
+    {
+        "language": "javascript_typescript",
+        "extensions": [".js", ".jsx", ".ts", ".tsx"],
+        "mode": "SYNTAX_AWARE",
+        "detectors": ["nested_ternary", "silent_failure"],
+    },
+    {
+        "language": "supported_source_text",
+        "extensions": sorted(SOURCE_SUFFIXES),
+        "mode": "TEXT_ONLY",
+        "detectors": ["ai_slop", "stale_state"],
+    },
+]
 
 
 def _line(source: str, line_number: int) -> str:
@@ -536,6 +560,7 @@ def scan_repository(repository: Path) -> dict[str, Any]:
         "source_files_read": source_files_read,
         "source_symlinks_skipped": source_symlinks_skipped,
         "sensitive_source_files_skipped": sensitive_source_files_skipped,
+        "detector_coverage": DETECTOR_COVERAGE,
         "findings": findings,
         "counts": {tier: 0 for tier in _TIER_ORDER},
         "auto_apply_enabled": False,

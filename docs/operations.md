@@ -36,6 +36,8 @@ activation or kill-switch changes.
 Syntax-aware checks currently cover Python, JavaScript, and TypeScript. Other
 supported source extensions receive only language-neutral checks until a
 detector is added and covered by fixtures.
+The structured report includes this coverage declaration for downstream
+reviewers.
 
 During an orchestrated dry-run, the report is also supplied to Gemini as
 read-only evidence. The final application gate is mechanical: any RISKY

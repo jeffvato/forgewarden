@@ -44,6 +44,10 @@ def nested(value):
     assert result["repository"] == str(tmp_path.resolve())
     assert result["source_files_scanned"] == 1
     assert result["source_files_read"] == 1
+    coverage = {item["language"]: item for item in result["detector_coverage"]}
+    assert coverage["python"]["mode"] == "SYNTAX_AWARE"
+    assert coverage["javascript_typescript"]["mode"] == "SYNTAX_AWARE"
+    assert coverage["supported_source_text"]["mode"] == "TEXT_ONLY"
     assert {item["category"] for item in result["findings"]} >= {
         "pass_through_wrapper",
         "silent_failure",

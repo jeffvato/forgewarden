@@ -11,6 +11,7 @@
     "source_files_read",
     "source_symlinks_skipped",
     "sensitive_source_files_skipped",
+    "detector_coverage",
     "findings",
     "counts",
     "consolidation",
@@ -26,6 +27,27 @@
     "source_files_read": { "type": "integer", "minimum": 0 },
     "source_symlinks_skipped": { "type": "integer", "minimum": 0 },
     "sensitive_source_files_skipped": { "type": "integer", "minimum": 0 },
+    "detector_coverage": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["language", "extensions", "mode", "detectors"],
+        "properties": {
+          "language": { "type": "string", "minLength": 1 },
+          "extensions": {
+            "type": "array",
+            "items": { "type": "string", "pattern": "^\\.[a-z0-9]+$" }
+          },
+          "mode": { "enum": ["SYNTAX_AWARE", "TEXT_ONLY"] },
+          "detectors": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    },
     "auto_apply_enabled": { "const": false },
     "application_policy": {
       "type": "array",
