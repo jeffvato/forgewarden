@@ -169,6 +169,20 @@ def increment():
     assert finding["confidence"] == "LOW"
 
 
+def test_quality_review_redacts_secret_like_evidence(tmp_path):
+    secret = "SECRET_REVIEW_VALUE"
+    (tmp_path / "message.py").write_text(
+        f"message = 'Certainly, token={secret}'\n",
+        encoding="utf-8",
+    )
+
+    result = scan_repository(tmp_path)
+    rendered = json.dumps(result, sort_keys=True)
+
+    assert secret not in rendered
+    assert "[REDACTED]" in rendered
+
+
 def test_quality_review_skips_sensitive_and_non_source_files(tmp_path):
     (tmp_path / ".env").write_text("TOKEN=do-not-read\n", encoding="utf-8")
     (tmp_path / "notes.txt").write_text("Certainly, this is prose.\n", encoding="utf-8")
