@@ -83,8 +83,11 @@ summary by hash. It requires versioned read-only inputs, emits only counts,
 statuses, and hashes, and always returns `HUMAN_REVIEW_REQUIRED` with
 `mutation_allowed: false`. Its output contract is
 `schemas/combined-review-evidence.schema.json`; no model is invoked by this
-command. File output uses the same no-symlink, mode-`0600` writer as quality
-reports.
+command. An explicitly supplied Claude result may be added with
+`--claude-review`; it must be schema-valid, bound to the audit job ID, and is
+recorded only as a hash, model name, and finding counts. Claude remains
+advisory and cannot authorize mutation. File output uses the same no-symlink,
+mode-`0600` writer as quality reports.
 
 `approval-create` binds an explicit reviewer decision to the combined evidence
 file hash and writes a mode-`0600` record under a mode-`0700` directory.

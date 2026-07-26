@@ -31,6 +31,11 @@
     "approval_status": { "const": "HUMAN_REVIEW_REQUIRED" },
     "review_reasons": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
     "mutation_allowed": { "const": false },
-    "deployment": { "const": "DISABLED" }
+    "deployment": { "const": "DISABLED" },
+    "claude_review_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "claude_model": { "enum": ["claude-sonnet-4-6", "claude-opus-4-5", "claude-haiku-4-5-20251001"] },
+    "claude_finding_count": { "type": "integer", "minimum": 0 },
+    "claude_recommendation_count": { "type": "integer", "minimum": 0 },
+    "claude_limitation_count": { "type": "integer", "minimum": 0 }
   }
 }

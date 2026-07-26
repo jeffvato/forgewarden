@@ -24,10 +24,15 @@ def build_review_evidence(
     quality_report_path: Path,
     application_plan_path: Path,
     audit_review_path: Path,
+    claude_review_path: Path | None = None,
 ) -> dict[str, Any]:
     quality, quality_hash = _load(quality_report_path)
     plan, plan_hash = _load(application_plan_path)
     audit, audit_hash = _load(audit_review_path)
+    claude: dict[str, Any] | None = None
+    claude_hash: str | None = None
+    if claude_review_path is not None:
+        claude, claude_hash = _load(claude_review_path)
     if quality.get("schema_version") != "1" or quality.get("mode") != "READ_ONLY" or quality.get("auto_apply_enabled") is not False:
         raise ValueError("quality report is not read-only")
     if (
@@ -48,12 +53,23 @@ def build_review_evidence(
         raise ValueError("audit review is not read-only")
     if not isinstance(audit.get("job_id"), str) or not audit["job_id"]:
         raise ValueError("audit review has no job ID")
+    if claude is not None:
+        from .claude_adapter import ClaudeAdapterError, MODEL_ALIASES, validate_result
+        model = claude.get("model")
+        if not isinstance(model, str) or model not in set(MODEL_ALIASES.values()):
+            raise ValueError("Claude review has an unsupported model")
+        if claude.get("job_id") != audit["job_id"]:
+            raise ValueError("Claude review job ID does not match audit review")
+        try:
+            validate_result(claude, audit["job_id"], model)
+        except ClaudeAdapterError as exc:
+            raise ValueError("Claude review failed structured validation") from exc
     reasons = ["SAFE application remains explicitly invoked and non-mutating"]
     if audit.get("integrity") != "VALID":
         reasons.append("audit integrity is not VALID")
     if audit.get("rollback_performed") is True:
         reasons.append("application was rolled back")
-    return {
+    result = {
         "schema_version": "1",
         "mode": "READ_ONLY_COMBINED_REVIEW_EVIDENCE",
         "job_id": audit["job_id"],
@@ -75,6 +91,16 @@ def build_review_evidence(
         "mutation_allowed": False,
         "deployment": "DISABLED",
     }
+    if claude is not None:
+        result.update({
+            "claude_review_sha256": claude_hash,
+            "claude_model": claude["model"],
+            "claude_finding_count": len(claude["findings"]),
+            "claude_recommendation_count": len(claude["recommendations"]),
+            "claude_limitation_count": len(claude["limitations"]),
+        })
+        result["review_reasons"].append("Claude advisory review is included but cannot authorize mutation")
+    return result
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -82,10 +108,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--quality-report", type=Path, required=True)
     parser.add_argument("--application-plan", type=Path, required=True)
     parser.add_argument("--audit-review", type=Path, required=True)
+    parser.add_argument("--claude-review", type=Path)
     parser.add_argument("--output", type=Path)
     args = parser.parse_args(argv)
     try:
-        result = build_review_evidence(args.quality_report, args.application_plan, args.audit_review)
+        result = build_review_evidence(args.quality_report, args.application_plan, args.audit_review, args.claude_review)
         rendered = json.dumps(result, indent=2, sort_keys=True) + "\n"
         if args.output:
             args.output.write_text(rendered, encoding="utf-8")

@@ -716,6 +716,46 @@ def test_combined_review_evidence_is_hash_bound_and_non_mutating(tmp_path):
     assert result["quality_report_sha256"]
 
 
+def test_combined_review_evidence_can_bind_validated_claude_advisory(tmp_path):
+    quality = tmp_path / "quality.json"
+    plan = tmp_path / "plan.json"
+    audit_review = tmp_path / "audit-review.json"
+    claude_review = tmp_path / "claude-review.json"
+    quality.write_text(json.dumps({"schema_version": "1", "mode": "READ_ONLY", "auto_apply_enabled": False}), encoding="utf-8")
+    plan.write_text(json.dumps({"schema_version": "1", "mode": "EXPLICIT_SAFE_ONLY", "mutation_allowed": False, "requires_explicit_invocation": True, "committed": False, "pushed": False, "eligible_finding_ids": [], "blocked_finding_ids": []}), encoding="utf-8")
+    audit_review.write_text(json.dumps({
+        "schema_version": "1", "mode": "READ_ONLY_AUDIT_REVIEW", "mutation_allowed": False,
+        "review_required": True, "job_id": "claude-bound-job", "integrity": "VALID",
+        "latest_state": "APPLIED_VERIFIED", "latest_event_sha256": "b" * 64,
+        "verification_passed": True, "rollback_performed": False,
+    }), encoding="utf-8")
+    claude_review.write_text(json.dumps({
+        "job_id": "claude-bound-job", "model": "claude-sonnet-4-6",
+        "findings": ["advisory finding"], "recommendations": ["review it"], "limitations": [],
+    }), encoding="utf-8")
+
+    result = build_review_evidence(quality, plan, audit_review, claude_review)
+
+    jsonschema.validate(result, json.loads(COMBINED_EVIDENCE_SCHEMA.read_text(encoding="utf-8")))
+    assert result["claude_model"] == "claude-sonnet-4-6"
+    assert result["claude_finding_count"] == 1
+    assert result["claude_recommendation_count"] == 1
+    assert result["mutation_allowed"] is False
+
+
+def test_combined_review_evidence_rejects_mismatched_claude_job(tmp_path):
+    quality = tmp_path / "quality.json"
+    plan = tmp_path / "plan.json"
+    audit_review = tmp_path / "audit-review.json"
+    claude_review = tmp_path / "claude-review.json"
+    quality.write_text(json.dumps({"schema_version": "1", "mode": "READ_ONLY", "auto_apply_enabled": False}), encoding="utf-8")
+    plan.write_text(json.dumps({"schema_version": "1", "mode": "EXPLICIT_SAFE_ONLY", "mutation_allowed": False, "requires_explicit_invocation": True, "committed": False, "pushed": False, "eligible_finding_ids": [], "blocked_finding_ids": []}), encoding="utf-8")
+    audit_review.write_text(json.dumps({"schema_version": "1", "mode": "READ_ONLY_AUDIT_REVIEW", "mutation_allowed": False, "review_required": True, "job_id": "audit-job", "integrity": "VALID"}), encoding="utf-8")
+    claude_review.write_text(json.dumps({"job_id": "other-job", "model": "claude-sonnet-4-6", "findings": [], "recommendations": [], "limitations": []}), encoding="utf-8")
+    with pytest.raises(ValueError, match="job ID"):
+        build_review_evidence(quality, plan, audit_review, claude_review)
+
+
 def test_review_evidence_cli_refuses_symlink_output(tmp_path):
     quality = tmp_path / "quality.json"
     plan = tmp_path / "plan.json"

@@ -37,6 +37,7 @@ def main() -> int:
     parser.add_argument("--quality-report", type=Path)
     parser.add_argument("--application-plan", type=Path)
     parser.add_argument("--audit-review", type=Path)
+    parser.add_argument("--claude-review", type=Path)
     parser.add_argument("--evidence", type=Path)
     parser.add_argument("--approval", type=Path)
     parser.add_argument("--reviewer")
@@ -118,7 +119,7 @@ def main() -> int:
         if not args.quality_report or not args.application_plan or not args.audit_review:
             parser.error("review-evidence requires --quality-report, --application-plan, and --audit-review")
         try:
-            result = build_review_evidence(args.quality_report, args.application_plan, args.audit_review)
+            result = build_review_evidence(args.quality_report, args.application_plan, args.audit_review, args.claude_review)
             rendered = json.dumps(result, indent=2, sort_keys=True) + "\n"
             if args.output:
                 write_report(args.output, rendered)
