@@ -47,6 +47,8 @@ BLOCKING_ASYNC_RE = re.compile(r"\b(?:time\.sleep|requests\.|urllib\.)")
 TRANSIENT_STATE_RE = re.compile(r"\b(?:QUEUED|RUNNING|IN_PROGRESS|STARTED|PENDING)\b")
 TERMINAL_STATE_RE = re.compile(r"\b(?:SUCCEEDED|FAILED|COMPLETED|CANCELLED|ABANDONED|DONE)\b")
 NAMING_ROT_RE = re.compile(r"(?:_v\d+|_new|_old|_final|_copy|_tmp)$", re.IGNORECASE)
+JS_EMPTY_CATCH_RE = re.compile(r"\bcatch\s*(?:\([^)]*\))?\s*\{\s*\}")
+JS_TERNARY_RE = re.compile(r"(?<![?.])\?(?![?.])")
 
 _TIER_ORDER = {"SAFE": 0, "CAREFUL": 1, "RISKY": 2}
 
@@ -323,7 +325,7 @@ def _python_function_signatures(relative: str, source: str) -> list[tuple[str, s
     return signatures
 
 
-def _scan_text(relative: str, source: str) -> list[dict[str, Any]]:
+def _scan_text(relative: str, source: str, suffix: str) -> list[dict[str, Any]]:
     findings: list[dict[str, Any]] = []
     for line_number, line in enumerate(source.splitlines(), start=1):
         if AI_SLOP_RE.search(line):
@@ -344,6 +346,25 @@ def _scan_text(relative: str, source: str) -> list[dict[str, Any]]:
             rationale="A persisted transient marker without terminal reconciliation can strand work as stale.",
             suggested_action="Trace all lifecycle transitions and recovery paths before changing state handling.",
         ))
+    if suffix in {".js", ".jsx", ".ts", ".tsx"}:
+        for match in JS_EMPTY_CATCH_RE.finditer(source):
+            line_number = source.count("\n", 0, match.start()) + 1
+            findings.append(_finding(
+                category="silent_failure", tier="RISKY", confidence="MEDIUM", file=relative,
+                line=line_number, summary="JavaScript or TypeScript catch block suppresses an error",
+                evidence=_line(source, line_number),
+                rationale="An empty catch block can hide failed I/O, retries, or broken state transitions.",
+                suggested_action="Require an explicit policy: handle, translate, log safely, or propagate the error.",
+            ))
+        for line_number, line in enumerate(source.splitlines(), start=1):
+            if len(JS_TERNARY_RE.findall(line)) >= 2:
+                findings.append(_finding(
+                    category="nested_ternary", tier="CAREFUL", confidence="MEDIUM", file=relative,
+                    line=line_number, summary="nested JavaScript or TypeScript conditional expression reduces branch readability",
+                    evidence=_line(source, line_number),
+                    rationale="Nested conditional expressions are easy to misread and complicate safe edits.",
+                    suggested_action="Convert to an explicit conditional with tests covering each branch.",
+                ))
     return findings
 
 
@@ -487,7 +508,7 @@ def scan_repository(repository: Path) -> dict[str, Any]:
             ))
             continue
         source_files_read += 1
-        findings.extend(_scan_text(relative, source))
+        findings.extend(_scan_text(relative, source, path.suffix.lower()))
         if path.suffix.lower() == ".py":
             findings.extend(_scan_python(path, relative, source))
             for signature, file, line, name in _python_function_signatures(relative, source):

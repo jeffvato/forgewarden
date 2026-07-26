@@ -39,7 +39,9 @@ duplicate findings deterministically, and exposes the proposed review order;
 every finding has `auto_apply: false`. The orchestrator mechanically blocks
 RISKY findings for human review and requires a Codex-listed test change for
 CAREFUL findings; Gemini approval cannot override those gates. It does not
-edit, commit, deploy, or invoke an external model.
+edit, commit, deploy, or invoke an external model. Python, JavaScript, and
+TypeScript syntax-specific detectors are included; unsupported languages still
+receive text-level checks only.
 
 ## Boundaries
 

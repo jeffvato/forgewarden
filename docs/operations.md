@@ -33,6 +33,10 @@ Use an isolated worktree or disposable checkout as its input.
 The packaged launcher exposes the same command and does not require runtime
 activation or kill-switch changes.
 
+Syntax-aware checks currently cover Python, JavaScript, and TypeScript. Other
+supported source extensions receive only language-neutral checks until a
+detector is added and covered by fixtures.
+
 During an orchestrated dry-run, the report is also supplied to Gemini as
 read-only evidence. The final application gate is mechanical: any RISKY
 finding produces `AWAITING_JEFF`, while CAREFUL findings require at least one

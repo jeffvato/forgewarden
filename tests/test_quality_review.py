@@ -78,6 +78,27 @@ def do_work():
     assert _finding(result, "unreachable_code")["tier"] == "SAFE"
 
 
+def test_quality_review_scans_javascript_and_typescript_risk_patterns(tmp_path):
+    (tmp_path / "client.ts").write_text(
+        """export function choose(ok: boolean, value: string) {
+    return ok ? value : value.length ? value : "fallback";
+}
+
+export async function request() {
+    try {
+        return await fetch("/items");
+    } catch (error) {}
+}
+""",
+        encoding="utf-8",
+    )
+
+    result = scan_repository(tmp_path)
+
+    assert _finding(result, "nested_ternary")["tier"] == "CAREFUL"
+    assert _finding(result, "silent_failure")["tier"] == "RISKY"
+
+
 def test_quality_review_reports_duplicate_logic_as_careful(tmp_path):
     body = """\ndef first(value):
     normalized = value.strip().lower()
