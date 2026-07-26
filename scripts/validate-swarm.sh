@@ -21,6 +21,9 @@ EOF
 
 case "${1:---portable}" in
   --portable)
+    validation_root="${TMPDIR:-/tmp}/hermes-swarm-validation-$$"
+    export HERMES_SWARM_RUNTIME_ROOT="${HERMES_SWARM_RUNTIME_ROOT:-$validation_root/runtime}"
+    export HERMES_SWARM_AUDIT_ROOT="${HERMES_SWARM_AUDIT_ROOT:-$validation_root/audit}"
     bash -n "$ROOT/packaging/hermes-swarm"
     bash -n "$ROOT/packaging/hermes-swarm-mcp"
     exec env PYTHONPATH="$ROOT" "$PYTHON" -m pytest -q \
@@ -31,7 +34,7 @@ case "${1:---portable}" in
       "$ROOT/tests/test_packaging.py" \
       "$ROOT/tests/test_paths.py" \
       "$ROOT/tests/test_repository_hygiene.py" \
-      "$ROOT/tests/test_systemd_scope.py" \
+      "$ROOT/tests/test_systemd_scope.py::SystemdScopeSafetyTests" \
       "$ROOT/tests/test_systemd_unit.py"
     ;;
   --full)
