@@ -109,6 +109,9 @@ Approval, evidence, and reconciliation-audit inputs are read through
 no-follow descriptors after path validation.
 Model mailbox results and desktop bridge audit/state reads use the same
 descriptor-based, no-follow path.
+Retained Gemini recovery also requires no-follow reads for its audit, source,
+and safety markers, and creates its disposable state directory with restricted
+permissions.
 
 The application plan is validated by `schemas/quality-application-plan.schema.json`.
 For CAREFUL findings, the orchestrator compares Codex's

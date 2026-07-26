@@ -9,7 +9,17 @@ from typing import Any
 
 from .adapters import GeminiAdapter, ResourceLimits, _minimal_test_environment, limited_run
 from .baseline import BASELINE_SHA, WRITABLE_DEADLINE, _deadline_test_command
-from .core import AuditLog, Job, SwarmError, redact, run_command
+from .core import (
+    AuditLog,
+    Job,
+    SwarmError,
+    _reject_symlink_path,
+    ensure_private_directory,
+    read_restricted_bytes,
+    redact,
+    run_command,
+    touch_restricted,
+)
 
 
 def _tree_hash(repo: Path, revision: str) -> str:
@@ -20,9 +30,14 @@ def _tree_hash(repo: Path, revision: str) -> str:
 
 
 def _prior_invalid_payload(audit_path: Path, job_id: str, commit: str) -> str:
+    _reject_symlink_path(audit_path, "Gemini recovery audit")
     if not audit_path.exists():
         return "[NOT_FOUND_IN_DURABLE_AUDIT]"
-    for line in reversed(audit_path.read_text(encoding="utf-8", errors="replace").splitlines()):
+    try:
+        raw = read_restricted_bytes(audit_path, "Gemini recovery audit")
+    except SwarmError:
+        return "[NOT_FOUND_IN_DURABLE_AUDIT]"
+    for line in reversed(raw.decode("utf-8", errors="replace").splitlines()):
         if job_id in line and "missing_tests" in line:
             return redact(line)[:12000]
     return "[NOT_FOUND_IN_DURABLE_AUDIT]"
@@ -39,9 +54,13 @@ def recover_gemini_review(
     """Review retained evidence only; this path has no Codex or Git mutator."""
     audit_path = audit_dir / "audit.jsonl"
     job = Job(job_id, "n8n-csv-baseline", repository, "retained Gemini review-only recovery", state="GEMINI_REVIEWING")
-    if not (runtime_root / "KILL_SWITCH").exists():
+    kill_switch = runtime_root / "KILL_SWITCH"
+    _reject_symlink_path(kill_switch, "Gemini recovery kill switch")
+    if not kill_switch.exists():
         raise SwarmError("review-only recovery requires the kill switch to be engaged")
-    if (runtime_root / "DEPLOYMENT_ENABLED").exists():
+    deployment_marker = runtime_root / "DEPLOYMENT_ENABLED"
+    _reject_symlink_path(deployment_marker, "Gemini recovery deployment marker")
+    if deployment_marker.exists():
         raise SwarmError("review-only recovery requires deployment to remain disabled")
     worktree: Path | None = None
     baseline = BASELINE_SHA
@@ -64,7 +83,8 @@ def recover_gemini_review(
         if repair_tree != clean_tree:
             raise SwarmError("retained repair tree does not equal the clean baseline tree")
         source_audit = json.loads("{}")
-        for line in audit_path.read_text(encoding="utf-8", errors="replace").splitlines():
+        audit_lines = read_restricted_bytes(audit_path, "Gemini recovery audit").decode("utf-8", errors="replace").splitlines()
+        for line in audit_lines:
             try:
                 entry = json.loads(line)
             except json.JSONDecodeError:
@@ -73,8 +93,7 @@ def recover_gemini_review(
                 source_audit = entry
         if source_audit.get("repair_commit") != repair_commit or source_audit.get("repair_parent") != defect_commit:
             raise SwarmError("repair commit and job ID do not match the durable audit")
-        state_dir = runtime_root / "state"
-        state_dir.mkdir(parents=True, exist_ok=True)
+        state_dir = ensure_private_directory(runtime_root / "state", "Gemini recovery state")
         worktree = Path(tempfile.mkdtemp(prefix=f"gemini-review-{job_id}-", dir=state_dir))
         archive = worktree.parent / f"{worktree.name}.tar"
         exported = run_command(["git", "archive", "--format=tar", "-o", str(archive), repair_commit], repository)
@@ -89,7 +108,7 @@ def recover_gemini_review(
         checks = limited_run(test_command, working_directory, "", limits, {"SWARM_ROLE": "GEMINI_REVIEW_PREFLIGHT"}, use_cgroup=True, minimal_environment=True)
         if checks.returncode:
             raise SwarmError("retained repair deterministic test failed: " + redact(checks.stdout + checks.stderr))
-        source_hash = hashlib.sha256((worktree / WRITABLE_DEADLINE).read_bytes()).hexdigest()
+        source_hash = hashlib.sha256(read_restricted_bytes(worktree / WRITABLE_DEADLINE, "retained repair source")).hexdigest()
         (worktree / ".swarm").mkdir(mode=0o700)
         for path in worktree.rglob("*"):
             if path.is_file() and ".swarm" not in path.parts:
@@ -111,7 +130,7 @@ def recover_gemini_review(
         AuditLog(audit_path).record(job, "gemini_review_recovery_failed", retained_commit=repair_commit, original_invalid_payload=_prior_invalid_payload(audit_path, job_id, repair_commit), error=redact(str(exc)))
         raise
     finally:
-        (runtime_root / "KILL_SWITCH").touch(mode=0o600, exist_ok=True)
+        touch_restricted(kill_switch, "Gemini recovery kill switch")
         if worktree is not None:
             for path in sorted(worktree.rglob("*"), key=lambda item: len(item.parts), reverse=True):
                 try:
