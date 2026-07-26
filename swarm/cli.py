@@ -8,7 +8,7 @@ from .core import SwarmError
 from .baseline import run_controlled_baseline
 from .gemini_recovery import recover_gemini_review
 from .local_run import run_real_dry_run
-from .phase2a import disable_autonomous_dry_run, enable_autonomous_dry_run, engage_kill_switch, recover_terminal_abandoned, run_worker_job, safety_status
+from .phase2a import disable_autonomous_dry_run, enable_autonomous_dry_run, engage_kill_switch, recover_terminal_abandoned, run_worker_job, safety_status, workflow_status
 from .paths import audit_root, runtime_root
 from .quality_review import scan_repository, write_report
 from .quality_apply import apply_safe_findings
@@ -19,7 +19,7 @@ from .approval import create_approval_record, reconcile_approval, verify_approva
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Local Hermes coding swarm (dry-run only)")
-    parser.add_argument("command", choices=["start", "stop", "status", "kill-switch", "dry-run", "controlled-baseline", "gemini-review-recovery", "quality-review", "quality-apply-safe", "quality-audit", "review-evidence", "approval-create", "approval-verify", "approval-reconcile", "phase2a-worker", "phase2a-recover-terminal", "run", "autonomous-dry-run-status", "autonomous-dry-run-enable", "autonomous-dry-run-disable"], nargs="?", default="status")
+    parser.add_argument("command", choices=["start", "stop", "status", "workflow-status", "kill-switch", "dry-run", "controlled-baseline", "gemini-review-recovery", "quality-review", "quality-apply-safe", "quality-audit", "review-evidence", "approval-create", "approval-verify", "approval-reconcile", "phase2a-worker", "phase2a-recover-terminal", "run", "autonomous-dry-run-status", "autonomous-dry-run-enable", "autonomous-dry-run-disable"], nargs="?", default="status")
     parser.add_argument("--state-dir", type=Path, default=Path(".swarm-state"))
     parser.add_argument("--runtime-root", type=Path)
     parser.add_argument("--audit-dir", type=Path)
@@ -44,6 +44,9 @@ def main() -> int:
     args = parser.parse_args()
     if args.command == "status":
         print({**safety_status(args.runtime_root or runtime_root()), "commands": discover_commands(), "resources": measure_resources(), "limits": select_limits(measure_resources()).__dict__})
+        return 0
+    if args.command == "workflow-status":
+        print(json.dumps(workflow_status(args.runtime_root or runtime_root()), sort_keys=True))
         return 0
     if args.command == "autonomous-dry-run-status":
         print(safety_status(args.runtime_root or runtime_root()))

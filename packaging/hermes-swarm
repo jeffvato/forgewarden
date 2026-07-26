@@ -34,7 +34,7 @@ done
 
 usage() {
   cat <<'EOF'
-Usage: hermes-swarm {start|status|prompt|enable-dry-run|dry-run|quality-review|quality-apply-safe|quality-audit|review-evidence|approval-create|approval-verify|approval-reconcile|controlled-baseline|audit|stop|kill-switch}
+Usage: hermes-swarm {start|status|workflow-status|prompt|enable-dry-run|dry-run|quality-review|quality-apply-safe|quality-audit|review-evidence|approval-create|approval-verify|approval-reconcile|controlled-baseline|audit|stop|kill-switch}
 
 Parallel local-only Hermes coding swarm. Deployment is permanently disabled.
 EOF
@@ -58,6 +58,9 @@ case "${1:-status}" in
     ensure_runtime
     if test -f "$RUNTIME_ROOT/KILL_SWITCH"; then kill_state=ENGAGED; else kill_state=CLEARED_FOR_DRY_RUN; fi
     echo "launcher=hermes-swarm mode=DRY_RUN deployment=DISABLED kill_switch=$kill_state runtime=$RUNTIME_ROOT"
+    ;;
+  workflow-status)
+    exec env PYTHONPATH="$SWARM_ROOT" "$PYTHON" -m swarm.cli workflow-status --runtime-root "$RUNTIME_ROOT"
     ;;
   prompt)
     ensure_runtime

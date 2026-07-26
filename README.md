@@ -4,6 +4,15 @@ This is a local-only, dry-run implementation of the setup-kit specification.
 It is intentionally independent of `~/n8n` and never edits, deploys, pushes,
 restarts, or contacts remote infrastructure.
 
+Inspect Phase 2A state without changing it:
+
+```bash
+PYTHONPATH=. python3 -m swarm.cli workflow-status
+```
+
+The report identifies stale markers, replay-blocking active state, invalid
+state, and the guarded next action. It never removes markers or starts a job.
+
 ## Quick start
 
 ```bash

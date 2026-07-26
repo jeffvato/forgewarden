@@ -134,6 +134,55 @@ def safety_status(runtime_root: Path = DEFAULT_RUNTIME) -> dict[str, str]:
     }
 
 
+def workflow_status(runtime_root: Path = DEFAULT_RUNTIME) -> dict[str, Any]:
+    """Report Phase 2A state and replay/stale markers without changing them."""
+    result: dict[str, Any] = dict(safety_status(runtime_root))
+    state_path = runtime_root / STATE_FILE
+    try:
+        state = _read_state(runtime_root)
+        state_status = state.get("state") if state else "ABSENT"
+        state_error = None
+    except SwarmError as exc:
+        state = {}
+        state_status = "INVALID"
+        state_error = type(exc).__name__
+    lock_path = runtime_root / LOCK_FILE
+    if not lock_path.exists():
+        lock_status = "ABSENT"
+    elif lock_path.is_symlink() or not lock_path.is_file():
+        lock_status = "INVALID"
+    else:
+        owner = _lock_owner_alive(lock_path)
+        lock_status = {True: "ALIVE", False: "STALE", None: "UNKNOWN"}[owner]
+    running_marker = (runtime_root / RUNNING_MARKER).is_file()
+    terminal = state_status in {"SUCCEEDED", "FAILED", "CANCELLED", "ABANDONED", "RECOVERED_ABANDONED"}
+    stale_markers = terminal and (lock_status != "ABSENT" or running_marker)
+    replay_blocked = state_status in {"QUEUED", "RUNNING", "CODEX_RUNNING", "CHECKS_RUNNING", "GEMINI_REVIEWING"} or lock_status in {"ALIVE", "UNKNOWN"}
+    if state_error or lock_status == "INVALID":
+        next_action = "INVESTIGATE_INVALID_STATE"
+    elif stale_markers and state_status == "RECOVERED_ABANDONED":
+        next_action = "REVIEW_THEN_RUN_GUARDED_TERMINAL_RECOVERY"
+    elif replay_blocked:
+        next_action = "DO_NOT_SUBMIT_ANOTHER_JOB"
+    elif stale_markers:
+        next_action = "REVIEW_STALE_MARKERS"
+    else:
+        next_action = "NONE"
+    result.update({
+        "state_file": "PRESENT" if state_path.is_file() else "ABSENT",
+        "state": state_status,
+        "job_id": state.get("job_id"),
+        "lock": lock_status,
+        "running_marker": running_marker,
+        "stale_markers": stale_markers,
+        "replay_blocked": replay_blocked,
+        "next_action": next_action,
+        "read_only": True,
+        "state_error": state_error,
+    })
+    return result
+
+
 def set_activation(enabled: bool, runtime_root: Path = DEFAULT_RUNTIME) -> None:
     runtime_root.mkdir(parents=True, exist_ok=True)
     path = runtime_root / ACTIVATION_FILE

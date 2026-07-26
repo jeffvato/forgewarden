@@ -89,6 +89,34 @@ class Phase2ATests(unittest.TestCase):
             )
             self.assertEqual(sorted(path.name for path in runtime.iterdir()), before)
 
+    def test_workflow_status_reports_absent_state_without_mutation(self):
+        with TemporaryDirectory() as temp:
+            runtime = Path(temp)
+            before = sorted(path.name for path in runtime.iterdir())
+
+            result = phase2a.workflow_status(runtime)
+
+            self.assertEqual(result["state"], "ABSENT")
+            self.assertEqual(result["lock"], "ABSENT")
+            self.assertFalse(result["replay_blocked"])
+            self.assertEqual(result["next_action"], "NONE")
+            self.assertTrue(result["read_only"])
+            self.assertEqual(sorted(path.name for path in runtime.iterdir()), before)
+
+    def test_workflow_status_flags_terminal_stale_markers_without_clearing(self):
+        with TemporaryDirectory() as temp:
+            root = Path(temp)
+            runtime = self._abandoned_runtime(root)
+            before = sorted(path.name for path in runtime.iterdir())
+
+            result = phase2a.workflow_status(runtime)
+
+            self.assertEqual(result["state"], "RECOVERED_ABANDONED")
+            self.assertIn(result["lock"], {"STALE", "UNKNOWN"})
+            self.assertTrue(result["stale_markers"])
+            self.assertEqual(result["next_action"], "REVIEW_THEN_RUN_GUARDED_TERMINAL_RECOVERY")
+            self.assertEqual(sorted(path.name for path in runtime.iterdir()), before)
+
     def test_state_write_is_atomic_and_syncs_file_and_directory(self):
         with TemporaryDirectory() as temp, patch.object(phase2a.os, "fsync", wraps=phase2a.os.fsync) as fsync:
             runtime = Path(temp)

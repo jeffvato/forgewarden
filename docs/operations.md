@@ -24,6 +24,10 @@ the absence of any deployment implementation plus `DeploymentController`,
 which unconditionally rejects deployment.
 
 `status` measures local resources and reports discovered CLI paths and versions.
+`workflow-status` is the read-only Phase 2A state check: it reports state,
+lock ownership, running markers, replay blocking, and stale-marker recovery
+guidance without changing runtime files. Use the separate guarded recovery
+command only after reviewing its output and safety prerequisites.
 `start` only marks the dry-run controller as started; it launches no daemon.
 `dry-run` creates a disposable fixture, invokes the real local adapters, and
 records audit state under ignored runtime directories.
