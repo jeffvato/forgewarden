@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 import subprocess
 
 
@@ -42,3 +43,12 @@ def test_no_private_key_block_is_tracked():
         check=False,
     )
     assert result.returncode == 1
+
+
+def test_github_actions_dependencies_are_immutably_pinned():
+    workflow = (ROOT / ".github" / "workflows" / "swarm-validation.yml").read_text(encoding="utf-8")
+    refs = dict(re.findall(r"uses: (actions/(?:checkout|setup-python))@([0-9a-f]{40})", workflow))
+    assert refs == {
+        "actions/checkout": "3d3c42e5aac5ba805825da76410c181273ba90b1",
+        "actions/setup-python": "5fda3b95a4ea91299a34e894583c3862153e4b97",
+    }
