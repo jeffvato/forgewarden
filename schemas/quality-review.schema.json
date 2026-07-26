@@ -9,6 +9,7 @@
     "generated_at",
     "findings",
     "counts",
+    "consolidation",
     "auto_apply_enabled"
   ],
   "properties": {
@@ -17,6 +18,30 @@
     "repository": { "type": "string", "minLength": 1 },
     "generated_at": { "type": "string", "format": "date-time" },
     "auto_apply_enabled": { "const": false },
+    "consolidation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "duplicate_findings_removed",
+        "application_order",
+        "tier_order",
+        "review_required"
+      ],
+      "properties": {
+        "duplicate_findings_removed": { "type": "integer", "minimum": 0 },
+        "application_order": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[0-9a-f]{16}$" }
+        },
+        "tier_order": {
+          "const": ["SAFE", "CAREFUL", "RISKY"]
+        },
+        "review_required": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[0-9a-f]{16}$" }
+        }
+      }
+    },
     "counts": {
       "type": "object",
       "additionalProperties": false,
@@ -40,6 +65,7 @@
           "file",
           "line",
           "symbol",
+          "duplicate_count",
           "summary",
           "evidence",
           "rationale",
@@ -68,6 +94,7 @@
           "file": { "type": "string", "pattern": "^(?!/).+" },
           "line": { "type": "integer", "minimum": 1 },
           "symbol": { "type": ["string", "null"] },
+          "duplicate_count": { "type": "integer", "minimum": 1 },
           "summary": { "type": "string", "minLength": 1, "maxLength": 512 },
           "evidence": { "type": "string", "maxLength": 512 },
           "rationale": { "type": "string", "minLength": 1, "maxLength": 1024 },

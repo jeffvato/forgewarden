@@ -285,6 +285,35 @@ def _source_files(root: Path) -> Iterable[tuple[Path, str]]:
         yield path, source
 
 
+def consolidate_report(report: dict[str, Any]) -> dict[str, Any]:
+    """Deduplicate findings and expose a stable, risk-tiered review order."""
+    groups: dict[tuple[Any, ...], list[dict[str, Any]]] = defaultdict(list)
+    for finding in report.get("findings", []):
+        key = (
+            finding.get("category"), finding.get("file"), finding.get("line"),
+            finding.get("symbol"), finding.get("summary"),
+        )
+        groups[key].append(finding)
+    unique: list[dict[str, Any]] = []
+    for items in groups.values():
+        canonical = min(items, key=lambda item: json.dumps(item, sort_keys=True))
+        merged = dict(canonical)
+        merged["duplicate_count"] = len(items)
+        unique.append(merged)
+    unique.sort(key=lambda item: (_TIER_ORDER[item["tier"]], item["file"], item["line"], item["category"], item["id"]))
+    counts = {tier: sum(item["tier"] == tier for item in unique) for tier in _TIER_ORDER}
+    consolidated = dict(report)
+    consolidated["findings"] = unique
+    consolidated["counts"] = counts
+    consolidated["consolidation"] = {
+        "duplicate_findings_removed": sum(len(items) - 1 for items in groups.values()),
+        "application_order": [item["id"] for item in unique],
+        "tier_order": ["SAFE", "CAREFUL", "RISKY"],
+        "review_required": [item["id"] for item in unique if item["tier"] == "RISKY"],
+    }
+    return consolidated
+
+
 def scan_repository(repository: Path) -> dict[str, Any]:
     """Scan source files without changing the repository or invoking tools."""
     root = repository.expanduser().resolve()
@@ -297,16 +326,16 @@ def scan_repository(repository: Path) -> dict[str, Any]:
         if path.suffix.lower() == ".py":
             findings.extend(_scan_python(path, relative, source))
     findings.sort(key=lambda item: (_TIER_ORDER[item["tier"]], item["file"], item["line"], item["category"], item["id"]))
-    counts = {tier: sum(item["tier"] == tier for item in findings) for tier in _TIER_ORDER}
-    return {
+    report = {
         "schema_version": SCHEMA_VERSION,
         "mode": "READ_ONLY",
         "repository": str(root),
         "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         "findings": findings,
-        "counts": counts,
+        "counts": {tier: 0 for tier in _TIER_ORDER},
         "auto_apply_enabled": False,
     }
+    return consolidate_report(report)
 
 
 def main(argv: list[str] | None = None) -> int:

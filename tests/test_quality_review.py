@@ -5,7 +5,7 @@ from pathlib import Path
 
 import jsonschema
 
-from swarm.quality_review import scan_repository
+from swarm.quality_review import consolidate_report, scan_repository
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -123,3 +123,23 @@ def test_swarm_cli_exposes_quality_review_without_creating_state(tmp_path):
     payload = json.loads(result.stdout)
     jsonschema.validate(payload, json.loads(SCHEMA.read_text(encoding="utf-8")))
     assert not state.exists()
+
+
+def test_consolidator_deduplicates_and_orders_without_enabling_edits(tmp_path):
+    (tmp_path / "sample.py").write_text(
+        "def wrapper(value):\n    return normalize(value)\n",
+        encoding="utf-8",
+    )
+    report = scan_repository(tmp_path)
+    duplicate = dict(report["findings"][0])
+    report["findings"].append(duplicate)
+
+    consolidated = consolidate_report(report)
+
+    assert consolidated["consolidation"]["duplicate_findings_removed"] == 1
+    assert consolidated["findings"][0]["duplicate_count"] == 2
+    assert consolidated["consolidation"]["application_order"] == [
+        item["id"] for item in consolidated["findings"]
+    ]
+    assert consolidated["auto_apply_enabled"] is False
+    jsonschema.validate(consolidated, json.loads(SCHEMA.read_text(encoding="utf-8")))

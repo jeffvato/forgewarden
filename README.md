@@ -34,9 +34,10 @@ PYTHONPATH=. python3 -m swarm.cli quality-review \
   --output /tmp/hermes-quality-review.json
 ```
 
-It currently reports heuristic SAFE, CAREFUL, and RISKY findings; every
-finding has `auto_apply: false`. It does not edit, commit, deploy, or invoke
-an external model.
+It currently reports heuristic SAFE, CAREFUL, and RISKY findings, removes
+duplicate findings deterministically, and exposes the proposed review order;
+every finding has `auto_apply: false`. It does not edit, commit, deploy, or
+invoke an external model.
 
 ## Boundaries
 
