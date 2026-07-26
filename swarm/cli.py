@@ -6,7 +6,7 @@ from .core import SwarmError
 from .baseline import run_controlled_baseline
 from .gemini_recovery import recover_gemini_review
 from .local_run import run_real_dry_run
-from .phase2a import activation_status, disable_autonomous_dry_run, enable_autonomous_dry_run, engage_kill_switch, recover_terminal_abandoned, run_worker_job
+from .phase2a import disable_autonomous_dry_run, enable_autonomous_dry_run, engage_kill_switch, recover_terminal_abandoned, run_worker_job, safety_status
 from .paths import audit_root, runtime_root
 
 
@@ -22,10 +22,10 @@ def main() -> int:
     parser.add_argument("--repair-commit")
     args = parser.parse_args()
     if args.command == "status":
-        print({"mode": "DRY_RUN", "deployment": "DISABLED", "commands": discover_commands(), "resources": measure_resources(), "limits": select_limits(measure_resources()).__dict__})
+        print({**safety_status(args.runtime_root or runtime_root()), "commands": discover_commands(), "resources": measure_resources(), "limits": select_limits(measure_resources()).__dict__})
         return 0
     if args.command == "autonomous-dry-run-status":
-        print({"autonomous_dry_run": activation_status(args.runtime_root or runtime_root()), "deployment": "DISABLED"})
+        print(safety_status(args.runtime_root or runtime_root()))
         return 0
     if args.command == "autonomous-dry-run-enable":
         try:

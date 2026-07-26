@@ -121,6 +121,16 @@ def activation_status(runtime_root: Path = DEFAULT_RUNTIME) -> str:
     return path.read_text(encoding="ascii").strip() if path.is_file() else "DISABLED"
 
 
+def safety_status(runtime_root: Path = DEFAULT_RUNTIME) -> dict[str, str]:
+    """Return the authoritative local safety state without changing it."""
+    return {
+        "mode": "DRY_RUN",
+        "deployment": "DISABLED" if _deployment_disabled(runtime_root) else "ENABLED",
+        "autonomous_dry_run": activation_status(runtime_root),
+        "kill_switch": "ENGAGED" if _kill_switch_engaged(runtime_root) else "CLEARED_FOR_DRY_RUN",
+    }
+
+
 def set_activation(enabled: bool, runtime_root: Path = DEFAULT_RUNTIME) -> None:
     runtime_root.mkdir(parents=True, exist_ok=True)
     path = runtime_root / ACTIVATION_FILE

@@ -72,6 +72,22 @@ class FakeProcessAdapters:
 
 
 class Phase2ATests(unittest.TestCase):
+    def test_safety_status_reports_filesystem_state_without_mutation(self):
+        with TemporaryDirectory() as temp:
+            runtime = Path(temp)
+            (runtime / "KILL_SWITCH").touch()
+            before = sorted(path.name for path in runtime.iterdir())
+            self.assertEqual(
+                phase2a.safety_status(runtime),
+                {
+                    "mode": "DRY_RUN",
+                    "deployment": "DISABLED",
+                    "autonomous_dry_run": "DISABLED",
+                    "kill_switch": "ENGAGED",
+                },
+            )
+            self.assertEqual(sorted(path.name for path in runtime.iterdir()), before)
+
     def _abandoned_runtime(self, root: Path) -> Path:
         runtime = root / "runtime"
         runtime.mkdir()
