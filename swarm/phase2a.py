@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import fcntl
 import json
 import math
 import os
@@ -296,21 +297,27 @@ SEEDED_FAILURE_FINGERPRINT = re.compile(r"assert 30\.[0-9]+ <= 30")
 
 def _write_state(runtime_root: Path, value: dict[str, Any]) -> None:
     runtime_root.mkdir(parents=True, exist_ok=True)
-    temporary = runtime_root / f".{STATE_FILE}.{os.getpid()}.tmp"
-    try:
-        with temporary.open("w", encoding="utf-8") as handle:
-            handle.write(json.dumps(value, sort_keys=True) + "\n")
-            handle.flush()
-            os.fsync(handle.fileno())
-        temporary.chmod(0o600)
-        os.replace(temporary, runtime_root / STATE_FILE)
-        directory_fd = os.open(runtime_root, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
+    lock_path = runtime_root / f".{STATE_FILE}.lock"
+    lock_path.touch(mode=0o600, exist_ok=True)
+    lock_path.chmod(0o600)
+    with lock_path.open("a+", encoding="ascii") as lock:
+        fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+        temporary = runtime_root / f".{STATE_FILE}.{os.getpid()}.{threading.get_ident()}.{uuid.uuid4().hex}.tmp"
         try:
-            os.fsync(directory_fd)
+            with temporary.open("w", encoding="utf-8") as handle:
+                handle.write(json.dumps(value, sort_keys=True) + "\n")
+                handle.flush()
+                os.fsync(handle.fileno())
+            temporary.chmod(0o600)
+            os.replace(temporary, runtime_root / STATE_FILE)
+            directory_fd = os.open(runtime_root, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
+            try:
+                os.fsync(directory_fd)
+            finally:
+                os.close(directory_fd)
         finally:
-            os.close(directory_fd)
-    finally:
-        temporary.unlink(missing_ok=True)
+            temporary.unlink(missing_ok=True)
+        fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
 
 
 def _read_state(runtime_root: Path) -> dict[str, Any]:

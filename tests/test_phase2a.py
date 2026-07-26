@@ -5,6 +5,7 @@ import re
 import time
 import subprocess
 import sys
+import threading
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -96,6 +97,27 @@ class Phase2ATests(unittest.TestCase):
             self.assertEqual(json.loads(state_path.read_text(encoding="utf-8"))["state"], "QUEUED")
             self.assertFalse(any(path.name.endswith(".tmp") for path in runtime.iterdir()))
             self.assertGreaterEqual(fsync.call_count, 2)
+
+    def test_concurrent_state_writes_do_not_collide(self):
+        with TemporaryDirectory() as temp:
+            runtime = Path(temp)
+            errors = []
+
+            def write_state(index):
+                try:
+                    phase2a._write_state(runtime, {"state": "RUNNING", "job_id": f"phase2a-{index:024d}"})
+                except Exception as exc:  # pragma: no cover - failure is asserted below
+                    errors.append(exc)
+
+            threads = [threading.Thread(target=write_state, args=(index,)) for index in range(12)]
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join()
+            self.assertEqual(errors, [])
+            state = json.loads((runtime / phase2a.STATE_FILE).read_text(encoding="utf-8"))
+            self.assertIn(state["job_id"], {f"phase2a-{index:024d}" for index in range(12)})
+            self.assertFalse(any(path.name.endswith(".tmp") for path in runtime.iterdir()))
 
     def test_read_state_rejects_semantically_invalid_values(self):
         with TemporaryDirectory() as temp:
