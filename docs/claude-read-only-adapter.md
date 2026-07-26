@@ -36,3 +36,16 @@ adapter writes no provider evidence and cannot authorize mutations.
 The fake-CLI tests verify the exact read-only argv, sanitized payload, model
 allowlist, schema binding, timeout/process failure behavior, and absence of
 durable provider output. No real Claude invocation is part of repository CI.
+
+The packaged explicit entry point is:
+
+```bash
+packaging/hermes-swarm claude-review \
+  --job-id claude-000000000000000000000000 \
+  --model sonnet \
+  --context-file /path/to/sanitized-review-context.txt
+```
+
+The command requires the caller to name the context file; it does not inspect
+the current repository or automatically send project files. It is not exposed
+through the MCP bridge and cannot start a Phase 2A job.

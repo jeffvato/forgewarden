@@ -19,7 +19,7 @@ from .approval import create_approval_record, reconcile_approval, verify_approva
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Local Hermes coding swarm (dry-run only)")
-    parser.add_argument("command", choices=["start", "stop", "status", "workflow-status", "kill-switch", "dry-run", "controlled-baseline", "gemini-review-recovery", "quality-review", "quality-apply-safe", "quality-audit", "review-evidence", "approval-create", "approval-verify", "approval-reconcile", "phase2a-worker", "phase2a-recover-terminal", "run", "autonomous-dry-run-status", "autonomous-dry-run-enable", "autonomous-dry-run-disable"], nargs="?", default="status")
+    parser.add_argument("command", choices=["start", "stop", "status", "workflow-status", "kill-switch", "dry-run", "controlled-baseline", "gemini-review-recovery", "quality-review", "quality-apply-safe", "quality-audit", "review-evidence", "claude-review", "approval-create", "approval-verify", "approval-reconcile", "phase2a-worker", "phase2a-recover-terminal", "run", "autonomous-dry-run-status", "autonomous-dry-run-enable", "autonomous-dry-run-disable"], nargs="?", default="status")
     parser.add_argument("--state-dir", type=Path, default=Path(".swarm-state"))
     parser.add_argument("--runtime-root", type=Path)
     parser.add_argument("--audit-dir", type=Path)
@@ -29,6 +29,8 @@ def main() -> int:
     parser.add_argument("--repair-commit")
     parser.add_argument("--output", type=Path)
     parser.add_argument("--report", type=Path)
+    parser.add_argument("--context-file", type=Path)
+    parser.add_argument("--model", default="sonnet")
     parser.add_argument("--finding-id", action="append", default=[])
     parser.add_argument("--check-command", help="shell-free command string used for deterministic verification")
     parser.add_argument("--audit", type=Path)
@@ -72,6 +74,24 @@ def main() -> int:
                 print(rendered, end="")
             return 0
         except (OSError, ValueError) as exc:
+            print(f"FAILED: {exc}")
+            return 1
+    if args.command == "claude-review":
+        if not args.context_file or not args.job_id:
+            parser.error("claude-review requires --context-file and --job-id")
+        try:
+            context_path = args.context_file.expanduser()
+            if context_path.is_symlink() or any(parent.is_symlink() for parent in (context_path.parent, *context_path.parent.parents)):
+                raise ValueError("claude-review refuses symlinked context paths")
+            from .claude_adapter import MAX_CONTEXT_BYTES, run_claude
+            if not context_path.is_file():
+                raise ValueError("claude-review context file is missing")
+            if context_path.stat().st_size > MAX_CONTEXT_BYTES:
+                raise ValueError("claude-review context file exceeds the 24000-byte bound")
+            result = run_claude(args.job_id, context_path.read_text(encoding="utf-8"), model=args.model)
+            print(json.dumps(result, indent=2, sort_keys=True))
+            return 0
+        except (OSError, ValueError, SwarmError) as exc:
             print(f"FAILED: {exc}")
             return 1
     if args.command == "quality-apply-safe":
