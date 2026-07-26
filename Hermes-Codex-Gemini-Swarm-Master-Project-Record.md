@@ -1,6 +1,6 @@
 # Hermes–Codex–Gemini Swarm: Master Project Record
 
-Last updated: July 26, 2026 (through commit `7a582369eebdb18cf76acf01b7adcb101e161542`, completed fake MCPServerTask lifecycle/reconnect/replay acceptance, Claude CLI availability, and the Fable 5 credit directive)  
+Last updated: July 25, 2026 (through commit `7a582369eebdb18cf76acf01b7adcb101e161542`, the successful disposable lifecycle/reconnect/replay fixture, the phone/Android decisions, Claude CLI availability, and the Fable 5 credit directive)
 Owner: Jeff Brown  
 Primary machine: `FuzzyHoldings1`  
 Platform: Windows 11 with Ubuntu under WSL2
@@ -33,7 +33,7 @@ Jeff is building a local, reproducible coding swarm in WSL2 with strict separati
 
 The project currently operates only in `DRY_RUN`. Deployment is disabled. The emergency kill switch is engaged. A restricted Hermes Desktop MCP bridge is installed and can expose status, audit, emergency-stop, and a preapproved job-submission interface.
 
-Phase 2A—the single-use, preapproved, dry-run job path—is implemented but **not yet ready for another real activation**. Commit `989ed97…` resolved the official Hermes discovery timeout, and commit `7a582369eebdb18cf76acf01b7adcb101e161542` completed the disposable `MCPServerTask` lifecycle proof using the production-equivalent startup path. The proof is fake-only: no real repair, Codex, Gemini, baseline mutation, Docker, production, or `/home/jeff/n8n` access occurred.
+Phase 2A—the single-use, preapproved, dry-run job path—is implemented. Commit `7a582369…` resolved the disposable `MCPServerTask` fixture blocker and proved production-style persistent transport, public `start()`, three accelerated keepalive cycles, forced transport closure, strictly newer-generation reconnect, post-reconnect status, idempotent fake enqueue/replay, and a terminal fake worker. The lifecycle fixture passed in 6.3 seconds; official discovery passed three of three runs; the full suite passed 93 tests with 8 skipped; and `pip check` passed. The remaining activation step is one separately authorized real synthetic Phase 2A job through the durable worker with Codex, deterministic validation, and Gemini exact-commit review.
 
 ## Mission and design position
 
@@ -194,7 +194,7 @@ Claude must not:
 
 Claude output is untrusted advisory evidence. The trusted orchestrator must invoke it with a minimal environment, read-only filesystem access, bounded resources, sanitized inputs and outputs, a structured schema, an immutable job ID, and a recorded model/version. Deterministic checks remain authoritative.
 
-Claude should not be added to the live Phase 2A path until the existing `MCPServerTask` lifecycle, reconnect, and replay acceptance tests pass. Its first integration must use a fake CLI, then a disposable synthetic fixture, and must demonstrate that Claude failure or unavailability cannot block the established fail-closed safety state.
+The `MCPServerTask` lifecycle, reconnect, and replay acceptance tests now pass. Claude may therefore begin the separately bounded read-only Fable work program, but it is not yet part of the live Phase 2A critical path. Its adapter must first use a fake CLI and a disposable synthetic fixture and must demonstrate that Claude failure or unavailability cannot block the established fail-closed safety state.
 
 #### Fable 5 credit directive
 
@@ -202,7 +202,7 @@ Jeff has authorized using up to **$100 of available Claude Fable 5 credits** for
 
 Fable 5 is initially assigned this read-only work program:
 
-1. **$35 target — MCP lifecycle blocker:** analyze the production-equivalent `MCPServerTask` startup/readiness path, asyncio loop ownership, keepalive timing, generation-bound reconnect, and post-reconnect replay behavior. Produce ranked root-cause hypotheses, discriminating tests, and the smallest safe correction plan.
+1. **$35 target — MCP lifecycle validation and postmortem:** independently review the resolved production-equivalent `MCPServerTask` startup/readiness path, asyncio loop ownership, keepalive timing, generation-bound reconnect, and post-reconnect replay behavior. Look for residual failure modes and propose discriminating regression tests without altering the accepted implementation.
 2. **$25 target — Phase 2A adversarial audit:** inspect sanitized implementation and fake-fixture evidence for queue admission, one-job leases, duplicate/replay rejection, heartbeat recovery, PID/start-time binding, cancellation, control-group cleanup, and fail-closed behavior.
 3. **$20 target — deterministic test design:** produce missing process-level and fault-injection tests, including bridge death, worker death, response loss after durable enqueue, stale heartbeat, PID reuse, systemd user-bus loss, timeout, malformed model output, and audit-write failure.
 4. **$15 target — reproducibility and public-release audit:** identify Jeff- or machine-specific assumptions, installer gaps, dependency pinning needs, clean-WSL validation steps, secret-removal requirements, and documentation needed before a GitHub release.
@@ -437,7 +437,7 @@ Always verify rather than assume:
 systemctl --user list-units 'hermes-swarm-phase2a-worker@*' --all --no-pager
 ```
 
-## Current gate: Hermes MCP lifecycle acceptance
+## Current gate: one controlled real synthetic Phase 2A job
 
 ### What works
 
@@ -448,14 +448,16 @@ systemctl --user list-units 'hermes-swarm-phase2a-worker@*' --all --no-pager
 - Hermes’ local compatibility patch recognizes empty-string `ClosedResourceError` values.
 - A generation-aware compatibility patch requires a strictly newer connection before reconnect readiness.
 - Commit `989ed97d93bde8a6847b51c2043e9bc92d10ae03` removed the fixed-local-bridge OSV delay and corrected asyncio loop ownership/wakeup behavior under WSL.
+- Commit `7a582369eebdb18cf76acf01b7adcb101e161542` corrected the disposable fixture to use the production persistent fd transport, public `MCPServerTask.start()`, and the production-style filtered environment.
 - The official MCP probe now passes in 1.31 seconds, connects in 656 ms, and discovers five tools.
+- The production-equivalent lifecycle fixture passes in 6.3 seconds, including three accelerated keepalives, forced closure, newer-generation reconnect, post-reconnect status, replay-safe fake enqueue, and a fake worker reaching `SUCCEEDED`.
 - The full suite reported 93 passed and 8 skipped; the bridge suite reported 12 passed; `pip check` passed.
 
 ### Resolved root causes
 
 The latest reported implementation commit is:
 
-`989ed97d93bde8a6847b51c2043e9bc92d10ae03`
+`7a582369eebdb18cf76acf01b7adcb101e161542`
 
 The prior official-client timeout had three causes:
 
@@ -473,39 +475,13 @@ mcp test coding_swarm
 
 Reported timing is 1.31 seconds total and 656 ms to connect.
 
-Historical logs showed the first Hermes keepalive failing approximately every 200 seconds, followed by reconnection attempts. A prior retry happened before the replacement connection was ready. Discovery is now fixed, but the actual Hermes keepalive/reconnect acceptance sequence must still be demonstrated before activation.
+Historical logs showed the first Hermes keepalive failing approximately every 200 seconds, followed by reconnection attempts. A prior retry happened before the replacement connection was ready. Commit `7a582369…` now demonstrates the production-equivalent keepalive/reconnect acceptance sequence in the disposable fixture.
 
-### Completed lifecycle/reconnect/replay evidence — commit `7a582369eebdb18cf76acf01b7adcb101e161542`
-
-The corrected process-level fixture uses the public `MCPServerTask.start()`
-entrypoint, persistent fd stdio transport, filtered environment, dedicated
-`HERMES_HOME`, and the production cleanup path. It completed in approximately
-4.1 seconds and proved:
-
-- initialized readiness through the production-equivalent loop/thread path;
-- three accelerated keepalive ping/status cycles through one session;
-- successful status after those cycles;
-- forced transport closure followed by a strictly newer ready generation (`1`
-  to `2`);
-- successful status after reconnect;
-- fake-only Phase 2A admission after reconnect;
-- response-loss replay returned the original immutable job rather than
-  enqueueing a duplicate;
-- the fake worker reached terminal `SUCCEEDED`;
-- the lease was `CONSUMED`;
-- no orphaned bridge or worker processes remained;
-- final autonomous dry-run `DISABLED`, deployment `DISABLED`, and kill switch
-  `ENGAGED`.
-
-The acceptance test and postmortem are
-`tests/test_hermes_mcp_lifecycle.py` and
-`docs/mcpserver-task-fixture-postmortem.md`. This closes the previously
-unresolved disposable-fixture lifecycle gate, but does not authorize a real
-Phase 2A repair.
+The disposable acceptance fixture originally failed because it used plain FastMCP stdio, called `MCPServerTask.run()` directly, and omitted `HOME`, locale, `PYTHONNOUSERSITE`, and a dedicated `HERMES_HOME`. It stalled at generation 1 with `_ready_generation=0`. Commit `7a582369…` aligned the fixture with production and proved the lifecycle sequence.
 
 ### Remaining pre-activation evidence
 
-Already proven after commit `989ed97…`:
+Proven through commit `7a582369…`:
 
 - official discovery passed three of three runs;
 - each run discovered five tools;
@@ -515,19 +491,26 @@ Already proven after commit `989ed97…`:
 - the fake Phase 2A suite passed 13 of 13 tests;
 - the full suite passed 93 tests with 8 skipped;
 - `pip check` passed;
+- the disposable production-equivalent `MCPServerTask` fixture reached ready;
+- three accelerated keepalive cycles passed;
+- status passed after the cycles;
+- forced transport closure reconnected to a strictly newer generation;
+- fake enqueue/replay returned the same job ID without duplication;
+- the fake worker reached `SUCCEEDED`;
+- the fake lease finished `CONSUMED`;
+- the final kill switch was engaged, autonomous dry run disabled, and deployment disabled;
+- no orphan MCP processes remained;
 - no real Codex/Gemini job ran.
 
 Still required:
 
-1. Confirm the lifecycle evidence remains reproducible under the currently
-   installed Hermes compatibility-patch hash.
-2. Resolve separately observed Hermes package/hash drift before relying on the
-   full suite as a release gate.
-3. Confirm no queued jobs or activation lease remain after future tests.
-4. Keep all real agents and repair execution disabled until Jeff separately
-   authorizes a real exercise.
+1. Preserve a committed acceptance report containing the exact commands, environment, hashes, timings, and final safety state.
+2. Verify the repository status and preserve the known untracked postmortem.
+3. Obtain explicit authorization for exactly one real synthetic Phase 2A job.
+4. Run that job through the durable worker with Codex, deterministic validation, trusted commit creation, and Gemini exact-commit review.
+5. Require final lease consumed, kill switch engaged, autonomous dry run disabled, deployment disabled, worker inactive, baseline unchanged, and no orphan processes.
 
-Do not authorize another real Phase 2A job until all seven remaining checks pass.
+The completed fake acceptance evidence does not itself authorize the real synthetic job.
 
 ## Compatibility patches and backups
 
@@ -671,6 +654,7 @@ This list records the most important reported milestones. Use Git history and do
 - `9ee70eac…`, `d9eab3ee…`: trusted defect seeding, durable queue, worker ownership, recovery, and single-job cancellation.
 - `7d157ce…`: bridge closed-peer containment and generation-bound reconnect readiness; official Hermes 20-second probe remains unresolved.
 - `989ed97d…`: fixed-local startup, OSV-preflight bypass for the trusted local executable, correct asyncio loop ownership/wakeup under WSL, and official MCP discovery restored to 1.31 seconds.
+- `7a582369…`: production-equivalent disposable lifecycle fixture, accelerated keepalives, forced newer-generation reconnect, replay-safe fake enqueue, terminal fake worker, and clean final safety state.
 
 ## Existing project documentation
 
@@ -728,15 +712,15 @@ Status: completed with multiple fail-closed corrections.
 
 ### Phase 2A — Hermes Desktop single-use dry-run
 
-Status: implementation present; official discovery and real Desktop post-keepalive status are proven. Activation remains blocked by the disposable `MCPServerTask` fixture startup/readiness path needed to prove accelerated keepalive, forced reconnect, and post-reconnect fake enqueue/replay.
+Status: lifecycle and fake-worker acceptance completed. One separately authorized real synthetic job remains before Phase 2A can be considered fully exercised.
 
 Required completion evidence:
 
 - official `hermes mcp test coding_swarm` passes repeatedly under five seconds (three of three reported at 1.2–1.6 seconds total);
-- three accelerated keepalive cycles pass;
-- status succeeds afterward;
-- forced transport closure reconnects to a strictly newer generation;
-- fake enqueue succeeds after reconnect without duplication;
+- three accelerated keepalive cycles pass (proven);
+- status succeeds afterward (proven);
+- forced transport closure reconnects to a strictly newer generation (proven);
+- fake enqueue succeeds after reconnect without duplication (proven);
 - one real synthetic job queues promptly and completes through the worker;
 - final lease disabled, kill switch engaged, deployment disabled, worker inactive, baseline unchanged.
 
@@ -905,11 +889,11 @@ First perform read-only verification only:
 
 Do not activate a job, invoke Codex/Gemini, access /home/jeff/n8n, Docker, or production, or modify anything until the current state matches the record.
 
-The immediate task is to diagnose the disposable `MCPServerTask` fixture startup/readiness path, then complete accelerated keepalive, forced reconnect, and post-reconnect fake-enqueue/replay checks. Official discovery and normal-boundary Desktop status are resolved. Use fake workers/agents only and leave all safety states disabled/engaged.
+The lifecycle blocker is resolved in commit `7a582369eebdb18cf76acf01b7adcb101e161542`. The immediate task is to verify and document that committed evidence, preserve the untracked postmortem, and prepare—but do not start—one real synthetic Phase 2A worker exercise. Starting it requires explicit authorization. Leave all safety states disabled/engaged until that authorization.
 
 Preserve the phone/Android decisions in this record: Hermes is the single front door; unattended work uses the durable supervised queue; notifications are limited to approval, blocker, security/resource events, and completion; Tailscale is transport rather than authorization; and the future managed customer platform remains a separate project boundary.
 
-Claude CLI is available, but do not add it to the active Phase 2A critical path while the current lifecycle blocker remains. Its future role is read-only diagnosis, planning, and test-gap analysis under a structured, audited, resource-bounded adapter. Codex remains the sole writer, Gemini remains the exact-commit reviewer, and deterministic checks remain authoritative.
+Claude CLI is available. The lifecycle blocker is resolved, so the isolated read-only Fable work program may begin under a structured, audited, resource-bounded adapter. Do not add Claude to the active Phase 2A critical path until its fake-CLI and disposable-adapter contracts pass. Codex remains the sole writer, Gemini remains the exact-commit reviewer, and deterministic checks remain authoritative.
 
 Jeff has authorized up to $100 of Fable 5 credits under the recorded budget program. Verify the installed Claude CLI version, authentication, exact resolved Fable model identifier, structured `total_cost_usd` reporting, and 30-day-retention warning before the first call. Use only sanitized inputs and enforce the aggregate $100 ceiling.
 ```
@@ -922,13 +906,13 @@ Do not run another controlled Phase 2A exercise until one report proves all of t
 - startup is under five seconds (proven);
 - exactly five tools are discovered (proven);
 - real Desktop status works after the normal keepalive boundary (proven);
-- the disposable `MCPServerTask` fixture reaches ready through the production-equivalent loop/ownership path;
-- three accelerated keepalive cycles pass through that task;
-- status works after the accelerated cycles;
-- forced disconnect reconnects to a newer generation;
-- fake queue admission after reconnect returns promptly;
-- duplicate/replayed admission is rejected;
-- no orphaned bridge or worker processes remain;
+- the disposable `MCPServerTask` fixture reaches ready through the production-equivalent loop/ownership path (proven);
+- three accelerated keepalive cycles pass through that task (proven);
+- status works after the accelerated cycles (proven);
+- forced disconnect reconnects to a newer generation (proven);
+- fake queue admission after reconnect returns promptly (proven);
+- duplicate/replayed admission returns the same job ID without duplication (proven);
+- no orphaned bridge or worker processes remain after the fake exercise (proven);
 - all swarm tests and `pip check` pass;
 - compatibility patch hashes and backups are recorded;
 - baseline and protected repositories are unchanged;
@@ -936,6 +920,8 @@ Do not run another controlled Phase 2A exercise until one report proves all of t
 - deployment is disabled;
 - kill switch is engaged;
 - no queued or running worker exists.
+
+After the above evidence is confirmed in the real WSL repository, the next operation is exactly one explicitly authorized real synthetic Phase 2A job. It is not authorized by this record alone.
 
 ## Definition of project success
 

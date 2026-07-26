@@ -31,6 +31,7 @@ PROFILE_SCHEMA_PATH = PROJECT_ROOT / "schemas/desktop-job-profile.schema.json"
 ACTIVATION_FILE = "AUTONOMOUS_DRY_RUN"
 LOCK_FILE = "phase2a-job.lock"
 STATE_FILE = "phase2a-state.json"
+RUNNING_MARKER = "RUNNING"
 WRITABLE = ("csv-processor/app/ai/deadline.py", "csv-processor/tests/swarm_regressions/")
 TEST_PATH = "tests/swarm_regressions/test_deadline_contract.py"
 JOB_ID_RE = re.compile(r"^phase2a-[a-z0-9]{24}$")
@@ -378,6 +379,39 @@ def recover_abandoned(runtime_root: Path = DEFAULT_RUNTIME, audit_path: Path = D
     (runtime_root / LOCK_FILE).unlink(missing_ok=True)
 
 
+def recover_terminal_abandoned(runtime_root: Path = DEFAULT_RUNTIME, audit_path: Path = DEFAULT_AUDIT) -> dict[str, Any]:
+    """Remove only stale markers for an already terminal recovered state."""
+    state_path = runtime_root / STATE_FILE
+    state = _read_state(runtime_root)
+    if state.get("state") != "RECOVERED_ABANDONED":
+        raise SwarmError("terminal recovery requires RECOVERED_ABANDONED state")
+    if _worker_alive(state):
+        raise SwarmError("verified Phase 2A worker is still alive")
+    if not _deployment_disabled(runtime_root):
+        raise SwarmError("deployment must be disabled for terminal recovery")
+    if not _kill_switch_engaged(runtime_root):
+        raise SwarmError("kill switch must be engaged for terminal recovery")
+    if activation_status(runtime_root) != "DISABLED":
+        raise SwarmError("autonomous dry-run must be disabled for terminal recovery")
+
+    removed = []
+    for marker in (LOCK_FILE, RUNNING_MARKER):
+        path = runtime_root / marker
+        if path.is_symlink() or (path.exists() and not path.is_file()):
+            raise SwarmError(f"unsafe stale marker: {marker}")
+        if path.is_file():
+            path.unlink()
+            removed.append(marker)
+    AuditLog(audit_path).record(
+        Job("phase2a-terminal-recovery", PROFILE_ID, REPOSITORY, "guarded terminal recovery"),
+        "terminal_recovery_completed", preserved_state=state.get("state"),
+        state_sha256=_sha(state_path), removed_markers=removed,
+    )
+    return {"state": "RECOVERED_ABANDONED", "removed_markers": removed,
+            "state_preserved": True, "kill_switch": "ENGAGED",
+            "deployment": "DISABLED", "autonomous_dry_run": "DISABLED"}
+
+
 def engage_kill_switch(runtime_root: Path = DEFAULT_RUNTIME, audit_path: Path = DEFAULT_AUDIT) -> dict[str, str]:
     """Engage the switch and cancel only the verified Phase 2A worker."""
     (runtime_root / "KILL_SWITCH").touch(mode=0o600, exist_ok=True)
@@ -397,7 +431,15 @@ def _safe_job_result(job_id: str, state: str, *, commit: str | None = None, dete
     return {"job_id": job_id, "profile_id": PROFILE_ID, "final_state": state, "repair_commit": commit, "deterministic_test": deterministic, "gemini_verdict": verdict, "gemini_risk": risk, "blocking_reason": reason, "kill_switch": "ENGAGED" if state in {"SUCCEEDED", "FAILED", "CANCELLED", "ABANDONED"} else "CLEARED_FOR_DRY_RUN", "deployment": "DISABLED"}
 
 
-def run_preapproved_job(profile_id: str, issue_summary: str, *, runtime_root: Path = DEFAULT_RUNTIME, audit_path: Path = DEFAULT_AUDIT, adapters: JobAdapters | None = None) -> dict[str, Any]:
+def run_preapproved_job(
+    profile_id: str,
+    issue_summary: str,
+    *,
+    runtime_root: Path = DEFAULT_RUNTIME,
+    audit_path: Path = DEFAULT_AUDIT,
+    adapters: JobAdapters | None = None,
+    _allow_guarded_clear: bool = False,
+) -> dict[str, Any]:
     """Admit one job, enqueue it, and return without owning long execution."""
     rejected_id = f"phase2a-rejected-{uuid.uuid4().hex[:24]}"
     try:
@@ -407,8 +449,10 @@ def run_preapproved_job(profile_id: str, issue_summary: str, *, runtime_root: Pa
         profile = validate_profile()
         if activation_status(runtime_root) != "ENABLED":
             raise SwarmError("autonomous dry-run activation is disabled")
-        if _kill_switch_engaged(runtime_root):
+        if _kill_switch_engaged(runtime_root) and not _allow_guarded_clear:
             raise SwarmError("kill switch is engaged; job cannot start")
+        if _allow_guarded_clear and not _kill_switch_engaged(runtime_root):
+            raise SwarmError("guarded submission requires an engaged kill switch")
         if not _deployment_disabled(runtime_root):
             raise SwarmError("deployment is enabled; refusing job")
         existing = _read_state(runtime_root)
@@ -420,24 +464,64 @@ def run_preapproved_job(profile_id: str, issue_summary: str, *, runtime_root: Pa
         AuditLog(audit_path).record(Job(rejected_id, str(profile_id), REPOSITORY, "preapproved request"), "request_rejected", error_category=type(exc).__name__)
         raise
     fd = _acquire_lock(runtime_root)
-    job_id = f"phase2a-{uuid.uuid4().hex[:24]}"
-    audit = AuditLog(audit_path)
-    job = Job(job_id, profile_id, profile.repository, issue_summary, state="QUEUED")
-    state = {"state": "QUEUED", "job_id": job_id, "profile_id": profile_id, "issue_summary": issue_summary, "queued_at": time.time(), "heartbeat_at": None, "worker_pid": None, "worker_start_ticks": None}
-    _write_state(runtime_root, state)
-    audit.record(job, "request_accepted", profile_id=profile_id)
-    audit.record(job, "queued", lease="CONSUMED", worker_service=f"hermes-swarm-phase2a-worker@{job_id}.service")
-    set_activation(False, runtime_root)
+    cleared_for_job = False
+    worker_owns_lock = False
     try:
-        _start_worker(job_id)
-    except Exception as exc:
-        _transition(runtime_root, audit, job, "FAILED", error_category=type(exc).__name__, error=redact(str(exc)))
-        (runtime_root / "KILL_SWITCH").touch(mode=0o600, exist_ok=True)
-        (runtime_root / LOCK_FILE).unlink(missing_ok=True)
+        # The guarded path clears only after every admission check and the
+        # atomic one-job lock have succeeded. It is never exposed as a
+        # standalone kill-switch operation.
+        if _allow_guarded_clear:
+            if not _kill_switch_engaged(runtime_root):
+                raise SwarmError("kill switch changed before guarded submission")
+            (runtime_root / "KILL_SWITCH").unlink()
+            cleared_for_job = True
+
+        job_id = f"phase2a-{uuid.uuid4().hex[:24]}"
+        audit = AuditLog(audit_path)
+        job = Job(job_id, profile_id, profile.repository, issue_summary, state="QUEUED")
+        state = {"state": "QUEUED", "job_id": job_id, "profile_id": profile_id, "issue_summary": issue_summary, "queued_at": time.time(), "heartbeat_at": None, "worker_pid": None, "worker_start_ticks": None}
+        _write_state(runtime_root, state)
+        audit.record(job, "request_accepted", profile_id=profile_id, guarded_submission=_allow_guarded_clear)
+        audit.record(job, "queued", lease="CONSUMED", worker_service=f"hermes-swarm-phase2a-worker@{job_id}.service")
+        set_activation(False, runtime_root)
+        try:
+            _start_worker(job_id)
+        except Exception as exc:
+            _transition(runtime_root, audit, job, "FAILED", error_category=type(exc).__name__, error=redact(str(exc)))
+            return _safe_job_result(job_id, "FAILED", reason=redact(str(exc))[:512])
+        worker_owns_lock = True
+        return _safe_job_result(job_id, "QUEUED", deterministic="QUEUED")
+    except Exception:
+        if cleared_for_job and not worker_owns_lock:
+            (runtime_root / "KILL_SWITCH").touch(mode=0o600, exist_ok=True)
+            set_activation(False, runtime_root)
+        raise
+    finally:
+        if cleared_for_job and not worker_owns_lock:
+            (runtime_root / "KILL_SWITCH").touch(mode=0o600, exist_ok=True)
+            set_activation(False, runtime_root)
+        if not worker_owns_lock:
+            (runtime_root / LOCK_FILE).unlink(missing_ok=True)
         os.close(fd)
-        return _safe_job_result(job_id, "FAILED", reason=redact(str(exc))[:512])
-    os.close(fd)
-    return _safe_job_result(job_id, "QUEUED", deterministic="QUEUED")
+
+
+def submit_preapproved_job(
+    profile_id: str,
+    issue_summary: str,
+    *,
+    runtime_root: Path = DEFAULT_RUNTIME,
+    audit_path: Path = DEFAULT_AUDIT,
+    adapters: JobAdapters | None = None,
+) -> dict[str, Any]:
+    """Admit one job through a validation-bound, one-job kill-switch lease."""
+    return run_preapproved_job(
+        profile_id,
+        issue_summary,
+        runtime_root=runtime_root,
+        audit_path=audit_path,
+        adapters=adapters,
+        _allow_guarded_clear=True,
+    )
 
 
 def _run_test(audit: AuditLog, job: Job, command: list[str], cwd: Path, limits: ResourceLimits, event: str) -> subprocess.CompletedProcess[str]:

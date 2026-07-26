@@ -201,6 +201,15 @@ def run_preapproved_job(
     return execute(profile_id, issue_summary)
 
 
+def submit_preapproved_job(
+    profile_id: Literal["csv_deadline_dry_run_v1"],
+    issue_summary: str,
+) -> dict[str, Any]:
+    """Submit one validated job using an internal one-job kill-switch lease."""
+    from .phase2a import submit_preapproved_job as execute
+    return execute(profile_id, issue_summary)
+
+
 def create_server() -> "FastMCP":
     from mcp.server.fastmcp import FastMCP
     server = FastMCP("hermes-swarm", instructions="Read-only dry-run swarm status and audit bridge.")
@@ -209,6 +218,7 @@ def create_server() -> "FastMCP":
     server.tool(name="recent_audit", structured_output=True)(recent_audit)
     server.tool(name="engage_kill_switch", structured_output=True)(engage_kill_switch)
     server.tool(name="run_preapproved_job", structured_output=True)(run_preapproved_job)
+    server.tool(name="submit_preapproved_job", structured_output=True)(submit_preapproved_job)
     return server
 
 

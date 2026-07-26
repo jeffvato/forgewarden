@@ -172,7 +172,7 @@ except BaseException as exc:
         self.assertGreater(evidence["reconnected_generation"], evidence["initial_generation"])
         self.assertTrue(evidence["ready"])
 
-    def test_official_hermes_probe_discovers_five_tools_under_five_seconds(self):
+    def test_official_hermes_probe_discovers_six_tools_under_five_seconds(self):
         env = {
             "PATH": "/usr/bin:/bin",
             "PYTHONNOUSERSITE": "1",
@@ -196,7 +196,7 @@ except BaseException as exc:
         )
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("Connected (", result.stdout)
-        self.assertIn("Tools discovered: 5", result.stdout)
+        self.assertIn("Tools discovered: 6", result.stdout)
 
     def test_readiness_requires_strictly_newer_generation(self):
         script = r'''

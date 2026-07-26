@@ -4,11 +4,12 @@ Phase 2A adds one restricted execution tool to the existing local stdio MCP
 bridge:
 
     run_preapproved_job(profile_id, issue_summary)
+    submit_preapproved_job(profile_id, issue_summary)
 
-The bridge still exposes only safe status/audit operations plus this one
+The bridge still exposes only safe status/audit operations plus the guarded
 preapproved capability. It does not expose shell commands, repository paths,
 test commands, model names, environment variables, writable paths, deployment,
-merge, push, or kill-switch clearing.
+merge, push, or standalone kill-switch clearing.
 
 ## Threat model and profile
 
@@ -50,9 +51,11 @@ emergency kill switch:
     RUNNING --crash, next startup--> RECOVERED_ABANDONED + DISABLED + engaged
 
 The initial and final state are DISABLED. Enabling never clears the kill
-switch and never starts a job. The MCP bridge cannot enable the lease or clear
-the kill switch. Every execution path re-engages the kill switch and consumes
-the lease.
+switch and never starts a job. `run_preapproved_job` remains fail-closed while
+the kill switch is engaged. `submit_preapproved_job` is the only guarded
+clear-and-submit path: it performs all admission checks, acquires the one-job
+lock, clears the switch internally, and starts the approved worker. Every
+execution path re-engages the kill switch and consumes the lease.
 
 ## Durable queue and worker
 
@@ -102,11 +105,10 @@ remain installed; the kill switch is the emergency stop.
 
 Enable validates the exact profile, clean baseline, scans, user bus, cgroup
 v2, deployment-disabled state, and profile/implementation hashes. To execute
-one later job, Jeff must deliberately use the existing local-only
-'hermes-swarm enable-dry-run' mechanism after enabling the autonomous lease;
-that operation is not available through MCP. The job invocation itself is
-then made from Hermes Desktop with the fixed profile ID and a plain-text issue
-summary.
+one later job, Jeff enables the autonomous lease locally, then uses the Hermes
+Desktop tool `mcp__coding_swarm__submit_preapproved_job` with the fixed profile
+ID and a plain-text issue summary. The tool performs the guarded one-job clear
+internally; no kill-switch file should be removed manually.
 
 ## Audit, replay, and recovery
 
@@ -120,6 +122,14 @@ never writes the baseline checkout, and removes the worktree and read-only
 review snapshot after evidence is durable. A RUNNING state found on the next
 request engages the kill switch and disables the lease before allowing new
 work.
+
+For a terminal `RECOVERED_ABANDONED` state, the local command
+`hermes-swarm phase2a-recover-terminal` performs a narrower cleanup. It
+requires no verified worker, deployment disabled, the kill switch engaged, and
+autonomous dry-run disabled. It removes only stale `phase2a-job.lock` and
+`RUNNING` markers, preserves `phase2a-state.json` byte-for-byte, and records
+the cleanup in the durable audit. Failed preconditions leave all markers
+untouched; the command never submits or starts a job.
 
 ## Adding profiles safely
 

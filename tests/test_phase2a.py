@@ -72,6 +72,62 @@ class FakeProcessAdapters:
 
 
 class Phase2ATests(unittest.TestCase):
+    def _abandoned_runtime(self, root: Path) -> Path:
+        runtime = root / "runtime"
+        runtime.mkdir()
+        (runtime / phase2a.STATE_FILE).write_bytes(b'{"state":"RECOVERED_ABANDONED"}\n')
+        (runtime / phase2a.LOCK_FILE).write_text("stale\n", encoding="ascii")
+        (runtime / phase2a.RUNNING_MARKER).write_text("stale\n", encoding="ascii")
+        (runtime / "KILL_SWITCH").touch()
+        phase2a.set_activation(False, runtime)
+        return runtime
+
+    def test_terminal_recovery_removes_only_stale_markers_and_preserves_state(self):
+        with TemporaryDirectory() as temp:
+            root = Path(temp)
+            runtime = self._abandoned_runtime(root)
+            before = (runtime / phase2a.STATE_FILE).read_bytes()
+            result = phase2a.recover_terminal_abandoned(runtime, root / "audit.jsonl")
+            self.assertEqual(result["state"], "RECOVERED_ABANDONED")
+            self.assertFalse((runtime / phase2a.LOCK_FILE).exists())
+            self.assertFalse((runtime / phase2a.RUNNING_MARKER).exists())
+            self.assertEqual((runtime / phase2a.STATE_FILE).read_bytes(), before)
+            self.assertTrue((runtime / "KILL_SWITCH").is_file())
+
+    def test_terminal_recovery_refuses_verified_active_worker(self):
+        with TemporaryDirectory() as temp:
+            root = Path(temp); runtime = self._abandoned_runtime(root)
+            state = json.loads((runtime / phase2a.STATE_FILE).read_text())
+            state.update({"worker_pid": os.getpid(), "worker_start_ticks": phase2a._worker_start_ticks(os.getpid())})
+            (runtime / phase2a.STATE_FILE).write_text(json.dumps(state), encoding="utf-8")
+            with self.assertRaises(SwarmError):
+                phase2a.recover_terminal_abandoned(runtime, root / "audit.jsonl")
+            self.assertTrue((runtime / phase2a.LOCK_FILE).exists())
+            self.assertTrue((runtime / phase2a.RUNNING_MARKER).exists())
+
+    def test_terminal_recovery_refuses_deployment_enabled(self):
+        with TemporaryDirectory() as temp:
+            root = Path(temp); runtime = self._abandoned_runtime(root)
+            (runtime / "DEPLOYMENT_ENABLED").touch()
+            with self.assertRaises(SwarmError):
+                phase2a.recover_terminal_abandoned(runtime, root / "audit.jsonl")
+            self.assertTrue((runtime / phase2a.LOCK_FILE).exists())
+
+    def test_terminal_recovery_refuses_disengaged_kill_switch(self):
+        with TemporaryDirectory() as temp:
+            root = Path(temp); runtime = self._abandoned_runtime(root)
+            (runtime / "KILL_SWITCH").unlink()
+            with self.assertRaises(SwarmError):
+                phase2a.recover_terminal_abandoned(runtime, root / "audit.jsonl")
+            self.assertTrue((runtime / phase2a.LOCK_FILE).exists())
+
+    def test_terminal_recovery_refuses_nonterminal_state(self):
+        with TemporaryDirectory() as temp:
+            root = Path(temp); runtime = self._abandoned_runtime(root)
+            (runtime / phase2a.STATE_FILE).write_text('{"state":"RUNNING"}\n', encoding="utf-8")
+            with self.assertRaises(SwarmError):
+                phase2a.recover_terminal_abandoned(runtime, root / "audit.jsonl")
+            self.assertTrue((runtime / phase2a.LOCK_FILE).exists())
     def test_profile_is_strict_and_canonical(self):
         profile = phase2a.validate_profile()
         self.assertEqual(profile.profile_id, phase2a.PROFILE_ID)
@@ -123,6 +179,66 @@ class Phase2ATests(unittest.TestCase):
                     runtime_root=runtime,
                     audit_path=audit,
                 )
+
+    def test_guarded_submission_consumes_one_lease_and_reengages_after_success(self):
+        with TemporaryDirectory() as temp:
+            root = Path(temp)
+            runtime = root / "runtime"
+            runtime.mkdir()
+            (runtime / "KILL_SWITCH").touch()
+            phase2a.set_activation(True, runtime)
+            audit = root / "audit.jsonl"
+            with patch.object(phase2a, "_user_bus_and_cgroup_ready"), patch.object(phase2a, "_start_worker"), patch.object(
+                phase2a,
+                "validate_deterministic_interpreter",
+                return_value={"validation": "PASSED", "interpreter": "/home/jeff/anaconda3/bin/python3"},
+            ), patch.object(phase2a, "_run_test", side_effect=[
+                subprocess.CompletedProcess(["pytest"], 0, "2 passed\n", ""),
+                subprocess.CompletedProcess(["pytest"], 1, "E assert 30.999 <= 30\n", ""),
+                subprocess.CompletedProcess(["pytest"], 0, "2 passed\n", ""),
+            ]):
+                queued = phase2a.submit_preapproved_job(
+                    phase2a.PROFILE_ID,
+                    "Correct the deadline utility contract while preserving its existing behavior.",
+                    runtime_root=runtime,
+                    audit_path=audit,
+                    adapters=FakeProcessAdapters(root),
+                )
+                self.assertEqual(queued["final_state"], "QUEUED")
+                self.assertFalse((runtime / "KILL_SWITCH").exists())
+                self.assertEqual(phase2a.activation_status(runtime), "DISABLED")
+                result = phase2a.run_worker_job(
+                    queued["job_id"],
+                    runtime_root=runtime,
+                    audit_path=audit,
+                    adapters=FakeProcessAdapters(root),
+                )
+            self.assertEqual(result["final_state"], "SUCCEEDED")
+            self.assertTrue((runtime / "KILL_SWITCH").is_file())
+            self.assertEqual(phase2a.activation_status(runtime), "DISABLED")
+            self.assertNotEqual(phase2a.REPOSITORY, Path("/home/jeff/n8n"))
+
+    def test_guarded_submission_reengages_when_worker_start_fails(self):
+        with TemporaryDirectory() as temp:
+            root = Path(temp)
+            runtime = root / "runtime"
+            runtime.mkdir()
+            (runtime / "KILL_SWITCH").touch()
+            phase2a.set_activation(True, runtime)
+            audit = root / "audit.jsonl"
+            with patch.object(phase2a, "_user_bus_and_cgroup_ready"), patch.object(
+                phase2a, "_start_worker", side_effect=RuntimeError("fake worker start failure")
+            ):
+                result = phase2a.submit_preapproved_job(
+                    phase2a.PROFILE_ID,
+                    "Correct the deadline utility contract while preserving its existing behavior.",
+                    runtime_root=runtime,
+                    audit_path=root / "audit.jsonl",
+                )
+            self.assertEqual(result["final_state"], "FAILED")
+            self.assertTrue((runtime / "KILL_SWITCH").is_file())
+            self.assertEqual(phase2a.activation_status(runtime), "DISABLED")
+            self.assertFalse((runtime / phase2a.LOCK_FILE).exists())
 
     def test_fake_process_execution_consumes_lease_and_reaps_worktree(self):
         with TemporaryDirectory() as temp:

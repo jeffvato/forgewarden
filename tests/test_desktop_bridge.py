@@ -1,6 +1,7 @@
 import json
 import os
 import subprocess
+import time
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -14,6 +15,14 @@ class DesktopBridgeTests(unittest.TestCase):
         self.audit_dir = TemporaryDirectory(prefix="desktop-bridge-audit-")
         self.audit = Path(self.audit_dir.name) / "audit.jsonl"
         self.addCleanup(self.audit_dir.cleanup)
+        import psutil
+        self._existing_bridge_pids = {
+            process.pid
+            for process in psutil.process_iter(["name", "cmdline"])
+            if process.info.get("cmdline")
+            and process.info.get("name") in {"python", "python3", "hermes-swarm-mcp"}
+            and "swarm.desktop_bridge" in " ".join(process.info["cmdline"])
+        }
 
     def write_audit(self, *entries):
         self.audit.write_text("".join(json.dumps(entry) + "\n" for entry in entries), encoding="utf-8")
@@ -101,7 +110,7 @@ class DesktopBridgeTests(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 bridge.engage_kill_switch()
 
-    def test_stdio_handshake_registers_exactly_five_tools_and_no_protocol_corruption(self):
+    def test_stdio_handshake_registers_exactly_six_tools_and_no_protocol_corruption(self):
         script = r'''
 import asyncio, json
 from mcp import ClientSession, StdioServerParameters
@@ -136,7 +145,7 @@ print(json.dumps(asyncio.run(handshake())))
         )
         self.assertEqual(result.returncode, 0, result.stderr)
         names = json.loads(result.stdout)
-        self.assertEqual(names, ["engage_kill_switch", "job_status", "recent_audit", "run_preapproved_job", "status"])
+        self.assertEqual(names, ["engage_kill_switch", "job_status", "recent_audit", "run_preapproved_job", "status", "submit_preapproved_job"])
         self.assertNotIn("repair", names)
         self.assertNotIn("deploy", names)
         self.assertNotIn("shell", names)
@@ -145,15 +154,22 @@ print(json.dumps(asyncio.run(handshake())))
 
     def assert_no_bridge_children(self):
         import psutil
-        self.assertFalse(
-            [
+        ancestor_pids = {process.pid for process in psutil.Process().parents()}
+        for _ in range(20):
+            children = [
                 process.pid
-                for process in psutil.process_iter(["pid", "cmdline"])
+                for process in psutil.process_iter(["pid", "name", "cmdline", "status"])
                 if process.info.get("cmdline")
+                and process.pid not in ancestor_pids
+                and process.pid not in self._existing_bridge_pids
+                and process.info.get("name") in {"python", "python3", "hermes-swarm-mcp"}
+                and process.info.get("status") != psutil.STATUS_ZOMBIE
                 and "swarm.desktop_bridge" in " ".join(process.info["cmdline"])
-            ],
-            "MCP fixture child was not reaped",
-        )
+            ]
+            if not children:
+                return
+            time.sleep(0.05)
+        self.fail(f"MCP fixture child was not reaped: {children}")
 
     def test_stdio_session_is_persistent_and_tool_errors_do_not_kill_it(self):
         script = r'''
@@ -172,7 +188,7 @@ async def exercise():
             await session.initialize()
             tools = await session.list_tools()
             assert sorted(t.name for t in tools.tools) == [
-                "engage_kill_switch", "job_status", "recent_audit", "run_preapproved_job", "status"
+                "engage_kill_switch", "job_status", "recent_audit", "run_preapproved_job", "status", "submit_preapproved_job"
             ]
             modes = []
             for _ in range(3):

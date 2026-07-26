@@ -6,12 +6,12 @@ from .core import SwarmError
 from .baseline import run_controlled_baseline
 from .gemini_recovery import recover_gemini_review
 from .local_run import run_real_dry_run
-from .phase2a import activation_status, disable_autonomous_dry_run, enable_autonomous_dry_run, engage_kill_switch, run_worker_job
+from .phase2a import activation_status, disable_autonomous_dry_run, enable_autonomous_dry_run, engage_kill_switch, recover_terminal_abandoned, run_worker_job
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Local Hermes coding swarm (dry-run only)")
-    parser.add_argument("command", choices=["start", "stop", "status", "kill-switch", "dry-run", "controlled-baseline", "gemini-review-recovery", "phase2a-worker", "run", "autonomous-dry-run-status", "autonomous-dry-run-enable", "autonomous-dry-run-disable"], nargs="?", default="status")
+    parser.add_argument("command", choices=["start", "stop", "status", "kill-switch", "dry-run", "controlled-baseline", "gemini-review-recovery", "phase2a-worker", "phase2a-recover-terminal", "run", "autonomous-dry-run-status", "autonomous-dry-run-enable", "autonomous-dry-run-disable"], nargs="?", default="status")
     parser.add_argument("--state-dir", type=Path, default=Path(".swarm-state"))
     parser.add_argument("--runtime-root", type=Path)
     parser.add_argument("--audit-dir", type=Path)
@@ -41,6 +41,13 @@ def main() -> int:
             parser.error("phase2a-worker requires --job-id")
         try:
             print(run_worker_job(args.job_id, runtime_root=args.runtime_root or Path("/home/jeff/hermes-swarm-runtime"), audit_path=(args.audit_dir or Path("/home/jeff/hermes-swarm-audit")) / "audit.jsonl"))
+            return 0
+        except (SwarmError, OSError, ValueError) as exc:
+            print(f"FAILED: {exc}")
+            return 1
+    if args.command == "phase2a-recover-terminal":
+        try:
+            print(recover_terminal_abandoned(args.runtime_root or Path("/home/jeff/hermes-swarm-runtime"), (args.audit_dir or Path("/home/jeff/hermes-swarm-audit")) / "audit.jsonl"))
             return 0
         except (SwarmError, OSError, ValueError) as exc:
             print(f"FAILED: {exc}")
