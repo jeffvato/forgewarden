@@ -98,6 +98,7 @@
               "concurrency_risk",
               "duplicate_logic",
               "n_plus_one_query",
+              "naming_rot",
               "nested_ternary",
               "parse_failure",
               "pass_through_wrapper",

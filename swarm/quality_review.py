@@ -45,6 +45,7 @@ QUERY_CALL_RE = re.compile(
 BLOCKING_ASYNC_RE = re.compile(r"\b(?:time\.sleep|requests\.|urllib\.)")
 TRANSIENT_STATE_RE = re.compile(r"\b(?:QUEUED|RUNNING|IN_PROGRESS|STARTED|PENDING)\b")
 TERMINAL_STATE_RE = re.compile(r"\b(?:SUCCEEDED|FAILED|COMPLETED|CANCELLED|ABANDONED|DONE)\b")
+NAMING_ROT_RE = re.compile(r"(?:_v\d+|_new|_old|_final|_copy|_tmp)$", re.IGNORECASE)
 
 _TIER_ORDER = {"SAFE": 0, "CAREFUL": 1, "RISKY": 2}
 
@@ -133,6 +134,15 @@ class _PythonReview(ast.NodeVisitor):
 
     def _visit_function(self, node: ast.FunctionDef | ast.AsyncFunctionDef) -> None:
         end = getattr(node, "end_lineno", node.lineno)
+        if NAMING_ROT_RE.search(node.name):
+            self.add(
+                category="naming_rot", tier="CAREFUL", confidence="LOW",
+                line=node.lineno, symbol=node.name,
+                summary=f"function name {node.name} suggests an accumulated version or temporary suffix",
+                evidence=_line(self.source, node.lineno),
+                rationale="Versioned or temporary names can preserve historical ambiguity, but may be intentional API compatibility.",
+                suggested_action="Trace callers and compatibility requirements before choosing a stable name.",
+            )
         if end - node.lineno + 1 > 80:
             self.add(
                 category="structural_bloat", tier="CAREFUL", confidence="HIGH",

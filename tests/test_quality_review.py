@@ -122,6 +122,19 @@ def test_quality_review_flags_possible_stale_state_marker(tmp_path):
     assert finding["confidence"] == "LOW"
 
 
+def test_quality_review_flags_naming_rot_as_careful(tmp_path):
+    (tmp_path / "versions.py").write_text(
+        "def normalize_v2(value):\n    return value.strip()\n",
+        encoding="utf-8",
+    )
+
+    result = scan_repository(tmp_path)
+    finding = _finding(result, "naming_rot")
+
+    assert finding["tier"] == "CAREFUL"
+    assert finding["confidence"] == "LOW"
+
+
 def test_quality_review_skips_sensitive_and_non_source_files(tmp_path):
     (tmp_path / ".env").write_text("TOKEN=do-not-read\n", encoding="utf-8")
     (tmp_path / "notes.txt").write_text("Certainly, this is prose.\n", encoding="utf-8")
