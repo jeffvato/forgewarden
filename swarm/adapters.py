@@ -194,6 +194,8 @@ _BLOCKED_ENV_TERMS = (
     "secret", "token", "password", "credential", "api_key", "apikey", "authorization",
     "database_url", "postgres", "mysql", "redis", "woocommerce", "distributor", "gunbroker",
     "n8n", "docker", "production", "payment", "order", "customer", "aws_access", "private_key",
+    "gemini_api", "google_api", "anthropic_api", "hf_token", "huggingface", "github_token",
+    "gh_token", "slack", "telegram", "oauth", "client_id", "client_secret",
 )
 
 
