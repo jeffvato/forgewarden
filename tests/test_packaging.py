@@ -119,3 +119,17 @@ def test_launcher_exposes_quality_audit_route_without_runtime_activation():
 
     assert result.returncode == 0
     assert "quality-audit" in result.stdout
+
+
+def test_launcher_exposes_review_evidence_route_without_runtime_activation():
+    result = subprocess.run(
+        ["/bin/bash", str(LAUNCHER), "--help"],
+        cwd=ROOT,
+        env={**os.environ, "HERMES_SWARM_PYTHON": sys.executable},
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode == 0
+    assert "review-evidence" in result.stdout

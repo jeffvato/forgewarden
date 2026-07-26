@@ -73,6 +73,16 @@ PYTHONPATH=. python3 -m swarm.cli quality-audit \
   --job-id safe-review-001
 ```
 
+Combine the three read-only artifacts for a human or Gemini review handoff:
+
+```bash
+PYTHONPATH=. python3 -m swarm.cli review-evidence \
+  --quality-report /tmp/quality-review.json \
+  --application-plan /tmp/quality-application-plan.json \
+  --audit-review /tmp/quality-audit-review.json \
+  --output /tmp/combined-review-evidence.json
+```
+
 ## Boundaries
 
 - Hermes owns job state and orchestration; it never edits application files.

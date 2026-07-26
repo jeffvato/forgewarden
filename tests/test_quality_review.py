@@ -9,6 +9,7 @@ import pytest
 from swarm.quality_review import consolidate_report, evaluate_application_gate, scan_repository
 from swarm.quality_apply import apply_safe_findings, build_safe_application_plan
 from swarm.quality_audit import review_audit
+from swarm.review_evidence import build_review_evidence
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -16,6 +17,7 @@ SCHEMA = ROOT / "schemas" / "quality-review.schema.json"
 APPLICATION_PLAN_SCHEMA = ROOT / "schemas" / "quality-application-plan.schema.json"
 APPLICATION_RESULT_SCHEMA = ROOT / "schemas" / "quality-application-result.schema.json"
 AUDIT_REVIEW_SCHEMA = ROOT / "schemas" / "quality-audit-review.schema.json"
+COMBINED_EVIDENCE_SCHEMA = ROOT / "schemas" / "combined-review-evidence.schema.json"
 
 
 def _finding(result, category):
@@ -565,3 +567,31 @@ def test_audit_consumer_rejects_inconsistent_completion_event(tmp_path):
 
     assert result["integrity"] == "INVALID"
     assert result["matching_event_count"] == 0
+
+
+def test_combined_review_evidence_is_hash_bound_and_non_mutating(tmp_path):
+    quality = tmp_path / "quality.json"
+    plan = tmp_path / "plan.json"
+    audit_review = tmp_path / "audit-review.json"
+    quality.write_text(json.dumps({"schema_version": "1", "mode": "READ_ONLY", "auto_apply_enabled": False, "counts": {"SAFE": 1, "CAREFUL": 0, "RISKY": 0}, "source_files_scanned": 2, "secret": "do-not-echo"}), encoding="utf-8")
+    plan.write_text(json.dumps({"schema_version": "1", "mode": "EXPLICIT_SAFE_ONLY", "mutation_allowed": False, "requires_explicit_invocation": True, "committed": False, "pushed": False, "eligible_finding_ids": ["a" * 16], "blocked_finding_ids": []}), encoding="utf-8")
+    audit_review.write_text(json.dumps({
+        "schema_version": "1",
+        "mode": "READ_ONLY_AUDIT_REVIEW",
+        "mutation_allowed": False,
+        "review_required": True,
+        "job_id": "safe-job-1",
+        "integrity": "VALID",
+        "latest_state": "APPLIED_VERIFIED",
+        "latest_event_sha256": "b" * 64,
+        "verification_passed": True,
+        "rollback_performed": False,
+    }), encoding="utf-8")
+
+    result = build_review_evidence(quality, plan, audit_review)
+
+    jsonschema.validate(result, json.loads(COMBINED_EVIDENCE_SCHEMA.read_text(encoding="utf-8")))
+    assert result["approval_status"] == "HUMAN_REVIEW_REQUIRED"
+    assert result["mutation_allowed"] is False
+    assert "do-not-echo" not in json.dumps(result)
+    assert result["quality_report_sha256"]

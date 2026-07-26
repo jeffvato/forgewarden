@@ -61,6 +61,13 @@ returns a schema-validated summary with `review_required: true` and
 and hash formats, and returns a hash of the specific reviewed event. It never
 returns the underlying audit records.
 
+`review-evidence` combines the quality report, application plan, and audit
+summary by hash. It requires versioned read-only inputs, emits only counts,
+statuses, and hashes, and always returns `HUMAN_REVIEW_REQUIRED` with
+`mutation_allowed: false`. Its output contract is
+`schemas/combined-review-evidence.schema.json`; no model is invoked by this
+command.
+
 The application plan is validated by `schemas/quality-application-plan.schema.json`.
 For CAREFUL findings, the orchestrator compares Codex's
 `tests_added_or_changed` list against its verified changed-file list; a test

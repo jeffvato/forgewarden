@@ -13,11 +13,12 @@ from .paths import audit_root, runtime_root
 from .quality_review import scan_repository, write_report
 from .quality_apply import apply_safe_findings
 from .quality_audit import review_audit
+from .review_evidence import build_review_evidence
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Local Hermes coding swarm (dry-run only)")
-    parser.add_argument("command", choices=["start", "stop", "status", "kill-switch", "dry-run", "controlled-baseline", "gemini-review-recovery", "quality-review", "quality-apply-safe", "quality-audit", "phase2a-worker", "phase2a-recover-terminal", "run", "autonomous-dry-run-status", "autonomous-dry-run-enable", "autonomous-dry-run-disable"], nargs="?", default="status")
+    parser.add_argument("command", choices=["start", "stop", "status", "kill-switch", "dry-run", "controlled-baseline", "gemini-review-recovery", "quality-review", "quality-apply-safe", "quality-audit", "review-evidence", "phase2a-worker", "phase2a-recover-terminal", "run", "autonomous-dry-run-status", "autonomous-dry-run-enable", "autonomous-dry-run-disable"], nargs="?", default="status")
     parser.add_argument("--state-dir", type=Path, default=Path(".swarm-state"))
     parser.add_argument("--runtime-root", type=Path)
     parser.add_argument("--audit-dir", type=Path)
@@ -30,6 +31,9 @@ def main() -> int:
     parser.add_argument("--finding-id", action="append", default=[])
     parser.add_argument("--check-command", help="shell-free command string used for deterministic verification")
     parser.add_argument("--audit", type=Path)
+    parser.add_argument("--quality-report", type=Path)
+    parser.add_argument("--application-plan", type=Path)
+    parser.add_argument("--audit-review", type=Path)
     args = parser.parse_args()
     if args.command == "status":
         print({**safety_status(args.runtime_root or runtime_root()), "commands": discover_commands(), "resources": measure_resources(), "limits": select_limits(measure_resources()).__dict__})
@@ -78,6 +82,20 @@ def main() -> int:
             print(json.dumps(review_audit(args.audit, args.job_id), indent=2, sort_keys=True))
             return 0
         except (OSError, ValueError) as exc:
+            print(f"FAILED: {exc}")
+            return 1
+    if args.command == "review-evidence":
+        if not args.quality_report or not args.application_plan or not args.audit_review:
+            parser.error("review-evidence requires --quality-report, --application-plan, and --audit-review")
+        try:
+            result = build_review_evidence(args.quality_report, args.application_plan, args.audit_review)
+            rendered = json.dumps(result, indent=2, sort_keys=True) + "\n"
+            if args.output:
+                args.output.write_text(rendered, encoding="utf-8")
+            else:
+                print(rendered, end="")
+            return 0
+        except (OSError, ValueError, json.JSONDecodeError) as exc:
             print(f"FAILED: {exc}")
             return 1
     if args.command == "phase2a-worker":
