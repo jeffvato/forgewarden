@@ -15,7 +15,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
-from .core import SwarmError, redact, run_command, validate_contract
+from .core import SwarmError, ensure_mailbox_directory, redact, run_command, validate_contract, write_mailbox_json
 from .paths import runtime_root
 
 
@@ -434,8 +434,7 @@ class CodexAdapter:
         cache_dir.mkdir(parents=True, exist_ok=True)
         cache_dir.chmod(0o700)
         self.last_cache_directory = cache_dir
-        result_dir = worktree / ".swarm"
-        result_dir.mkdir(exist_ok=True)
+        result_dir = ensure_mailbox_directory(worktree / ".swarm")
         output = result_dir / f"codex-result-{canonical_job_id}.json"
         fd, output_name = tempfile.mkstemp(prefix=f"swarm-codex-result-{canonical_job_id}-", suffix=".json")
         os.close(fd)
@@ -491,7 +490,7 @@ class CodexAdapter:
             payload = json.loads(external_output.read_text(encoding="utf-8"))
             evidence.sanitized_final_response = redact(json.dumps(payload, sort_keys=True))[:12000]
             evidence.claimed_changed_files = payload.get("changed_files") if isinstance(payload, dict) and isinstance(payload.get("changed_files"), list) else None
-            output.write_text(json.dumps(payload, sort_keys=True), encoding="utf-8")
+            write_mailbox_json(output, payload, "Codex result")
             self.last_invocation["final_response"] = redact(json.dumps(payload, sort_keys=True))
             evidence.target_post_hash = hashlib.sha256(target.read_bytes()).hexdigest()
             try:
@@ -545,13 +544,12 @@ class GeminiAdapter:
         }, indent=2)
 
     def run(self, snapshot: Path, job_id: str, commit: str, prompt: str, *, formatting_retry: bool = True) -> dict[str, Any]:
-        result_dir = snapshot / ".swarm"
-        result_dir.mkdir(exist_ok=True)
+        result_dir = ensure_mailbox_directory(snapshot / ".swarm")
         output = result_dir / "gemini-review.json"
         schema = self._job_schema(job_id, commit)
         self.last_schema = schema
         schema_path = result_dir / f"gemini-review-{job_id}.schema.json"
-        schema_path.write_text(json.dumps(schema, indent=2, sort_keys=True), encoding="utf-8")
+        write_mailbox_json(schema_path, schema, "Gemini schema")
         self.last_attempts = []
         required = self._required_structure(job_id, commit)
         base_prompt = (
@@ -577,7 +575,7 @@ class GeminiAdapter:
                     raise SwarmError("Gemini APPROVE cannot contain blocking findings or missing tests")
                 attempt_record["validation"] = "PASSED"
                 self.last_attempts.append(attempt_record)
-                output.write_text(json.dumps(payload, sort_keys=True), encoding="utf-8")
+                write_mailbox_json(output, payload, "Gemini review")
                 return payload
             except (SwarmError, json.JSONDecodeError) as exc:
                 attempt_record["validation"] = "FAILED"

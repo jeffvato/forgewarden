@@ -6,7 +6,11 @@ import threading
 import unittest
 from pathlib import Path
 
-from swarm.core import AuditLog, DeploymentController, Job, Orchestrator, RuleStore, ServiceLock, SwarmError, redact, require_exact_commit, validate_contract
+from swarm.core import (
+    AuditLog, DeploymentController, Job, Orchestrator, RuleStore, ServiceLock,
+    SwarmError, ensure_mailbox_directory, read_mailbox_json, redact,
+    require_exact_commit, validate_contract, validate_snapshot_symlinks, write_mailbox_json,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -65,6 +69,34 @@ class SwarmTests(unittest.TestCase):
         self.gemini.write_text("""import json, pathlib\npathlib.Path('.swarm').mkdir()\njson.dump({'job_id':'job-1','reviewed_commit':'0'*40,'verdict':'APPROVE','risk':'LOW','blocking_findings':[],'non_blocking_notes':[],'tests_missing':[],'reasoning_summary':'stale','proposed_rules':[]}, open('.swarm/gemini-review.json','w'))\n""", encoding="utf-8")
         with self.assertRaises(SwarmError):
             self.run_job()
+
+    def test_structured_mailbox_rejects_symlinks_and_external_snapshot_links(self):
+        mailbox = self.root / "mailbox"
+        ensure_mailbox_directory(mailbox)
+        target = self.root / "outside.json"
+        target.write_text('{"outside": true}', encoding="utf-8")
+        linked = mailbox / "result.json"
+        linked.symlink_to(target)
+        with self.assertRaises(SwarmError):
+            read_mailbox_json(linked, "fixture result")
+        with self.assertRaises(SwarmError):
+            write_mailbox_json(linked, {"safe": True}, "fixture result")
+
+        snapshot = self.root / "snapshot"
+        snapshot.mkdir()
+        (snapshot / "external.txt").symlink_to(target)
+        with self.assertRaises(SwarmError):
+            validate_snapshot_symlinks(snapshot)
+
+    def test_structured_mailbox_is_created_exclusively_and_restricted(self):
+        mailbox = self.root / "mailbox"
+        ensure_mailbox_directory(mailbox)
+        result = mailbox / "result.json"
+        write_mailbox_json(result, {"ok": True}, "fixture result")
+        self.assertEqual(read_mailbox_json(result, "fixture result"), {"ok": True})
+        self.assertEqual(result.stat().st_mode & 0o777, 0o600)
+        with self.assertRaises(SwarmError):
+            write_mailbox_json(result, {"replacement": True}, "fixture result")
 
     def test_one_character_commit_mismatch_blocks_approval(self):
         expected = "a" * 40

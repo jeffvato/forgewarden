@@ -54,6 +54,73 @@ def redact(value: str) -> str:
     return result
 
 
+def _reject_symlink_path(path: Path, label: str) -> None:
+    """Reject a mailbox path or any parent that could redirect I/O."""
+    path = path.expanduser()
+    if path.is_symlink() or any(parent.is_symlink() for parent in (path.parent, *path.parent.parents)):
+        raise SwarmError(f"refusing symlink {label}: {path}")
+
+
+def ensure_mailbox_directory(path: Path) -> Path:
+    """Create or validate a model mailbox without following symlinks."""
+    _reject_symlink_path(path, "mailbox directory")
+    if path.exists() and not path.is_dir():
+        raise SwarmError(f"mailbox path is not a directory: {path}")
+    path.mkdir(parents=True, exist_ok=True, mode=0o755)
+    _reject_symlink_path(path, "mailbox directory")
+    return path
+
+
+def read_mailbox_json(path: Path, label: str) -> dict[str, Any]:
+    """Read one structured mailbox result only from a regular, non-symlink file."""
+    _reject_symlink_path(path, label)
+    if not path.is_file():
+        raise SwarmError(f"{label} is missing or not a regular file: {path}")
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        raise SwarmError(f"{label} is not valid UTF-8 JSON: {path}") from exc
+    if not isinstance(payload, dict):
+        raise SwarmError(f"{label} must be a JSON object")
+    return payload
+
+
+def write_mailbox_json(path: Path, payload: dict[str, Any], label: str) -> None:
+    """Create one structured mailbox file without following or replacing a symlink."""
+    _reject_symlink_path(path, label)
+    path.parent.mkdir(parents=True, exist_ok=True, mode=0o755)
+    _reject_symlink_path(path, label)
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        descriptor = os.open(path, flags, 0o600)
+    except OSError as exc:
+        raise SwarmError(f"unable to create {label} safely: {path}") from exc
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+            handle.write(json.dumps(payload, sort_keys=True))
+            handle.flush()
+            os.fsync(handle.fileno())
+    except Exception:
+        try:
+            path.unlink(missing_ok=True)
+        except OSError:
+            pass
+        raise
+    path.chmod(0o600)
+
+
+def validate_snapshot_symlinks(snapshot: Path) -> None:
+    """Permit only symlinks whose targets remain inside the disposable snapshot."""
+    root = snapshot.resolve()
+    for item in snapshot.rglob("*"):
+        if not item.is_symlink():
+            continue
+        try:
+            item.resolve().relative_to(root)
+        except (OSError, ValueError) as exc:
+            raise SwarmError(f"snapshot contains an external or broken symlink: {item}") from exc
+
+
 def validate_contract(payload: Any, kind: str, expected_job_id: str | None = None, expected_commit: str | None = None) -> None:
     if not isinstance(payload, dict):
         raise SwarmError(f"{kind} result must be a JSON object")
@@ -291,9 +358,7 @@ class Orchestrator:
                 self.audit.record(job, "codex_started")
                 codex = run_command(codex_command, worktree, timeout=60, env={"SWARM_ROLE": "CODEX_WRITER", "SWARM_DRY_RUN": "1"})
                 result_file = worktree / ".swarm" / "codex-result.json"
-                if not result_file.exists():
-                    raise SwarmError("Codex did not produce structured result JSON")
-                codex_result = json.loads(result_file.read_text(encoding="utf-8"))
+                codex_result = read_mailbox_json(result_file, "Codex result")
                 validate_contract(codex_result, "codex")
                 if codex_result["job_id"] != job.job_id or codex_result["status"] != "FIXED" or codex.returncode:
                     raise SwarmError("Codex result or exit status did not authorize review")
@@ -348,18 +413,19 @@ class Orchestrator:
                 run = run_command(["git", "clone", "--no-hardlinks", str(worktree), str(snapshot)], self.state_dir)
                 if run.returncode:
                     raise SwarmError("could not create read-only Gemini snapshot")
+                validate_snapshot_symlinks(snapshot)
                 # Keep only the structured-output mailbox writable. Source, Git metadata,
                 # and directories are read-only to the Gemini process.
                 output_dir = snapshot / ".swarm"
-                output_dir.mkdir(exist_ok=True)
+                ensure_mailbox_directory(output_dir)
                 quality_report_path = output_dir / "quality-review.json"
-                quality_report_path.write_text(json.dumps(quality_review, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-                quality_report_path.chmod(0o600)
+                write_mailbox_json(quality_report_path, quality_review, "quality report")
                 plan_path = output_dir / "quality-application-plan.json"
-                plan_path.write_text(json.dumps(safe_application_plan, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-                plan_path.chmod(0o600)
+                write_mailbox_json(plan_path, safe_application_plan, "quality application plan")
                 for item in snapshot.rglob("*"):
                     if item == output_dir or output_dir in item.parents:
+                        continue
+                    if item.is_symlink():
                         continue
                     item.chmod(0o555 if item.is_dir() else 0o444)
                 output_dir.chmod(0o755)
@@ -368,9 +434,7 @@ class Orchestrator:
                 self.audit.record(job, "gemini_started", reviewed_commit=commit)
                 review = run_command(gemini_command, snapshot, timeout=60, env={"SWARM_ROLE": "GEMINI_READ_ONLY", "SWARM_DRY_RUN": "1", "SWARM_REVIEWED_COMMIT": commit})
                 review_file = snapshot / ".swarm" / "gemini-review.json"
-                if not review_file.exists():
-                    raise SwarmError("Gemini did not produce structured review JSON")
-                gemini = json.loads(review_file.read_text(encoding="utf-8"))
+                gemini = read_mailbox_json(review_file, "Gemini review")
                 validate_contract(gemini, "gemini")
                 if gemini["job_id"] != job.job_id:
                     raise SwarmError("stale or mismatched Gemini review rejected")

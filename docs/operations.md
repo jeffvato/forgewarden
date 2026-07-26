@@ -99,6 +99,13 @@ Codex-listed test change before the candidate can complete the dry-run. A
 Gemini `APPROVE` verdict cannot bypass either condition; only SAFE findings, or
 test-backed CAREFUL findings, may proceed.
 
+Structured Codex and Gemini mailbox files are created exclusively with mode
+`0600` and are never replaced through a symlink. Mailbox directories and
+structured results must be regular local paths. Before Gemini starts, the
+disposable snapshot is checked for symlinks that resolve outside that snapshot;
+such a snapshot fails closed. This protects review evidence from stale or
+model-created path redirection.
+
 The implementation does not alter Hermes configuration. Before a later phase
 changes an existing Hermes configuration, take a timestamped copy, display the
 proposed diff, and obtain Jeff's approval. No OS package, network, remote host,
