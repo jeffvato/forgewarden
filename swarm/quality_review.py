@@ -462,7 +462,7 @@ def scan_repository(repository: Path) -> dict[str, Any]:
 def write_report(path: Path, rendered: str) -> None:
     """Write a report without following an output symlink."""
     path = path.expanduser()
-    if path.is_symlink():
+    if path.is_symlink() or any(parent.is_symlink() for parent in (path.parent, *path.parent.parents)):
         raise ValueError(f"refusing symlink output path: {path}")
     path.parent.mkdir(parents=True, exist_ok=True)
     flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, "O_NOFOLLOW", 0)

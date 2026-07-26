@@ -221,6 +221,30 @@ def test_quality_review_cli_refuses_symlink_output(tmp_path):
     assert target.read_text(encoding="utf-8") == "preserve\n"
 
 
+def test_quality_review_cli_refuses_symlinked_output_parent(tmp_path):
+    source = tmp_path / "safe.py"
+    source.write_text("def ok():\n    return True\n", encoding="utf-8")
+    target_parent = tmp_path.parent / f"quality-review-parent-{tmp_path.name}"
+    target_parent.mkdir()
+    linked_parent = tmp_path / "reports"
+    try:
+        linked_parent.symlink_to(target_parent, target_is_directory=True)
+    except OSError:
+        return
+
+    result = subprocess.run(
+        ["python3", "-m", "swarm.quality_review", str(tmp_path), "--output", str(linked_parent / "review.json")],
+        cwd=ROOT,
+        text=True,
+        capture_output=True,
+        check=False,
+        env={**os.environ, "PYTHONPATH": str(ROOT)},
+    )
+
+    assert result.returncode != 0
+    assert not (target_parent / "review.json").exists()
+
+
 def test_quality_review_reports_unreadable_source_instead_of_skipping(tmp_path):
     (tmp_path / "broken.py").write_bytes(b"def broken():\n\xff\n")
 
