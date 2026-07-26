@@ -112,15 +112,15 @@ def _sha(path: Path) -> str:
 
 
 def _kill_switch_engaged(runtime_root: Path) -> bool:
-    return (runtime_root / "KILL_SWITCH").is_file()
+    return _runtime_file(runtime_root, "KILL_SWITCH").is_file()
 
 
 def _deployment_disabled(runtime_root: Path) -> bool:
-    return not (runtime_root / "DEPLOYMENT_ENABLED").exists()
+    return not _runtime_file(runtime_root, "DEPLOYMENT_ENABLED").exists()
 
 
 def activation_status(runtime_root: Path = DEFAULT_RUNTIME) -> str:
-    path = runtime_root / ACTIVATION_FILE
+    path = _runtime_file(runtime_root, ACTIVATION_FILE)
     return path.read_text(encoding="ascii").strip() if path.is_file() else "DISABLED"
 
 
@@ -137,7 +137,7 @@ def safety_status(runtime_root: Path = DEFAULT_RUNTIME) -> dict[str, str]:
 def workflow_status(runtime_root: Path = DEFAULT_RUNTIME) -> dict[str, Any]:
     """Report Phase 2A state and replay/stale markers without changing them."""
     result: dict[str, Any] = dict(safety_status(runtime_root))
-    state_path = runtime_root / STATE_FILE
+    state_path = _runtime_file(runtime_root, STATE_FILE)
     try:
         state = _read_state(runtime_root)
         state_status = state.get("state") if state else "ABSENT"
@@ -146,7 +146,7 @@ def workflow_status(runtime_root: Path = DEFAULT_RUNTIME) -> dict[str, Any]:
         state = {}
         state_status = "INVALID"
         state_error = type(exc).__name__
-    lock_path = runtime_root / LOCK_FILE
+    lock_path = _runtime_file(runtime_root, LOCK_FILE)
     if not lock_path.exists():
         lock_status = "ABSENT"
     elif lock_path.is_symlink() or not lock_path.is_file():
@@ -154,7 +154,7 @@ def workflow_status(runtime_root: Path = DEFAULT_RUNTIME) -> dict[str, Any]:
     else:
         owner = _lock_owner_alive(lock_path)
         lock_status = {True: "ALIVE", False: "STALE", None: "UNKNOWN"}[owner]
-    running_marker = (runtime_root / RUNNING_MARKER).is_file()
+    running_marker = _runtime_file(runtime_root, RUNNING_MARKER).is_file()
     terminal = state_status in {"SUCCEEDED", "FAILED", "CANCELLED", "ABANDONED", "RECOVERED_ABANDONED"}
     stale_markers = terminal and (lock_status != "ABSENT" or running_marker)
     replay_blocked = state_status in {"QUEUED", "RUNNING", "CODEX_RUNNING", "CHECKS_RUNNING", "GEMINI_REVIEWING"} or lock_status in {"ALIVE", "UNKNOWN"}
@@ -184,8 +184,7 @@ def workflow_status(runtime_root: Path = DEFAULT_RUNTIME) -> dict[str, Any]:
 
 
 def set_activation(enabled: bool, runtime_root: Path = DEFAULT_RUNTIME) -> None:
-    runtime_root.mkdir(parents=True, exist_ok=True)
-    path = runtime_root / ACTIVATION_FILE
+    path = _runtime_file(runtime_root, ACTIVATION_FILE, create_root=True)
     path.write_text("ENABLED\n" if enabled else "DISABLED\n", encoding="ascii")
     path.chmod(0o600)
 
@@ -252,9 +251,9 @@ def validate_issue_summary(issue_summary: str) -> str:
 
 
 def _acquire_lock(runtime_root: Path) -> int:
-    runtime_root.mkdir(parents=True, exist_ok=True)
+    runtime_root = _runtime_root_path(runtime_root, create=True)
     try:
-        fd = os.open(runtime_root / LOCK_FILE, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+        fd = os.open(_runtime_file(runtime_root, LOCK_FILE), os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
         owner = f"{os.getpid()}:{_worker_start_ticks(os.getpid()) or ''}\n".encode("ascii")
         os.write(fd, owner)
         os.fsync(fd)
@@ -363,21 +362,45 @@ SEEDED_DEFECT_SHA = "8546054f0e2542f77afa975b1ba8dbe3561059537d2252ae0a290e0e029
 SEEDED_FAILURE_FINGERPRINT = re.compile(r"assert 30\.[0-9]+ <= 30")
 
 
+def _runtime_root_path(root: Path, *, create: bool = False) -> Path:
+    """Validate the local runtime root before any marker or state I/O."""
+    root = Path(root).expanduser()
+    if root.is_symlink() or any(parent.is_symlink() for parent in (root.parent, *root.parent.parents)):
+        raise SwarmError(f"refusing symlinked Phase 2A runtime root: {root}")
+    if root.exists() and not root.is_dir():
+        raise SwarmError(f"Phase 2A runtime root is not a directory: {root}")
+    if create:
+        root.mkdir(parents=True, exist_ok=True, mode=0o700)
+        root.chmod(0o700)
+    return root
+
+
+def _runtime_file(root: Path, name: str, *, create_root: bool = False) -> Path:
+    if not name or Path(name).name != name:
+        raise SwarmError("invalid Phase 2A runtime marker name")
+    root = _runtime_root_path(root, create=create_root)
+    path = root / name
+    if path.is_symlink():
+        raise SwarmError(f"refusing symlinked Phase 2A runtime marker: {name}")
+    return path
+
+
 def _write_state(runtime_root: Path, value: dict[str, Any]) -> None:
-    runtime_root.mkdir(parents=True, exist_ok=True)
-    lock_path = runtime_root / f".{STATE_FILE}.lock"
+    runtime_root = _runtime_root_path(runtime_root, create=True)
+    lock_path = _runtime_file(runtime_root, f".{STATE_FILE}.lock")
     lock_path.touch(mode=0o600, exist_ok=True)
     lock_path.chmod(0o600)
     with lock_path.open("a+", encoding="ascii") as lock:
         fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
         temporary = runtime_root / f".{STATE_FILE}.{os.getpid()}.{threading.get_ident()}.{uuid.uuid4().hex}.tmp"
+        state_path = _runtime_file(runtime_root, STATE_FILE)
         try:
             with temporary.open("w", encoding="utf-8") as handle:
                 handle.write(json.dumps(value, sort_keys=True) + "\n")
                 handle.flush()
                 os.fsync(handle.fileno())
             temporary.chmod(0o600)
-            os.replace(temporary, runtime_root / STATE_FILE)
+            os.replace(temporary, state_path)
             directory_fd = os.open(runtime_root, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
             try:
                 os.fsync(directory_fd)
@@ -389,7 +412,7 @@ def _write_state(runtime_root: Path, value: dict[str, Any]) -> None:
 
 
 def _read_state(runtime_root: Path) -> dict[str, Any]:
-    path = runtime_root / STATE_FILE
+    path = _runtime_file(runtime_root, STATE_FILE)
     if not path.is_file():
         return {}
     try:
@@ -480,8 +503,9 @@ def _stop_worker(job_id: str) -> None:
 
 def recover_abandoned(runtime_root: Path = DEFAULT_RUNTIME, audit_path: Path = DEFAULT_AUDIT) -> None:
     """Recover only an expired RUNNING worker with no verified live identity."""
+    runtime_root = _runtime_root_path(runtime_root)
     state = _read_state(runtime_root)
-    lock_path = runtime_root / LOCK_FILE
+    lock_path = _runtime_file(runtime_root, LOCK_FILE)
     if not state:
         if not lock_path.exists():
             return
@@ -493,7 +517,7 @@ def recover_abandoned(runtime_root: Path = DEFAULT_RUNTIME, audit_path: Path = D
         if not _deployment_disabled(runtime_root):
             raise SwarmError("deployment must be disabled for orphaned lock recovery")
         audit = AuditLog(audit_path)
-        (runtime_root / "KILL_SWITCH").touch(mode=0o600, exist_ok=True)
+        _runtime_file(runtime_root, "KILL_SWITCH").touch(mode=0o600, exist_ok=True)
         set_activation(False, runtime_root)
         lock_path.unlink()
         audit.record(Job("phase2a-orphan-lock-recovery", PROFILE_ID, REPOSITORY, "orphaned admission lock recovery"), "orphan_lock_recovered", reason="lock owner is not alive and no state was committed")
@@ -505,15 +529,16 @@ def recover_abandoned(runtime_root: Path = DEFAULT_RUNTIME, audit_path: Path = D
         return
     job = _job_from_state(state)
     audit = AuditLog(audit_path)
-    (runtime_root / "KILL_SWITCH").touch(mode=0o600, exist_ok=True)
+    _runtime_file(runtime_root, "KILL_SWITCH").touch(mode=0o600, exist_ok=True)
     set_activation(False, runtime_root)
     _transition(runtime_root, audit, job, "ABANDONED", recovery_reason="expired heartbeat and no live verified worker")
-    (runtime_root / LOCK_FILE).unlink(missing_ok=True)
+    _runtime_file(runtime_root, LOCK_FILE).unlink(missing_ok=True)
 
 
 def recover_terminal_abandoned(runtime_root: Path = DEFAULT_RUNTIME, audit_path: Path = DEFAULT_AUDIT) -> dict[str, Any]:
     """Remove only stale markers for an already terminal recovered state."""
-    state_path = runtime_root / STATE_FILE
+    runtime_root = _runtime_root_path(runtime_root)
+    state_path = _runtime_file(runtime_root, STATE_FILE)
     state = _read_state(runtime_root)
     if state.get("state") != "RECOVERED_ABANDONED":
         raise SwarmError("terminal recovery requires RECOVERED_ABANDONED state")
@@ -528,8 +553,8 @@ def recover_terminal_abandoned(runtime_root: Path = DEFAULT_RUNTIME, audit_path:
 
     removed = []
     for marker in (LOCK_FILE, RUNNING_MARKER):
-        path = runtime_root / marker
-        if path.is_symlink() or (path.exists() and not path.is_file()):
+        path = _runtime_file(runtime_root, marker)
+        if path.exists() and not path.is_file():
             raise SwarmError(f"unsafe stale marker: {marker}")
         if path.is_file():
             path.unlink()
@@ -546,7 +571,7 @@ def recover_terminal_abandoned(runtime_root: Path = DEFAULT_RUNTIME, audit_path:
 
 def engage_kill_switch(runtime_root: Path = DEFAULT_RUNTIME, audit_path: Path = DEFAULT_AUDIT) -> dict[str, str]:
     """Engage the switch and cancel only the verified Phase 2A worker."""
-    (runtime_root / "KILL_SWITCH").touch(mode=0o600, exist_ok=True)
+    _runtime_file(runtime_root, "KILL_SWITCH", create_root=True).touch(mode=0o600, exist_ok=True)
     set_activation(False, runtime_root)
     state = _read_state(runtime_root)
     if state.get("state") in {"QUEUED", "RUNNING"}:
@@ -555,7 +580,7 @@ def engage_kill_switch(runtime_root: Path = DEFAULT_RUNTIME, audit_path: Path = 
         if state.get("state") == "RUNNING" and _worker_alive(state):
             _stop_worker(job.job_id)
         _transition(runtime_root, audit, job, "CANCELLED", cancellation_reason="kill switch engaged")
-        (runtime_root / LOCK_FILE).unlink(missing_ok=True)
+        _runtime_file(runtime_root, LOCK_FILE).unlink(missing_ok=True)
     return {"kill_switch": "ENGAGED", "deployment": "DISABLED", "autonomous_dry_run": "DISABLED"}
 
 
@@ -605,7 +630,7 @@ def run_preapproved_job(
         if _allow_guarded_clear:
             if not _kill_switch_engaged(runtime_root):
                 raise SwarmError("kill switch changed before guarded submission")
-            (runtime_root / "KILL_SWITCH").unlink()
+            _runtime_file(runtime_root, "KILL_SWITCH").unlink()
             cleared_for_job = True
 
         job_id = f"phase2a-{uuid.uuid4().hex[:24]}"
@@ -625,15 +650,15 @@ def run_preapproved_job(
         return _safe_job_result(job_id, "QUEUED", deterministic="QUEUED")
     except Exception:
         if cleared_for_job and not worker_owns_lock:
-            (runtime_root / "KILL_SWITCH").touch(mode=0o600, exist_ok=True)
+            _runtime_file(runtime_root, "KILL_SWITCH", create_root=True).touch(mode=0o600, exist_ok=True)
             set_activation(False, runtime_root)
         raise
     finally:
         if cleared_for_job and not worker_owns_lock:
-            (runtime_root / "KILL_SWITCH").touch(mode=0o600, exist_ok=True)
+            _runtime_file(runtime_root, "KILL_SWITCH", create_root=True).touch(mode=0o600, exist_ok=True)
             set_activation(False, runtime_root)
         if not worker_owns_lock:
-            (runtime_root / LOCK_FILE).unlink(missing_ok=True)
+            _runtime_file(runtime_root, LOCK_FILE).unlink(missing_ok=True)
         os.close(fd)
 
 
@@ -667,11 +692,12 @@ def _run_test(audit: AuditLog, job: Job, command: list[str], cwd: Path, limits: 
 
 
 def _execute_worker_job(job: Job, profile: Profile, issue_summary: str, runtime_root: Path, audit: AuditLog, adapters: JobAdapters | None) -> dict[str, Any]:
+    runtime_root = _runtime_root_path(runtime_root, create=True)
     _repo_head_and_clean(profile)
     evidence = validate_activation(profile, runtime_root, require_kill_switch=False)
     audit.record(job, "preflight_passed", **evidence)
     test_hashes = _tracked_test_hashes(profile.repository)
-    worktree = runtime_root / f"phase2a-{job.job_id}"
+    worktree = _runtime_file(runtime_root, f"phase2a-{job.job_id}")
     snapshot: Path | None = None
     try:
         result = run_command(["git", "worktree", "add", "--detach", str(worktree), profile.expected_baseline], profile.repository)
@@ -782,11 +808,11 @@ def run_worker_job(job_id: str, *, runtime_root: Path = DEFAULT_RUNTIME, audit_p
     finally:
         stop_heartbeat.set()
         thread.join(timeout=2)
-        (runtime_root / "KILL_SWITCH").touch(mode=0o600, exist_ok=True)
+        _runtime_file(runtime_root, "KILL_SWITCH", create_root=True).touch(mode=0o600, exist_ok=True)
         set_activation(False, runtime_root)
         current = _read_state(runtime_root)
         if current.get("job_id") == job_id and current.get("state") not in {"CANCELLED", "ABANDONED"}:
             current.update({"state": outcome["final_state"], "heartbeat_at": time.time(), "worker_pid": None, "worker_start_ticks": None})
             _write_state(runtime_root, current)
-        (runtime_root / LOCK_FILE).unlink(missing_ok=True)
+        _runtime_file(runtime_root, LOCK_FILE).unlink(missing_ok=True)
     return outcome

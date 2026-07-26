@@ -103,6 +103,28 @@ class Phase2ATests(unittest.TestCase):
             self.assertTrue(result["read_only"])
             self.assertEqual(sorted(path.name for path in runtime.iterdir()), before)
 
+    def test_runtime_root_and_state_markers_reject_symlinks(self):
+        with TemporaryDirectory() as temp:
+            root = Path(temp)
+            real = root / "real-runtime"
+            real.mkdir()
+            linked_root = root / "linked-runtime"
+            linked_root.symlink_to(real, target_is_directory=True)
+            with self.assertRaises(SwarmError):
+                phase2a.safety_status(linked_root)
+            with self.assertRaises(SwarmError):
+                phase2a.set_activation(True, linked_root)
+
+            state_target = root / "state-target.json"
+            state_target.write_text('{"state":"QUEUED"}', encoding="utf-8")
+            (real / phase2a.STATE_FILE).symlink_to(state_target)
+            with self.assertRaises(SwarmError):
+                phase2a._read_state(real)
+            (real / phase2a.STATE_FILE).unlink()
+            (real / phase2a.LOCK_FILE).symlink_to(state_target)
+            with self.assertRaises(SwarmError):
+                phase2a.workflow_status(real)
+
     def test_workflow_status_flags_terminal_stale_markers_without_clearing(self):
         with TemporaryDirectory() as temp:
             root = Path(temp)
