@@ -46,6 +46,10 @@ symlinks, dirty trees, ambiguous imports, and all CAREFUL/RISKY findings. It
 changes files in that isolated worktree only; it does not commit, push, deploy,
 or restart anything. A deterministic test run and human review remain required
 before any later application step.
+The command requires a shell-free verification command, records its exit
+status, and restores the original bytes and modes if verification fails. Its
+structured result is defined by
+`schemas/quality-application-result.schema.json`.
 
 The application plan is validated by `schemas/quality-application-plan.schema.json`.
 For CAREFUL findings, the orchestrator compares Codex's

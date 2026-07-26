@@ -4,6 +4,8 @@ from __future__ import annotations
 import ast
 import hashlib
 import json
+import os
+import shlex
 import subprocess
 from pathlib import Path
 from typing import Any, Iterable
@@ -90,6 +92,7 @@ def apply_safe_findings(
     repository: Path,
     report: dict[str, Any],
     finding_ids: Iterable[str],
+    verification_command: list[str],
 ) -> dict[str, Any]:
     """Apply only explicit SAFE allowlisted findings in a clean Git worktree.
 
@@ -103,6 +106,8 @@ def apply_safe_findings(
     _assert_isolated_clean_worktree(root)
     if report.get("repository") != str(root):
         raise ValueError("quality report does not belong to this worktree")
+    if not verification_command or any(not isinstance(item, str) or not item for item in verification_command):
+        raise ValueError("SAFE application requires a deterministic verification command")
     selected = list(dict.fromkeys(str(item) for item in finding_ids if str(item).strip()))
     if not selected:
         raise ValueError("at least one explicit finding ID is required")
@@ -120,19 +125,54 @@ def apply_safe_findings(
         operations.append((path, lines, finding))
 
     originals: dict[Path, bytes] = {path: path.read_bytes() for path, _, _ in operations}
+    modes: dict[Path, int] = {path: path.stat().st_mode for path in originals}
     for path, lines, _ in operations:
         path.write_text("".join(lines), encoding="utf-8")
     changed = _git(root, "diff", "--name-only").splitlines()
     expected = sorted({path.relative_to(root).as_posix() for path, _, _ in operations})
     if sorted(changed) != expected:
         raise ValueError("SAFE application changed an unexpected file set")
+    try:
+        verification = subprocess.run(
+            verification_command,
+            cwd=root,
+            text=True,
+            capture_output=True,
+            check=False,
+            timeout=60,
+            env={"PATH": os.environ.get("PATH", ""), "PYTHONPATH": os.environ.get("PYTHONPATH", "")},
+        )
+    except subprocess.TimeoutExpired:
+        verification = None
+    if verification is None or verification.returncode != 0:
+        for path, data in originals.items():
+            path.write_bytes(data)
+            path.chmod(modes[path])
+        if _git(root, "status", "--porcelain", "--untracked-files=all").strip():
+            raise ValueError("verification failed and SAFE rollback could not restore a clean worktree")
+        return {
+            "mode": "SAFE_ONLY_ISOLATED_WORKTREE",
+            "state": "ROLLED_BACK_VERIFICATION_FAILED",
+            "repository": str(root),
+            "applied_finding_ids": [],
+            "changed_files": expected,
+            "before_sha256": {path.relative_to(root).as_posix(): hashlib.sha256(data).hexdigest() for path, data in originals.items()},
+            "after_sha256": {path.relative_to(root).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest() for path in originals},
+            "verification": {"command": verification_command, "passed": False, "exit_code": None if verification is None else verification.returncode},
+            "rollback_performed": True,
+            "committed": False,
+            "pushed": False,
+        }
     return {
         "mode": "SAFE_ONLY_ISOLATED_WORKTREE",
+        "state": "APPLIED_VERIFIED",
         "repository": str(root),
         "applied_finding_ids": [finding["id"] for _, _, finding in operations],
         "changed_files": expected,
         "before_sha256": {path.relative_to(root).as_posix(): hashlib.sha256(data).hexdigest() for path, data in originals.items()},
         "after_sha256": {path: hashlib.sha256((root / path).read_bytes()).hexdigest() for path in expected},
+        "verification": {"command": verification_command, "passed": True, "exit_code": verification.returncode},
+        "rollback_performed": False,
         "committed": False,
         "pushed": False,
     }
@@ -145,11 +185,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("repository", type=Path)
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--finding-id", action="append", required=True)
+    parser.add_argument("--check-command", required=True, help="shell-free command string used for deterministic verification")
     args = parser.parse_args(argv)
     try:
         report = json.loads(args.report.read_text(encoding="utf-8"))
-        print(json.dumps(apply_safe_findings(args.repository, report, args.finding_id), indent=2, sort_keys=True))
-        return 0
+        command = shlex.split(args.check_command)
+        result = apply_safe_findings(args.repository, report, args.finding_id, command)
+        print(json.dumps(result, indent=2, sort_keys=True))
+        return 0 if result["state"] == "APPLIED_VERIFIED" else 1
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         print(f"FAILED: {exc}")
         return 1

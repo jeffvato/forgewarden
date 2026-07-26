@@ -52,8 +52,13 @@ finding IDs from a matching report; it never commits or pushes:
 PYTHONPATH=. python3 -m swarm.cli quality-apply-safe \
   --repository /path/to/isolated-worktree \
   --report /tmp/hermes-quality-review.json \
+  --check-command "python3 -m pytest -q" \
   --finding-id <safe-finding-id>
 ```
+
+The command reports `APPLIED_VERIFIED` only when the check succeeds. A failed
+or timed-out check restores the exact original bytes and reports
+`ROLLED_BACK_VERIFICATION_FAILED`.
 
 ## Boundaries
 

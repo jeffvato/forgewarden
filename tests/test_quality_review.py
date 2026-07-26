@@ -13,6 +13,7 @@ from swarm.quality_apply import apply_safe_findings, build_safe_application_plan
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA = ROOT / "schemas" / "quality-review.schema.json"
 APPLICATION_PLAN_SCHEMA = ROOT / "schemas" / "quality-application-plan.schema.json"
+APPLICATION_RESULT_SCHEMA = ROOT / "schemas" / "quality-application-result.schema.json"
 
 
 def _finding(result, category):
@@ -410,9 +411,17 @@ def test_safe_apply_changes_only_explicit_unused_import_in_isolated_worktree(tmp
     report = scan_repository(isolated)
     finding = _finding(report, "unused_import")
 
-    result = apply_safe_findings(isolated, report, [finding["id"]])
+    result = apply_safe_findings(
+        isolated,
+        report,
+        [finding["id"]],
+        ["python3", "-c", "from pathlib import Path; assert 'import unused' not in Path('module.py').read_text()"],
+    )
 
+    jsonschema.validate(result, json.loads(APPLICATION_RESULT_SCHEMA.read_text(encoding="utf-8")))
     assert result["committed"] is False
+    assert result["state"] == "APPLIED_VERIFIED"
+    assert result["verification"]["passed"] is True
     assert result["changed_files"] == ["module.py"]
     assert "import unused" not in (isolated / "module.py").read_text(encoding="utf-8")
     assert "import unused" in (source_repo / "module.py").read_text(encoding="utf-8")
@@ -433,4 +442,30 @@ def test_safe_apply_rejects_repository_root_and_non_safe_finding(tmp_path):
     finding = _finding(report, "pass_through_wrapper")
 
     with pytest.raises(ValueError, match="isolated Git worktree"):
-        apply_safe_findings(repository, report, [finding["id"]])
+        apply_safe_findings(repository, report, [finding["id"]], ["true"])
+
+
+def test_safe_apply_rolls_back_when_verification_fails(tmp_path):
+    source_repo = tmp_path / "source"
+    source_repo.mkdir()
+    original = "import unused\n\ndef ok():\n    return True\n"
+    (source_repo / "module.py").write_text(original, encoding="utf-8")
+    subprocess.run(["git", "init", "-q", "-b", "main"], cwd=source_repo, check=True)
+    subprocess.run(["git", "add", "."], cwd=source_repo, check=True)
+    subprocess.run(
+        ["git", "-c", "user.name=fixture", "-c", "user.email=fixture@example.test", "commit", "-qm", "initial"],
+        cwd=source_repo,
+        check=True,
+    )
+    isolated = tmp_path / "isolated"
+    subprocess.run(["git", "worktree", "add", "--detach", "-q", str(isolated), "HEAD"], cwd=source_repo, check=True)
+    report = scan_repository(isolated)
+    finding = _finding(report, "unused_import")
+
+    result = apply_safe_findings(isolated, report, [finding["id"]], ["python3", "-c", "raise SystemExit(7)"])
+
+    jsonschema.validate(result, json.loads(APPLICATION_RESULT_SCHEMA.read_text(encoding="utf-8")))
+    assert result["state"] == "ROLLED_BACK_VERIFICATION_FAILED"
+    assert result["rollback_performed"] is True
+    assert (isolated / "module.py").read_text(encoding="utf-8") == original
+    assert subprocess.run(["git", "status", "--porcelain"], cwd=isolated, capture_output=True, text=True, check=True).stdout == ""
