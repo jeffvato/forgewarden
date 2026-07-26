@@ -20,7 +20,7 @@ from typing import Any, Protocol
 
 from .adapters import CodexAdapter, GeminiAdapter, ResourceLimits, WriterInvocationSpec, limited_run, normalize_changed_paths
 from .baseline import DeterministicInterpreterError, _deadline_test_command, _introduce_deadline_defect, _tracked_test_hashes, _trusted_synthetic_commit, enforce_diff_gate, scan_baseline_tree, scan_git_blobs, validate_deterministic_interpreter
-from .core import AuditLog, Job, SwarmError, redact, run_command, touch_restricted, validate_contract, write_restricted_text
+from .core import AuditLog, Job, SwarmError, redact, read_restricted_bytes, run_command, touch_restricted, validate_contract, write_restricted_text
 from .paths import audit_path, project_root, runtime_root
 
 PROFILE_ID = "csv_deadline_dry_run_v1"
@@ -121,7 +121,12 @@ def _deployment_disabled(runtime_root: Path) -> bool:
 
 def activation_status(runtime_root: Path = DEFAULT_RUNTIME) -> str:
     path = _runtime_file(runtime_root, ACTIVATION_FILE)
-    return path.read_text(encoding="ascii").strip() if path.is_file() else "DISABLED"
+    if not path.is_file():
+        return "DISABLED"
+    try:
+        return read_restricted_bytes(path, "Phase 2A activation marker").decode("ascii").strip()
+    except (OSError, UnicodeError, SwarmError) as exc:
+        raise SwarmError("Phase 2A activation marker is unreadable") from exc
 
 
 def safety_status(runtime_root: Path = DEFAULT_RUNTIME) -> dict[str, str]:
@@ -263,7 +268,7 @@ def _acquire_lock(runtime_root: Path) -> int:
 
 def _lock_owner_alive(lock_path: Path) -> bool | None:
     try:
-        raw = lock_path.read_text(encoding="ascii").strip()
+        raw = read_restricted_bytes(lock_path, "Phase 2A lock").decode("ascii").strip()
         pid_text, start_ticks = raw.split(":", 1)
         pid = int(pid_text)
         if pid <= 0 or not start_ticks:
@@ -272,7 +277,7 @@ def _lock_owner_alive(lock_path: Path) -> bool | None:
             return False
         os.kill(pid, 0)
         return True
-    except (OSError, UnicodeError, ValueError):
+    except (OSError, UnicodeError, ValueError, SwarmError):
         return None
 
 
@@ -387,9 +392,9 @@ def _runtime_file(root: Path, name: str, *, create_root: bool = False) -> Path:
 def _write_state(runtime_root: Path, value: dict[str, Any]) -> None:
     runtime_root = _runtime_root_path(runtime_root, create=True)
     lock_path = _runtime_file(runtime_root, f".{STATE_FILE}.lock")
-    lock_path.touch(mode=0o600, exist_ok=True)
-    lock_path.chmod(0o600)
-    with lock_path.open("a+", encoding="ascii") as lock:
+    touch_restricted(lock_path, "Phase 2A state lock")
+    lock_fd = os.open(lock_path, os.O_RDWR | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0), 0o600)
+    with os.fdopen(lock_fd, "a+", encoding="ascii") as lock:
         fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
         temporary = runtime_root / f".{STATE_FILE}.{os.getpid()}.{threading.get_ident()}.{uuid.uuid4().hex}.tmp"
         state_path = _runtime_file(runtime_root, STATE_FILE)
@@ -415,8 +420,8 @@ def _read_state(runtime_root: Path) -> dict[str, Any]:
     if not path.is_file():
         return {}
     try:
-        value = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        value = json.loads(read_restricted_bytes(path, "Phase 2A state").decode("utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError, SwarmError) as exc:
         raise SwarmError("Phase 2A state is corrupted") from exc
     if not isinstance(value, dict):
         raise SwarmError("Phase 2A state is invalid")

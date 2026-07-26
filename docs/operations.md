@@ -31,7 +31,8 @@ command only after reviewing its output and safety prerequisites.
 All Phase 2A runtime roots and marker/state files must be local regular paths;
 symlinked roots or markers are rejected before reads, writes, lock acquisition,
 or recovery. Activation and kill-switch markers are created with no-follow,
-mode-`0600` operations. Runtime state is kept separate from the repository and
+mode-`0600` operations, and state/lock contents are read and locked through
+no-follow descriptors. Runtime state is kept separate from the repository and
 is not checked into Git.
 `start` only marks the dry-run controller as started; it launches no daemon.
 `dry-run` creates a disposable fixture, invokes the real local adapters, and
