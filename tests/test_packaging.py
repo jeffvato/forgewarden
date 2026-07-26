@@ -1,5 +1,7 @@
 import os
+import json
 import subprocess
+import sys
 from pathlib import Path
 
 
@@ -69,3 +71,23 @@ def test_validation_script_rejects_unknown_mode():
     )
     assert result.returncode == 2
     assert "unknown mode" in result.stderr
+
+
+def test_launcher_routes_quality_review_without_runtime_activation(tmp_path):
+    repository = tmp_path / "repository"
+    repository.mkdir()
+    (repository / "safe.py").write_text("def ok():\n    return True\n", encoding="utf-8")
+    report = tmp_path / "review.json"
+    env = os.environ.copy()
+    env["HERMES_SWARM_PYTHON"] = sys.executable
+    result = subprocess.run(
+        ["/bin/bash", str(LAUNCHER), "quality-review", "--repository", str(repository), "--output", str(report)],
+        cwd=ROOT,
+        env=env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert json.loads(report.read_text(encoding="utf-8"))["mode"] == "READ_ONLY"

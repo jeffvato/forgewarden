@@ -34,7 +34,7 @@ done
 
 usage() {
   cat <<'EOF'
-Usage: hermes-swarm {start|status|prompt|enable-dry-run|dry-run|controlled-baseline|audit|stop|kill-switch}
+Usage: hermes-swarm {start|status|prompt|enable-dry-run|dry-run|quality-review|controlled-baseline|audit|stop|kill-switch}
 
 Parallel local-only Hermes coding swarm. Deployment is permanently disabled.
 EOF
@@ -90,6 +90,10 @@ EOF
     ensure_runtime
     test ! -f "$RUNTIME_ROOT/KILL_SWITCH" || { echo "blocked: dry-run kill switch engaged" >&2; exit 1; }
     exec env PYTHONPATH="$SWARM_ROOT" "$PYTHON" -m swarm.cli dry-run --runtime-root "$RUNTIME_ROOT" --state-dir "$RUNTIME_ROOT/state" --audit-dir "$AUDIT_ROOT"
+    ;;
+  quality-review)
+    shift
+    exec env PYTHONPATH="$SWARM_ROOT" "$PYTHON" -m swarm.cli quality-review "$@"
     ;;
   controlled-baseline)
     ensure_runtime

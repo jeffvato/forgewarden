@@ -12,6 +12,10 @@ PYTHONPATH=. python3 -m swarm.cli stop --state-dir .swarm-state
 PYTHONPATH=. python3 -m swarm.cli quality-review \
   --repository /path/to/isolated-worktree \
   --output /tmp/hermes-quality-review.json
+# Equivalent packaged launcher form:
+packaging/hermes-swarm quality-review \
+  --repository /path/to/isolated-worktree \
+  --output /tmp/hermes-quality-review.json
 ```
 
 `stop` writes a local kill-switch marker. It does not stop Hermes, n8n, Docker,
@@ -26,6 +30,8 @@ records audit state under ignored runtime directories.
 `quality-review` reads source files and emits a structured report without
 editing the repository, invoking an external model, or enabling auto-apply.
 Use an isolated worktree or disposable checkout as its input.
+The packaged launcher exposes the same command and does not require runtime
+activation or kill-switch changes.
 
 The implementation does not alter Hermes configuration. Before a later phase
 changes an existing Hermes configuration, take a timestamped copy, display the
