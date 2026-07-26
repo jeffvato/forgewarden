@@ -39,6 +39,14 @@ detector is added and covered by fixtures.
 The structured report includes this coverage declaration for downstream
 reviewers.
 
+`quality-apply-safe` is deliberately narrower than the report: it accepts only
+explicit `unused_import` SAFE findings, requires a clean linked Git worktree
+whose report repository matches exactly, and rejects repository roots,
+symlinks, dirty trees, ambiguous imports, and all CAREFUL/RISKY findings. It
+changes files in that isolated worktree only; it does not commit, push, deploy,
+or restart anything. A deterministic test run and human review remain required
+before any later application step.
+
 During an orchestrated dry-run, the report is also supplied to Gemini as
 read-only evidence. The final application gate is mechanical: any RISKY
 finding produces `AWAITING_JEFF`, while CAREFUL findings require at least one

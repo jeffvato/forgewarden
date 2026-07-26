@@ -91,3 +91,17 @@ def test_launcher_routes_quality_review_without_runtime_activation(tmp_path):
 
     assert result.returncode == 0, result.stderr
     assert json.loads(report.read_text(encoding="utf-8"))["mode"] == "READ_ONLY"
+
+
+def test_launcher_exposes_safe_apply_route_without_runtime_activation():
+    result = subprocess.run(
+        ["/bin/bash", str(LAUNCHER), "--help"],
+        cwd=ROOT,
+        env={**os.environ, "HERMES_SWARM_PYTHON": sys.executable},
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode == 0
+    assert "quality-apply-safe" in result.stdout

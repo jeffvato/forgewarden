@@ -4,8 +4,10 @@ import subprocess
 from pathlib import Path
 
 import jsonschema
+import pytest
 
 from swarm.quality_review import consolidate_report, evaluate_application_gate, scan_repository
+from swarm.quality_apply import apply_safe_findings
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -369,3 +371,45 @@ def test_application_gate_requires_tests_for_careful_findings():
 
     assert evaluate_application_gate(report)["decision"] == "HUMAN_REQUIRED"
     assert evaluate_application_gate(report, tests_added_or_changed=["test.py"])["decision"] == "ALLOW_DRY_RUN"
+
+
+def test_safe_apply_changes_only_explicit_unused_import_in_isolated_worktree(tmp_path):
+    source_repo = tmp_path / "source"
+    source_repo.mkdir()
+    (source_repo / "module.py").write_text("import unused\n\ndef ok():\n    return True\n", encoding="utf-8")
+    subprocess.run(["git", "init", "-q", "-b", "main"], cwd=source_repo, check=True)
+    subprocess.run(["git", "add", "."], cwd=source_repo, check=True)
+    subprocess.run(
+        ["git", "-c", "user.name=fixture", "-c", "user.email=fixture@example.test", "commit", "-qm", "initial"],
+        cwd=source_repo,
+        check=True,
+    )
+    isolated = tmp_path / "isolated"
+    subprocess.run(["git", "worktree", "add", "--detach", "-q", str(isolated), "HEAD"], cwd=source_repo, check=True)
+    report = scan_repository(isolated)
+    finding = _finding(report, "unused_import")
+
+    result = apply_safe_findings(isolated, report, [finding["id"]])
+
+    assert result["committed"] is False
+    assert result["changed_files"] == ["module.py"]
+    assert "import unused" not in (isolated / "module.py").read_text(encoding="utf-8")
+    assert "import unused" in (source_repo / "module.py").read_text(encoding="utf-8")
+
+
+def test_safe_apply_rejects_repository_root_and_non_safe_finding(tmp_path):
+    repository = tmp_path / "repo"
+    repository.mkdir()
+    (repository / "module.py").write_text("def wrapper(value):\n    return normalize(value)\n", encoding="utf-8")
+    subprocess.run(["git", "init", "-q", "-b", "main"], cwd=repository, check=True)
+    subprocess.run(["git", "add", "."], cwd=repository, check=True)
+    subprocess.run(
+        ["git", "-c", "user.name=fixture", "-c", "user.email=fixture@example.test", "commit", "-qm", "initial"],
+        cwd=repository,
+        check=True,
+    )
+    report = scan_repository(repository)
+    finding = _finding(report, "pass_through_wrapper")
+
+    with pytest.raises(ValueError, match="isolated Git worktree"):
+        apply_safe_findings(repository, report, [finding["id"]])

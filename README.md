@@ -44,6 +44,17 @@ TypeScript syntax-specific detectors are included; unsupported languages still
 receive text-level checks only. The report declares this detector coverage so
 “no finding” is not confused with “not syntax-covered.”
 
+The only currently enabled SAFE transformer is an explicit, one-line Python
+unused-import removal. It requires a clean linked Git worktree and named
+finding IDs from a matching report; it never commits or pushes:
+
+```bash
+PYTHONPATH=. python3 -m swarm.cli quality-apply-safe \
+  --repository /path/to/isolated-worktree \
+  --report /tmp/hermes-quality-review.json \
+  --finding-id <safe-finding-id>
+```
+
 ## Boundaries
 
 - Hermes owns job state and orchestration; it never edits application files.

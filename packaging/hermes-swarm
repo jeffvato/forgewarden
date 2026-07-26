@@ -34,7 +34,7 @@ done
 
 usage() {
   cat <<'EOF'
-Usage: hermes-swarm {start|status|prompt|enable-dry-run|dry-run|quality-review|controlled-baseline|audit|stop|kill-switch}
+Usage: hermes-swarm {start|status|prompt|enable-dry-run|dry-run|quality-review|quality-apply-safe|controlled-baseline|audit|stop|kill-switch}
 
 Parallel local-only Hermes coding swarm. Deployment is permanently disabled.
 EOF
@@ -94,6 +94,10 @@ EOF
   quality-review)
     shift
     exec env PYTHONPATH="$SWARM_ROOT" "$PYTHON" -m swarm.cli quality-review "$@"
+    ;;
+  quality-apply-safe)
+    shift
+    exec env PYTHONPATH="$SWARM_ROOT" "$PYTHON" -m swarm.cli quality-apply-safe "$@"
     ;;
   controlled-baseline)
     ensure_runtime
