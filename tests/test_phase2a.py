@@ -102,6 +102,7 @@ class Phase2ATests(unittest.TestCase):
             runtime = Path(temp)
             for value in (
                 {"state": "UNKNOWN"},
+                {"state": []},
                 {"state": "QUEUED", "job_id": "not-a-phase2a-job"},
                 {"state": "QUEUED", "profile_id": "wrong-profile"},
                 {"state": "RUNNING", "worker_pid": -1},
@@ -110,6 +111,10 @@ class Phase2ATests(unittest.TestCase):
                 (runtime / phase2a.STATE_FILE).write_text(json.dumps(value), encoding="utf-8")
                 with self.subTest(value=value), self.assertRaises(SwarmError):
                     phase2a._read_state(runtime)
+
+            (runtime / phase2a.STATE_FILE).write_bytes(b"{\xff")
+            with self.assertRaises(SwarmError):
+                phase2a._read_state(runtime)
 
     def _abandoned_runtime(self, root: Path) -> Path:
         runtime = root / "runtime"

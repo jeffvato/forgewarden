@@ -319,12 +319,12 @@ def _read_state(runtime_root: Path) -> dict[str, Any]:
         return {}
     try:
         value = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
         raise SwarmError("Phase 2A state is corrupted") from exc
     if not isinstance(value, dict):
         raise SwarmError("Phase 2A state is invalid")
     state = value.get("state")
-    if state is not None and state not in VALID_STATE_VALUES:
+    if state is not None and (not isinstance(state, str) or state not in VALID_STATE_VALUES):
         raise SwarmError("Phase 2A state has an unknown state value")
     job_id = value.get("job_id")
     if job_id is not None and (not isinstance(job_id, str) or not JOB_ID_RE.fullmatch(job_id)):
