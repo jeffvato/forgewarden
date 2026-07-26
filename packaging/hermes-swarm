@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-RUNTIME_ROOT="/home/jeff/hermes-swarm-runtime"
-AUDIT_ROOT="/home/jeff/hermes-swarm-audit"
-PYTHON="python3"
+RUNTIME_ROOT="${HERMES_SWARM_RUNTIME_ROOT:-/home/jeff/hermes-swarm-runtime}"
+AUDIT_ROOT="${HERMES_SWARM_AUDIT_ROOT:-/home/jeff/hermes-swarm-audit}"
+PYTHON="${HERMES_SWARM_PYTHON:-python3}"
+BASELINE_REPOSITORY="${HERMES_SWARM_BASELINE_REPOSITORY:-/home/jeff/swarm-repositories/n8n-csv-baseline-v2}"
 
 resolve_swarm_root() {
   local script_dir candidate
@@ -18,6 +19,13 @@ resolve_swarm_root() {
 }
 
 SWARM_ROOT="$(resolve_swarm_root)"
+
+for configured_path in "$RUNTIME_ROOT" "$AUDIT_ROOT" "$BASELINE_REPOSITORY"; do
+  case "$configured_path" in
+    /*) ;;
+    *) echo "hermes-swarm: configured paths must be absolute: $configured_path" >&2; exit 1 ;;
+  esac
+done
 
 usage() {
   cat <<'EOF'
@@ -81,7 +89,7 @@ EOF
   controlled-baseline)
     ensure_runtime
     test -f "$RUNTIME_ROOT/KILL_SWITCH" || { echo "blocked: controlled baseline requires engaged kill switch" >&2; exit 1; }
-    exec env PYTHONPATH="$SWARM_ROOT" "$PYTHON" -m swarm.cli controlled-baseline --repository /home/jeff/swarm-repositories/n8n-csv-baseline-v2 --runtime-root "$RUNTIME_ROOT" --state-dir "$RUNTIME_ROOT/state" --audit-dir "$AUDIT_ROOT"
+    exec env PYTHONPATH="$SWARM_ROOT" HERMES_SWARM_RUNTIME_ROOT="$RUNTIME_ROOT" HERMES_SWARM_AUDIT_ROOT="$AUDIT_ROOT" "$PYTHON" -m swarm.cli controlled-baseline --repository "$BASELINE_REPOSITORY" --runtime-root "$RUNTIME_ROOT" --state-dir "$RUNTIME_ROOT/state" --audit-dir "$AUDIT_ROOT"
     ;;
   audit)
     found=0
