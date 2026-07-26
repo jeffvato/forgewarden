@@ -188,6 +188,15 @@ class _PythonReview(ast.NodeVisitor):
                 rationale="Blocking work inside async code can stall unrelated tasks.",
                 suggested_action="Review the event-loop boundary and move blocking work to an explicit worker.",
             )
+        if any(isinstance(child, ast.Global) for child in ast.walk(node)):
+            self.add(
+                category="concurrency_risk", tier="RISKY", confidence="LOW",
+                line=node.lineno, symbol=node.name,
+                summary=f"function {node.name} explicitly mutates module-global state",
+                evidence=_line(self.source, node.lineno),
+                rationale="Shared mutable state can race across workers or requests without an explicit synchronization contract.",
+                suggested_action="Trace all writers and add a concurrency test before changing synchronization.",
+            )
         self._unreachable(node.body)
         self.generic_visit(node)
 

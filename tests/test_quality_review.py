@@ -151,6 +151,24 @@ def test_quality_review_flags_private_storage_leak_as_careful(tmp_path):
     assert finding["confidence"] == "LOW"
 
 
+def test_quality_review_flags_global_state_mutation_as_risky(tmp_path):
+    (tmp_path / "shared.py").write_text(
+        """\n_count = 0
+
+def increment():
+    global _count
+    _count += 1
+""",
+        encoding="utf-8",
+    )
+
+    result = scan_repository(tmp_path)
+    finding = _finding(result, "concurrency_risk")
+
+    assert finding["tier"] == "RISKY"
+    assert finding["confidence"] == "LOW"
+
+
 def test_quality_review_skips_sensitive_and_non_source_files(tmp_path):
     (tmp_path / ".env").write_text("TOKEN=do-not-read\n", encoding="utf-8")
     (tmp_path / "notes.txt").write_text("Certainly, this is prose.\n", encoding="utf-8")
