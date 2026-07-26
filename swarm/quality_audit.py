@@ -63,7 +63,11 @@ def review_audit(audit_path: Path, job_id: str) -> dict[str, Any]:
         raise ValueError("audit file must be mode 0600")
     if path.parent.stat().st_mode & 0o777 != 0o700:
         raise ValueError("audit directory must be mode 0700")
-    raw = path.read_bytes()
+    from .core import SwarmError, read_restricted_bytes
+    try:
+        raw = read_restricted_bytes(path, "SAFE application audit")
+    except SwarmError as exc:
+        raise ValueError(str(exc)) from exc
     digest = hashlib.sha256(raw).hexdigest()
     events_seen = 0
     matching: list[tuple[dict[str, Any], bytes]] = []

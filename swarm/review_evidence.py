@@ -13,7 +13,11 @@ def _load(path: Path) -> tuple[dict[str, Any], str]:
     path = path.expanduser()
     if path.is_symlink() or any(parent.is_symlink() for parent in (path.parent, *path.parent.parents)):
         raise ValueError(f"refusing symlink evidence input: {path}")
-    raw = path.read_bytes()
+    from .core import SwarmError, read_restricted_bytes
+    try:
+        raw = read_restricted_bytes(path, "review evidence input")
+    except SwarmError as exc:
+        raise ValueError(str(exc)) from exc
     payload = json.loads(raw)
     if not isinstance(payload, dict):
         raise ValueError(f"evidence input must be a JSON object: {path}")

@@ -184,6 +184,18 @@ def restore_restricted_bytes(path: Path, content: bytes, label: str) -> None:
         temporary.unlink(missing_ok=True)
 
 
+def read_restricted_bytes(path: Path, label: str) -> bytes:
+    """Read a regular file through a no-follow descriptor."""
+    _reject_symlink_path(path, label)
+    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        descriptor = os.open(path, flags)
+    except OSError as exc:
+        raise SwarmError(f"unable to read {label} safely: {path}") from exc
+    with os.fdopen(descriptor, "rb") as handle:
+        return handle.read()
+
+
 def validate_snapshot_symlinks(snapshot: Path) -> None:
     """Permit only symlinks whose targets remain inside the disposable snapshot."""
     root = snapshot.resolve()

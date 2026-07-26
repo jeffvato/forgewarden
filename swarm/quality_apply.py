@@ -10,6 +10,8 @@ import subprocess
 from pathlib import Path
 from typing import Any, Iterable
 
+from .core import SwarmError
+
 
 SAFE_TRANSFORMERS = {"unused_import"}
 
@@ -294,12 +296,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--evidence", type=Path, required=True)
     args = parser.parse_args(argv)
     try:
-        report = json.loads(args.report.read_text(encoding="utf-8"))
+        from .core import read_restricted_bytes
+        report = json.loads(read_restricted_bytes(args.report, "quality report").decode("utf-8"))
         command = shlex.split(args.check_command)
         result = apply_safe_findings(args.repository, report, args.finding_id, command, job_id=args.job_id, audit_path=args.audit, approval_path=args.approval, approval_evidence_path=args.evidence)
         print(json.dumps(result, indent=2, sort_keys=True))
         return 0 if result["state"] == "APPLIED_VERIFIED" else 1
-    except (OSError, ValueError, json.JSONDecodeError) as exc:
+    except (OSError, ValueError, json.JSONDecodeError, SwarmError) as exc:
         print(f"FAILED: {exc}")
         return 1
 

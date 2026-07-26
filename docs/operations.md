@@ -91,6 +91,9 @@ command. An explicitly supplied Claude result may be added with
 recorded only as a hash, model name, and finding counts. Claude remains
 advisory and cannot authorize mutation. File output uses the same no-symlink,
 mode-`0600` writer as quality reports.
+Structured input files and explicit Claude context are read through
+no-follow descriptors after path validation, so a path replacement cannot
+redirect the reader during validation.
 
 `approval-create` binds an explicit reviewer decision to the combined evidence
 file hash and writes a mode-`0600` record under a mode-`0700` directory.

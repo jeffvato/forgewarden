@@ -89,7 +89,8 @@ def main() -> int:
                 raise ValueError("claude-review context file is missing")
             if context_path.stat().st_size > MAX_CONTEXT_BYTES:
                 raise ValueError("claude-review context file exceeds the 24000-byte bound")
-            result = run_claude(args.job_id, context_path.read_text(encoding="utf-8"), model=args.model)
+            from .core import read_restricted_bytes
+            result = run_claude(args.job_id, read_restricted_bytes(context_path, "Claude review context").decode("utf-8"), model=args.model)
             print(json.dumps(result, indent=2, sort_keys=True))
             return 0
         except (OSError, ValueError, SwarmError) as exc:
@@ -99,11 +100,12 @@ def main() -> int:
         if not args.repository or not args.report or not args.finding_id or not args.check_command or not args.job_id or not args.audit or not args.approval or not args.evidence:
             parser.error("quality-apply-safe requires --repository, --report, --check-command, --job-id, --audit, --approval, --evidence, and at least one --finding-id")
         try:
-            report = json.loads(args.report.read_text(encoding="utf-8"))
+            from .core import read_restricted_bytes
+            report = json.loads(read_restricted_bytes(args.report, "quality report").decode("utf-8"))
             result = apply_safe_findings(args.repository, report, args.finding_id, shlex.split(args.check_command), job_id=args.job_id, audit_path=args.audit, approval_path=args.approval, approval_evidence_path=args.evidence)
             print(json.dumps(result, indent=2, sort_keys=True))
             return 0 if result["state"] == "APPLIED_VERIFIED" else 1
-        except (OSError, ValueError, json.JSONDecodeError) as exc:
+        except (OSError, ValueError, json.JSONDecodeError, SwarmError) as exc:
             print(f"FAILED: {exc}")
             return 1
     if args.command == "quality-audit":
