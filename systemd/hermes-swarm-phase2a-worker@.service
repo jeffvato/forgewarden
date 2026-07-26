@@ -4,6 +4,11 @@ After=default.target
 
 [Service]
 Type=simple
+WorkingDirectory=/home/jeff/hermes-swarm-phase1
+Environment=HOME=/home/jeff
+Environment=PATH=/home/jeff/anaconda3/bin:/home/jeff/.local/bin:/usr/bin:/bin
+Environment=LANG=C
+Environment=LC_ALL=C
 Environment=PYTHONPATH=/home/jeff/hermes-swarm-phase1
 Environment=PYTHONDONTWRITEBYTECODE=1
 Environment=PYTHONNOUSERSITE=1
@@ -11,6 +16,17 @@ ExecStart=/home/jeff/anaconda3/bin/python3 -m swarm.cli phase2a-worker --job-id 
 KillMode=control-group
 Restart=no
 TimeoutStartSec=infinity
+UMask=0077
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=full
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+LockPersonality=yes
+RestrictAddressFamilies=AF_UNIX
 MemoryMax=2147483648
 MemorySwapMax=0
 
