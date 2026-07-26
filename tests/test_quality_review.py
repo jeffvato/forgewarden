@@ -479,6 +479,44 @@ def test_safe_apply_changes_only_explicit_unused_import_in_isolated_worktree(tmp
     assert reconciliation["reconciled"] is True
 
 
+def test_safe_apply_removes_multiple_findings_from_one_file_without_losing_edits(tmp_path):
+    source_repo = tmp_path / "source"
+    source_repo.mkdir()
+    (source_repo / "module.py").write_text(
+        "import unused_one\nimport unused_two\n\ndef ok():\n    return True\n",
+        encoding="utf-8",
+    )
+    subprocess.run(["git", "init", "-q", "-b", "main"], cwd=source_repo, check=True)
+    subprocess.run(["git", "add", "."], cwd=source_repo, check=True)
+    subprocess.run(
+        ["git", "-c", "user.name=fixture", "-c", "user.email=fixture@example.test", "commit", "-qm", "initial"],
+        cwd=source_repo,
+        check=True,
+    )
+    isolated = tmp_path / "isolated"
+    subprocess.run(["git", "worktree", "add", "--detach", "-q", str(isolated), "HEAD"], cwd=source_repo, check=True)
+    report = scan_repository(isolated)
+    findings = [item for item in report["findings"] if item["category"] == "unused_import"]
+    approval_path, approval_evidence_path = _approval(tmp_path, "safe-job-multi")
+
+    result = apply_safe_findings(
+        isolated,
+        report,
+        [item["id"] for item in findings],
+        ["python3", "-c", "from pathlib import Path; text=Path('module.py').read_text(); assert 'unused_one' not in text and 'unused_two' not in text"],
+        job_id="safe-job-multi",
+        audit_path=tmp_path / "audit" / "audit.jsonl",
+        approval_path=approval_path,
+        approval_evidence_path=approval_evidence_path,
+    )
+
+    assert result["state"] == "APPLIED_VERIFIED"
+    text = (isolated / "module.py").read_text(encoding="utf-8")
+    assert "unused_one" not in text
+    assert "unused_two" not in text
+    assert "def ok" in text
+
+
 def test_safe_apply_rejects_repository_root_and_non_safe_finding(tmp_path):
     repository = tmp_path / "repo"
     repository.mkdir()

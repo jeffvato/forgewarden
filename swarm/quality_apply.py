@@ -172,8 +172,18 @@ def apply_safe_findings(
         expected_job_id=job_id,
         consume=True,
     )
-    for path, lines, _ in operations:
-        path.write_text("".join(lines), encoding="utf-8")
+    # Each operation was validated against the original file.  Apply all
+    # removals for a file in one pass so a second finding cannot overwrite the
+    # first finding's edit with a stale snapshot.
+    removals: dict[Path, set[int]] = {}
+    for path, _, finding in operations:
+        removals.setdefault(path, set()).add(finding["line"])
+    for path, line_numbers in removals.items():
+        source_lines = path.read_text(encoding="utf-8").splitlines(keepends=True)
+        path.write_text(
+            "".join(line for number, line in enumerate(source_lines, 1) if number not in line_numbers),
+            encoding="utf-8",
+        )
     changed = _git(root, "diff", "--name-only").splitlines()
     expected = sorted({path.relative_to(root).as_posix() for path, _, _ in operations})
     if sorted(changed) != expected:
