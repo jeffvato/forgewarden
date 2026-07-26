@@ -330,6 +330,9 @@ class Orchestrator:
                 # and directories are read-only to the Gemini process.
                 output_dir = snapshot / ".swarm"
                 output_dir.mkdir(exist_ok=True)
+                quality_report_path = output_dir / "quality-review.json"
+                quality_report_path.write_text(json.dumps(quality_review, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+                quality_report_path.chmod(0o600)
                 for item in snapshot.rglob("*"):
                     if item == output_dir or output_dir in item.parents:
                         continue
