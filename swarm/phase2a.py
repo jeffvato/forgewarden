@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import os
 import re
 import shutil
@@ -36,6 +37,7 @@ RUNNING_MARKER = "RUNNING"
 WRITABLE = ("csv-processor/app/ai/deadline.py", "csv-processor/tests/swarm_regressions/")
 TEST_PATH = "tests/swarm_regressions/test_deadline_contract.py"
 JOB_ID_RE = re.compile(r"^phase2a-[a-z0-9]{24}$")
+VALID_STATE_VALUES = frozenset({"QUEUED", "RUNNING", "CODEX_RUNNING", "CHECKS_RUNNING", "GEMINI_REVIEWING", "SUCCEEDED", "FAILED", "CANCELLED", "ABANDONED", "RECOVERED_ABANDONED"})
 CONTROL_RE = re.compile(r"[\x00-\x1f\x7f]")
 ISSUE_REJECT = re.compile(
     r"(?i)(https?://|ftp://|ssh://|postgres(?:ql)?://|mysql://|redis://|"
@@ -321,6 +323,22 @@ def _read_state(runtime_root: Path) -> dict[str, Any]:
         raise SwarmError("Phase 2A state is corrupted") from exc
     if not isinstance(value, dict):
         raise SwarmError("Phase 2A state is invalid")
+    state = value.get("state")
+    if state is not None and state not in VALID_STATE_VALUES:
+        raise SwarmError("Phase 2A state has an unknown state value")
+    job_id = value.get("job_id")
+    if job_id is not None and (not isinstance(job_id, str) or not JOB_ID_RE.fullmatch(job_id)):
+        raise SwarmError("Phase 2A state has an invalid job ID")
+    profile_id = value.get("profile_id")
+    if profile_id is not None and profile_id != PROFILE_ID:
+        raise SwarmError("Phase 2A state has an invalid profile ID")
+    worker_pid = value.get("worker_pid")
+    if worker_pid is not None and (not isinstance(worker_pid, int) or isinstance(worker_pid, bool) or worker_pid <= 0):
+        raise SwarmError("Phase 2A state has an invalid worker PID")
+    for timestamp_key in ("queued_at", "heartbeat_at", "updated_at"):
+        timestamp = value.get(timestamp_key)
+        if timestamp is not None and (not isinstance(timestamp, (int, float)) or isinstance(timestamp, bool) or not math.isfinite(float(timestamp))):
+            raise SwarmError(f"Phase 2A state has an invalid {timestamp_key}")
     return value
 
 

@@ -97,6 +97,20 @@ class Phase2ATests(unittest.TestCase):
             self.assertFalse(any(path.name.endswith(".tmp") for path in runtime.iterdir()))
             self.assertGreaterEqual(fsync.call_count, 2)
 
+    def test_read_state_rejects_semantically_invalid_values(self):
+        with TemporaryDirectory() as temp:
+            runtime = Path(temp)
+            for value in (
+                {"state": "UNKNOWN"},
+                {"state": "QUEUED", "job_id": "not-a-phase2a-job"},
+                {"state": "QUEUED", "profile_id": "wrong-profile"},
+                {"state": "RUNNING", "worker_pid": -1},
+                {"state": "RUNNING", "heartbeat_at": "not-a-number"},
+            ):
+                (runtime / phase2a.STATE_FILE).write_text(json.dumps(value), encoding="utf-8")
+                with self.subTest(value=value), self.assertRaises(SwarmError):
+                    phase2a._read_state(runtime)
+
     def _abandoned_runtime(self, root: Path) -> Path:
         runtime = root / "runtime"
         runtime.mkdir()
