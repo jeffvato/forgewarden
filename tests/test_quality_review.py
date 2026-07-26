@@ -175,4 +175,5 @@ def test_consolidator_deduplicates_and_orders_without_enabling_edits(tmp_path):
         item["id"] for item in consolidated["findings"]
     ]
     assert consolidated["auto_apply_enabled"] is False
+    assert {item["decision"] for item in consolidated["application_policy"]} == {"SAFE_REVIEW_ONLY"}
     jsonschema.validate(consolidated, json.loads(SCHEMA.read_text(encoding="utf-8")))

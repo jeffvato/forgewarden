@@ -10,6 +10,7 @@
     "findings",
     "counts",
     "consolidation",
+    "application_policy",
     "auto_apply_enabled"
   ],
   "properties": {
@@ -18,6 +19,22 @@
     "repository": { "type": "string", "minLength": 1 },
     "generated_at": { "type": "string", "format": "date-time" },
     "auto_apply_enabled": { "const": false },
+    "application_policy": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["finding_id", "tier", "decision", "mutation_allowed"],
+        "properties": {
+          "finding_id": { "type": "string", "pattern": "^[0-9a-f]{16}$" },
+          "tier": { "enum": ["SAFE", "CAREFUL", "RISKY"] },
+          "decision": {
+            "enum": ["SAFE_REVIEW_ONLY", "TEST_VERIFICATION_REQUIRED", "HUMAN_REVIEW_REQUIRED"]
+          },
+          "mutation_allowed": { "const": false }
+        }
+      }
+    },
     "consolidation": {
       "type": "object",
       "additionalProperties": false,

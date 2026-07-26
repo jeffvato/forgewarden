@@ -343,6 +343,20 @@ def consolidate_report(report: dict[str, Any]) -> dict[str, Any]:
         "tier_order": ["SAFE", "CAREFUL", "RISKY"],
         "review_required": [item["id"] for item in unique if item["tier"] == "RISKY"],
     }
+    decisions = {
+        "SAFE": "SAFE_REVIEW_ONLY",
+        "CAREFUL": "TEST_VERIFICATION_REQUIRED",
+        "RISKY": "HUMAN_REVIEW_REQUIRED",
+    }
+    consolidated["application_policy"] = [
+        {
+            "finding_id": item["id"],
+            "tier": item["tier"],
+            "decision": decisions[item["tier"]],
+            "mutation_allowed": False,
+        }
+        for item in unique
+    ]
     return consolidated
 
 
