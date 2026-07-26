@@ -43,6 +43,11 @@ review must:
 5. add a clean-machine acceptance run covering MCP discovery, reconnect,
    replay, worker cleanup, audit durability, and fail-closed recovery.
 
+Repository-relative launcher templates are available now, but the active
+Desktop integration still requires explicit installation of the launcher, the
+Hermes-compatible Python environment, and local configuration. The templates
+do not modify the active installation automatically.
+
 Until those checks pass, keep autonomous dry-run disabled, deployment disabled,
 and the kill switch engaged. Do not copy the local profile or runtime state to
 another machine.

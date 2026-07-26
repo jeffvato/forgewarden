@@ -28,3 +28,9 @@ No live repository is used.
 
 See `docs/operations.md` for commands, rollback/kill-switch procedures, and
 the prerequisites for any future human-approved deployment phase.
+
+Launcher templates are under `packaging/`. The MCP launcher validates that it
+is running from a complete swarm checkout and uses `python3` by default; set
+`HERMES_SWARM_PYTHON` explicitly when MCP is installed in a dedicated Python
+environment. Installing these templates does not enable autonomous work, start
+a worker, or change the kill switch.

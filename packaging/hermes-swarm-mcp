@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if test "$#" -ne 0; then
+  echo "hermes-swarm-mcp accepts no arguments" >&2
+  exit 2
+fi
+
+SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+SWARM_ROOT="$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd -P)"
+if ! test -f "$SWARM_ROOT/swarm/__init__.py" || ! test -d "$SWARM_ROOT/config" || ! test -d "$SWARM_ROOT/schemas"; then
+  echo "hermes-swarm-mcp: launcher is not inside a valid swarm checkout" >&2
+  exit 1
+fi
+
+PYTHON="${HERMES_SWARM_PYTHON:-python3}"
+if ! command -v "$PYTHON" >/dev/null 2>&1 && ! test -x "$PYTHON"; then
+  echo "hermes-swarm-mcp: configured Python executable is unavailable" >&2
+  exit 1
+fi
+
+cd "$SWARM_ROOT"
+export PYTHONPATH="$SWARM_ROOT"
+exec "$PYTHON" -m swarm.desktop_bridge
