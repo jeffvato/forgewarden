@@ -278,26 +278,15 @@ def limited_run(command: list[str], cwd: Path, prompt: str, limits: ResourceLimi
     wrapped_command = list(command)
     if use_cgroup:
         systemd_run = shutil.which("systemd-run")
-        if systemd_run:
-            wrapped_command = [
-                systemd_run, "--user", "--scope", "--quiet",
-                "-p", f"MemoryMax={limits.memory_bytes}",
-                "-p", "MemorySwapMax=0",
-                "-p", "IPAddressDeny=any",
-                "--", *command,
-            ]
-        else:
-            cgroup_root = Path(os.environ.get("SWARM_CGROUP_ROOT", "/sys/fs/cgroup"))
-            if not (cgroup_root / "cgroup.controllers").exists():
-                raise SwarmError("cgroup v2 is required for aggregate agent memory limits")
-            cgroup_path = cgroup_root / f"hermes-swarm-{os.getpid()}-{time.time_ns()}"
-            try:
-                cgroup_path.mkdir()
-                (cgroup_path / "memory.max").write_text(str(limits.memory_bytes), encoding="ascii")
-                if (cgroup_path / "memory.swap.max").exists():
-                    (cgroup_path / "memory.swap.max").write_text("0", encoding="ascii")
-            except OSError as exc:
-                raise SwarmError(f"cannot create writable aggregate cgroup at {cgroup_root}: {exc}") from exc
+        if not systemd_run:
+            raise SwarmError("systemd-run user scope is required for network-isolated execution")
+        wrapped_command = [
+            systemd_run, "--user", "--scope", "--quiet",
+            "-p", f"MemoryMax={limits.memory_bytes}",
+            "-p", "MemorySwapMax=0",
+            "-p", "IPAddressDeny=any",
+            "--", *command,
+        ]
     try:
         process = subprocess.Popen(
             wrapped_command,

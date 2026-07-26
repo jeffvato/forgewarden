@@ -4,8 +4,10 @@ import shutil
 import subprocess
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from swarm.adapters import ResourceLimits, _minimal_test_environment, limited_run
+from swarm.core import SwarmError
 
 
 def _user_bus_available() -> bool:
@@ -22,6 +24,19 @@ def _user_bus_available() -> bool:
         check=False,
     )
     return result.returncode == 0
+
+
+class SystemdScopeSafetyTests(unittest.TestCase):
+    def test_cgroup_mode_fails_closed_without_network_isolating_scope(self):
+        with patch("swarm.adapters.shutil.which", return_value=None):
+            with self.assertRaisesRegex(SwarmError, "network-isolated execution"):
+                limited_run(
+                    ["/bin/true"],
+                    Path.cwd(),
+                    "",
+                    ResourceLimits(timeout_seconds=5),
+                    use_cgroup=True,
+                )
 
 
 @unittest.skipUnless(_user_bus_available(), "user systemd bus is unavailable in this execution context")
