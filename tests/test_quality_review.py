@@ -491,7 +491,9 @@ def test_safe_apply_rolls_back_when_verification_fails(tmp_path):
 
 
 def test_audit_consumer_returns_only_review_safe_summary(tmp_path):
-    audit = tmp_path / "audit.jsonl"
+    audit_dir = tmp_path / "audit"
+    audit_dir.mkdir(mode=0o700)
+    audit = audit_dir / "audit.jsonl"
     audit.write_text(
         json.dumps({
             "timestamp": "2026-01-01T00:00:00Z",
@@ -504,6 +506,8 @@ def test_audit_consumer_returns_only_review_safe_summary(tmp_path):
             "verification_passed": True,
             "verification_exit_code": 0,
             "rollback_performed": False,
+            "before_sha256": {"module.py": "a" * 64},
+            "after_sha256": {"module.py": "b" * 64},
             "output": "must not be echoed",
         }) + "\n",
         encoding="utf-8",
@@ -515,6 +519,7 @@ def test_audit_consumer_returns_only_review_safe_summary(tmp_path):
     jsonschema.validate(result, json.loads(AUDIT_REVIEW_SCHEMA.read_text(encoding="utf-8")))
     assert result["integrity"] == "VALID"
     assert result["latest_state"] == "APPLIED_VERIFIED"
+    assert result["latest_event_sha256"]
     assert result["review_required"] is True
     assert result["mutation_allowed"] is False
     assert "must not be echoed" not in json.dumps(result)
@@ -522,11 +527,41 @@ def test_audit_consumer_returns_only_review_safe_summary(tmp_path):
 
 
 def test_audit_consumer_marks_missing_job_incomplete(tmp_path):
-    audit = tmp_path / "audit.jsonl"
+    audit_dir = tmp_path / "audit"
+    audit_dir.mkdir(mode=0o700)
+    audit = audit_dir / "audit.jsonl"
     audit.write_text(json.dumps({"job_id": "other", "event": "safe_application_completed"}) + "\n", encoding="utf-8")
     audit.chmod(0o600)
 
     result = review_audit(audit, "missing-job")
 
     assert result["integrity"] == "INCOMPLETE"
+    assert result["matching_event_count"] == 0
+
+
+def test_audit_consumer_rejects_inconsistent_completion_event(tmp_path):
+    audit_dir = tmp_path / "audit"
+    audit_dir.mkdir(mode=0o700)
+    audit = audit_dir / "audit.jsonl"
+    audit.write_text(
+        json.dumps({
+            "job_id": "bad-job",
+            "event": "safe_application_completed",
+            "state": "APPLIED_VERIFIED",
+            "repository": "/tmp/isolated",
+            "applied_finding_ids": [],
+            "changed_files": [],
+            "verification_passed": False,
+            "verification_exit_code": 7,
+            "rollback_performed": True,
+            "before_sha256": {},
+            "after_sha256": {},
+        }) + "\n",
+        encoding="utf-8",
+    )
+    audit.chmod(0o600)
+
+    result = review_audit(audit, "bad-job")
+
+    assert result["integrity"] == "INVALID"
     assert result["matching_event_count"] == 0

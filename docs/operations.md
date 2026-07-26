@@ -57,7 +57,9 @@ outcome; it excludes command text, command output, and source contents.
 `quality-audit` is the read-only human/Gemini handoff for that evidence. It
 validates the audit mode and JSON records, selects only the requested job, and
 returns a schema-validated summary with `review_required: true` and
-`mutation_allowed: false`. It never returns the underlying audit records.
+`mutation_allowed: false`. It verifies state/verification/rollback consistency
+and hash formats, and returns a hash of the specific reviewed event. It never
+returns the underlying audit records.
 
 The application plan is validated by `schemas/quality-application-plan.schema.json`.
 For CAREFUL findings, the orchestrator compares Codex's

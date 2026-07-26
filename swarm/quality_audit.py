@@ -4,9 +4,45 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import sys
 from pathlib import Path
 from typing import Any
+
+
+_SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+_FINDING_ID_RE = re.compile(r"^[0-9a-f]{16}$")
+
+
+def _valid_completion_event(event: dict[str, Any]) -> bool:
+    required = {
+        "job_id", "event", "state", "repository", "applied_finding_ids", "changed_files",
+        "verification_passed", "verification_exit_code", "rollback_performed", "before_sha256", "after_sha256",
+    }
+    if not required.issubset(event):
+        return False
+    if event["event"] != "safe_application_completed" or not isinstance(event["job_id"], str):
+        return False
+    state = event["state"]
+    if state not in {"APPLIED_VERIFIED", "ROLLED_BACK_VERIFICATION_FAILED"}:
+        return False
+    if not isinstance(event["applied_finding_ids"], list) or not all(
+        isinstance(item, str) and _FINDING_ID_RE.fullmatch(item) for item in event["applied_finding_ids"]
+    ):
+        return False
+    if not isinstance(event["changed_files"], list) or not all(isinstance(item, str) and not item.startswith("/") for item in event["changed_files"]):
+        return False
+    if not isinstance(event["before_sha256"], dict) or not isinstance(event["after_sha256"], dict):
+        return False
+    if not all(isinstance(key, str) and isinstance(value, str) and _SHA256_RE.fullmatch(value) for key, value in event["before_sha256"].items()):
+        return False
+    if not all(isinstance(key, str) and isinstance(value, str) and _SHA256_RE.fullmatch(value) for key, value in event["after_sha256"].items()):
+        return False
+    if not isinstance(event["verification_passed"], bool) or not isinstance(event["rollback_performed"], bool):
+        return False
+    if state == "APPLIED_VERIFIED":
+        return event["verification_passed"] is True and event["rollback_performed"] is False
+    return event["verification_passed"] is False and event["rollback_performed"] is True
 
 
 def _safe_path(path: Path) -> Path:
@@ -25,10 +61,12 @@ def review_audit(audit_path: Path, job_id: str) -> dict[str, Any]:
         raise ValueError(f"audit file does not exist: {path}")
     if path.stat().st_mode & 0o777 != 0o600:
         raise ValueError("audit file must be mode 0600")
+    if path.parent.stat().st_mode & 0o777 != 0o700:
+        raise ValueError("audit directory must be mode 0700")
     raw = path.read_bytes()
     digest = hashlib.sha256(raw).hexdigest()
     events_seen = 0
-    matching: list[dict[str, Any]] = []
+    matching: list[tuple[dict[str, Any], bytes]] = []
     malformed = 0
     for line in raw.splitlines():
         if not line.strip():
@@ -41,9 +79,13 @@ def review_audit(audit_path: Path, job_id: str) -> dict[str, Any]:
             continue
         if not isinstance(event, dict) or event.get("job_id") != job_id:
             continue
-        if event.get("event") == "safe_application_completed":
-            matching.append(event)
-    latest = matching[-1] if matching else None
+        if event.get("event") == "safe_application_completed" and event.get("job_id") == job_id:
+            if _valid_completion_event(event):
+                matching.append((event, line))
+            else:
+                malformed += 1
+    latest_pair = matching[-1] if matching else None
+    latest = latest_pair[0] if latest_pair else None
     if malformed:
         integrity = "INVALID"
         review_reason = "audit contains malformed records"
@@ -63,6 +105,7 @@ def review_audit(audit_path: Path, job_id: str) -> dict[str, Any]:
         "audit_sha256": digest,
         "events_seen": events_seen,
         "matching_event_count": len(matching),
+        "latest_event_sha256": hashlib.sha256(latest_pair[1]).hexdigest() if latest_pair else None,
         "integrity": integrity,
         "latest_state": state,
         "verification_passed": latest.get("verification_passed") if latest else None,
