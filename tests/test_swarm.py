@@ -37,6 +37,8 @@ class SwarmTests(unittest.TestCase):
     def test_disposable_fixture_dry_run_succeeds(self):
         result = self.run_job()
         self.assertEqual(result["state"], "SUCCEEDED")
+        self.assertEqual(result["quality_review"]["mode"], "READ_ONLY")
+        self.assertFalse(result["quality_review"]["auto_apply_enabled"])
         self.assertRegex(result["commit"], r"^[0-9a-f]{40}$")
         self.assertFalse((self.repo / "parser.py").read_text().endswith("lower()\n"))
         self.assertTrue((self.root / "state/audit.jsonl").exists())

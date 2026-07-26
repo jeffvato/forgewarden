@@ -309,6 +309,17 @@ class Orchestrator:
                     job.state = "FAILED"
                     self.audit.record(job, "deterministic_check_failed", output=redact(checks.stdout + checks.stderr))
                     return {"job_id": job.job_id, "state": job.state, "reason": "deterministic check failed"}
+                from .quality_review import scan_repository
+
+                quality_review = scan_repository(worktree)
+                self.audit.record(
+                    job,
+                    "quality_review_completed",
+                    mode=quality_review["mode"],
+                    counts=quality_review["counts"],
+                    duplicate_findings_removed=quality_review["consolidation"]["duplicate_findings_removed"],
+                    auto_apply_enabled=quality_review["auto_apply_enabled"],
+                )
                 commit = self._git(worktree, "rev-parse", "HEAD")
                 snapshot = Path(tempfile.mkdtemp(prefix=f"review-{job.job_id}-", dir=self.state_dir))
                 # A separate checkout is created from the exact commit; Gemini never receives the writer worktree.
@@ -339,13 +350,13 @@ class Orchestrator:
                 if checks.returncode or gemini["verdict"] != "APPROVE" or gemini["risk"] != "LOW":
                     job.state = "AWAITING_JEFF" if gemini["verdict"] == "HUMAN_REQUIRED" else "REVISION_REQUIRED"
                     self.audit.record(job, "review_not_approved", verdict=gemini["verdict"], risk=gemini["risk"])
-                    return {"job_id": job.job_id, "state": job.state, "commit": commit, "gemini": gemini}
+                    return {"job_id": job.job_id, "state": job.state, "commit": commit, "gemini": gemini, "quality_review": quality_review}
                 if gemini["proposed_rules"]:
                     decision = self.rules.propose(gemini["proposed_rules"][0], job)
                     self.audit.record(job, "learned_rule_decision", decision=decision)
                 job.state = "READY_TO_DEPLOY" if not self.dry_run else "SUCCEEDED"
                 self.audit.record(job, "dry_run_succeeded", commit=commit)
-                return {"job_id": job.job_id, "state": job.state, "commit": commit, "base": base, "gemini": gemini}
+                return {"job_id": job.job_id, "state": job.state, "commit": commit, "base": base, "gemini": gemini, "quality_review": quality_review}
             finally:
                 cleanup = run_command(["git", "worktree", "remove", "--force", str(worktree)], job.repository)
                 if cleanup.returncode:
