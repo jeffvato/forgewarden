@@ -34,3 +34,15 @@ is running from a complete swarm checkout and uses `python3` by default; set
 `HERMES_SWARM_PYTHON` explicitly when MCP is installed in a dedicated Python
 environment. Installing these templates does not enable autonomous work, start
 a worker, or change the kill switch.
+
+The shell launcher accepts absolute-path overrides for isolated installations:
+
+```bash
+HERMES_SWARM_RUNTIME_ROOT=/srv/hermes/runtime \
+HERMES_SWARM_AUDIT_ROOT=/srv/hermes/audit \
+HERMES_SWARM_BASELINE_REPOSITORY=/srv/hermes/baseline \
+  packaging/hermes-swarm status
+```
+
+Relative overrides are rejected. These settings relocate local state only; they
+do not change the deployment-disabled boundary or authorize a job.

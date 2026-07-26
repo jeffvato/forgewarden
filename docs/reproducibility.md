@@ -45,8 +45,12 @@ review must:
 
 Repository-relative launcher templates are available now, but the active
 Desktop integration still requires explicit installation of the launcher, the
-Hermes-compatible Python environment, and local configuration. The templates
-do not modify the active installation automatically.
+Hermes-compatible Python environment, and local configuration. The shell
+launcher accepts absolute `HERMES_SWARM_RUNTIME_ROOT`,
+`HERMES_SWARM_AUDIT_ROOT`, and `HERMES_SWARM_BASELINE_REPOSITORY` overrides;
+relative values are rejected. These overrides improve local installation
+portability but do not make the Phase 2A profile portable or change its safety
+gates. The templates do not modify the active installation automatically.
 
 Until those checks pass, keep autonomous dry-run disabled, deployment disabled,
 and the kill switch engaged. Do not copy the local profile or runtime state to
