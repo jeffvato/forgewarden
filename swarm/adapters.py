@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any
 
 from .core import SwarmError, redact, run_command, validate_contract
+from .paths import runtime_root
 
 
 @dataclass(frozen=True)
@@ -438,7 +439,7 @@ class CodexAdapter:
         canonical_job_id = _job_id_filename(spec.job_id)
         target = spec.target()
         worktree = spec.git_root
-        cache_dir = Path("/home/jeff/hermes-swarm-runtime/python-cache") / canonical_job_id
+        cache_dir = runtime_root() / "python-cache" / canonical_job_id
         cache_dir.mkdir(parents=True, exist_ok=True)
         cache_dir.chmod(0o700)
         self.last_cache_directory = cache_dir

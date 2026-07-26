@@ -11,6 +11,7 @@ from typing import Any
 
 from .adapters import CodexAdapter, ResourceLimits, WriterInvocationSpec, limited_run, new_codex_job_id
 from .core import SwarmError, redact
+from .paths import runtime_root
 
 
 PROBE_FILES = ("value.py", "test_value.py")
@@ -46,7 +47,7 @@ def _write_audit(path: Path, evidence: dict[str, Any]) -> None:
 def run_writer_probe(root: Path, fixture_dir: Path, audit_path: Path, codex_executable: str = "/home/jeff/.local/bin/codex") -> dict[str, Any]:
     """Run one disposable writer probe; Git commit ownership stays here."""
     job_id = new_codex_job_id()
-    runtime = Path("/home/jeff/hermes-swarm-runtime")
+    runtime = runtime_root()
     (runtime / "KILL_SWITCH").touch(mode=0o600, exist_ok=True)
     limits = ResourceLimits(memory_bytes=2_147_483_648, timeout_seconds=180, max_log_bytes=256_000)
     repo = Path(tempfile.mkdtemp(prefix=job_id + "-", dir=root))

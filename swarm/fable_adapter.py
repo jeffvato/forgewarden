@@ -20,7 +20,7 @@ from pathlib import Path
 from typing import Any
 
 from .core import SwarmError, redact
-from .paths import project_root
+from .paths import audit_root, project_root
 
 PROJECT_ROOT = project_root()
 CLAUDE = Path("/home/jeff/.local/bin/claude")
@@ -31,8 +31,8 @@ MCP_TARGET_USD = 35.0
 MAX_TURNS = 4
 TIMEOUT_SECONDS = 300
 MAX_OUTPUT_BYTES = 131072
-LEDGER = Path("/home/jeff/hermes-swarm-audit/fable-budget.json")
-EVIDENCE_DIR = Path("/home/jeff/hermes-swarm-audit/fable-evidence")
+LEDGER = audit_root() / "fable-budget.json"
+EVIDENCE_DIR = audit_root() / "fable-evidence"
 JOB_RE = re.compile(r"^fable-[a-z0-9]{24}$")
 
 

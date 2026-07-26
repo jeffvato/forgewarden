@@ -14,6 +14,7 @@ from typing import Any
 from .adapters import CodexAdapter, GeminiAdapter, HermesAdapter, WriterInvocationSpec, limited_run, measure_resources, normalize_changed_paths, select_limits
 from .core import AuditLog, Job, ServiceLock, SwarmError, redact, run_command
 from .local_run import _readonly_snapshot
+from .paths import audit_root as default_audit_root, runtime_root as default_runtime_root
 
 
 BASELINE_SHA = "bad64e7cf14e3c586d395341b25467841847dec6"
@@ -371,9 +372,9 @@ def _run_deadline_preflight(worktree: Path, limits, validated: tuple[Path, Path,
 def run_controlled_baseline(root: Path, repository: Path = REPOSITORY, runtime_root: Path | None = None, state_dir: Path | None = None, audit_dir: Path | None = None, *, synthetic_exercise: bool = False) -> dict[str, Any]:
     if not synthetic_exercise:
         raise SwarmError("real repair jobs cannot create synthetic seeded-defect commits")
-    runtime_root = runtime_root or Path("/home/jeff/hermes-swarm-runtime")
+    runtime_root = runtime_root or default_runtime_root()
     state_dir = state_dir or runtime_root / "state"
-    audit_dir = audit_dir or Path("/home/jeff/hermes-swarm-audit")
+    audit_dir = audit_dir or default_audit_root()
     state_dir.mkdir(parents=True, exist_ok=True)
     job = Job("controlled-baseline-" + next(tempfile._get_candidate_names()), "n8n-csv-baseline", repository, "deadline utility regression exercise")
     audit = AuditLog(audit_dir / "audit.jsonl")

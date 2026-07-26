@@ -7,6 +7,7 @@ from .baseline import run_controlled_baseline
 from .gemini_recovery import recover_gemini_review
 from .local_run import run_real_dry_run
 from .phase2a import activation_status, disable_autonomous_dry_run, enable_autonomous_dry_run, engage_kill_switch, recover_terminal_abandoned, run_worker_job
+from .paths import audit_root, runtime_root
 
 
 def main() -> int:
@@ -24,30 +25,30 @@ def main() -> int:
         print({"mode": "DRY_RUN", "deployment": "DISABLED", "commands": discover_commands(), "resources": measure_resources(), "limits": select_limits(measure_resources()).__dict__})
         return 0
     if args.command == "autonomous-dry-run-status":
-        print({"autonomous_dry_run": activation_status(args.runtime_root or Path("/home/jeff/hermes-swarm-runtime")), "deployment": "DISABLED"})
+        print({"autonomous_dry_run": activation_status(args.runtime_root or runtime_root()), "deployment": "DISABLED"})
         return 0
     if args.command == "autonomous-dry-run-enable":
         try:
-            print(enable_autonomous_dry_run())
+            print(enable_autonomous_dry_run(runtime_root=args.runtime_root or runtime_root(), audit_path=(args.audit_dir or audit_root()) / "audit.jsonl"))
             return 0
         except (SwarmError, OSError, ValueError) as exc:
             print(f"FAILED: {exc}")
             return 1
     if args.command == "autonomous-dry-run-disable":
-        print(disable_autonomous_dry_run())
+        print(disable_autonomous_dry_run(runtime_root=args.runtime_root or runtime_root()))
         return 0
     if args.command == "phase2a-worker":
         if not args.job_id:
             parser.error("phase2a-worker requires --job-id")
         try:
-            print(run_worker_job(args.job_id, runtime_root=args.runtime_root or Path("/home/jeff/hermes-swarm-runtime"), audit_path=(args.audit_dir or Path("/home/jeff/hermes-swarm-audit")) / "audit.jsonl"))
+            print(run_worker_job(args.job_id, runtime_root=args.runtime_root or runtime_root(), audit_path=(args.audit_dir or audit_root()) / "audit.jsonl"))
             return 0
         except (SwarmError, OSError, ValueError) as exc:
             print(f"FAILED: {exc}")
             return 1
     if args.command == "phase2a-recover-terminal":
         try:
-            print(recover_terminal_abandoned(args.runtime_root or Path("/home/jeff/hermes-swarm-runtime"), (args.audit_dir or Path("/home/jeff/hermes-swarm-audit")) / "audit.jsonl"))
+            print(recover_terminal_abandoned(args.runtime_root or runtime_root(), (args.audit_dir or audit_root()) / "audit.jsonl"))
             return 0
         except (SwarmError, OSError, ValueError) as exc:
             print(f"FAILED: {exc}")
@@ -59,7 +60,7 @@ def main() -> int:
         return 0
     if args.command in {"stop", "kill-switch"}:
         try:
-            print(engage_kill_switch(args.runtime_root or Path("/home/jeff/hermes-swarm-runtime"), (args.audit_dir or Path("/home/jeff/hermes-swarm-audit")) / "audit.jsonl"))
+            print(engage_kill_switch(args.runtime_root or runtime_root(), (args.audit_dir or audit_root()) / "audit.jsonl"))
             return 0
         except (SwarmError, OSError, ValueError) as exc:
             print(f"FAILED: {exc}")
@@ -87,8 +88,8 @@ def main() -> int:
             result = recover_gemini_review(
                 Path(__file__).resolve().parents[1],
                 args.repository,
-                args.runtime_root or Path("/home/jeff/hermes-swarm-runtime"),
-                args.audit_dir or Path("/home/jeff/hermes-swarm-audit"),
+                args.runtime_root or runtime_root(),
+                args.audit_dir or audit_root(),
                 args.job_id,
                 args.repair_commit,
             )

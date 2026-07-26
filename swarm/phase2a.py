@@ -19,14 +19,14 @@ from typing import Any, Protocol
 from .adapters import CodexAdapter, GeminiAdapter, ResourceLimits, WriterInvocationSpec, limited_run, normalize_changed_paths
 from .baseline import DeterministicInterpreterError, _deadline_test_command, _introduce_deadline_defect, _tracked_test_hashes, _trusted_synthetic_commit, enforce_diff_gate, scan_baseline_tree, scan_git_blobs, validate_deterministic_interpreter
 from .core import AuditLog, Job, SwarmError, redact, run_command, validate_contract
-from .paths import project_root
+from .paths import audit_path, project_root, runtime_root
 
 PROFILE_ID = "csv_deadline_dry_run_v1"
 BASELINE_SHA = "bad64e7cf14e3c586d395341b25467841847dec6"
 REPOSITORY = Path("/home/jeff/swarm-repositories/n8n-csv-baseline-v2")
 PROJECT_ROOT = project_root()
-DEFAULT_RUNTIME = Path("/home/jeff/hermes-swarm-runtime")
-DEFAULT_AUDIT = Path("/home/jeff/hermes-swarm-audit/audit.jsonl")
+DEFAULT_RUNTIME = runtime_root()
+DEFAULT_AUDIT = audit_path()
 PROFILE_PATH = PROJECT_ROOT / "config/desktop-job-profiles.yaml"
 PROFILE_SCHEMA_PATH = PROJECT_ROOT / "schemas/desktop-job-profile.schema.json"
 ACTIVATION_FILE = "AUTONOMOUS_DRY_RUN"
@@ -168,16 +168,16 @@ def validate_activation(profile: Profile, runtime_root: Path = DEFAULT_RUNTIME, 
     }
 
 
-def enable_autonomous_dry_run() -> dict[str, Any]:
+def enable_autonomous_dry_run(*, runtime_root: Path = DEFAULT_RUNTIME, audit_path: Path = DEFAULT_AUDIT) -> dict[str, Any]:
     profile = validate_profile()
-    evidence = validate_activation(profile)
-    set_activation(True)
-    AuditLog(DEFAULT_AUDIT).record(Job("activation", PROFILE_ID, profile.repository, "local activation"), "autonomous_dry_run_enabled", **evidence)
+    evidence = validate_activation(profile, runtime_root)
+    set_activation(True, runtime_root)
+    AuditLog(audit_path).record(Job("activation", PROFILE_ID, profile.repository, "local activation"), "autonomous_dry_run_enabled", **evidence)
     return {"autonomous_dry_run": "ENABLED", **evidence}
 
 
-def disable_autonomous_dry_run() -> dict[str, str]:
-    set_activation(False)
+def disable_autonomous_dry_run(*, runtime_root: Path = DEFAULT_RUNTIME) -> dict[str, str]:
+    set_activation(False, runtime_root)
     return {"autonomous_dry_run": "DISABLED"}
 
 

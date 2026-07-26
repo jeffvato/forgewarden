@@ -15,12 +15,12 @@ if TYPE_CHECKING:
     from mcp.server.fastmcp import FastMCP
 
 from .core import redact
-from .paths import project_root
+from .paths import audit_path, launcher_path, project_root, runtime_root
 
 LOG = logging.getLogger("hermes_swarm.desktop_bridge")
-LAUNCHER = Path("/home/jeff/.local/bin/hermes-swarm")
-RUNTIME_ROOT = Path("/home/jeff/hermes-swarm-runtime")
-AUDIT_PATH = Path("/home/jeff/hermes-swarm-audit/audit.jsonl")
+LAUNCHER = launcher_path()
+RUNTIME_ROOT = runtime_root()
+AUDIT_PATH = audit_path()
 PROJECT_ROOT = project_root()
 COMMAND_TIMEOUT = 10
 JOB_ID_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,127}$")
@@ -64,8 +64,8 @@ def _parse_status(output: str) -> dict[str, str]:
     if len(lines) != 1:
         raise RuntimeError("unexpected swarm status output")
     match = re.fullmatch(
-        r"launcher=(hermes-swarm) mode=(DRY_RUN) deployment=(DISABLED) "
-        r"kill_switch=(ENGAGED|CLEARED_FOR_DRY_RUN) runtime=(/home/jeff/hermes-swarm-runtime)",
+        rf"launcher=(hermes-swarm) mode=(DRY_RUN) deployment=(DISABLED) "
+        rf"kill_switch=(ENGAGED|CLEARED_FOR_DRY_RUN) runtime=({re.escape(str(RUNTIME_ROOT))})",
         lines[0],
     )
     if not match:

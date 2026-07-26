@@ -9,6 +9,7 @@ from pathlib import Path
 from .adapters import CodexAdapter, WriterInvocationSpec, limited_run, select_limits
 from .baseline import BASELINE_SHA, REPOSITORY, WRITABLE_DEADLINE, _AuthorizedKillSwitch, _deadline_test_command, _run_deadline_preflight
 from .core import AuditLog, Job, SwarmError, redact, run_command
+from .paths import audit_root, runtime_root
 
 
 def run_deadline_codex_diagnostic(
@@ -76,4 +77,4 @@ def run_deadline_codex_diagnostic(
 
 
 if __name__ == "__main__":
-    print(json.dumps(run_deadline_codex_diagnostic(Path(__file__).resolve().parents[1], Path("/home/jeff/hermes-swarm-runtime"), Path("/home/jeff/hermes-swarm-audit")), sort_keys=True))
+    print(json.dumps(run_deadline_codex_diagnostic(Path(__file__).resolve().parents[1], runtime_root(), audit_root()), sort_keys=True))
