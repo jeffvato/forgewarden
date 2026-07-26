@@ -79,6 +79,7 @@
             "enum": [
               "ai_slop",
               "concurrency_risk",
+              "duplicate_logic",
               "n_plus_one_query",
               "nested_ternary",
               "parse_failure",

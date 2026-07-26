@@ -103,7 +103,6 @@ class _PythonReview(ast.NodeVisitor):
         self.path = path
         self.source = source
         self.findings: list[dict[str, Any]] = []
-        self.function_bodies: dict[str, list[tuple[str, int, str]]] = defaultdict(list)
         self.imports: list[tuple[str, int]] = []
         self.names: set[str] = set()
 
@@ -151,8 +150,6 @@ class _PythonReview(ast.NodeVisitor):
                 rationale="A wrapper with no local behavior may be redundant, but callers must be checked first.",
                 suggested_action="Confirm the wrapper has no compatibility or observability contract before removing it.",
             )
-        normalized = ast.dump(node, annotate_fields=False, include_attributes=False)
-        self.function_bodies[hashlib.sha256(normalized.encode()).hexdigest()].append((node.name, node.lineno, self.path))
         if isinstance(node, ast.AsyncFunctionDef) and any(BLOCKING_ASYNC_RE.search(self.source_line(child)) for child in ast.walk(node)):
             self.add(
                 category="concurrency_risk", tier="RISKY", confidence="MEDIUM",
@@ -252,6 +249,22 @@ def _scan_python(path: Path, relative: str, source: str) -> list[dict[str, Any]]
     return review.findings
 
 
+def _python_function_signatures(relative: str, source: str) -> list[tuple[str, str, int, str]]:
+    """Return hashes for non-trivial function bodies for duplicate detection."""
+    try:
+        tree = ast.parse(source, filename=relative)
+    except SyntaxError:
+        return []
+    signatures: list[tuple[str, str, int, str]] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) or len(node.body) < 2:
+            continue
+        body = ast.Module(body=node.body, type_ignores=[])
+        normalized = ast.dump(body, annotate_fields=False, include_attributes=False)
+        signatures.append((hashlib.sha256(normalized.encode("utf-8")).hexdigest(), relative, node.lineno, node.name))
+    return signatures
+
+
 def _scan_text(relative: str, source: str) -> list[dict[str, Any]]:
     findings: list[dict[str, Any]] = []
     for line_number, line in enumerate(source.splitlines(), start=1):
@@ -320,11 +333,27 @@ def scan_repository(repository: Path) -> dict[str, Any]:
     if not root.is_dir():
         raise ValueError(f"repository is not a directory: {repository}")
     findings: list[dict[str, Any]] = []
+    duplicate_candidates: dict[str, list[tuple[str, int, str]]] = defaultdict(list)
     for path, source in _source_files(root):
         relative = path.relative_to(root).as_posix()
         findings.extend(_scan_text(relative, source))
         if path.suffix.lower() == ".py":
             findings.extend(_scan_python(path, relative, source))
+            for signature, file, line, name in _python_function_signatures(relative, source):
+                duplicate_candidates[signature].append((file, line, name))
+    for candidates in duplicate_candidates.values():
+        if len(candidates) < 2:
+            continue
+        locations = ", ".join(f"{file}:{line}" for file, line, _ in sorted(candidates))
+        for file, line, name in candidates:
+            findings.append(_finding(
+                category="duplicate_logic", tier="CAREFUL", confidence="MEDIUM", file=file,
+                line=line, symbol=name,
+                summary="non-trivial function body is duplicated in another source file",
+                evidence=f"duplicate locations: {locations}"[:512],
+                rationale="Deduplicating logic can change edge-case behavior and requires shared tests.",
+                suggested_action="Compare contracts and extract shared behavior only after regression coverage.",
+            ))
     findings.sort(key=lambda item: (_TIER_ORDER[item["tier"]], item["file"], item["line"], item["category"], item["id"]))
     report = {
         "schema_version": SCHEMA_VERSION,

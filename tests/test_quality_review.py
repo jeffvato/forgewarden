@@ -76,6 +76,22 @@ def do_work():
     assert _finding(result, "unreachable_code")["tier"] == "SAFE"
 
 
+def test_quality_review_reports_duplicate_logic_as_careful(tmp_path):
+    body = """\ndef first(value):
+    normalized = value.strip().lower()
+    return normalized
+"""
+    (tmp_path / "first.py").write_text(body, encoding="utf-8")
+    (tmp_path / "second.py").write_text(body.replace("first", "second"), encoding="utf-8")
+
+    result = scan_repository(tmp_path)
+
+    duplicates = [item for item in result["findings"] if item["category"] == "duplicate_logic"]
+    assert len(duplicates) == 2
+    assert all(item["tier"] == "CAREFUL" for item in duplicates)
+    assert all(item["confidence"] == "MEDIUM" for item in duplicates)
+
+
 def test_quality_review_skips_sensitive_and_non_source_files(tmp_path):
     (tmp_path / ".env").write_text("TOKEN=do-not-read\n", encoding="utf-8")
     (tmp_path / "notes.txt").write_text("Certainly, this is prose.\n", encoding="utf-8")
