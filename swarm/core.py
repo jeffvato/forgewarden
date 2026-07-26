@@ -71,6 +71,17 @@ def ensure_mailbox_directory(path: Path) -> Path:
     return path
 
 
+def ensure_private_directory(path: Path, label: str) -> Path:
+    """Create or validate a mode-0700 local artifact directory."""
+    _reject_symlink_path(path, label)
+    if path.exists() and not path.is_dir():
+        raise SwarmError(f"{label} is not a directory: {path}")
+    path.mkdir(parents=True, exist_ok=True, mode=0o700)
+    path.chmod(0o700)
+    _reject_symlink_path(path, label)
+    return path
+
+
 def read_mailbox_json(path: Path, label: str) -> dict[str, Any]:
     """Read one structured mailbox result only from a regular, non-symlink file."""
     _reject_symlink_path(path, label)

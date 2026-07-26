@@ -120,6 +120,10 @@ atomic, mode-`0600`, no-follow replacement. A symlinked evidence directory or
 evidence file fails closed, and the evidence write completes before disposable
 adapter cleanup.
 
+Codex schema copies, Python cache directories, and Hermes prompt snapshots use
+the same restricted-directory and no-follow artifact policy. These local
+artifacts are disposable and are never treated as source or deployment state.
+
 The implementation does not alter Hermes configuration. Before a later phase
 changes an existing Hermes configuration, take a timestamped copy, display the
 proposed diff, and obtain Jeff's approval. No OS package, network, remote host,

@@ -15,7 +15,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
-from .core import SwarmError, ensure_mailbox_directory, redact, run_command, validate_contract, write_mailbox_json, write_restricted_text
+from .core import SwarmError, ensure_mailbox_directory, ensure_private_directory, redact, run_command, validate_contract, write_mailbox_json, write_restricted_text
 from .paths import runtime_root
 
 
@@ -388,12 +388,12 @@ class HermesAdapter:
     def prepare(self, job_id: str, evidence: str) -> str:
         if not Path(self.executable).exists():
             raise SwarmError(f"Hermes executable not found: {self.executable}")
-        self.state_dir.mkdir(parents=True, exist_ok=True)
+        ensure_private_directory(self.state_dir, "Hermes adapter state directory")
         result = run_command([self.executable, "--print-prompt"], self.state_dir, timeout=30)
         if result.returncode:
             raise SwarmError(f"Hermes prompt probe failed: {redact(result.stderr)}")
         prompt = result.stdout
-        (self.state_dir / "hermes-orchestration-prompt.txt").write_text(prompt, encoding="utf-8")
+        write_restricted_text(self.state_dir / "hermes-orchestration-prompt.txt", prompt, "Hermes orchestration prompt")
         return f"Hermes prepared local job {job_id}. Evidence: {redact(evidence)}"
 
 
@@ -425,9 +425,7 @@ class CodexAdapter:
         canonical_job_id = _job_id_filename(spec.job_id)
         target = spec.target()
         worktree = spec.git_root
-        cache_dir = runtime_root() / "python-cache" / canonical_job_id
-        cache_dir.mkdir(parents=True, exist_ok=True)
-        cache_dir.chmod(0o700)
+        cache_dir = ensure_private_directory(runtime_root() / "python-cache" / canonical_job_id, "Codex Python cache directory")
         self.last_cache_directory = cache_dir
         result_dir = ensure_mailbox_directory(worktree / ".swarm")
         output = result_dir / f"codex-result-{canonical_job_id}.json"
@@ -435,7 +433,7 @@ class CodexAdapter:
         os.close(fd)
         external_output = Path(output_name)
         schema_copy = result_dir / f"codex-result-{canonical_job_id}.schema.json"
-        schema_copy.write_text(json.dumps(_codex_job_schema(self.schema, canonical_job_id)), encoding="utf-8")
+        write_mailbox_json(schema_copy, _codex_job_schema(self.schema, canonical_job_id), "Codex schema")
         canonical_prompt = (
             f"RETURN JOB_ID EXACTLY AS SUPPLIED: {canonical_job_id}. Do not shorten, rewrite, or derive it.\n\n"
             + (prompt or spec.prompt())

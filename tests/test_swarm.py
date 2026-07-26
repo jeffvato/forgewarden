@@ -8,7 +8,7 @@ from pathlib import Path
 
 from swarm.core import (
     AuditLog, DeploymentController, Job, Orchestrator, RuleStore, ServiceLock,
-    SwarmError, ensure_mailbox_directory, read_mailbox_json, redact,
+    SwarmError, ensure_mailbox_directory, ensure_private_directory, read_mailbox_json, redact,
     require_exact_commit, validate_contract, validate_snapshot_symlinks, write_mailbox_json,
 )
 
@@ -87,6 +87,15 @@ class SwarmTests(unittest.TestCase):
         (snapshot / "external.txt").symlink_to(target)
         with self.assertRaises(SwarmError):
             validate_snapshot_symlinks(snapshot)
+
+    def test_private_artifact_directory_rejects_symlink_and_is_restricted(self):
+        real = self.root / "real-artifacts"
+        ensure_private_directory(real, "fixture artifacts")
+        self.assertEqual(real.stat().st_mode & 0o777, 0o700)
+        linked = self.root / "linked-artifacts"
+        linked.symlink_to(real, target_is_directory=True)
+        with self.assertRaises(SwarmError):
+            ensure_private_directory(linked, "fixture artifacts")
 
     def test_structured_mailbox_is_created_exclusively_and_restricted(self):
         mailbox = self.root / "mailbox"
