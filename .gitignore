@@ -5,3 +5,16 @@ __pycache__/
 .pytest_cache/
 *.save
 *:Zone.Identifier
+*.jsonl
+*.log
+*.sqlite
+*.sqlite3
+*.pem
+*.key
+*.p12
+*.credentials*
+.env
+.env.*
+hermes-swarm-runtime/
+hermes-swarm-audit/
+fable-evidence/
