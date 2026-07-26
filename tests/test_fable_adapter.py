@@ -62,6 +62,75 @@ class FableAdapterTests(unittest.TestCase):
             self.assertEqual(kwargs["timeout"], 300)
             self.assertTrue((evidence / f"{job}.json").is_file())
 
+    def test_real_fake_cli_receives_exact_read_only_contract(self):
+        job = "fable-" + "f" * 24
+        inv = f.FableInvocation(job, target_usd=35.0)
+        with TemporaryDirectory() as temp:
+            root = Path(temp)
+            proof = root / "proof.json"
+            fake = root / "fake-claude.py"
+            payload = {
+                "job_id": job,
+                "model": f.MODEL,
+                "total_cost_usd": 2.75,
+                "findings": [],
+                "hypotheses": [],
+                "tests": [],
+                "safe_correction_plan": "Read-only evidence collection only.",
+                "limitations": [],
+            }
+            fake.write_text(
+                "#!/home/jeff/anaconda3/bin/python3\n"
+                "import json, os, sys\n"
+                f"proof = {str(proof)!r}\n"
+                f"payload = {payload!r}\n"
+                "args = sys.argv[1:]\n"
+                "required = ['--model', 'claude-fable-5', '--output-format', 'json', '--json-schema', '--tools', '', '--permission-mode', 'plan', '--no-session-persistence', '--max-budget-usd', '35.0']\n"
+                "if any(item not in args for item in required): sys.exit(9)\n"
+                "json.dump({'argv': args, 'env_names': sorted(os.environ), 'payload': payload}, open(proof, 'w'))\n"
+                "print(json.dumps({'result': json.dumps(payload)}))\n",
+                encoding="utf-8",
+            )
+            fake.chmod(0o700)
+            with patch.object(f, "CLAUDE", fake), patch.object(f, "LEDGER", root / "budget.json"), patch.object(f, "EVIDENCE_DIR", root / "evidence"):
+                result = f.run_fable(inv, context="token=do-not-send password=do-not-send")
+            self.assertEqual(result["job_id"], job)
+            observed = json.loads(proof.read_text(encoding="utf-8"))
+            self.assertIn(f"job {job}", observed["argv"][1])
+            self.assertNotIn("do-not-send", observed["argv"][1])
+            self.assertEqual(observed["env_names"], sorted(f._minimal_env()))
+            schema = json.loads(observed["argv"][observed["argv"].index("--json-schema") + 1])
+            self.assertEqual(schema["properties"]["job_id"]["const"], job)
+            self.assertFalse(schema["additionalProperties"])
+            self.assertIn("claude-fable-5", observed["argv"])
+            self.assertNotIn("--dangerously-skip-permissions", observed["argv"])
+            self.assertNotIn("Bash", observed["argv"])
+            self.assertNotIn("Edit", observed["argv"])
+            self.assertNotIn("Write", observed["argv"])
+            ledger = json.loads((root / "budget.json").read_text(encoding="utf-8"))
+            self.assertEqual(ledger["spent_usd"], 2.75)
+            self.assertEqual(ledger["reserved_usd"], 0.0)
+
+    def test_real_fake_cli_wrong_job_or_model_fails_closed(self):
+        with TemporaryDirectory() as temp:
+            root = Path(temp)
+            fake = root / "fake-claude.py"
+            fake.write_text(
+                "#!/home/jeff/anaconda3/bin/python3\n"
+                "import json, sys\n"
+                "payload = {'job_id': 'fable-' + '0'*24, 'model': 'wrong-model', 'total_cost_usd': 1.0, 'findings': [], 'hypotheses': [], 'tests': [], 'safe_correction_plan': 'x', 'limitations': []}\n"
+                "print(json.dumps({'result': json.dumps(payload)}))\n",
+                encoding="utf-8",
+            )
+            fake.chmod(0o700)
+            job = "fable-" + "1" * 24
+            with patch.object(f, "CLAUDE", fake), patch.object(f, "LEDGER", root / "budget.json"), patch.object(f, "EVIDENCE_DIR", root / "evidence"):
+                with self.assertRaises(f.FableAdapterError):
+                    f.run_fable(f.FableInvocation(job), context="sanitized context")
+            ledger = json.loads((root / "budget.json").read_text(encoding="utf-8"))
+            self.assertEqual(ledger["reserved_usd"], 0.0)
+            self.assertEqual(ledger["spent_usd"], 0.0)
+
 
 if __name__ == "__main__":
     unittest.main()

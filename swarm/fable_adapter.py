@@ -213,7 +213,7 @@ def run_fable(invocation: FableInvocation | None = None, *, context: str | None 
         f"You are a read-only diagnostic reviewer for job {invocation.job_id}.\n"
         "Return JSON matching the supplied schema. Do not use tools, shell, files, edits, Git, MCP, deployment, or agents.\n"
         "This is advisory evidence only. Do not authorize a repair or clear any safety gate.\n\n"
-        f"{context if context is not None else build_mcp_context()}"
+        f"{_sanitize_context(context) if context is not None else build_mcp_context()}"
     )
     argv = [str(CLAUDE), "-p", prompt, "--model", MODEL, "--output-format", "json", "--json-schema", schema, "--tools", "", "--permission-mode", "plan", "--no-session-persistence", "--max-budget-usd", str(invocation.target_usd)]
     started = time.monotonic()

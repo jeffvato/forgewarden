@@ -33,3 +33,11 @@ Ledger and evidence are local, mode-restricted files:
 Fable findings are advisory evidence only. They cannot activate rules, alter
 the kill switch, enable autonomous dry-run, authorize a repair, or change the
 Phase 2A gate.
+
+## Fake-CLI acceptance
+
+The adapter is covered first by real process-level fake-CLI tests. They verify
+the exact argv, working directory, minimal environment names, dynamic schema
+const binding, exact `claude-fable-5` identity, plan/no-tools restrictions,
+sanitized prompt delivery, malformed identity rejection, and
+`total_cost_usd` settlement without contacting the provider.
