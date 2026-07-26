@@ -354,6 +354,31 @@ class Phase2ATests(unittest.TestCase):
             self.assertTrue((runtime / "KILL_SWITCH").is_file())
             self.assertEqual(phase2a.activation_status(runtime), "DISABLED")
 
+    def test_orphaned_admission_lock_is_recovered_only_when_owner_is_dead(self):
+        with TemporaryDirectory() as temp:
+            root = Path(temp)
+            runtime = root / "runtime"
+            runtime.mkdir()
+            (runtime / phase2a.LOCK_FILE).write_text("99999999:1\n", encoding="ascii")
+            phase2a.set_activation(True, runtime)
+            phase2a.recover_abandoned(runtime, root / "audit.jsonl")
+            self.assertFalse((runtime / phase2a.LOCK_FILE).exists())
+            self.assertTrue((runtime / "KILL_SWITCH").is_file())
+            self.assertEqual(phase2a.activation_status(runtime), "DISABLED")
+            self.assertIn('"event": "orphan_lock_recovered"', (root / "audit.jsonl").read_text(encoding="utf-8"))
+
+    def test_live_orphaned_admission_lock_is_preserved(self):
+        with TemporaryDirectory() as temp:
+            runtime = Path(temp) / "runtime"
+            runtime.mkdir()
+            fd = phase2a._acquire_lock(runtime)
+            try:
+                phase2a.recover_abandoned(runtime, runtime / "audit.jsonl")
+                self.assertTrue((runtime / phase2a.LOCK_FILE).exists())
+            finally:
+                os.close(fd)
+                (runtime / phase2a.LOCK_FILE).unlink(missing_ok=True)
+
     def _enabled_runtime(self, root: Path) -> Path:
         runtime = root / "runtime"
         runtime.mkdir()

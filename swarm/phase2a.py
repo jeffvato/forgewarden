@@ -205,9 +205,28 @@ def validate_issue_summary(issue_summary: str) -> str:
 def _acquire_lock(runtime_root: Path) -> int:
     runtime_root.mkdir(parents=True, exist_ok=True)
     try:
-        return os.open(runtime_root / LOCK_FILE, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+        fd = os.open(runtime_root / LOCK_FILE, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+        owner = f"{os.getpid()}:{_worker_start_ticks(os.getpid()) or ''}\n".encode("ascii")
+        os.write(fd, owner)
+        os.fsync(fd)
+        return fd
     except FileExistsError as exc:
         raise SwarmError("another Phase 2A job is already running") from exc
+
+
+def _lock_owner_alive(lock_path: Path) -> bool | None:
+    try:
+        raw = lock_path.read_text(encoding="ascii").strip()
+        pid_text, start_ticks = raw.split(":", 1)
+        pid = int(pid_text)
+        if pid <= 0 or not start_ticks:
+            return None
+        if _worker_start_ticks(pid) != start_ticks:
+            return False
+        os.kill(pid, 0)
+        return True
+    except (OSError, UnicodeError, ValueError):
+        return None
 
 
 def _commit_validated(worktree: Path, changed: list[str], job_id: str) -> str:
@@ -413,6 +432,23 @@ def _stop_worker(job_id: str) -> None:
 def recover_abandoned(runtime_root: Path = DEFAULT_RUNTIME, audit_path: Path = DEFAULT_AUDIT) -> None:
     """Recover only an expired RUNNING worker with no verified live identity."""
     state = _read_state(runtime_root)
+    lock_path = runtime_root / LOCK_FILE
+    if not state:
+        if not lock_path.exists():
+            return
+        if lock_path.is_symlink() or not lock_path.is_file():
+            raise SwarmError("unsafe orphaned Phase 2A lock")
+        owner_alive = _lock_owner_alive(lock_path)
+        if owner_alive is not False:
+            return
+        if not _deployment_disabled(runtime_root):
+            raise SwarmError("deployment must be disabled for orphaned lock recovery")
+        audit = AuditLog(audit_path)
+        (runtime_root / "KILL_SWITCH").touch(mode=0o600, exist_ok=True)
+        set_activation(False, runtime_root)
+        lock_path.unlink()
+        audit.record(Job("phase2a-orphan-lock-recovery", PROFILE_ID, REPOSITORY, "orphaned admission lock recovery"), "orphan_lock_recovered", reason="lock owner is not alive and no state was committed")
+        return
     if state.get("state") != "RUNNING" or _worker_alive(state):
         return
     heartbeat = float(state.get("heartbeat_at", 0) or 0)
