@@ -163,10 +163,12 @@ def job_status(job_id: str) -> dict[str, Any]:
     if state_path.is_file():
         try:
             state = json.loads(state_path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError) as exc:
+        except (OSError, UnicodeError, json.JSONDecodeError) as exc:
             raise RuntimeError("corrupted Phase 2A state") from exc
-        if isinstance(state, dict) and state.get("job_id") == requested and state.get("state") in SAFE_STATES:
-            result["state"] = state["state"]
+        if isinstance(state, dict) and state.get("job_id") == requested:
+            state_value = state.get("state")
+            if isinstance(state_value, str) and state_value in SAFE_STATES:
+                result["state"] = state_value
     return result
 
 

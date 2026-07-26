@@ -85,6 +85,18 @@ class DesktopBridgeTests(unittest.TestCase):
         self.assertEqual(result["state"], "QUEUED")
         self.assertEqual(result["records"][0]["state"], "QUEUED")
 
+    def test_job_status_rejects_malformed_state_encoding_and_type(self):
+        job_id = "phase2a-" + "e" * 24
+        runtime = Path(self.audit_dir.name) / "runtime"
+        runtime.mkdir()
+        state_path = runtime / "phase2a-state.json"
+        with patch.object(bridge, "AUDIT_PATH", self.audit), patch.object(bridge, "RUNTIME_ROOT", runtime):
+            state_path.write_text(json.dumps({"job_id": job_id, "state": []}), encoding="utf-8")
+            self.assertEqual(bridge.job_status(job_id)["job_id"], job_id)
+            state_path.write_bytes(b"{\xff")
+            with self.assertRaises(RuntimeError):
+                bridge.job_status(job_id)
+
     def test_corrupted_audit_fails_without_partial_results(self):
         self.audit.write_text('{"job_id":"job-1"}\nnot-json\n', encoding="utf-8")
         with patch.object(bridge, "AUDIT_PATH", self.audit):
