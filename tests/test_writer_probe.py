@@ -57,20 +57,22 @@ class WriterProbeProcessTests(unittest.TestCase):
             text = (FIXTURE / name).read_text(encoding="utf-8")
             self.assertNotIn("\\n", text)
             compile(text, name, "exec")
+        disposable_fixture = self.root / "fixture"
+        shutil.copytree(FIXTURE, disposable_fixture, ignore=shutil.ignore_patterns("__pycache__", ".pytest_cache"))
         external_cache = self.root / "fixture-pycache"
         import_env = _minimal_test_environment({"PYTHONDONTWRITEBYTECODE": "0", "PYTHONPYCACHEPREFIX": str(external_cache)})
-        imported = subprocess.run(["/home/jeff/anaconda3/bin/python3", "-c", "import value"], cwd=FIXTURE, env=import_env, text=True, capture_output=True, check=False)
+        imported = subprocess.run(["/home/jeff/anaconda3/bin/python3", "-c", "import value"], cwd=disposable_fixture, env=import_env, text=True, capture_output=True, check=False)
         self.assertEqual(imported.returncode, 0, imported.stderr)
         self.assertTrue(any(external_cache.rglob("*.pyc")))
-        self.assertFalse(any((FIXTURE / "__pycache__").rglob("*.pyc")) if (FIXTURE / "__pycache__").exists() else False)
-        collected = subprocess.run([*TEST_COMMAND, "--collect-only"], cwd=FIXTURE, env=_minimal_test_environment({"PYTHONPYCACHEPREFIX": str(external_cache)}), text=True, capture_output=True, check=False)
+        self.assertFalse(any(disposable_fixture.rglob("__pycache__")))
+        collected = subprocess.run([*TEST_COMMAND, "--collect-only"], cwd=disposable_fixture, env=_minimal_test_environment({"PYTHONPYCACHEPREFIX": str(external_cache)}), text=True, capture_output=True, check=False)
         self.assertEqual(collected.returncode, 0, collected.stderr)
-        seeded = subprocess.run(TEST_COMMAND, cwd=FIXTURE, env=_minimal_test_environment({"PYTHONPYCACHEPREFIX": str(external_cache)}), text=True, capture_output=True, check=False)
+        seeded = subprocess.run(TEST_COMMAND, cwd=disposable_fixture, env=_minimal_test_environment({"PYTHONPYCACHEPREFIX": str(external_cache)}), text=True, capture_output=True, check=False)
         self.assertNotEqual(seeded.returncode, 0)
         self.assertIn("AssertionError", seeded.stdout + seeded.stderr)
         self.assertNotIn("SyntaxError", seeded.stdout + seeded.stderr)
         self.assertNotIn("ImportError", seeded.stdout + seeded.stderr)
-        self.assertFalse((FIXTURE / ".pytest_cache").exists())
+        self.assertFalse((disposable_fixture / ".pytest_cache").exists())
 
     def test_orchestrator_detects_edit_and_creates_exact_commit_without_hooks(self):
         audit = self.root / "audit.jsonl"
