@@ -9,6 +9,8 @@
     "generated_at",
     "source_files_scanned",
     "source_files_read",
+    "source_symlinks_skipped",
+    "sensitive_source_files_skipped",
     "findings",
     "counts",
     "consolidation",
@@ -22,6 +24,8 @@
     "generated_at": { "type": "string", "format": "date-time" },
     "source_files_scanned": { "type": "integer", "minimum": 0 },
     "source_files_read": { "type": "integer", "minimum": 0 },
+    "source_symlinks_skipped": { "type": "integer", "minimum": 0 },
+    "sensitive_source_files_skipped": { "type": "integer", "minimum": 0 },
     "auto_apply_enabled": { "const": false },
     "application_policy": {
       "type": "array",

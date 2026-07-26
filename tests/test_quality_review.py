@@ -197,6 +197,7 @@ def test_quality_review_does_not_follow_external_symlinks(tmp_path):
     result = scan_repository(tmp_path)
 
     assert all(item["file"] != "linked.py" for item in result["findings"])
+    assert result["source_symlinks_skipped"] == 1
 
 
 def test_quality_review_cli_refuses_symlink_output(tmp_path):

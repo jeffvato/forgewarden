@@ -419,6 +419,17 @@ def scan_repository(repository: Path) -> dict[str, Any]:
     duplicate_candidates: dict[str, list[tuple[str, int, str]]] = defaultdict(list)
     source_files_scanned = 0
     source_files_read = 0
+    source_symlinks_skipped = 0
+    sensitive_source_files_skipped = 0
+    for candidate in root.rglob("*"):
+        if candidate.is_symlink() and candidate.suffix.lower() in SOURCE_SUFFIXES:
+            source_symlinks_skipped += 1
+        elif (
+            candidate.is_file()
+            and candidate.suffix.lower() in SOURCE_SUFFIXES
+            and (candidate.name.lower() in SENSITIVE_NAMES or candidate.name.lower().startswith(".env"))
+        ):
+            sensitive_source_files_skipped += 1
     for path, source, read_error in _source_files(root):
         relative = path.relative_to(root).as_posix()
         source_files_scanned += 1
@@ -458,6 +469,8 @@ def scan_repository(repository: Path) -> dict[str, Any]:
         "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         "source_files_scanned": source_files_scanned,
         "source_files_read": source_files_read,
+        "source_symlinks_skipped": source_symlinks_skipped,
+        "sensitive_source_files_skipped": sensitive_source_files_skipped,
         "findings": findings,
         "counts": {tier: 0 for tier in _TIER_ORDER},
         "auto_apply_enabled": False,
