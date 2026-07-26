@@ -309,7 +309,7 @@ class Orchestrator:
                     job.state = "FAILED"
                     self.audit.record(job, "deterministic_check_failed", output=redact(checks.stdout + checks.stderr))
                     return {"job_id": job.job_id, "state": job.state, "reason": "deterministic check failed"}
-                from .quality_review import scan_repository
+                from .quality_review import evaluate_application_gate, scan_repository
 
                 quality_review = scan_repository(worktree)
                 self.audit.record(
@@ -319,6 +319,18 @@ class Orchestrator:
                     counts=quality_review["counts"],
                     duplicate_findings_removed=quality_review["consolidation"]["duplicate_findings_removed"],
                     auto_apply_enabled=quality_review["auto_apply_enabled"],
+                )
+                quality_gate = evaluate_application_gate(
+                    quality_review,
+                    tests_added_or_changed=codex_result["tests_added_or_changed"],
+                )
+                self.audit.record(
+                    job,
+                    "quality_application_gate_evaluated",
+                    decision=quality_gate["decision"],
+                    reason=quality_gate["reason"],
+                    risky_findings=quality_gate["risky_findings"],
+                    careful_findings=quality_gate["careful_findings"],
                 )
                 commit = self._git(worktree, "rev-parse", "HEAD")
                 snapshot = Path(tempfile.mkdtemp(prefix=f"review-{job.job_id}-", dir=self.state_dir))
@@ -353,13 +365,22 @@ class Orchestrator:
                 if checks.returncode or gemini["verdict"] != "APPROVE" or gemini["risk"] != "LOW":
                     job.state = "AWAITING_JEFF" if gemini["verdict"] == "HUMAN_REQUIRED" else "REVISION_REQUIRED"
                     self.audit.record(job, "review_not_approved", verdict=gemini["verdict"], risk=gemini["risk"])
-                    return {"job_id": job.job_id, "state": job.state, "commit": commit, "gemini": gemini, "quality_review": quality_review}
+                    return {"job_id": job.job_id, "state": job.state, "commit": commit, "gemini": gemini, "quality_review": quality_review, "quality_gate": quality_gate}
+                if quality_gate["decision"] != "ALLOW_DRY_RUN":
+                    job.state = "AWAITING_JEFF"
+                    self.audit.record(
+                        job,
+                        "quality_application_gate_blocked",
+                        decision=quality_gate["decision"],
+                        reason=quality_gate["reason"],
+                    )
+                    return {"job_id": job.job_id, "state": job.state, "commit": commit, "gemini": gemini, "quality_review": quality_review, "quality_gate": quality_gate}
                 if gemini["proposed_rules"]:
                     decision = self.rules.propose(gemini["proposed_rules"][0], job)
                     self.audit.record(job, "learned_rule_decision", decision=decision)
                 job.state = "READY_TO_DEPLOY" if not self.dry_run else "SUCCEEDED"
                 self.audit.record(job, "dry_run_succeeded", commit=commit)
-                return {"job_id": job.job_id, "state": job.state, "commit": commit, "base": base, "gemini": gemini, "quality_review": quality_review}
+                return {"job_id": job.job_id, "state": job.state, "commit": commit, "base": base, "gemini": gemini, "quality_review": quality_review, "quality_gate": quality_gate}
             finally:
                 cleanup = run_command(["git", "worktree", "remove", "--force", str(worktree)], job.repository)
                 if cleanup.returncode:

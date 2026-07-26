@@ -39,6 +39,7 @@ class SwarmTests(unittest.TestCase):
         self.assertEqual(result["state"], "SUCCEEDED")
         self.assertEqual(result["quality_review"]["mode"], "READ_ONLY")
         self.assertFalse(result["quality_review"]["auto_apply_enabled"])
+        self.assertEqual(result["quality_gate"]["decision"], "ALLOW_DRY_RUN")
         self.assertRegex(result["commit"], r"^[0-9a-f]{40}$")
         self.assertFalse((self.repo / "parser.py").read_text().endswith("lower()\n"))
         self.assertTrue((self.root / "state/audit.jsonl").exists())
@@ -76,6 +77,22 @@ class SwarmTests(unittest.TestCase):
     def test_gemini_rejects_deliberately_incorrect_patch(self):
         self.gemini.write_text("""import json, os, pathlib\npathlib.Path('.swarm').mkdir(exist_ok=True)\njson.dump({'job_id':'job-1','reviewed_commit':os.environ['SWARM_REVIEWED_COMMIT'],'verdict':'REJECT','risk':'LOW','blocking_findings':[{'severity':'HIGH','file':'parser.py','line':'1','finding':'incorrect behavior','required_change':'restore expected behavior'}],'non_blocking_notes':[],'tests_missing':['regression'],'reasoning_summary':'incorrect fixture','proposed_rules':[]}, open('.swarm/gemini-review.json','w'))\n""", encoding="utf-8")
         self.assertEqual(self.run_job()["state"], "REVISION_REQUIRED")
+
+    def test_risky_quality_finding_overrides_gemini_approval(self):
+        self.codex.write_text("""import json, os, pathlib, subprocess
+p=pathlib.Path('parser.py')
+p.write_text(p.read_text().replace('return value.strip()', 'return value.strip().lower()') + '\\n_count = 0\\ndef mutate():\\n    global _count\\n    _count += 1\\n')
+pathlib.Path('.swarm').mkdir()
+subprocess.run(['git','add','parser.py'])
+subprocess.run(['git','-c','user.name=codex','-c','user.email=codex@example.test','commit','-qm','risky repair'])
+json.dump({'job_id':'job-1','status':'FIXED','root_cause':'fixture','summary':'fixture','changed_files':['parser.py'],'tests_added_or_changed':[],'commands_run':[{'command':'fixture repair','exit_code':0}],'remaining_risks':[],'requires_human_approval':False}, open('.swarm/codex-result.json','w'))
+""", encoding="utf-8")
+
+        result = self.run_job()
+
+        self.assertEqual(result["gemini"]["verdict"], "APPROVE")
+        self.assertEqual(result["quality_gate"]["decision"], "HUMAN_REQUIRED")
+        self.assertEqual(result["state"], "AWAITING_JEFF")
 
     def test_forbidden_file_change_is_blocked(self):
         self.codex.write_text("""import json, pathlib, subprocess\npathlib.Path('.env').write_text('SECRET=redacted-fixture')\npathlib.Path('.swarm').mkdir(exist_ok=True)\nsubprocess.run(['git','add','.env'])\nsubprocess.run(['git','-c','user.name=codex','-c','user.email=codex@example.test','commit','-qm','bad'])\njson.dump({'job_id':'job-1','status':'FIXED','root_cause':'bad','summary':'bad','changed_files':['.env'],'tests_added_or_changed':[],'commands_run':[{'command':'bad','exit_code':0}],'remaining_risks':[],'requires_human_approval':False}, open('.swarm/codex-result.json','w'))\n""", encoding="utf-8")

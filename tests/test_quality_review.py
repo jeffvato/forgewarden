@@ -5,7 +5,7 @@ from pathlib import Path
 
 import jsonschema
 
-from swarm.quality_review import consolidate_report, scan_repository
+from swarm.quality_review import consolidate_report, evaluate_application_gate, scan_repository
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -328,3 +328,19 @@ def test_consolidator_deduplicates_and_orders_without_enabling_edits(tmp_path):
     assert consolidated["auto_apply_enabled"] is False
     assert {item["decision"] for item in consolidated["application_policy"]} == {"SAFE_REVIEW_ONLY"}
     jsonschema.validate(consolidated, json.loads(SCHEMA.read_text(encoding="utf-8")))
+
+
+def test_application_gate_requires_human_for_risky_findings():
+    report = {"counts": {"SAFE": 0, "CAREFUL": 0, "RISKY": 1}}
+
+    gate = evaluate_application_gate(report, tests_added_or_changed=["test.py"])
+
+    assert gate["decision"] == "HUMAN_REQUIRED"
+    assert gate["mutation_allowed"] is False
+
+
+def test_application_gate_requires_tests_for_careful_findings():
+    report = {"counts": {"SAFE": 0, "CAREFUL": 1, "RISKY": 0}}
+
+    assert evaluate_application_gate(report)["decision"] == "HUMAN_REQUIRED"
+    assert evaluate_application_gate(report, tests_added_or_changed=["test.py"])["decision"] == "ALLOW_DRY_RUN"

@@ -410,6 +410,50 @@ def consolidate_report(report: dict[str, Any]) -> dict[str, Any]:
     return consolidated
 
 
+def evaluate_application_gate(
+    report: dict[str, Any],
+    *,
+    tests_added_or_changed: Iterable[str] = (),
+) -> dict[str, Any]:
+    """Return the mechanical disposition for a proposed isolated repair.
+
+    The scanner remains read-only.  This gate decides whether a repair may be
+    accepted after deterministic checks and independent review: RISKY findings
+    always require a human, while CAREFUL findings require Codex to identify a
+    test change.  SAFE findings may proceed through the existing dry-run path.
+    """
+    counts = report.get("counts", {})
+    risky = int(counts.get("RISKY", 0))
+    careful = int(counts.get("CAREFUL", 0))
+    tests = tuple(str(item) for item in tests_added_or_changed if str(item).strip())
+    if risky:
+        return {
+            "decision": "HUMAN_REQUIRED",
+            "reason": "quality review contains RISKY findings",
+            "mutation_allowed": False,
+            "tests_required": False,
+            "risky_findings": risky,
+            "careful_findings": careful,
+        }
+    if careful and not tests:
+        return {
+            "decision": "HUMAN_REQUIRED",
+            "reason": "CAREFUL findings have no Codex-listed test change",
+            "mutation_allowed": False,
+            "tests_required": True,
+            "risky_findings": 0,
+            "careful_findings": careful,
+        }
+    return {
+        "decision": "ALLOW_DRY_RUN",
+        "reason": "only SAFE findings or test-backed CAREFUL findings remain",
+        "mutation_allowed": False,
+        "tests_required": bool(careful),
+        "risky_findings": 0,
+        "careful_findings": careful,
+    }
+
+
 def scan_repository(repository: Path) -> dict[str, Any]:
     """Scan source files without changing the repository or invoking tools."""
     root = repository.expanduser().resolve()

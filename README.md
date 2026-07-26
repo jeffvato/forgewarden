@@ -36,8 +36,10 @@ PYTHONPATH=. python3 -m swarm.cli quality-review \
 
 It currently reports heuristic SAFE, CAREFUL, and RISKY findings, removes
 duplicate findings deterministically, and exposes the proposed review order;
-every finding has `auto_apply: false`. It does not edit, commit, deploy, or
-invoke an external model.
+every finding has `auto_apply: false`. The orchestrator mechanically blocks
+RISKY findings for human review and requires a Codex-listed test change for
+CAREFUL findings; Gemini approval cannot override those gates. It does not
+edit, commit, deploy, or invoke an external model.
 
 ## Boundaries
 

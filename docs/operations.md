@@ -33,6 +33,13 @@ Use an isolated worktree or disposable checkout as its input.
 The packaged launcher exposes the same command and does not require runtime
 activation or kill-switch changes.
 
+During an orchestrated dry-run, the report is also supplied to Gemini as
+read-only evidence. The final application gate is mechanical: any RISKY
+finding produces `AWAITING_JEFF`, while CAREFUL findings require at least one
+Codex-listed test change before the candidate can complete the dry-run. A
+Gemini `APPROVE` verdict cannot bypass either condition; only SAFE findings, or
+test-backed CAREFUL findings, may proceed.
+
 The implementation does not alter Hermes configuration. Before a later phase
 changes an existing Hermes configuration, take a timestamped copy, display the
 proposed diff, and obtain Jeff's approval. No OS package, network, remote host,
