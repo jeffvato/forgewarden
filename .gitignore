@@ -3,3 +3,5 @@ __pycache__/
 .swarm-state/
 .integration-runtime/
 .pytest_cache/
+*.save
+*:Zone.Identifier
