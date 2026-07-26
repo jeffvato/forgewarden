@@ -88,6 +88,15 @@ class Phase2ATests(unittest.TestCase):
             )
             self.assertEqual(sorted(path.name for path in runtime.iterdir()), before)
 
+    def test_state_write_is_atomic_and_syncs_file_and_directory(self):
+        with TemporaryDirectory() as temp, patch.object(phase2a.os, "fsync", wraps=phase2a.os.fsync) as fsync:
+            runtime = Path(temp)
+            phase2a._write_state(runtime, {"state": "QUEUED", "job_id": "phase2a-test"})
+            state_path = runtime / phase2a.STATE_FILE
+            self.assertEqual(json.loads(state_path.read_text(encoding="utf-8"))["state"], "QUEUED")
+            self.assertFalse(any(path.name.endswith(".tmp") for path in runtime.iterdir()))
+            self.assertGreaterEqual(fsync.call_count, 2)
+
     def _abandoned_runtime(self, root: Path) -> Path:
         runtime = root / "runtime"
         runtime.mkdir()

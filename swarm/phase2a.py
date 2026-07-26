@@ -295,9 +295,20 @@ SEEDED_FAILURE_FINGERPRINT = re.compile(r"assert 30\.[0-9]+ <= 30")
 def _write_state(runtime_root: Path, value: dict[str, Any]) -> None:
     runtime_root.mkdir(parents=True, exist_ok=True)
     temporary = runtime_root / f".{STATE_FILE}.{os.getpid()}.tmp"
-    temporary.write_text(json.dumps(value, sort_keys=True), encoding="utf-8")
-    temporary.chmod(0o600)
-    os.replace(temporary, runtime_root / STATE_FILE)
+    try:
+        with temporary.open("w", encoding="utf-8") as handle:
+            handle.write(json.dumps(value, sort_keys=True) + "\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+        temporary.chmod(0o600)
+        os.replace(temporary, runtime_root / STATE_FILE)
+        directory_fd = os.open(runtime_root, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
+        try:
+            os.fsync(directory_fd)
+        finally:
+            os.close(directory_fd)
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 def _read_state(runtime_root: Path) -> dict[str, Any]:
