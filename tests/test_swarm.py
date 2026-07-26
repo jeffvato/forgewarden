@@ -98,6 +98,20 @@ class SwarmTests(unittest.TestCase):
         with self.assertRaises(SwarmError):
             write_mailbox_json(result, {"replacement": True}, "fixture result")
 
+    def test_audit_log_rejects_symlinked_log_and_lock_paths(self):
+        outside = self.root / "outside-audit.jsonl"
+        outside.write_text("outside\n", encoding="utf-8")
+        linked = self.root / "linked-audit.jsonl"
+        linked.symlink_to(outside)
+        with self.assertRaises(SwarmError):
+            AuditLog(linked)
+
+        audit = self.root / "audit.jsonl"
+        lock = self.root / "audit.jsonl.lock"
+        lock.symlink_to(outside)
+        with self.assertRaises(SwarmError):
+            AuditLog(audit)
+
     def test_one_character_commit_mismatch_blocks_approval(self):
         expected = "a" * 40
         mismatched = "a" * 39 + "b"

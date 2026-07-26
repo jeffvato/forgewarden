@@ -73,6 +73,10 @@ returns a schema-validated summary with `review_required: true` and
 and hash formats, and returns a hash of the specific reviewed event. It never
 returns the underlying audit records.
 
+Durable audit logs and their lock files are opened with no-follow semantics and
+must be regular files beneath non-symlinked directories. A symlinked audit or
+lock path fails closed before any record is written.
+
 `review-evidence` combines the quality report, application plan, and audit
 summary by hash. It requires versioned read-only inputs, emits only counts,
 statuses, and hashes, and always returns `HUMAN_REVIEW_REQUIRED` with

@@ -185,20 +185,32 @@ class Job:
 
 class AuditLog:
     def __init__(self, path: Path):
+        path = path.expanduser()
+        if path.is_symlink() or any(parent.is_symlink() for parent in (path.parent, *path.parent.parents)):
+            raise SwarmError(f"refusing symlink audit path: {path}")
         self.path = path
         self.lock_path = path.with_name(path.name + ".lock")
+        if self.lock_path.is_symlink() or any(parent.is_symlink() for parent in (self.lock_path.parent, *self.lock_path.parent.parents)):
+            raise SwarmError(f"refusing symlink audit lock: {self.lock_path}")
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.path.parent.chmod(0o700)
+        if self.path.exists() and not self.path.is_file():
+            raise SwarmError(f"audit path is not a regular file: {self.path}")
+        if self.lock_path.exists() and not self.lock_path.is_file():
+            raise SwarmError(f"audit lock is not a regular file: {self.lock_path}")
         if self.path.exists():
             self.path.chmod(0o600)
-        self.lock_path.touch(mode=0o600, exist_ok=True)
+        lock_fd = os.open(self.lock_path, os.O_RDWR | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0), 0o600)
+        os.close(lock_fd)
         self.lock_path.chmod(0o600)
 
     def record(self, job: Job, event: str, **data: Any) -> None:
         entry = {"timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "job_id": job.job_id, "state": job.state, "event": event, **_audit_data(data)}
-        with self.lock_path.open("a+", encoding="ascii") as lock:
+        lock_fd = os.open(self.lock_path, os.O_RDWR | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0), 0o600)
+        with os.fdopen(lock_fd, "a+", encoding="ascii") as lock:
             fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
-            with self.path.open("a", encoding="utf-8") as handle:
+            audit_fd = os.open(self.path, os.O_WRONLY | os.O_CREAT | os.O_APPEND | getattr(os, "O_NOFOLLOW", 0), 0o600)
+            with os.fdopen(audit_fd, "a", encoding="utf-8") as handle:
                 handle.write(json.dumps(entry, sort_keys=True) + "\n")
                 handle.flush()
                 os.fsync(handle.fileno())
