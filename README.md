@@ -83,6 +83,24 @@ PYTHONPATH=. python3 -m swarm.cli review-evidence \
   --output /tmp/combined-review-evidence.json
 ```
 
+An independent, one-time approval can be bound to that exact evidence file:
+
+```bash
+PYTHONPATH=. python3 -m swarm.cli approval-create \
+  --evidence /tmp/combined-review-evidence.json \
+  --output /tmp/approval/record.json \
+  --job-id safe-review-001 \
+  --reviewer Jeff \
+  --decision APPROVED
+PYTHONPATH=. python3 -m swarm.cli approval-verify \
+  --approval /tmp/approval/record.json \
+  --evidence /tmp/combined-review-evidence.json \
+  --job-id safe-review-001 --consume
+```
+
+Consumption is atomic and replay-protected; this record never enables
+mutation or deployment.
+
 ## Boundaries
 
 - Hermes owns job state and orchestration; it never edits application files.

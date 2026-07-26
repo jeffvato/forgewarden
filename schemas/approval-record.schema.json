@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "IndependentApprovalRecord",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "mode", "approval_id", "job_id", "reviewer", "decision", "evidence_sha256", "issued_at", "expires_at", "one_time", "consumed", "mutation_allowed", "deployment"],
+  "properties": {
+    "schema_version": { "const": "1" },
+    "mode": { "const": "INDEPENDENT_APPROVAL" },
+    "approval_id": { "type": "string", "pattern": "^[0-9a-f]{32}$" },
+    "job_id": { "type": "string", "minLength": 1 },
+    "reviewer": { "type": "string", "minLength": 1, "maxLength": 256 },
+    "decision": { "enum": ["APPROVED", "REJECTED"] },
+    "evidence_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "issued_at": { "type": "integer", "minimum": 0 },
+    "expires_at": { "type": "integer", "minimum": 1 },
+    "one_time": { "const": true },
+    "consumed": { "const": false },
+    "mutation_allowed": { "const": false },
+    "deployment": { "const": "DISABLED" }
+  }
+}

@@ -68,6 +68,13 @@ statuses, and hashes, and always returns `HUMAN_REVIEW_REQUIRED` with
 `schemas/combined-review-evidence.schema.json`; no model is invoked by this
 command.
 
+`approval-create` binds an explicit reviewer decision to the combined evidence
+file hash and writes a mode-`0600` record under a mode-`0700` directory.
+`approval-verify --consume` checks the job ID, evidence hash, expiry, and
+non-authorizing flags, then atomically creates a consumption marker. A second
+consumption attempt is rejected as replay; approval records do not enable
+mutation or deployment.
+
 The application plan is validated by `schemas/quality-application-plan.schema.json`.
 For CAREFUL findings, the orchestrator compares Codex's
 `tests_added_or_changed` list against its verified changed-file list; a test

@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ApprovalVerification",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "mode", "approval_id", "job_id", "evidence_sha256", "decision", "verified", "consumed", "replay_protected", "mutation_allowed", "deployment"],
+  "properties": {
+    "schema_version": { "const": "1" },
+    "mode": { "const": "APPROVAL_VERIFICATION" },
+    "approval_id": { "type": "string", "pattern": "^[0-9a-f]{32}$" },
+    "job_id": { "type": "string", "minLength": 1 },
+    "evidence_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "decision": { "const": "APPROVED" },
+    "verified": { "const": true },
+    "consumed": { "type": "boolean" },
+    "replay_protected": { "const": true },
+    "mutation_allowed": { "const": false },
+    "deployment": { "const": "DISABLED" }
+  }
+}

@@ -14,11 +14,12 @@ from .quality_review import scan_repository, write_report
 from .quality_apply import apply_safe_findings
 from .quality_audit import review_audit
 from .review_evidence import build_review_evidence
+from .approval import create_approval_record, verify_approval
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Local Hermes coding swarm (dry-run only)")
-    parser.add_argument("command", choices=["start", "stop", "status", "kill-switch", "dry-run", "controlled-baseline", "gemini-review-recovery", "quality-review", "quality-apply-safe", "quality-audit", "review-evidence", "phase2a-worker", "phase2a-recover-terminal", "run", "autonomous-dry-run-status", "autonomous-dry-run-enable", "autonomous-dry-run-disable"], nargs="?", default="status")
+    parser.add_argument("command", choices=["start", "stop", "status", "kill-switch", "dry-run", "controlled-baseline", "gemini-review-recovery", "quality-review", "quality-apply-safe", "quality-audit", "review-evidence", "approval-create", "approval-verify", "phase2a-worker", "phase2a-recover-terminal", "run", "autonomous-dry-run-status", "autonomous-dry-run-enable", "autonomous-dry-run-disable"], nargs="?", default="status")
     parser.add_argument("--state-dir", type=Path, default=Path(".swarm-state"))
     parser.add_argument("--runtime-root", type=Path)
     parser.add_argument("--audit-dir", type=Path)
@@ -34,6 +35,12 @@ def main() -> int:
     parser.add_argument("--quality-report", type=Path)
     parser.add_argument("--application-plan", type=Path)
     parser.add_argument("--audit-review", type=Path)
+    parser.add_argument("--evidence", type=Path)
+    parser.add_argument("--approval", type=Path)
+    parser.add_argument("--reviewer")
+    parser.add_argument("--decision", choices=["APPROVED", "REJECTED"])
+    parser.add_argument("--ttl-seconds", type=int, default=3600)
+    parser.add_argument("--consume", action="store_true")
     args = parser.parse_args()
     if args.command == "status":
         print({**safety_status(args.runtime_root or runtime_root()), "commands": discover_commands(), "resources": measure_resources(), "limits": select_limits(measure_resources()).__dict__})
@@ -94,6 +101,25 @@ def main() -> int:
                 args.output.write_text(rendered, encoding="utf-8")
             else:
                 print(rendered, end="")
+            return 0
+        except (OSError, ValueError, json.JSONDecodeError) as exc:
+            print(f"FAILED: {exc}")
+            return 1
+    if args.command == "approval-create":
+        if not args.evidence or not args.output or not args.job_id or not args.reviewer or not args.decision:
+            parser.error("approval-create requires --evidence, --output, --job-id, --reviewer, and --decision")
+        try:
+            result = create_approval_record(args.evidence, args.output, job_id=args.job_id, reviewer=args.reviewer, decision=args.decision, ttl_seconds=args.ttl_seconds)
+            print(json.dumps(result, indent=2, sort_keys=True))
+            return 0
+        except (OSError, ValueError, json.JSONDecodeError) as exc:
+            print(f"FAILED: {exc}")
+            return 1
+    if args.command == "approval-verify":
+        if not args.approval or not args.evidence or not args.job_id:
+            parser.error("approval-verify requires --approval, --evidence, and --job-id")
+        try:
+            print(json.dumps(verify_approval(args.approval, args.evidence, expected_job_id=args.job_id, consume=args.consume), indent=2, sort_keys=True))
             return 0
         except (OSError, ValueError, json.JSONDecodeError) as exc:
             print(f"FAILED: {exc}")
