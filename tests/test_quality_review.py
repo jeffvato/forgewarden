@@ -183,6 +183,20 @@ def test_quality_review_redacts_secret_like_evidence(tmp_path):
     assert "[REDACTED]" in rendered
 
 
+def test_quality_review_does_not_follow_external_symlinks(tmp_path):
+    outside = tmp_path.parent / f"quality-review-outside-{tmp_path.name}.py"
+    outside.write_text("def outside_v2():\n    return True\n", encoding="utf-8")
+    link = tmp_path / "linked.py"
+    try:
+        link.symlink_to(outside)
+    except OSError:
+        return
+
+    result = scan_repository(tmp_path)
+
+    assert all(item["file"] != "linked.py" for item in result["findings"])
+
+
 def test_quality_review_skips_sensitive_and_non_source_files(tmp_path):
     (tmp_path / ".env").write_text("TOKEN=do-not-read\n", encoding="utf-8")
     (tmp_path / "notes.txt").write_text("Certainly, this is prose.\n", encoding="utf-8")
