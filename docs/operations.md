@@ -37,7 +37,9 @@ Use an isolated worktree or disposable checkout as its input.
 The packaged launcher exposes the same command and does not require runtime
 activation or kill-switch changes.
 
-Syntax-aware checks currently cover Python, JavaScript, and TypeScript. Other
+Python checks are syntax-aware. JavaScript and TypeScript receive conservative
+language-aware text detectors for wrappers, naming rot, nested ternaries,
+silent failures, suspected N+1 calls, and blocking work in async code. Other
 supported source extensions receive only language-neutral checks until a
 detector is added and covered by fixtures.
 The structured report includes this coverage declaration for downstream

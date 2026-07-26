@@ -48,9 +48,9 @@ duplicate findings deterministically, and exposes the proposed review order;
 every finding has `auto_apply: false`. The orchestrator mechanically blocks
 RISKY findings for human review and requires a Codex-listed test change for
 CAREFUL findings; Gemini approval cannot override those gates. It does not
-edit, commit, deploy, or invoke an external model. Python, JavaScript, and
-TypeScript syntax-specific detectors are included; unsupported languages still
-receive text-level checks only. The report declares this detector coverage so
+edit, commit, deploy, or invoke an external model. Python syntax-aware and
+conservative JavaScript/TypeScript detectors are included; unsupported
+languages still receive text-level checks only. The report declares this detector coverage so
 “no finding” is not confused with “not syntax-covered.”
 
 The only currently enabled SAFE transformer is an explicit, one-line Python

@@ -63,7 +63,7 @@ def nested(value):
     assert result["source_files_read"] == 1
     coverage = {item["language"]: item for item in result["detector_coverage"]}
     assert coverage["python"]["mode"] == "SYNTAX_AWARE"
-    assert coverage["javascript_typescript"]["mode"] == "SYNTAX_AWARE"
+    assert coverage["javascript_typescript"]["mode"] == "TEXT_ONLY"
     assert coverage["supported_source_text"]["mode"] == "TEXT_ONLY"
     assert {item["category"] for item in result["findings"]} >= {
         "pass_through_wrapper",
@@ -110,6 +110,20 @@ export async function request() {
         return await fetch("/items");
     } catch (error) {}
 }
+
+export function load_v2(items, db) {
+    for (const item of items) {
+        return db.query(item.id);
+    }
+}
+
+export async function sync_v1(fs) {
+    return fs.readFileSync("items.json");
+}
+
+export function passthrough(value) {
+    return normalize(value);
+}
 """,
         encoding="utf-8",
     )
@@ -118,6 +132,10 @@ export async function request() {
 
     assert _finding(result, "nested_ternary")["tier"] == "CAREFUL"
     assert _finding(result, "silent_failure")["tier"] == "RISKY"
+    assert _finding(result, "naming_rot")["tier"] == "CAREFUL"
+    assert _finding(result, "pass_through_wrapper")["tier"] == "SAFE"
+    assert _finding(result, "n_plus_one_query")["tier"] == "RISKY"
+    assert _finding(result, "concurrency_risk")["tier"] == "RISKY"
 
 
 def test_quality_review_reports_duplicate_logic_as_careful(tmp_path):

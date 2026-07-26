@@ -49,6 +49,15 @@ TERMINAL_STATE_RE = re.compile(r"\b(?:SUCCEEDED|FAILED|COMPLETED|CANCELLED|ABAND
 NAMING_ROT_RE = re.compile(r"(?:_v\d+|_new|_old|_final|_copy|_tmp)$", re.IGNORECASE)
 JS_EMPTY_CATCH_RE = re.compile(r"\bcatch\s*(?:\([^)]*\))?\s*\{\s*\}")
 JS_TERNARY_RE = re.compile(r"(?<![?.])\?(?![?.])")
+JS_FUNCTION_NAME_RE = re.compile(r"\b(?:async\s+)?function\s+([A-Za-z_$][\w$]*)")
+JS_ARROW_NAME_RE = re.compile(r"\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:async\s+)?(?:\([^)]*\)|[A-Za-z_$][\w$]*)\s*=>")
+JS_PASS_THROUGH_RE = re.compile(
+    r"\b(?:export\s+)?(?:async\s+)?function\s+(?P<name>[A-Za-z_$][\w$]*)\s*"
+    r"\([^)]*\)\s*\{\s*return\s+(?P<callee>[A-Za-z_$][\w$]*)\([^{};]*\);?\s*\}",
+    re.DOTALL,
+)
+JS_QUERY_LOOP_RE = re.compile(r"\b(?:for|while)\s*\([^)]*\)\s*\{(?P<body>[^{}]{0,4000})\}", re.DOTALL)
+JS_BLOCKING_RE = re.compile(r"\b(?:readFileSync|writeFileSync|execSync|spawnSync|sleep)\s*\(")
 
 _TIER_ORDER = {"SAFE": 0, "CAREFUL": 1, "RISKY": 2}
 DETECTOR_COVERAGE = [
@@ -65,8 +74,11 @@ DETECTOR_COVERAGE = [
     {
         "language": "javascript_typescript",
         "extensions": [".js", ".jsx", ".ts", ".tsx"],
-        "mode": "SYNTAX_AWARE",
-        "detectors": ["nested_ternary", "silent_failure"],
+        "mode": "TEXT_ONLY",
+        "detectors": [
+            "concurrency_risk", "n_plus_one_query", "naming_rot", "nested_ternary",
+            "pass_through_wrapper", "silent_failure",
+        ],
     },
     {
         "language": "supported_source_text",
@@ -371,6 +383,51 @@ def _scan_text(relative: str, source: str, suffix: str) -> list[dict[str, Any]]:
             suggested_action="Trace all lifecycle transitions and recovery paths before changing state handling.",
         ))
     if suffix in {".js", ".jsx", ".ts", ".tsx"}:
+        seen_names: set[tuple[str, int]] = set()
+        for matcher in (JS_FUNCTION_NAME_RE, JS_ARROW_NAME_RE):
+            for match in matcher.finditer(source):
+                name = match.group(1)
+                line_number = source.count("\n", 0, match.start()) + 1
+                if not NAMING_ROT_RE.search(name) or (name, line_number) in seen_names:
+                    continue
+                seen_names.add((name, line_number))
+                findings.append(_finding(
+                    category="naming_rot", tier="CAREFUL", confidence="LOW", file=relative,
+                    line=line_number, summary=f"function name {name} suggests an accumulated version or temporary suffix",
+                    evidence=_line(source, line_number),
+                    rationale="Versioned or temporary names can preserve historical ambiguity, but may be intentional API compatibility.",
+                    suggested_action="Trace callers and compatibility requirements before choosing a stable name.",
+                ))
+        for match in JS_PASS_THROUGH_RE.finditer(source):
+            line_number = source.count("\n", 0, match.start()) + 1
+            findings.append(_finding(
+                category="pass_through_wrapper", tier="SAFE", confidence="MEDIUM", file=relative,
+                line=line_number, symbol=match.group("name"),
+                summary=f"function {match.group('name')} only forwards to {match.group('callee')}",
+                evidence=_line(source, line_number),
+                rationale="A wrapper with no local behavior may be redundant, but callers must be checked first.",
+                suggested_action="Confirm the wrapper has no compatibility or observability contract before removing it.",
+            ))
+        for match in JS_QUERY_LOOP_RE.finditer(source):
+            if QUERY_CALL_RE.search(match.group("body")):
+                line_number = source.count("\n", 0, match.start()) + 1
+                findings.append(_finding(
+                    category="n_plus_one_query", tier="RISKY", confidence="LOW", file=relative,
+                    line=line_number, summary="query-like call occurs inside a JavaScript or TypeScript loop",
+                    evidence=_line(source, line_number),
+                    rationale="Per-item I/O often scales linearly with input size and may be an N+1 pattern.",
+                    suggested_action="Measure query count and consider batching only with behavioral and performance tests.",
+                ))
+        if re.search(r"\basync\s+function\b|=>", source) and JS_BLOCKING_RE.search(source):
+            match = re.search(r"\b(?:async\s+function|const|let|var)\b", source)
+            line_number = source.count("\n", 0, match.start()) + 1 if match else 1
+            findings.append(_finding(
+                category="concurrency_risk", tier="RISKY", confidence="LOW", file=relative,
+                line=line_number, summary="async JavaScript or TypeScript code contains a synchronous blocking call",
+                evidence=_line(source, line_number),
+                rationale="Blocking work inside async code can stall unrelated tasks.",
+                suggested_action="Review the event-loop boundary and move blocking work to an explicit worker.",
+            ))
         for match in JS_EMPTY_CATCH_RE.finditer(source):
             line_number = source.count("\n", 0, match.start()) + 1
             findings.append(_finding(
