@@ -16,11 +16,19 @@ import re
 import subprocess
 import time
 import uuid
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from .core import SwarmError, redact
+from .core import (
+    SwarmError,
+    _reject_symlink_path,
+    ensure_private_directory,
+    read_restricted_bytes,
+    redact,
+    write_restricted_text,
+)
 from .paths import audit_root, project_root
 
 PROJECT_ROOT = project_root()
@@ -108,17 +116,23 @@ def build_mcp_context() -> str:
     ]
     for relative in ("docs/mcpserver-task-fixture-postmortem.md", "docs/hermes-mcp-generation-reconnect.md", "tests/test_hermes_mcp_lifecycle.py"):
         path = PROJECT_ROOT / relative
+        _reject_symlink_path(path, f"Fable context file {relative}")
         if path.is_file():
-            parts.append(f"\n--- sanitized {relative} ---\n{path.read_text(encoding='utf-8', errors='replace')[:12000]}")
+            content = read_restricted_bytes(path, f"Fable context file {relative}").decode("utf-8", errors="replace")
+            parts.append(f"\n--- sanitized {relative} ---\n{content[:12000]}")
     return _sanitize_context("\n".join(parts))
 
 
 def _load_ledger() -> dict[str, Any]:
+    try:
+        _reject_symlink_path(LEDGER, "Fable budget ledger")
+    except SwarmError as exc:
+        raise FableAdapterError(str(exc)) from exc
     if not LEDGER.exists():
         return {"version": 1, "hard_budget_usd": HARD_BUDGET_USD, "spent_usd": 0.0, "invocations": []}
     try:
-        value = json.loads(LEDGER.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
+        value = json.loads(read_restricted_bytes(LEDGER, "Fable budget ledger"))
+    except (SwarmError, UnicodeError, json.JSONDecodeError) as exc:
         raise FableAdapterError("Fable budget ledger is invalid") from exc
     if not isinstance(value, dict) or value.get("hard_budget_usd") != HARD_BUDGET_USD or not isinstance(value.get("spent_usd"), (int, float)) or not isinstance(value.get("reserved_usd", 0.0), (int, float)) or not isinstance(value.get("invocations"), list):
         raise FableAdapterError("Fable budget ledger has an invalid contract")
@@ -130,20 +144,34 @@ def _load_ledger() -> dict[str, Any]:
 
 
 def _write_ledger(value: dict[str, Any]) -> None:
-    LEDGER.parent.mkdir(parents=True, exist_ok=True)
-    LEDGER.parent.chmod(0o700)
-    temporary = LEDGER.with_suffix(".tmp")
-    temporary.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    temporary.chmod(0o600)
-    os.replace(temporary, LEDGER)
-    LEDGER.chmod(0o600)
+    ensure_private_directory(LEDGER.parent, "Fable budget directory")
+    write_restricted_text(LEDGER, json.dumps(value, indent=2, sort_keys=True) + "\n", "Fable budget ledger")
+
+
+@contextmanager
+def _ledger_lock():
+    ensure_private_directory(LEDGER.parent, "Fable budget directory")
+    lock_path = LEDGER.with_suffix(".lock")
+    try:
+        _reject_symlink_path(lock_path, "Fable budget lock")
+    except SwarmError as exc:
+        raise FableAdapterError(str(exc)) from exc
+    flags = os.O_RDWR | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        descriptor = os.open(lock_path, flags, 0o600)
+    except OSError as exc:
+        raise FableAdapterError("unable to open Fable budget lock safely") from exc
+    try:
+        with os.fdopen(descriptor, "a+", encoding="ascii") as lock:
+            fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+            yield
+            fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
+    except OSError as exc:
+        raise FableAdapterError("Fable budget lock failed") from exc
 
 
 def _reserve(invocation: FableInvocation) -> None:
-    LEDGER.parent.mkdir(parents=True, exist_ok=True)
-    lock_path = LEDGER.with_suffix(".lock")
-    with lock_path.open("a+", encoding="ascii") as lock:
-        fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+    with _ledger_lock():
         ledger = _load_ledger()
         if not math.isfinite(invocation.target_usd) or invocation.target_usd <= 0 or invocation.target_usd > HARD_BUDGET_USD:
             raise FableAdapterError("Fable invocation cap is invalid")
@@ -157,9 +185,7 @@ def _reserve(invocation: FableInvocation) -> None:
 def _settle(invocation: FableInvocation, actual_cost: float, state: str) -> None:
     if not math.isfinite(actual_cost) or actual_cost < 0 or actual_cost > invocation.target_usd + 1e-9:
         raise FableAdapterError("Fable reported cost exceeds the invocation cap")
-    lock_path = LEDGER.with_suffix(".lock")
-    with lock_path.open("a+", encoding="ascii") as lock:
-        fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+    with _ledger_lock():
         ledger = _load_ledger()
         ledger["reserved_usd"] = max(0.0, float(ledger.get("reserved_usd", 0.0)) - invocation.target_usd)
         ledger["spent_usd"] = float(ledger["spent_usd"]) + actual_cost
@@ -168,8 +194,7 @@ def _settle(invocation: FableInvocation, actual_cost: float, state: str) -> None
 
 
 def _failure_evidence(invocation: FableInvocation, state: str, exit_code: int | None = None, error: str = "") -> None:
-    EVIDENCE_DIR.mkdir(parents=True, exist_ok=True)
-    EVIDENCE_DIR.chmod(0o700)
+    ensure_private_directory(EVIDENCE_DIR, "Fable evidence directory")
     path = EVIDENCE_DIR / f"{invocation.job_id}.json"
     value = {
         "job_id": invocation.job_id,
@@ -179,8 +204,7 @@ def _failure_evidence(invocation: FableInvocation, state: str, exit_code: int | 
         "error": redact(error)[:1000],
         "environment_names": sorted(_minimal_env()),
     }
-    path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    path.chmod(0o600)
+    write_restricted_text(path, json.dumps(value, indent=2, sort_keys=True) + "\n", "Fable failure evidence")
 
 
 def _extract_result(value: Any) -> dict[str, Any]:
@@ -261,11 +285,9 @@ def run_fable(invocation: FableInvocation | None = None, *, context: str | None 
             "stderr": stderr,
             "result": payload,
         }
-        EVIDENCE_DIR.mkdir(parents=True, exist_ok=True)
-        EVIDENCE_DIR.chmod(0o700)
+        ensure_private_directory(EVIDENCE_DIR, "Fable evidence directory")
         evidence_path = EVIDENCE_DIR / f"{invocation.job_id}.json"
-        evidence_path.write_text(json.dumps(evidence, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-        evidence_path.chmod(0o600)
+        write_restricted_text(evidence_path, json.dumps(evidence, indent=2, sort_keys=True) + "\n", "Fable evidence")
         return payload
     except subprocess.TimeoutExpired as exc:
         _settle(invocation, 0.0, "TIMEOUT")

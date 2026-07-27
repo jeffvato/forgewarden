@@ -112,6 +112,9 @@ descriptor-based, no-follow path.
 Retained Gemini recovery also requires no-follow reads for its audit, source,
 and safety markers, and creates its disposable state directory with restricted
 permissions.
+The optional Fable/Claude adapter uses the same protected reads and atomic
+restricted writes for its budget ledger, lock, context files, and evidence;
+this hardening does not invoke the provider.
 
 The application plan is validated by `schemas/quality-application-plan.schema.json`.
 For CAREFUL findings, the orchestrator compares Codex's

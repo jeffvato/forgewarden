@@ -6,6 +6,7 @@ from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
 from swarm import fable_adapter as f
+from swarm.core import SwarmError
 
 
 class FableAdapterTests(unittest.TestCase):
@@ -48,6 +49,30 @@ class FableAdapterTests(unittest.TestCase):
                 f._write_ledger({"version": 1, "hard_budget_usd": 100.0, "spent_usd": 0.0, "invocations": []})
                 with self.assertRaises(f.FableAdapterError):
                     f._reserve(f.FableInvocation("fable-" + "b" * 24, target_usd=float("nan")))
+
+    def test_budget_ledger_symlink_is_rejected(self):
+        with TemporaryDirectory() as temp:
+            root = Path(temp)
+            outside = root / "outside.json"
+            outside.write_text(json.dumps({"hard_budget_usd": 100.0}), encoding="utf-8")
+            ledger = root / "budget.json"
+            ledger.symlink_to(outside)
+            with patch.object(f, "LEDGER", ledger):
+                with self.assertRaises(f.FableAdapterError):
+                    f._load_ledger()
+
+    def test_evidence_writer_rejects_symlinked_file(self):
+        with TemporaryDirectory() as temp:
+            root = Path(temp)
+            evidence = root / "evidence"
+            evidence.mkdir()
+            outside = root / "outside.json"
+            outside.write_text("preserve\n", encoding="utf-8")
+            path = evidence / ("fable-" + "a" * 24 + ".json")
+            path.symlink_to(outside)
+            with patch.object(f, "EVIDENCE_DIR", evidence):
+                with self.assertRaises(SwarmError):
+                    f._failure_evidence(f.FableInvocation("fable-" + "a" * 24), "FAILED")
 
     def test_extract_and_validate_structured_result(self):
         job = "fable-" + "c" * 24
