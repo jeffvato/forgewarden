@@ -5,6 +5,7 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from swarm.adapters import CodexAdapter, ResourceLimits, WriterInvocationSpec, _codex_environment
 from swarm.core import SwarmError, validate_contract
@@ -123,3 +124,32 @@ class CodexJobIdContractTests(unittest.TestCase):
                 self.assertIsNotNone(adapter.last_cache_directory)
                 self.assertFalse(adapter.last_cache_directory.exists())
                 shutil.rmtree(root, ignore_errors=True)
+
+    def test_agent_replaced_final_response_with_symlink_is_rejected(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            target = root / "value.py"
+            target.write_text("def value():\n    return 1\n", encoding="utf-8")
+            outside = root / "outside.json"
+            payload = self._payload("codex-writer-symlink1234")
+            outside.write_text(json.dumps(payload), encoding="utf-8")
+
+            def replace_output(command, cwd, prompt, limits, env, **kwargs):
+                output = Path(command[command.index("--output-last-message") + 1])
+                output.unlink()
+                output.symlink_to(outside)
+                return subprocess.CompletedProcess(command, 0, "", "")
+
+            adapter = CodexAdapter(
+                Path(__file__).resolve().parents[1] / "schemas/codex-result.schema.json",
+                ResourceLimits(timeout_seconds=5),
+                "/bin/true",
+            )
+            spec = WriterInvocationSpec(
+                "codex-writer-symlink1234", root, root, "value.py", "value.py",
+                "value returns 2", "assert value() == 2", ("value.py",),
+            )
+            with patch("swarm.adapters.runtime_root", return_value=root / "runtime"), patch("swarm.adapters.limited_run", side_effect=replace_output):
+                with self.assertRaises(SwarmError):
+                    adapter.run(spec)
+            self.assertEqual(outside.read_text(encoding="utf-8"), json.dumps(payload))

@@ -15,7 +15,17 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
-from .core import SwarmError, ensure_mailbox_directory, ensure_private_directory, redact, run_command, validate_contract, write_mailbox_json, write_restricted_text
+from .core import (
+    SwarmError,
+    ensure_mailbox_directory,
+    ensure_private_directory,
+    read_restricted_bytes,
+    redact,
+    run_command,
+    validate_contract,
+    write_mailbox_json,
+    write_restricted_text,
+)
 from .paths import runtime_root
 
 
@@ -344,7 +354,7 @@ def discover_commands() -> dict[str, Any]:
 
 def _codex_cli_schema(schema: Path) -> dict[str, Any]:
     """Remove JSON-Schema keywords unsupported by Codex response_format."""
-    value = json.loads(schema.read_text(encoding="utf-8"))
+    value = json.loads(read_restricted_bytes(schema, "Codex schema"))
     if isinstance(value, dict):
         return {key: _codex_cli_schema_value(item) for key, item in value.items() if key != "uniqueItems"}
     raise SwarmError("Codex schema must be a JSON object")
@@ -449,7 +459,7 @@ class CodexAdapter:
             prompt_hash=hashlib.sha256(canonical_prompt.encode("utf-8")).hexdigest(),
             sanitized_prompt=redact(canonical_prompt)[:12000],
             target_canonical_path=str(target),
-            target_pre_hash=hashlib.sha256(target.read_bytes()).hexdigest(),
+            target_pre_hash=hashlib.sha256(read_restricted_bytes(target, "Codex target")).hexdigest(),
         )
         self.last_evidence = evidence
         try:
@@ -472,20 +482,27 @@ class CodexAdapter:
             }
             if result.returncode:
                 evidence.schema_validation = "NOT_REACHED_PROCESS_EXIT"
-                evidence.target_post_hash = hashlib.sha256(target.read_bytes()).hexdigest()
+                evidence.target_post_hash = hashlib.sha256(read_restricted_bytes(target, "Codex target")).hexdigest()
                 self.persist_evidence()
                 raise SwarmError(f"Codex failed ({result.returncode}): {redact(result.stderr + result.stdout)}")
-            if not external_output.exists() or not external_output.read_text(encoding="utf-8").strip():
+            try:
+                external_bytes = read_restricted_bytes(external_output, "Codex final response")
+            except SwarmError as exc:
                 evidence.schema_validation = "MISSING_FINAL_RESPONSE"
-                evidence.target_post_hash = hashlib.sha256(target.read_bytes()).hexdigest()
+                evidence.target_post_hash = hashlib.sha256(read_restricted_bytes(target, "Codex target")).hexdigest()
                 self.persist_evidence()
-                raise SwarmError("Codex did not write its schema-constrained result; output: " + redact(result.stdout + result.stderr))
-            payload = json.loads(external_output.read_text(encoding="utf-8"))
+                raise SwarmError("Codex did not write a safe schema-constrained result; output: " + redact(result.stdout + result.stderr)) from exc
+            if not external_bytes.strip():
+                evidence.schema_validation = "MISSING_FINAL_RESPONSE"
+                evidence.target_post_hash = hashlib.sha256(read_restricted_bytes(target, "Codex target")).hexdigest()
+                self.persist_evidence()
+                raise SwarmError("Codex wrote an empty schema-constrained result; output: " + redact(result.stdout + result.stderr))
+            payload = json.loads(external_bytes)
             evidence.sanitized_final_response = redact(json.dumps(payload, sort_keys=True))[:12000]
             evidence.claimed_changed_files = payload.get("changed_files") if isinstance(payload, dict) and isinstance(payload.get("changed_files"), list) else None
             write_mailbox_json(output, payload, "Codex result")
             self.last_invocation["final_response"] = redact(json.dumps(payload, sort_keys=True))
-            evidence.target_post_hash = hashlib.sha256(target.read_bytes()).hexdigest()
+            evidence.target_post_hash = hashlib.sha256(read_restricted_bytes(target, "Codex target")).hexdigest()
             try:
                 validate_contract(payload, "codex", expected_job_id=canonical_job_id)
             except SwarmError as exc:
@@ -509,7 +526,7 @@ class GeminiAdapter:
         self.last_schema: dict[str, Any] | None = None
 
     def _job_schema(self, job_id: str, commit: str) -> dict[str, Any]:
-        value = json.loads(self.schema.read_text(encoding="utf-8"))
+        value = json.loads(read_restricted_bytes(self.schema, "Gemini schema"))
         if not isinstance(value, dict):
             raise SwarmError("Gemini schema must be a JSON object")
         value["additionalProperties"] = False
