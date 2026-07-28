@@ -701,6 +701,15 @@ def _execute_worker_job(job: Job, profile: Profile, issue_summary: str, runtime_
     evidence = validate_activation(profile, runtime_root, require_kill_switch=False)
     audit.record(job, "preflight_passed", **evidence)
     test_hashes = _tracked_test_hashes(profile.repository)
+    test_cwd = profile.repository / "csv-processor"
+    try:
+        interpreter_evidence = validate_deterministic_interpreter(
+            profile.interpreter, profile.limits, cwd=test_cwd, use_cgroup=True
+        )
+        audit.record(job, "deterministic_interpreter_validated", **interpreter_evidence)
+    except DeterministicInterpreterError as exc:
+        audit.record(job, "deterministic_interpreter_rejected", **exc.evidence)
+        raise
     worktree = _runtime_file(runtime_root, f"phase2a-{job.job_id}")
     snapshot: Path | None = None
     try:
@@ -709,12 +718,6 @@ def _execute_worker_job(job: Job, profile: Profile, issue_summary: str, runtime_
             raise SwarmError(redact(result.stderr))
         clean_tree = run_command(["git", "rev-parse", "HEAD^{tree}"], worktree).stdout.strip()
         test_cwd = worktree / "csv-processor"
-        try:
-            interpreter_evidence = validate_deterministic_interpreter(profile.interpreter, profile.limits, cwd=test_cwd, use_cgroup=True)
-            audit.record(job, "deterministic_interpreter_validated", **interpreter_evidence)
-        except DeterministicInterpreterError as exc:
-            audit.record(job, "deterministic_interpreter_rejected", **exc.evidence)
-            raise
         _, _, test_command = _deadline_test_command(worktree, profile.interpreter)
         baseline_test = _run_test(audit, job, test_command, test_cwd, profile.limits, "deterministic_baseline_test")
         if baseline_test.returncode:
