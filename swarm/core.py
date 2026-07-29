@@ -158,6 +158,26 @@ def write_restricted_text(path: Path, content: str, label: str) -> None:
     path.chmod(0o600)
 
 
+def append_restricted_text(path: Path, content: str, label: str) -> None:
+    """Append to a local artifact without following a symlink at any level."""
+    _reject_symlink_path(path, label)
+    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    path.parent.chmod(0o700)
+    _reject_symlink_path(path, label)
+    flags = os.O_WRONLY | os.O_CREAT | os.O_APPEND | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        descriptor = os.open(path, flags, 0o600)
+    except OSError as exc:
+        raise SwarmError(f"unable to append {label} safely: {path}") from exc
+    try:
+        with os.fdopen(descriptor, "a", encoding="utf-8") as handle:
+            handle.write(content)
+            handle.flush()
+            os.fsync(handle.fileno())
+    finally:
+        path.chmod(0o600)
+
+
 def touch_restricted(path: Path, label: str) -> None:
     """Create a mode-0600 marker without following a symlink."""
     _reject_symlink_path(path, label)
@@ -356,11 +376,12 @@ class DeploymentController:
 
 class RuleStore:
     def __init__(self, root: Path):
-        self.root = root
+        self.root = ensure_private_directory(root, "agent rule directory")
         self.active = root / "active.yaml"
         self.history = root / "history.jsonl"
         self.kill_switch = root / "DISABLED"
-        root.mkdir(parents=True, exist_ok=True)
+        for path, label in ((self.active, "active agent rules"), (self.history, "agent rule history"), (self.kill_switch, "agent rule kill switch")):
+            _reject_symlink_path(path, label)
 
     def propose(self, rule: dict[str, Any], job: Job) -> str:
         if self.kill_switch.exists():
@@ -372,8 +393,7 @@ class RuleStore:
         else:
             decision = "PROPOSED_DRY_RUN"
         record = {"rule": rule, "source_job_id": job.job_id, "activation_decision": decision, "timestamp": time.time()}
-        with self.history.open("a", encoding="utf-8") as handle:
-            handle.write(json.dumps(record, sort_keys=True) + "\n")
+        append_restricted_text(self.history, json.dumps(record, sort_keys=True) + "\n", "agent rule history")
         return decision
 
 

@@ -8,7 +8,7 @@ from pathlib import Path
 
 from swarm.core import (
     AuditLog, DeploymentController, Job, Orchestrator, RuleStore, ServiceLock,
-    SwarmError, ensure_mailbox_directory, ensure_private_directory, read_mailbox_json, read_restricted_bytes, redact,
+    SwarmError, append_restricted_text, ensure_mailbox_directory, ensure_private_directory, read_mailbox_json, read_restricted_bytes, redact,
     require_exact_commit, validate_contract, validate_snapshot_symlinks, write_mailbox_json,
 )
 
@@ -105,6 +105,21 @@ class SwarmTests(unittest.TestCase):
         with self.assertRaises(SwarmError):
             read_restricted_bytes(linked, "fixture input")
 
+    def test_restricted_append_rejects_symlink_and_preserves_existing_content(self):
+        target = self.root / "outside.log"
+        target.write_text("outside\n", encoding="utf-8")
+        linked = self.root / "linked.log"
+        linked.symlink_to(target)
+        with self.assertRaises(SwarmError):
+            append_restricted_text(linked, "redirected\n", "fixture log")
+        self.assertEqual(target.read_text(encoding="utf-8"), "outside\n")
+
+        local = self.root / "local.log"
+        append_restricted_text(local, "first\n", "fixture log")
+        append_restricted_text(local, "second\n", "fixture log")
+        self.assertEqual(local.read_text(encoding="utf-8"), "first\nsecond\n")
+        self.assertEqual(local.stat().st_mode & 0o777, 0o600)
+
     def test_structured_mailbox_is_created_exclusively_and_restricted(self):
         mailbox = self.root / "mailbox"
         ensure_mailbox_directory(mailbox)
@@ -191,6 +206,16 @@ json.dump({'job_id':'job-1','status':'FIXED','root_cause':'fixture','summary':'f
         self.assertEqual(store.propose({**base, 'category':'TESTING'}, job), 'PROPOSED_DRY_RUN')
         self.assertFalse(store.active.exists())
         self.assertEqual(store.propose({**base, 'id':'rule-security', 'category':'SECURITY'}, job), 'HUMAN_REQUIRED')
+
+    def test_rule_history_rejects_symlink_redirection(self):
+        rules = self.root / "rules"
+        rules.mkdir()
+        outside = self.root / "outside-history.jsonl"
+        outside.write_text("outside\n", encoding="utf-8")
+        (rules / "history.jsonl").symlink_to(outside)
+        with self.assertRaises(SwarmError):
+            RuleStore(rules)
+        self.assertEqual(outside.read_text(encoding="utf-8"), "outside\n")
 
     def test_redaction(self):
         self.assertNotIn("supersecret", redact("token=supersecret"))
