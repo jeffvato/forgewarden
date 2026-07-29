@@ -61,6 +61,18 @@ def _reject_symlink_path(path: Path, label: str) -> None:
         raise SwarmError(f"refusing symlink {label}: {path}")
 
 
+def restricted_file_exists(path: Path, label: str) -> bool:
+    """Check if a restricted file exists without following symlinks."""
+    _reject_symlink_path(path, label)
+    return path.is_file()
+
+
+def restricted_path_exists(path: Path, label: str) -> bool:
+    """Check if a restricted path exists without following symlinks."""
+    _reject_symlink_path(path, label)
+    return path.exists()
+
+
 def ensure_mailbox_directory(path: Path) -> Path:
     """Create or validate a model mailbox without following symlinks."""
     _reject_symlink_path(path, "mailbox directory")
@@ -385,7 +397,7 @@ class RuleStore:
             _reject_symlink_path(path, label)
 
     def propose(self, rule: dict[str, Any], job: Job) -> str:
-        if self.kill_switch.exists():
+        if restricted_file_exists(self.kill_switch, "agent rule kill switch"):
             return "DISABLED_BY_KILL_SWITCH"
         if len(rule.get("trigger", "")) > 240 or len(rule.get("rule", "")) > 240:
             return "REJECTED_INVALID"
@@ -459,7 +471,7 @@ class Orchestrator:
 
     def run(self, job: Job, codex_command: list[str], check_command: list[str], gemini_command: list[str]) -> dict[str, Any]:
         self.state_dir.mkdir(parents=True, exist_ok=True)
-        if (self.state_dir / "KILL_SWITCH").exists():
+        if restricted_file_exists(self.state_dir / "KILL_SWITCH", "global kill switch"):
             job.state = "FAILED"
             self.audit.record(job, "kill_switch_blocked")
             raise SwarmError("global kill switch is enabled; refusing new jobs")

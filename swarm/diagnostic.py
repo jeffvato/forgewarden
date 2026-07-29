@@ -8,7 +8,7 @@ from pathlib import Path
 
 from .adapters import CodexAdapter, WriterInvocationSpec, limited_run, select_limits
 from .baseline import BASELINE_SHA, REPOSITORY, WRITABLE_DEADLINE, _AuthorizedKillSwitch, _deadline_test_command, _run_deadline_preflight
-from .core import AuditLog, Job, SwarmError, redact, run_command
+from .core import AuditLog, Job, SwarmError, redact, restricted_file_exists, run_command
 from .paths import audit_root, runtime_root
 
 
@@ -27,7 +27,7 @@ def run_deadline_codex_diagnostic(
     limits = type(limits)(memory_bytes=2_147_483_648, timeout_seconds=180, max_log_bytes=256_000)
     state_dir = runtime_root / "state"
     state_dir.mkdir(parents=True, exist_ok=True)
-    if not (runtime_root / "KILL_SWITCH").exists():
+    if not restricted_file_exists(runtime_root / "KILL_SWITCH", "diagnostic kill switch"):
         raise SwarmError("diagnostic requires an initially engaged kill switch")
     worktree = Path(tempfile.mkdtemp(prefix=job_id + "-", dir=state_dir))
     worktree.rmdir()

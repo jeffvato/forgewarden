@@ -8,8 +8,9 @@ from pathlib import Path
 
 from swarm.core import (
     AuditLog, DeploymentController, Job, Orchestrator, RuleStore, ServiceLock,
-    SwarmError, append_restricted_text, ensure_mailbox_directory, ensure_private_directory, read_mailbox_json, read_restricted_bytes, redact,
-    require_exact_commit, validate_contract, validate_snapshot_symlinks, write_mailbox_json,
+    SwarmError, append_restricted_text, ensure_mailbox_directory, ensure_private_directory, read_mailbox_json,
+    read_restricted_bytes, redact, require_exact_commit, restricted_file_exists, restricted_path_exists,
+    validate_contract, validate_snapshot_symlinks, write_mailbox_json,
 )
 
 
@@ -289,6 +290,38 @@ json.dump({'job_id':'job-1','status':'FIXED','root_cause':'fixture','summary':'f
         self.assertTrue(all(json.loads(line)["event"] == "concurrent_event" for line in lines))
         self.assertEqual(audit.stat().st_mode & 0o777, 0o600)
         self.assertEqual((audit_dir / "audit.jsonl.lock").stat().st_mode & 0o777, 0o600)
+
+    def test_restricted_exists_helpers(self):
+        target_file = self.root / "test_file.txt"
+        target_file.write_text("hello", encoding="utf-8")
+        target_dir = self.root / "test_dir"
+        target_dir.mkdir()
+
+        # Regular file / directory checks
+        self.assertTrue(restricted_file_exists(target_file, "test file"))
+        self.assertFalse(restricted_file_exists(target_dir, "test dir as file"))
+        self.assertTrue(restricted_path_exists(target_file, "test file path"))
+        self.assertTrue(restricted_path_exists(target_dir, "test dir path"))
+
+        # Non-existent files/directories
+        non_existent = self.root / "non_existent"
+        self.assertFalse(restricted_file_exists(non_existent, "non existent file"))
+        self.assertFalse(restricted_path_exists(non_existent, "non existent path"))
+
+        # Symlinks must be rejected
+        linked_file = self.root / "linked_file.txt"
+        linked_file.symlink_to(target_file)
+        with self.assertRaises(SwarmError):
+            restricted_file_exists(linked_file, "linked file")
+        with self.assertRaises(SwarmError):
+            restricted_path_exists(linked_file, "linked file")
+
+        linked_dir = self.root / "linked_dir"
+        linked_dir.symlink_to(target_dir, target_is_directory=True)
+        with self.assertRaises(SwarmError):
+            restricted_file_exists(linked_dir, "linked dir")
+        with self.assertRaises(SwarmError):
+            restricted_path_exists(linked_dir, "linked dir")
 
 
 if __name__ == "__main__":

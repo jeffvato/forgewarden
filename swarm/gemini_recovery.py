@@ -17,6 +17,7 @@ from .core import (
     ensure_private_directory,
     read_restricted_bytes,
     redact,
+    restricted_file_exists,
     run_command,
     touch_restricted,
 )
@@ -30,8 +31,7 @@ def _tree_hash(repo: Path, revision: str) -> str:
 
 
 def _prior_invalid_payload(audit_path: Path, job_id: str, commit: str) -> str:
-    _reject_symlink_path(audit_path, "Gemini recovery audit")
-    if not audit_path.exists():
+    if not restricted_file_exists(audit_path, "Gemini recovery audit"):
         return "[NOT_FOUND_IN_DURABLE_AUDIT]"
     try:
         raw = read_restricted_bytes(audit_path, "Gemini recovery audit")
@@ -55,12 +55,10 @@ def recover_gemini_review(
     audit_path = audit_dir / "audit.jsonl"
     job = Job(job_id, "n8n-csv-baseline", repository, "retained Gemini review-only recovery", state="GEMINI_REVIEWING")
     kill_switch = runtime_root / "KILL_SWITCH"
-    _reject_symlink_path(kill_switch, "Gemini recovery kill switch")
-    if not kill_switch.exists():
+    if not restricted_file_exists(kill_switch, "Gemini recovery kill switch"):
         raise SwarmError("review-only recovery requires the kill switch to be engaged")
     deployment_marker = runtime_root / "DEPLOYMENT_ENABLED"
-    _reject_symlink_path(deployment_marker, "Gemini recovery deployment marker")
-    if deployment_marker.exists():
+    if restricted_file_exists(deployment_marker, "Gemini recovery deployment marker"):
         raise SwarmError("review-only recovery requires deployment to remain disabled")
     worktree: Path | None = None
     baseline = BASELINE_SHA
