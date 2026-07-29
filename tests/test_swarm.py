@@ -185,6 +185,16 @@ json.dump({'job_id':'job-1','status':'FIXED','root_cause':'fixture','summary':'f
             with self.assertRaises(SwarmError):
                 self.run_job()
 
+    def test_service_lock_rejects_symlinked_directory(self):
+        real = self.root / "real-locks"
+        real.mkdir()
+        linked = self.root / "linked-locks"
+        linked.symlink_to(real, target_is_directory=True)
+        with self.assertRaises(SwarmError):
+            with ServiceLock(linked, "fixture-parser"):
+                pass
+        self.assertFalse(any(real.iterdir()))
+
     def test_three_review_cycle_limit(self):
         orchestrator = Orchestrator(self.root / "cycles", max_cycles=3)
         job = Job("cycles", "fixture-parser", self.repo, "parser defect")

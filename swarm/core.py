@@ -348,11 +348,12 @@ def _audit_data(data: dict[str, Any]) -> dict[str, Any]:
 
 class ServiceLock:
     def __init__(self, directory: Path, service: str):
-        self.path = directory / f"{hashlib.sha256(service.encode()).hexdigest()[:20]}.lock"
+        self.directory = ensure_private_directory(directory, "service lock directory")
+        self.path = self.directory / f"{hashlib.sha256(service.encode()).hexdigest()[:20]}.lock"
+        _reject_symlink_path(self.path, "service lock")
         self.fd: int | None = None
 
     def __enter__(self):
-        self.path.parent.mkdir(parents=True, exist_ok=True)
         try:
             self.fd = os.open(self.path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
             os.write(self.fd, str(os.getpid()).encode())
