@@ -46,7 +46,7 @@ class ConsoleTests(unittest.TestCase):
 
         try:
             conn = http.client.HTTPConnection("127.0.0.1", port)
-            
+
             # 1. Test GET /api/status
             conn.request("GET", "/api/status")
             resp = conn.getresponse()
@@ -83,8 +83,10 @@ class ConsoleTests(unittest.TestCase):
             self.assertTrue(len(resp.read()) > 0)
 
         finally:
+            conn.close()
             server.shutdown()
             thread.join()
+            server.server_close()
 
     def test_console_http_asset_safety_rejects_symlink(self):
         sock = socket.socket()
@@ -96,10 +98,10 @@ class ConsoleTests(unittest.TestCase):
             temp_root = Path(directory)
             real_asset = temp_root / "index.html"
             real_asset.write_text("hello html", encoding="utf-8")
-            
+
             symlink_asset = temp_root / "styles.css"
             symlink_asset.symlink_to(real_asset)
-            
+
             from unittest.mock import patch
             with patch("swarm.console.CONSOLE_ROOT", temp_root):
                 server = ThreadingHTTPServer(("127.0.0.1", port), ConsoleHandler)
@@ -109,7 +111,7 @@ class ConsoleTests(unittest.TestCase):
 
                 try:
                     conn = http.client.HTTPConnection("127.0.0.1", port)
-                    
+
                     # GET index.html (real file) -> OK
                     conn.request("GET", "/")
                     resp = conn.getresponse()
@@ -122,8 +124,9 @@ class ConsoleTests(unittest.TestCase):
                     self.assertEqual(resp.status, HTTPStatus.INTERNAL_SERVER_ERROR)
 
                 finally:
+                    conn.close()
                     server.shutdown()
                     thread.join()
+                    server.server_close()
 
 if __name__ == "__main__": unittest.main()
-
