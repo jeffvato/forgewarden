@@ -2,10 +2,12 @@ import json
 import hashlib
 import os
 import re
+import shutil
 import time
 import subprocess
 import sys
 import threading
+import tempfile
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -73,6 +75,53 @@ class FakeProcessAdapters:
 
 
 class Phase2ATests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls._original_repository = phase2a.REPOSITORY
+        cls._original_profile_path = phase2a.PROFILE_PATH
+        cls._original_schema_path = phase2a.PROFILE_SCHEMA_PATH
+        cls._original_validate_profile = phase2a.validate_profile
+        cls._fixture_root = Path(tempfile.mkdtemp(prefix="phase2a-baseline-"))
+        cls._fixture_repository = cls._fixture_root / "repository"
+        subprocess.run(
+            ["git", "clone", "--no-local", "--quiet", str(cls._original_repository), str(cls._fixture_repository)],
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        profile_text = cls._original_profile_path.read_text(encoding="utf-8").replace(
+            str(cls._original_repository), str(cls._fixture_repository)
+        )
+        schema_text = cls._original_schema_path.read_text(encoding="utf-8").replace(
+            str(cls._original_repository), str(cls._fixture_repository)
+        )
+        cls._fixture_profile_path = cls._fixture_root / "desktop-job-profiles.yaml"
+        cls._fixture_schema_path = cls._fixture_root / "desktop-job-profile.schema.json"
+        cls._fixture_profile_path.write_text(profile_text, encoding="utf-8")
+        cls._fixture_schema_path.write_text(schema_text, encoding="utf-8")
+        phase2a.REPOSITORY = cls._fixture_repository
+        phase2a.PROFILE_PATH = cls._fixture_profile_path
+        phase2a.PROFILE_SCHEMA_PATH = cls._fixture_schema_path
+
+        def validate_profile(path=None, schema_path=None):
+            return cls._original_validate_profile(
+                path or cls._fixture_profile_path,
+                schema_path or cls._fixture_schema_path,
+            )
+
+        phase2a.validate_profile = validate_profile
+
+    @classmethod
+    def tearDownClass(cls):
+        phase2a.REPOSITORY = cls._original_repository
+        phase2a.PROFILE_PATH = cls._original_profile_path
+        phase2a.PROFILE_SCHEMA_PATH = cls._original_schema_path
+        phase2a.validate_profile = cls._original_validate_profile
+        shutil.rmtree(cls._fixture_root, ignore_errors=True)
+        super().tearDownClass()
+
     def test_safety_status_reports_filesystem_state_without_mutation(self):
         with TemporaryDirectory() as temp:
             runtime = Path(temp)

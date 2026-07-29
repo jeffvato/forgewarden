@@ -118,6 +118,8 @@ this hardening does not invoke the provider.
 Codex final responses and Codex/Gemini schemas are also read through
 no-follow descriptors, so an agent-created replacement or symlink cannot
 redirect the trusted parser.
+The standalone combined-review evidence entry point uses the same protected
+report writer as the swarm CLI.
 
 The application plan is validated by `schemas/quality-application-plan.schema.json`.
 For CAREFUL findings, the orchestrator compares Codex's

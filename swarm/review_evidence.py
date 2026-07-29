@@ -119,7 +119,8 @@ def main(argv: list[str] | None = None) -> int:
         result = build_review_evidence(args.quality_report, args.application_plan, args.audit_review, args.claude_review)
         rendered = json.dumps(result, indent=2, sort_keys=True) + "\n"
         if args.output:
-            args.output.write_text(rendered, encoding="utf-8")
+            from .quality_review import write_report
+            write_report(args.output, rendered)
         else:
             sys.stdout.write(rendered)
         return 0

@@ -28,7 +28,7 @@ class DesktopBridgeTests(unittest.TestCase):
         self.audit.write_text("".join(json.dumps(entry) + "\n" for entry in entries), encoding="utf-8")
 
     def test_status_uses_exact_fixed_command_shell_false_minimal_env_and_timeout(self):
-        output = "launcher=hermes-swarm mode=DRY_RUN deployment=DISABLED kill_switch=ENGAGED runtime=/home/jeff/hermes-swarm-runtime\n"
+        output = f"launcher=hermes-swarm mode=DRY_RUN deployment=DISABLED kill_switch=ENGAGED runtime={bridge.RUNTIME_ROOT}\n"
         completed = subprocess.CompletedProcess(["fixed"], 0, output, "")
         with patch.object(bridge, "_run_fixed", wraps=bridge._run_fixed) as fixed, patch("swarm.desktop_bridge.subprocess.run", return_value=completed) as run:
             with patch.object(bridge, "AUDIT_PATH", self.audit):
@@ -145,7 +145,7 @@ class DesktopBridgeTests(unittest.TestCase):
                 bridge.job_status(job_id)
 
     def test_kill_switch_uses_fixed_command_and_verifies_engaged(self):
-        output = "launcher=hermes-swarm mode=DRY_RUN deployment=DISABLED kill_switch=ENGAGED runtime=/home/jeff/hermes-swarm-runtime\n"
+        output = f"launcher=hermes-swarm mode=DRY_RUN deployment=DISABLED kill_switch=ENGAGED runtime={bridge.RUNTIME_ROOT}\n"
         calls = [subprocess.CompletedProcess([], 0, "engaged\n", ""), subprocess.CompletedProcess([], 0, output, "")]
         with patch("swarm.desktop_bridge.subprocess.run", side_effect=calls) as run:
             result = bridge.engage_kill_switch()
@@ -157,7 +157,7 @@ class DesktopBridgeTests(unittest.TestCase):
             self.assertEqual(call.kwargs["timeout"], 10)
 
     def test_kill_switch_post_verification_failure_is_error(self):
-        output = "launcher=hermes-swarm mode=DRY_RUN deployment=DISABLED kill_switch=CLEARED_FOR_DRY_RUN runtime=/home/jeff/hermes-swarm-runtime\n"
+        output = f"launcher=hermes-swarm mode=DRY_RUN deployment=DISABLED kill_switch=CLEARED_FOR_DRY_RUN runtime={bridge.RUNTIME_ROOT}\n"
         calls = [subprocess.CompletedProcess([], 0, "", ""), subprocess.CompletedProcess([], 0, output, "")]
         with patch("swarm.desktop_bridge.subprocess.run", side_effect=calls):
             with self.assertRaises(RuntimeError):
