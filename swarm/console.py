@@ -16,7 +16,12 @@ TASKS = ("inspect", "implement", "test", "review", "risk_audit", "documentation"
 GLOBAL_FORBIDDEN = {"production", "deployment", "service_restart", "credentials", "databases", "remote_hosts"}
 
 def load_profiles(path: Path = PROFILE_PATH) -> list[dict[str, Any]]:
-    payload = json.loads(path.read_text(encoding="utf-8"))
+    from .core import read_restricted_bytes, SwarmError
+    try:
+        data = read_restricted_bytes(path, "LLM profile registry").decode("utf-8")
+    except SwarmError as exc:
+        raise ValueError(f"Failed to read LLM profiles: {exc}") from exc
+    payload = json.loads(data)
     profiles = payload.get("profiles")
     if not isinstance(profiles, list) or not profiles:
         raise ValueError("LLM profile registry must contain profiles")
@@ -58,7 +63,14 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         if route == "/api/models": self._json(HTTPStatus.OK, {"profiles":load_profiles(),"tasks":TASKS}); return
         assets = {"/":("index.html","text/html; charset=utf-8"),"/styles.css":("styles.css","text/css; charset=utf-8"),"/app.js":("app.js","text/javascript; charset=utf-8")}
         if route not in assets: self._json(HTTPStatus.NOT_FOUND, {"error":"not found"}); return
-        filename, content_type = assets[route]; self._send(HTTPStatus.OK, (CONSOLE_ROOT / filename).read_bytes(), content_type)
+        filename, content_type = assets[route]
+        from .core import read_restricted_bytes, SwarmError
+        try:
+            content = read_restricted_bytes(CONSOLE_ROOT / filename, "console asset")
+        except SwarmError as exc:
+            self._json(HTTPStatus.INTERNAL_SERVER_ERROR, {"error": str(exc)})
+            return
+        self._send(HTTPStatus.OK, content, content_type)
     def do_POST(self) -> None:  # noqa: N802
         if urlparse(self.path).path != "/api/dispatch-plan": self._json(HTTPStatus.NOT_FOUND, {"error":"not found"}); return
         try:
