@@ -13,6 +13,17 @@ PYTHONPATH=. python3 -m swarm.cli workflow-status
 The report identifies stale markers, replay-blocking active state, invalid
 state, and the guarded next action. It never removes markers or starts a job.
 
+Launch the loopback-only management console:
+
+```bash
+PYTHONPATH=. python3 -m swarm.cli console --host 127.0.0.1 --port 8787
+```
+
+The console shows safety state and provides guardrail-checked, plan-only task
+routing across Codex/Forge, Gemini/Sentinel, Claude/Ledger, and Fable/Compass.
+See `docs/management-console.md`; it does not invoke models or expose a
+production control surface.
+
 ## Quick start
 
 ```bash

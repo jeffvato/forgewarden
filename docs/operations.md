@@ -18,6 +18,17 @@ packaging/hermes-swarm quality-review \
   --output /tmp/hermes-quality-review.json
 ```
 
+The local management console is available as a loopback-only, plan-only
+control surface:
+
+```bash
+PYTHONPATH=. python3 -m swarm.cli console --host 127.0.0.1 --port 8787
+```
+
+It reads workflow state, loads the versioned model guardrail registry, and
+returns a `PLAN_ONLY` dispatch result. It never invokes an LLM, changes safety
+markers, deploys, restarts services, or accesses remote systems.
+
 `stop` writes a local kill-switch marker. It does not stop Hermes, n8n, Docker,
 or any production service. The global deployment kill switch is represented by
 the absence of any deployment implementation plus `DeploymentController`,
