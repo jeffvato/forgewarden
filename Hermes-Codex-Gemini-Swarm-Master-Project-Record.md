@@ -804,6 +804,31 @@ The intended initial public support scope is deliberately narrow:
 - generic webhook or email notifications;
 - OpenAI-compatible model APIs.
 
+## Future capability - audited codebase indexing
+
+Status: roadmap item; design and implementation not started.
+
+Add an optional, repository-scoped index for faster bug detection and evidence
+lookup across approved codebases. The index must be derived only from an
+approved checkout, support full rebuild and deletion, record source revision and
+indexer version, and never become an authority for deployment or admission.
+
+Required safeguards:
+
+- no indexing of unapproved repositories, secrets, credentials, or production data;
+- no outbound code upload or third-party training use;
+- content-addressed entries bound to repository revision and file hash;
+- explicit include/exclude rules with symlink and path-traversal rejection;
+- stale-index detection and fail-closed behavior when revision or policy differs;
+- access-controlled, auditable queries with bounded result size;
+- deterministic fallback to a fresh filesystem scan;
+- tests for poisoning, stale results, deleted files, duplicate chunks, and
+  cross-repository data leakage.
+
+The first implementation should be read-only and local-only. Embeddings or a
+vector store are optional design choices, not a prerequisite for the initial
+index contract.
+
 ## Future deterministic deployment executor
 
 The eventual executor should expose only fixed operations such as:
