@@ -36,7 +36,20 @@ case "${1:---portable}" in
       "$ROOT/tests/test_quality_review.py" \
       "$ROOT/tests/test_repository_hygiene.py" \
       "$ROOT/tests/test_systemd_scope.py::SystemdScopeSafetyTests" \
-      "$ROOT/tests/test_systemd_unit.py"
+      "$ROOT/tests/test_systemd_unit.py" \
+      "$ROOT/tests/test_phase2b_profiles.py" \
+      "$ROOT/tests/test_phase2b_console_profile.py" \
+      "$ROOT/tests/test_phase2b_admission.py" \
+      "$ROOT/tests/test_phase2b_candidate_b_design.py" \
+      "$ROOT/tests/test_phase2b_audit_review_profile.py" \
+      "$ROOT/tests/test_phase3_deployment_design.py" \
+      "$ROOT/tests/test_phase3_fake_deployment.py" \
+      "$ROOT/tests/test_phase3_deployment_executor.py" \
+      "$ROOT/tests/test_phase3_staging_fixture.py" \
+      "$ROOT/tests/test_phase4_unattended_design.py" \
+      "$ROOT/tests/test_phase4_fake_unattended.py" \
+      "$ROOT/tests/test_phase5_release_readiness.py" \
+      "$ROOT/tests/test_phase5_release_audit.py"
     ;;
   --full)
     exec env PYTHONPATH="$ROOT" "$PYTHON" -m unittest discover -s "$ROOT/tests" -q

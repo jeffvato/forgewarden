@@ -1,0 +1,68 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["profile_id", "status", "service", "environment", "approved_commit", "deployment_adapter", "backup", "health_check", "rollback", "approval", "notification", "limits", "deployment"],
+  "properties": {
+    "profile_id": {"const": "forgewarden_synthetic_service_deployment_v1"},
+    "status": {"const": "DESIGN_ONLY"},
+    "service": {"const": "forgewarden-synthetic-fixture-v1"},
+    "environment": {"const": "disposable_staging_fixture"},
+    "approved_commit": {"const": "06a22f1c431867cede1265bae7edf706e5a5ae04"},
+    "deployment_adapter": {"const": "swarm/phase3_deployment.py"},
+    "backup": {
+      "type": "object", "additionalProperties": false,
+      "required": ["required", "location", "restore_mode"],
+      "properties": {
+        "required": {"const": true},
+        "location": {"const": "<runtime>/phase3-backups/<job-id>/"},
+        "restore_mode": {"const": "atomic_no_follow"}
+      }
+    },
+    "health_check": {
+      "type": "object", "additionalProperties": false,
+      "required": ["command", "timeout_seconds", "expected_exit_code"],
+      "properties": {
+        "command": {"const": "/home/jeff/anaconda3/bin/python3 -m pytest -q tests/swarm_regressions/test_health_contract.py"},
+        "timeout_seconds": {"const": 30},
+        "expected_exit_code": {"const": 0}
+      }
+    },
+    "rollback": {
+      "type": "object", "additionalProperties": false,
+      "required": ["command", "timeout_seconds", "trigger_on"],
+      "properties": {
+        "command": {"const": "fixed_internal_restore_adapter"},
+        "timeout_seconds": {"const": 60},
+        "trigger_on": {"const": ["health_check_failure", "timeout", "commit_mismatch", "audit_failure"]}
+      }
+    },
+    "approval": {
+      "type": "object", "additionalProperties": false,
+      "required": ["required", "one_time", "binds"],
+      "properties": {
+        "required": {"const": true},
+        "one_time": {"const": true},
+        "binds": {"const": ["job_id", "approved_commit", "evidence_sha256", "service"]}
+      }
+    },
+    "notification": {
+      "type": "object", "additionalProperties": false,
+      "required": ["channel", "required"],
+      "properties": {
+        "channel": {"const": "durable_local_audit"},
+        "required": {"const": true}
+      }
+    },
+    "limits": {
+      "type": "object", "additionalProperties": false,
+      "required": ["max_concurrent_deployments", "max_backup_bytes", "max_log_bytes", "network"],
+      "properties": {
+        "max_concurrent_deployments": {"const": 1},
+        "max_backup_bytes": {"const": 10485760},
+        "max_log_bytes": {"const": 256000},
+        "network": {"const": "blocked"}
+      }
+    },
+    "deployment": {"const": "DISABLED"}
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["profile_id", "baseline_failure", "repair_commit", "reviewed_commit", "changed_files", "deterministic", "gemini_verdict", "quality_gate", "deployment", "autonomous_dry_run", "kill_switch", "fixture_disposable"],
+  "properties": {
+    "profile_id": {"const": "console_asset_safety_dry_run_v1"},
+    "baseline_failure": {"const": "symlinked asset was served"},
+    "repair_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "reviewed_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "changed_files": {"const": ["swarm/console_asset_loader.py"]},
+    "deterministic": {"const": "PASSED"},
+    "gemini_verdict": {"const": "APPROVE"},
+    "quality_gate": {"const": "ALLOW_DRY_RUN"},
+    "deployment": {"const": "DISABLED"},
+    "autonomous_dry_run": {"const": "DISABLED"},
+    "kill_switch": {"const": "ENGAGED"},
+    "fixture_disposable": {"const": true}
+  }
+}

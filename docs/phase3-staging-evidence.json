@@ -1,0 +1,11 @@
+{
+  "profile_id": "forgewarden_synthetic_service_deployment_v1",
+  "service": "forgewarden-synthetic-fixture-v1",
+  "approved_commit": "06a22f1c431867cede1265bae7edf706e5a5ae04",
+  "preflight": "READY_FOR_SEPARATE_DEPLOYMENT_AUTHORIZATION",
+  "success_state": "SIMULATED_SUCCEEDED",
+  "rollback_state": "ROLLED_BACK",
+  "audit_events": ["simulated_deployment_completed", "staging_simulation_completed", "staging_simulation_rolled_back"],
+  "deployment": "DISABLED",
+  "fixture_disposable": true
+}

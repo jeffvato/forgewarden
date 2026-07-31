@@ -1,0 +1,97 @@
+{
+  "categories": {
+    "credential_assignment": 12,
+    "machine_fingerprint": 3,
+    "private_audit": 35,
+    "unreadable_file": 167,
+    "user_home_path": 128
+  },
+  "finding_count": 345,
+  "matched_values_included": false,
+  "mutation_performed": false,
+  "publication": "DISABLED",
+  "top_level": {
+    ".integration-runtime": {
+      "categories": {
+        "user_home_path": 60
+      },
+      "total": 60
+    },
+    "Hermes-Codex-Gemini-Swarm-Master-Project-Record.md": {
+      "categories": {
+        "private_audit": 1,
+        "user_home_path": 1
+      },
+      "total": 2
+    },
+    "README.md": {
+      "categories": {
+        "private_audit": 1
+      },
+      "total": 1
+    },
+    "config": {
+      "categories": {
+        "private_audit": 1,
+        "user_home_path": 6
+      },
+      "total": 7
+    },
+    "docs": {
+      "categories": {
+        "machine_fingerprint": 1,
+        "private_audit": 12,
+        "unreadable_file": 1,
+        "user_home_path": 25
+      },
+      "total": 39
+    },
+    "packaging": {
+      "categories": {
+        "private_audit": 1,
+        "user_home_path": 1
+      },
+      "total": 2
+    },
+    "schemas": {
+      "categories": {
+        "private_audit": 2,
+        "user_home_path": 4
+      },
+      "total": 6
+    },
+    "scripts": {
+      "categories": {
+        "unreadable_file": 10,
+        "user_home_path": 6
+      },
+      "total": 16
+    },
+    "swarm": {
+      "categories": {
+        "credential_assignment": 2,
+        "machine_fingerprint": 1,
+        "private_audit": 7,
+        "unreadable_file": 45,
+        "user_home_path": 9
+      },
+      "total": 64
+    },
+    "systemd": {
+      "categories": {
+        "user_home_path": 1
+      },
+      "total": 1
+    },
+    "tests": {
+      "categories": {
+        "credential_assignment": 10,
+        "machine_fingerprint": 1,
+        "private_audit": 10,
+        "unreadable_file": 111,
+        "user_home_path": 15
+      },
+      "total": 147
+    }
+  }
+}

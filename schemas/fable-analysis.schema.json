@@ -6,7 +6,7 @@
   "properties": {
     "job_id": {"type": "string"},
     "model": {"const": "claude-fable-5"},
-    "total_cost_usd": {"type": "number", "minimum": 0, "maximum": 100},
+    "total_cost_usd": {"type": "number", "minimum": 0, "maximum": 95.93},
     "findings": {"type": "array", "items": {"type": "string"}},
     "hypotheses": {"type": "array"},
     "tests": {"type": "array"},

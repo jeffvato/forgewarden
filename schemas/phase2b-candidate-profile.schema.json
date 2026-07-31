@@ -1,0 +1,47 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["profile_id", "status", "repository", "expected_baseline", "writable", "read_only", "deterministic_test", "synthetic_defect", "limits", "deployment"],
+  "properties": {
+    "profile_id": {"const": "console_asset_safety_dry_run_v1"},
+    "status": {"const": "REGISTERED_DRY_RUN"},
+    "repository": {"const": "/home/jeff/swarm-repositories/forgewarden-console-asset-fixture-v1"},
+    "expected_baseline": {"type": "string", "pattern": "^(PENDING_DISPOSABLE_FIXTURE|[0-9a-f]{40})$"},
+    "writable": {"const": ["swarm/console_asset_loader.py", "tests/swarm_regressions/"]},
+    "read_only": {"const": ["everything_else"]},
+    "deterministic_test": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["working_directory", "path", "interpreter"],
+      "properties": {
+        "working_directory": {"const": "<worktree>"},
+        "path": {"const": "tests/swarm_regressions/test_console_asset_safety.py"},
+        "interpreter": {"type": "string", "pattern": "^/[^/].*$"}
+      }
+    },
+    "synthetic_defect": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "failure_fingerprint"],
+      "properties": {
+        "path": {"const": "swarm/console_asset_loader.py"},
+        "sha256": {"type": "string", "pattern": "^(PENDING_DISPOSABLE_FIXTURE|[0-9a-f]{64})$"},
+        "failure_fingerprint": {"const": "symlinked asset was served"}
+      }
+    },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["max_concurrent_jobs", "max_codex_attempts", "max_gemini_attempts", "memory_bytes", "memory_swap_bytes", "cpu_seconds", "wall_clock_seconds", "max_log_bytes", "max_changed_files", "max_changed_lines", "max_patch_bytes", "binary_files", "symlinks", "submodules", "generated_caches", "network"],
+      "properties": {
+        "max_concurrent_jobs": {"const": 1}, "max_codex_attempts": {"const": 1}, "max_gemini_attempts": {"const": 2},
+        "memory_bytes": {"const": 2147483648}, "memory_swap_bytes": {"const": 0}, "cpu_seconds": {"const": 45},
+        "wall_clock_seconds": {"const": 180}, "max_log_bytes": {"const": 256000}, "max_changed_files": {"const": 2},
+        "max_changed_lines": {"const": 300}, "max_patch_bytes": {"const": 65536}, "binary_files": {"const": false},
+        "symlinks": {"const": false}, "submodules": {"const": false}, "generated_caches": {"const": false},
+        "network": {"const": "blocked_except_controlled_adapters"}
+      }
+    },
+    "deployment": {"const": "forbidden"}
+  }
+}

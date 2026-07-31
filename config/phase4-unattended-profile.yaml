@@ -1,0 +1,25 @@
+profile_id: forgewarden_low_risk_unattended_v1
+status: DESIGN_ONLY
+service: forgewarden-synthetic-fixture-v1
+environment: disposable_staging_fixture
+allowed_risk: LOW
+required_prerequisites:
+  - phase2a_connection_replay_evidence
+  - supervised_worker_evidence
+  - human_approved_deployment_evidence
+  - rollback_evidence
+approval:
+  required_for_initial_enablement: true
+  one_time: true
+  binds: [service, approved_commit, evidence_sha256, risk]
+worker:
+  supervised: true
+  persistent: true
+  max_concurrent_jobs: 1
+  kill_switch: required
+rollback:
+  automatic: true
+  health_timeout_seconds: 30
+  deployment: DISABLED
+network: blocked
+deployment: DISABLED

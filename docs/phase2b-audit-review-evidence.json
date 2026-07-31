@@ -1,0 +1,14 @@
+{
+  "profile_id": "audit_review_dry_run_v1",
+  "baseline_failure": "malformed completion event was accepted",
+  "repair_commit": "06a22f1c431867cede1265bae7edf706e5a5ae04",
+  "reviewed_commit": "06a22f1c431867cede1265bae7edf706e5a5ae04",
+  "changed_files": ["swarm/audit_consumer.py"],
+  "deterministic": "PASSED",
+  "gemini_verdict": "APPROVE",
+  "quality_gate": "ALLOW_DRY_RUN",
+  "deployment": "DISABLED",
+  "autonomous_dry_run": "DISABLED",
+  "kill_switch": "ENGAGED",
+  "fixture_disposable": true
+}

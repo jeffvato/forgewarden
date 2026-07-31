@@ -35,6 +35,14 @@ The project currently operates only in `DRY_RUN`. Deployment is disabled. The em
 
 Phase 2A—the single-use, preapproved, dry-run job path—is implemented and has completed one real synthetic job. Commit `7a582369…` resolved the disposable `MCPServerTask` fixture blocker; commit `b119b4f…` added guarded submission and terminal recovery. Job `phase2a-1ab6c00f50704fd782e06e8d` completed with deterministic validation passed, Gemini verdict `APPROVE`, low risk, repair commit `3d3b9d8…`, and the final safety state restored to deployment disabled, autonomous dry run disabled, and kill switch engaged. The current swarm suite passes 108 tests with 1 skip.
 
+## 2026-07-30 validation update
+
+The disposable production-equivalent `MCPServerTask` acceptance gate was rerun locally with the explicit lifecycle diagnostic enabled. All three lifecycle cases passed: official discovery, strict newer-generation readiness, and the real disposable fixture covering readiness, three accelerated keepalives, forced reconnect, post-reconnect status, replay-safe fake enqueue, fake worker completion, and child cleanup. The full local suite passed 157 tests with no skips under that gate. The final workflow state remains `DRY_RUN`, deployment `DISABLED`, autonomous dry-run `DISABLED`, kill switch `ENGAGED`, lock absent, and no running or stale markers.
+
+This validates the disposable lifecycle gate only. No additional systemd worker exercise, provider repair, deployment, remote host, credential, or `/home/jeff/n8n` operation was performed in this validation. Phase 2B remains unregistered and held.
+
+Fable 5 accounting is now: hard ceiling `$95.93`, spent `$0.02`, remaining `$95.91`.
+
 ## Mission and design position
 
 The system exists to repair well-defined, low-risk software issues while Jeff is away from his desk, without giving any model broad or production-level authority.
@@ -727,7 +735,7 @@ Required completion evidence:
 
 ### Phase 2B — Additional preapproved repair profiles
 
-Status: not started.
+Status: Candidate A and Candidate B are admitted as fixture-only profiles; deployment remains disabled.
 
 For each new profile:
 
@@ -747,7 +755,7 @@ The Fable 5 credit work program may begin before Phase 2B only as isolated read-
 
 ### Phase 3 — Human-approved deployment
 
-Status: not implemented or authorized.
+Status: design-only controls started; deployment remains disabled and no executor is wired.
 
 Required design:
 
@@ -929,3 +937,43 @@ After the above evidence is reconfirmed, any additional real synthetic Phase 2A 
 The project is successful when Jeff can safely leave his desk and a trusted, narrowly scoped issue can flow through Hermes, Codex, deterministic validation, Gemini review, and—only in a separately mature phase—controlled deployment and rollback, while every unexpected condition fails closed and produces useful evidence.
 
 Convenience is not success if it weakens scope, reproducibility, auditability, rollback, or human control over high-risk changes.
+
+## 2026-07-30 scope update
+
+Jeff authorized resuming broader local dry-run development. Candidate A and Candidate B completed their bounded Phase 2B evidence gates and are admitted only to the dedicated fixture-only registry. The protected Phase 2A registry, deployment path, runtime markers, and kill switch state remain unchanged.
+
+## 2026-07-30 Candidate A evidence update
+
+Candidate A has a persisted schema-valid sanitized evidence artifact. Its latest approved run bound repair and reviewer commit `3f49790077186f789fd3274ce990830a46510af1`, passed the Candidate A checks, and admitted the profile to the dedicated fixture-only registry. The active Phase 2A registry remains unchanged.
+
+## 2026-07-30 Candidate B fixture and admission update
+
+Candidate B (`audit_review_dry_run_v1`) now has a disposable synthetic audit fixture covering malformed, replayed, symlinked, and valid completion events. The approved run bound repair and reviewer commit `06a22f1c431867cede1265bae7edf706e5a5ae04`, passed the Candidate B checks, and persisted a sanitized evidence artifact. Candidate B is admitted only to the dedicated fixture-only registry; deployment, autonomous execution, live audit access, and production access remain disabled. Portable validation now passes 108 tests.
+
+## 2026-07-30 Phase 3 design update
+
+Jeff authorized continuing through Phase 3. The first bounded deliverable is
+design-only: `forgewarden_synthetic_service_deployment_v1` targets only the
+disposable staging fixture `forgewarden-synthetic-fixture-v1` and requires an
+exact-commit, one-time human approval, protected backup, fixed health check,
+automatic rollback, durable audit, and fail-closed preconditions. No deployment
+adapter is wired, no service is started, and deployment remains disabled.
+The portable suite now passes 111 tests.
+
+## 2026-07-30 Phase 3 fake adapter update
+
+The disposable-only `swarm/phase3_fake_deployment.py` simulator now covers
+exact approval binding, one-time replay rejection, backup creation, health
+failure and timeout rollback, audit-failure rollback, identifier validation,
+service/commit mismatch rejection, and symlink rejection. Focused checks pass
+11/11 and the portable suite passes 119 tests. It never
+starts a service, runs an external command, opens a network connection, or
+enables deployment. A real deployment executor remains unwired.
+
+## 2026-07-30 Phase 3 staging evidence update
+
+The approved disposable staging exercise now has a schema-validated evidence
+bundle bound to commit `06a22f1c431867cede1265bae7edf706e5a5ae04`. It records a
+non-mutating preflight, simulated success, audited health-failure rollback, and
+deployment disabled state. Portable validation passes 125 tests. No service,
+external command, network, or unattended deployment was enabled.

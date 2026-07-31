@@ -299,6 +299,22 @@ class Phase2ATests(unittest.TestCase):
         self.assertEqual(profile.repository, phase2a.REPOSITORY)
         self.assertEqual(profile.expected_baseline, phase2a.BASELINE_SHA)
         self.assertEqual(profile.deterministic_path, phase2a.TEST_PATH)
+
+    def test_profile_and_schema_symlinks_are_rejected(self):
+        with TemporaryDirectory() as temp:
+            root = Path(temp)
+            profile = root / "profile.yaml"
+            schema = root / "schema.json"
+            profile.write_text(self._original_profile_path.read_text(encoding="utf-8"), encoding="utf-8")
+            schema.write_text(self._original_schema_path.read_text(encoding="utf-8"), encoding="utf-8")
+            profile_link = root / "profile-link.yaml"
+            schema_link = root / "schema-link.json"
+            profile_link.symlink_to(profile)
+            schema_link.symlink_to(schema)
+            with self.assertRaisesRegex(SwarmError, "refusing symlink desktop job profile"):
+                phase2a.validate_profile(profile_link, schema)
+            with self.assertRaisesRegex(SwarmError, "refusing symlink desktop job profile schema"):
+                phase2a.validate_profile(profile, schema_link)
         with TemporaryDirectory() as temp:
             bad = Path(temp) / "bad.yaml"
             bad.write_text(

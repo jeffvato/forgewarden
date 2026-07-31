@@ -1,0 +1,13 @@
+{
+  "publication": "DISABLED",
+  "mutation_performed": false,
+  "clean": false,
+  "finding_count": 341,
+  "categories": {
+    "credential_assignment": 12,
+    "machine_fingerprint": 2,
+    "private_audit": 32,
+    "unreadable_file": 167,
+    "user_home_path": 128
+  }
+}

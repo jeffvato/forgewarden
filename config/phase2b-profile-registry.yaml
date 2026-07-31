@@ -1,0 +1,12 @@
+registry_version: 1
+profiles:
+  - profile_id: console_asset_safety_dry_run_v1
+    contract: config/phase2b-console-asset-profile.yaml
+    evidence: docs/phase2b-console-asset-safety-evidence.json
+    execution: DISPOSABLE_FIXTURE_ONLY
+    deployment: DISABLED
+  - profile_id: audit_review_dry_run_v1
+    contract: config/phase2b-audit-review-profile.yaml
+    evidence: docs/phase2b-audit-review-evidence.json
+    execution: DISPOSABLE_FIXTURE_ONLY
+    deployment: DISABLED

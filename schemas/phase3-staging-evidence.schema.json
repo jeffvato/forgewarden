@@ -1,0 +1,16 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["profile_id", "service", "approved_commit", "preflight", "success_state", "rollback_state", "audit_events", "deployment", "fixture_disposable"],
+  "properties": {
+    "profile_id": {"const": "forgewarden_synthetic_service_deployment_v1"},
+    "service": {"const": "forgewarden-synthetic-fixture-v1"},
+    "approved_commit": {"const": "06a22f1c431867cede1265bae7edf706e5a5ae04"},
+    "preflight": {"const": "READY_FOR_SEPARATE_DEPLOYMENT_AUTHORIZATION"},
+    "success_state": {"const": "SIMULATED_SUCCEEDED"},
+    "rollback_state": {"const": "ROLLED_BACK"},
+    "audit_events": {"const": ["simulated_deployment_completed", "staging_simulation_completed", "staging_simulation_rolled_back"]},
+    "deployment": {"const": "DISABLED"},
+    "fixture_disposable": {"const": true}
+  }
+}

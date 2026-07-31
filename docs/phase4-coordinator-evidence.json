@@ -1,0 +1,11 @@
+{
+  "profile_id": "forgewarden_low_risk_unattended_v1",
+  "service": "forgewarden-synthetic-fixture-v1",
+  "risk": "LOW",
+  "prerequisites": "ALL_REQUIRED_EVIDENCE_PRESENT",
+  "worker_started": false,
+  "kill_switch": "ENGAGED",
+  "enablement": "DISABLED",
+  "deployment": "DISABLED",
+  "fixture_disposable": true
+}

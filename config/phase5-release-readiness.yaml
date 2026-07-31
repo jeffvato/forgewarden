@@ -1,0 +1,16 @@
+release_id: forgewarden_public_release_v1
+status: PLANNING_ONLY
+publication: DISABLED
+required_cleanups:
+  - remove_usernames_and_home_paths
+  - remove_credentials_and_private_audits
+  - remove_machine_fingerprints
+  - provide_configuration_templates
+  - pin_dependencies_and_lockfiles
+  - provide_install_validate_update_rollback_uninstall
+  - add_declared_environment_ci
+required_reviews:
+  - security_review
+  - licensing_review
+  - reproducible_build_review
+  - documentation_review

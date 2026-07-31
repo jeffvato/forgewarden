@@ -1,0 +1,14 @@
+{
+  "profile_id": "console_asset_safety_dry_run_v1",
+  "baseline_failure": "symlinked asset was served",
+  "repair_commit": "3f49790077186f789fd3274ce990830a46510af1",
+  "reviewed_commit": "3f49790077186f789fd3274ce990830a46510af1",
+  "changed_files": ["swarm/console_asset_loader.py"],
+  "deterministic": "PASSED",
+  "gemini_verdict": "APPROVE",
+  "quality_gate": "ALLOW_DRY_RUN",
+  "deployment": "DISABLED",
+  "autonomous_dry_run": "DISABLED",
+  "kill_switch": "ENGAGED",
+  "fixture_disposable": true
+}

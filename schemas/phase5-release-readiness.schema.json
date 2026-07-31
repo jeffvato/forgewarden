@@ -1,0 +1,12 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["release_id", "status", "publication", "required_cleanups", "required_reviews"],
+  "properties": {
+    "release_id": {"const": "forgewarden_public_release_v1"},
+    "status": {"const": "PLANNING_ONLY"},
+    "publication": {"const": "DISABLED"},
+    "required_cleanups": {"const": ["remove_usernames_and_home_paths", "remove_credentials_and_private_audits", "remove_machine_fingerprints", "provide_configuration_templates", "pin_dependencies_and_lockfiles", "provide_install_validate_update_rollback_uninstall", "add_declared_environment_ci"]},
+    "required_reviews": {"const": ["security_review", "licensing_review", "reproducible_build_review", "documentation_review"]}
+  }
+}

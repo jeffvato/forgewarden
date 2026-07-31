@@ -1,0 +1,39 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["profile_id", "status", "service", "environment", "allowed_risk", "required_prerequisites", "approval", "worker", "rollback", "network", "deployment"],
+  "properties": {
+    "profile_id": {"const": "forgewarden_low_risk_unattended_v1"},
+    "status": {"const": "DESIGN_ONLY"},
+    "service": {"const": "forgewarden-synthetic-fixture-v1"},
+    "environment": {"const": "disposable_staging_fixture"},
+    "allowed_risk": {"const": "LOW"},
+    "required_prerequisites": {"const": ["phase2a_connection_replay_evidence", "supervised_worker_evidence", "human_approved_deployment_evidence", "rollback_evidence"]},
+    "approval": {
+      "type": "object", "additionalProperties": false,
+      "required": ["required_for_initial_enablement", "one_time", "binds"],
+      "properties": {
+        "required_for_initial_enablement": {"const": true},
+        "one_time": {"const": true},
+        "binds": {"const": ["service", "approved_commit", "evidence_sha256", "risk"]}
+      }
+    },
+    "worker": {
+      "type": "object", "additionalProperties": false,
+      "required": ["supervised", "persistent", "max_concurrent_jobs", "kill_switch"],
+      "properties": {
+        "supervised": {"const": true}, "persistent": {"const": true},
+        "max_concurrent_jobs": {"const": 1}, "kill_switch": {"const": "required"}
+      }
+    },
+    "rollback": {
+      "type": "object", "additionalProperties": false,
+      "required": ["automatic", "health_timeout_seconds", "deployment"],
+      "properties": {
+        "automatic": {"const": true}, "health_timeout_seconds": {"const": 30}, "deployment": {"const": "DISABLED"}
+      }
+    },
+    "network": {"const": "blocked"},
+    "deployment": {"const": "DISABLED"}
+  }
+}

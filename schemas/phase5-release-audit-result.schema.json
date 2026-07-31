@@ -1,0 +1,12 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["publication", "mutation_performed", "clean", "finding_count", "categories"],
+  "properties": {
+    "publication": {"const": "DISABLED"},
+    "mutation_performed": {"const": false},
+    "clean": {"const": false},
+    "finding_count": {"const": 341},
+    "categories": {"const": {"credential_assignment": 12, "machine_fingerprint": 2, "private_audit": 32, "unreadable_file": 167, "user_home_path": 128}}
+  }
+}

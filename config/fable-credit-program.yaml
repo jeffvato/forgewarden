@@ -1,6 +1,6 @@
 program_id: fable5-credit-program-v1
 model: claude-fable-5
-hard_budget_usd: 100.0
+hard_budget_usd: 95.93
 retention_days: 30
 tasks:
   - id: mcp_lifecycle_blocker

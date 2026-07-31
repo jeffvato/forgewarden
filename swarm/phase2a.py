@@ -74,7 +74,7 @@ def _load_yaml(path: Path) -> dict[str, Any]:
     except ImportError as exc:
         raise SwarmError("PyYAML is required to validate the desktop job profile") from exc
     try:
-        value = yaml.safe_load(path.read_text(encoding="utf-8"))
+        value = yaml.safe_load(read_restricted_bytes(path, "desktop job profile").decode("utf-8"))
     except (OSError, yaml.YAMLError) as exc:
         raise SwarmError("desktop job profile is unreadable or invalid YAML") from exc
     if not isinstance(value, dict):
@@ -86,7 +86,7 @@ def validate_profile(path: Path = PROFILE_PATH, schema_path: Path = PROFILE_SCHE
     import jsonschema
     value = _load_yaml(path)
     try:
-        schema = json.loads(schema_path.read_text(encoding="utf-8"))
+        schema = json.loads(read_restricted_bytes(schema_path, "desktop job profile schema").decode("utf-8"))
         jsonschema.Draft202012Validator(schema).validate(value)
     except (OSError, json.JSONDecodeError, jsonschema.ValidationError) as exc:
         raise SwarmError("desktop job profile failed strict schema validation") from exc

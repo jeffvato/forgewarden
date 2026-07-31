@@ -1,0 +1,16 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["profile_id", "service", "risk", "prerequisites", "worker_started", "kill_switch", "enablement", "deployment", "fixture_disposable"],
+  "properties": {
+    "profile_id": {"const": "forgewarden_low_risk_unattended_v1"},
+    "service": {"const": "forgewarden-synthetic-fixture-v1"},
+    "risk": {"const": "LOW"},
+    "prerequisites": {"const": "ALL_REQUIRED_EVIDENCE_PRESENT"},
+    "worker_started": {"const": false},
+    "kill_switch": {"const": "ENGAGED"},
+    "enablement": {"const": "DISABLED"},
+    "deployment": {"const": "DISABLED"},
+    "fixture_disposable": {"const": true}
+  }
+}
