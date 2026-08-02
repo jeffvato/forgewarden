@@ -69,8 +69,7 @@ class FakeDeploymentAdapter:
         self._validate_approval(request, approval)
         if self.consumed.exists():
             raise SwarmError("fake deployment approval replay detected")
-        self.consumed.write_text(request.approval_id + "\n", encoding="ascii")
-        self.consumed.chmod(0o600)
+        write_restricted_text(self.consumed, request.approval_id + "\n", "fake deployment approval consumption")
         previous = read_restricted_bytes(self.target, "fake service state") if self.target.exists() else b""
         self.backup_dir.mkdir(mode=0o700)
         self.backup_dir.chmod(0o700)

@@ -24,6 +24,7 @@ class Phase3FakeDeploymentTests(TestCase):
         self.assertEqual(result["state"], "SIMULATED_SUCCEEDED")
         self.assertEqual(result["deployment"], "DISABLED")
         self.assertTrue(Path(result["backup"]).is_file())
+        self.assertEqual((self.root / ".phase3-approval-consumed").stat().st_mode & 0o777, 0o600)
 
     def test_health_failure_rolls_back(self):
         result = FakeDeploymentAdapter(self.root).execute(self.request, self.approval, lambda path: False)

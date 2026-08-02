@@ -172,8 +172,10 @@ class BaselineDiffGateTests(unittest.TestCase):
         root = self._preflight_tree()
         limits = type("Limits", (), {"max_log_bytes": 256000, "cpu_seconds": 45, "memory_bytes": 2147483648, "timeout_seconds": 60})()
         with patch("swarm.baseline.DETERMINISTIC_INTERPRETER", Path("/usr/bin/python3")), patch("swarm.baseline.DETERMINISTIC_INTERPRETER_TARGET", Path("/usr/bin/python3.12")):
-            with self.assertRaises(DeterministicInterpreterError) as raised:
-                validate_deterministic_interpreter(Path("/usr/bin/python3"), limits, cwd=root / "csv-processor", use_cgroup=False)
+            missing_pytest = CompletedProcess(["/usr/bin/python3", "-c", "..."], 1, "", "/usr/bin/python3: No module named pytest")
+            with patch("swarm.baseline.limited_run", return_value=missing_pytest):
+                with self.assertRaises(DeterministicInterpreterError) as raised:
+                    validate_deterministic_interpreter(Path("/usr/bin/python3"), limits, cwd=root / "csv-processor", use_cgroup=False)
         self.assertEqual(raised.exception.evidence["exit_code"], 1)
         self.assertIn("pytest", raised.exception.evidence["stderr"])
 
