@@ -2,6 +2,7 @@ import json
 import os
 import shutil
 import subprocess
+import time
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -67,4 +68,9 @@ class SystemdScopeIntegrationTests(unittest.TestCase):
         self.assertEqual(evidence["dbus"], f"unix:path=/run/user/{uid}/bus")
         self.assertEqual(evidence["memory_max"], "2147483648")
         self.assertEqual(evidence["swap_max"], "0")
-        self.assertFalse((Path("/sys/fs/cgroup") / evidence["cgroup_path"]).exists())
+        cgroup = Path("/sys/fs/cgroup") / evidence["cgroup_path"]
+        for _ in range(20):
+            if not cgroup.exists():
+                break
+            time.sleep(0.05)
+        self.assertFalse(cgroup.exists())
