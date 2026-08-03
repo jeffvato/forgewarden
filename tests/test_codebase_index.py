@@ -64,6 +64,8 @@ class CodebaseIndexTests(unittest.TestCase):
     def test_policy_rejects_traversal_and_index_is_bound_to_repository(self):
         with self.assertRaises(ValueError):
             IndexPolicy(include=("../*",))
+        with self.assertRaises(ValueError):
+            CodebaseIndex(self.root, self.root / "index.json")
         self.index.build("abc123")
         other = Path(self.temp.name) / "other"
         other.mkdir()

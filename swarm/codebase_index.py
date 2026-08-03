@@ -77,11 +77,7 @@ class CodebaseIndex:
         if not self.root.is_dir():
             raise IndexPolicyError("approved checkout must be a directory")
         self.index_path = Path(index_path).resolve()
-        try:
-            self.index_path.relative_to(self.root)
-        except ValueError:
-            pass
-        else:
+        if self.index_path.is_relative_to(self.root):
             raise IndexPolicyError("index storage must be outside the approved checkout")
         self.policy = policy or IndexPolicy()
 
