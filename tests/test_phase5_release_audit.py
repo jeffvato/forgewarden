@@ -88,6 +88,17 @@ class Phase5ReleaseAuditTests(unittest.TestCase):
             self.assertEqual(result["findings"][0]["ownership"], "LOCAL_PROJECT_RECORD")
             self.assertEqual(result["findings"][0]["intended_public_status"], "EXCLUDE_FROM_RELEASE")
 
+    def test_inventory_labels_test_paths_without_clearing_release_review(self):
+        with tempfile.TemporaryDirectory(prefix="phase5-test-fixture-") as temp:
+            root = Path(temp)
+            fixture = root / "tests" / "test_fixture.py"
+            fixture.parent.mkdir()
+            fixture.write_text("token=synthetic-fixture\n", encoding="utf-8")
+            result = ReleaseAudit(root).inventory()
+            finding = result["findings"][0]
+            self.assertEqual(finding["ownership"], "PROJECT_TEST_FIXTURE")
+            self.assertEqual(finding["intended_public_status"], "REVIEW_REQUIRED")
+
 
 if __name__ == "__main__":
     unittest.main()

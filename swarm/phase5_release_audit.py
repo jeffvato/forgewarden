@@ -48,6 +48,8 @@ class ReleaseAudit:
                     if GENERATED_PARTS.intersection(Path(finding["path"]).parts)
                     else "LOCAL_PROJECT_RECORD"
                     if Path(finding["path"]).name in LOCAL_ONLY_NAMES
+                    else "PROJECT_TEST_FIXTURE"
+                    if "tests" in Path(finding["path"]).parts
                     else "PROJECT_OWNED"
                 ),
                 "intended_public_status": (
