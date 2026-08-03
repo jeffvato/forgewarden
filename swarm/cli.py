@@ -13,6 +13,7 @@ from .paths import audit_root, runtime_root
 from .quality_review import scan_repository, write_report
 from .quality_apply import apply_safe_findings
 from .quality_audit import review_audit
+from .phase5_release_audit import ReleaseAudit
 from .review_evidence import build_review_evidence
 from .approval import create_approval_record, reconcile_approval, verify_approval
 from .console import serve as serve_console
@@ -20,7 +21,7 @@ from .console import serve as serve_console
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Local Hermes coding swarm (dry-run only)")
-    parser.add_argument("command", choices=["start", "stop", "status", "workflow-status", "kill-switch", "dry-run", "controlled-baseline", "gemini-review-recovery", "quality-review", "quality-apply-safe", "quality-audit", "review-evidence", "claude-review", "approval-create", "approval-verify", "approval-reconcile", "phase2a-worker", "phase2a-recover-terminal", "console", "run", "autonomous-dry-run-status", "autonomous-dry-run-enable", "autonomous-dry-run-disable"], nargs="?", default="status")
+    parser.add_argument("command", choices=["start", "stop", "status", "workflow-status", "kill-switch", "dry-run", "controlled-baseline", "gemini-review-recovery", "quality-review", "quality-apply-safe", "quality-audit", "release-inventory", "review-evidence", "claude-review", "approval-create", "approval-verify", "approval-reconcile", "phase2a-worker", "phase2a-recover-terminal", "console", "run", "autonomous-dry-run-status", "autonomous-dry-run-enable", "autonomous-dry-run-disable"], nargs="?", default="status")
     parser.add_argument("--state-dir", type=Path, default=Path(".swarm-state"))
     parser.add_argument("--runtime-root", type=Path)
     parser.add_argument("--audit-dir", type=Path)
@@ -119,6 +120,15 @@ def main() -> int:
             parser.error("quality-audit requires --audit and --job-id")
         try:
             print(json.dumps(review_audit(args.audit, args.job_id), indent=2, sort_keys=True))
+            return 0
+        except (OSError, ValueError) as exc:
+            print(f"FAILED: {exc}")
+            return 1
+    if args.command == "release-inventory":
+        if not args.repository:
+            parser.error("release-inventory requires --repository")
+        try:
+            print(json.dumps(ReleaseAudit(args.repository).inventory(), indent=2, sort_keys=True))
             return 0
         except (OSError, ValueError) as exc:
             print(f"FAILED: {exc}")

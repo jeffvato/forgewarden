@@ -1,4 +1,6 @@
 import json
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -98,6 +100,24 @@ class Phase5ReleaseAuditTests(unittest.TestCase):
             finding = result["findings"][0]
             self.assertEqual(finding["ownership"], "PROJECT_TEST_FIXTURE")
             self.assertEqual(finding["intended_public_status"], "REVIEW_REQUIRED")
+
+    def test_cli_release_inventory_is_read_only_json(self):
+        with tempfile.TemporaryDirectory(prefix="phase5-cli-") as temp:
+            root = Path(temp)
+            target = root / "README.md"
+            target.write_text("Forgewarden\n", encoding="utf-8")
+            before = target.read_bytes()
+            result = subprocess.run(
+                [sys.executable, "-m", "swarm.cli", "release-inventory", "--repository", str(root)],
+                cwd=Path(__file__).resolve().parents[1],
+                env={"PYTHONPATH": str(Path(__file__).resolve().parents[1])},
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertTrue(json.loads(result.stdout)["clean"])
+            self.assertEqual(target.read_bytes(), before)
 
 
 if __name__ == "__main__":
