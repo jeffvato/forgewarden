@@ -4,8 +4,6 @@ The index is an evidence aid only.  It is never an authority for admission,
 deployment, or execution.
 """
 
-from __future__ import annotations
-
 import fnmatch
 import hashlib
 import json
