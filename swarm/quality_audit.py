@@ -1,6 +1,4 @@
 """Read-only consumer for SAFE application audit evidence."""
-from __future__ import annotations
-
 import argparse
 import hashlib
 import json
