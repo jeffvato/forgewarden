@@ -101,6 +101,21 @@ class Phase5ReleaseAuditTests(unittest.TestCase):
             self.assertEqual(finding["ownership"], "PROJECT_TEST_FIXTURE")
             self.assertEqual(finding["intended_public_status"], "REVIEW_REQUIRED")
 
+    def test_inventory_excludes_known_private_artifacts_and_backups(self):
+        with tempfile.TemporaryDirectory(prefix="phase5-private-") as temp:
+            root = Path(temp)
+            private_doc = root / "docs" / "n8n-onboarding-report.md"
+            backup = root / "notes.md.save"
+            private_doc.parent.mkdir()
+            private_doc.write_text("customer_data\n", encoding="utf-8")
+            backup.write_text("/home/jeff\n", encoding="utf-8")
+            result = ReleaseAudit(root).inventory()
+            by_path = {item["path"]: item for item in result["findings"]}
+            self.assertEqual(by_path["docs/n8n-onboarding-report.md"]["ownership"], "PRIVATE_PROJECT_ARTIFACT")
+            self.assertEqual(by_path["docs/n8n-onboarding-report.md"]["intended_public_status"], "EXCLUDE_FROM_RELEASE")
+            self.assertEqual(by_path["notes.md.save"]["ownership"], "PRIVATE_PROJECT_ARTIFACT")
+            self.assertEqual(by_path["notes.md.save"]["intended_public_status"], "EXCLUDE_FROM_RELEASE")
+
     def test_cli_release_inventory_is_read_only_json(self):
         with tempfile.TemporaryDirectory(prefix="phase5-cli-") as temp:
             root = Path(temp)

@@ -14,6 +14,21 @@ PATTERNS = (
 
 GENERATED_PARTS = frozenset({".integration-runtime", ".pytest_cache", ".swarm", "__pycache__"})
 LOCAL_ONLY_NAMES = frozenset({"Hermes-Codex-Gemini-Swarm-Master-Project-Record.md"})
+PRIVATE_RELEASE_PATHS = frozenset({
+    "docs/csv-baseline-manifest.md",
+    "docs/controlled-baseline-0rtmvv09-postmortem.md",
+    "docs/deadline-writer-wiring-validation.md",
+    "docs/first-controlled-repair.md",
+    "docs/first-controlled-repair-v2.md",
+    "docs/first-controlled-repair-v2-final.md",
+    "docs/first-controlled-repair-v2-retry.md",
+    "docs/n8n-onboarding-report.md",
+    "docs/pre-activation-report.md",
+    "docs/phase5-release-audit-result.json",
+    "docs/phase5-release-readiness.md",
+    "docs/phase5-release-remediation-plan.md",
+    "docs/phase5-release-triage.json",
+})
 
 
 class ReleaseAudit:
@@ -48,6 +63,8 @@ class ReleaseAudit:
                     if GENERATED_PARTS.intersection(Path(finding["path"]).parts)
                     else "LOCAL_PROJECT_RECORD"
                     if Path(finding["path"]).name in LOCAL_ONLY_NAMES
+                    else "PRIVATE_PROJECT_ARTIFACT"
+                    if finding["path"] in PRIVATE_RELEASE_PATHS or Path(finding["path"]).name.endswith(".save")
                     else "PROJECT_TEST_FIXTURE"
                     if "tests" in Path(finding["path"]).parts
                     else "PROJECT_OWNED"
@@ -57,6 +74,8 @@ class ReleaseAudit:
                     if GENERATED_PARTS.intersection(Path(finding["path"]).parts)
                     else "EXCLUDE_FROM_RELEASE"
                     if Path(finding["path"]).name in LOCAL_ONLY_NAMES
+                    else "EXCLUDE_FROM_RELEASE"
+                    if finding["path"] in PRIVATE_RELEASE_PATHS or Path(finding["path"]).name.endswith(".save")
                     else "REVIEW_REQUIRED"
                 ),
             }
