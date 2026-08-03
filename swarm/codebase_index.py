@@ -76,7 +76,10 @@ class CodebaseIndex:
         self.root = root.resolve()
         if not self.root.is_dir():
             raise IndexPolicyError("approved checkout must be a directory")
-        self.index_path = Path(index_path).resolve()
+        index_candidate = Path(index_path)
+        if index_candidate.is_symlink():
+            raise IndexPolicyError("index storage may not be a symlink")
+        self.index_path = index_candidate.resolve()
         if self.index_path.is_relative_to(self.root):
             raise IndexPolicyError("index storage must be outside the approved checkout")
         self.policy = policy or IndexPolicy()
@@ -109,6 +112,8 @@ class CodebaseIndex:
         if not term or limit < 1 or limit > MAX_RESULTS:
             raise ValueError("term is required and limit must be between 1 and 50")
         try:
+            if self.index_path.is_symlink():
+                raise IndexPolicyError("index storage may not be a symlink")
             document = json.loads(self.index_path.read_text(encoding="utf-8"))
             self._check_fresh(document, revision)
             entries = document["entries"]
@@ -184,6 +189,8 @@ class CodebaseIndex:
             paths.add(relative)
 
     def _write(self, document: dict[str, Any]) -> None:
+        if self.index_path.is_symlink():
+            raise IndexPolicyError("index storage may not be a symlink")
         self.index_path.parent.mkdir(parents=True, exist_ok=True)
         fd, temporary = tempfile.mkstemp(prefix=".codebase-index-", dir=self.index_path.parent)
         try:

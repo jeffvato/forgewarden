@@ -82,6 +82,14 @@ class CodebaseIndexTests(unittest.TestCase):
         with self.assertRaises(StaleIndexError):
             self.index.query("poison", "abc123", "tester", fresh_scan=False)
 
+    def test_index_storage_symlink_is_rejected(self):
+        target = Path(self.temp.name) / "target.json"
+        target.write_text("{}", encoding="utf-8")
+        link = Path(self.temp.name) / "index-link.json"
+        link.symlink_to(target)
+        with self.assertRaises(ValueError):
+            CodebaseIndex(self.root, link)
+
 
 if __name__ == "__main__":
     unittest.main()
