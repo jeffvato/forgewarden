@@ -119,6 +119,24 @@ class Phase5ReleaseAuditTests(unittest.TestCase):
             self.assertTrue(json.loads(result.stdout)["clean"])
             self.assertEqual(target.read_bytes(), before)
 
+    def test_cli_release_inventory_writes_only_requested_output(self):
+        with tempfile.TemporaryDirectory(prefix="phase5-cli-output-") as temp:
+            root = Path(temp)
+            target = root / "README.md"
+            output = root / "inventory.json"
+            target.write_text("Forgewarden\n", encoding="utf-8")
+            result = subprocess.run(
+                [sys.executable, "-m", "swarm.cli", "release-inventory", "--repository", str(root), "--output", str(output)],
+                cwd=Path(__file__).resolve().parents[1],
+                env={"PYTHONPATH": str(Path(__file__).resolve().parents[1])},
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stdout, "")
+            self.assertTrue(json.loads(output.read_text(encoding="utf-8"))["clean"])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -128,7 +128,11 @@ def main() -> int:
         if not args.repository:
             parser.error("release-inventory requires --repository")
         try:
-            print(json.dumps(ReleaseAudit(args.repository).inventory(), indent=2, sort_keys=True))
+            rendered = json.dumps(ReleaseAudit(args.repository).inventory(), indent=2, sort_keys=True) + "\n"
+            if args.output:
+                write_report(args.output, rendered)
+            else:
+                print(rendered, end="")
             return 0
         except (OSError, ValueError) as exc:
             print(f"FAILED: {exc}")
