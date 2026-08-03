@@ -4,8 +4,6 @@ This module deliberately reports findings instead of editing files.  A later
 stage may consume the structured report, but no finding is currently
 auto-applied.
 """
-from __future__ import annotations
-
 import argparse
 import ast
 import hashlib
