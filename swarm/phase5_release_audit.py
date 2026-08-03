@@ -13,6 +13,7 @@ PATTERNS = (
 )
 
 GENERATED_PARTS = frozenset({".integration-runtime", ".pytest_cache", ".swarm", "__pycache__"})
+LOCAL_ONLY_NAMES = frozenset({"Hermes-Codex-Gemini-Swarm-Master-Project-Record.md"})
 
 
 class ReleaseAudit:
@@ -45,11 +46,15 @@ class ReleaseAudit:
                 "ownership": (
                     "PROJECT_GENERATED"
                     if GENERATED_PARTS.intersection(Path(finding["path"]).parts)
-                    else "UNCLASSIFIED"
+                    else "LOCAL_PROJECT_RECORD"
+                    if Path(finding["path"]).name in LOCAL_ONLY_NAMES
+                    else "PROJECT_OWNED"
                 ),
                 "intended_public_status": (
                     "EXCLUDE_FROM_RELEASE"
                     if GENERATED_PARTS.intersection(Path(finding["path"]).parts)
+                    else "EXCLUDE_FROM_RELEASE"
+                    if Path(finding["path"]).name in LOCAL_ONLY_NAMES
                     else "REVIEW_REQUIRED"
                 ),
             }

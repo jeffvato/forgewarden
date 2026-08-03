@@ -60,7 +60,7 @@ class Phase5ReleaseAuditTests(unittest.TestCase):
             self.assertEqual(result["findings"], [{
                 "category": "user_home_path",
                 "path": "private.md",
-                "ownership": "UNCLASSIFIED",
+                "ownership": "PROJECT_OWNED",
                 "intended_public_status": "REVIEW_REQUIRED",
             }])
             self.assertEqual(target.read_bytes(), before)
@@ -78,6 +78,15 @@ class Phase5ReleaseAuditTests(unittest.TestCase):
                 "ownership": "PROJECT_GENERATED",
                 "intended_public_status": "EXCLUDE_FROM_RELEASE",
             }])
+
+    def test_inventory_excludes_the_protected_project_record(self):
+        with tempfile.TemporaryDirectory(prefix="phase5-record-") as temp:
+            root = Path(temp)
+            record = root / "Hermes-Codex-Gemini-Swarm-Master-Project-Record.md"
+            record.write_text("/home/jeff\n", encoding="utf-8")
+            result = ReleaseAudit(root).inventory()
+            self.assertEqual(result["findings"][0]["ownership"], "LOCAL_PROJECT_RECORD")
+            self.assertEqual(result["findings"][0]["intended_public_status"], "EXCLUDE_FROM_RELEASE")
 
 
 if __name__ == "__main__":
