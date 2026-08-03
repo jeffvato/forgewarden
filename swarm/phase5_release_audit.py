@@ -33,3 +33,21 @@ class ReleaseAudit:
                 if pattern.search(text):
                     findings.append({"category": category, "path": str(path.relative_to(self.root))})
         return {"publication": "DISABLED", "mutation_performed": False, "findings": findings, "clean": not findings}
+
+    def inventory(self) -> dict[str, object]:
+        """Return findings with explicit review placeholders; never classify silently."""
+        result = self.scan()
+        findings = [
+            {
+                **finding,
+                "ownership": "UNCLASSIFIED",
+                "intended_public_status": "REVIEW_REQUIRED",
+            }
+            for finding in result["findings"]
+        ]
+        return {
+            "publication": result["publication"],
+            "mutation_performed": result["mutation_performed"],
+            "clean": result["clean"],
+            "findings": findings,
+        }

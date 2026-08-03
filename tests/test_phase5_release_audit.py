@@ -47,6 +47,24 @@ class Phase5ReleaseAuditTests(unittest.TestCase):
         self.assertFalse(result["mutation_performed"])
         self.assertEqual(result["publication"], "DISABLED")
 
+    def test_inventory_requires_explicit_classification_without_mutating(self):
+        with tempfile.TemporaryDirectory(prefix="phase5-inventory-") as temp:
+            root = Path(temp)
+            target = root / "private.md"
+            target.write_text("/home/jeff\n", encoding="utf-8")
+            before = target.read_bytes()
+            result = ReleaseAudit(root).inventory()
+            self.assertFalse(result["clean"])
+            self.assertFalse(result["mutation_performed"])
+            self.assertEqual(result["publication"], "DISABLED")
+            self.assertEqual(result["findings"], [{
+                "category": "user_home_path",
+                "path": "private.md",
+                "ownership": "UNCLASSIFIED",
+                "intended_public_status": "REVIEW_REQUIRED",
+            }])
+            self.assertEqual(target.read_bytes(), before)
+
 
 if __name__ == "__main__":
     unittest.main()

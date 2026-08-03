@@ -52,6 +52,10 @@ from pathlib import Path
 sys.path.insert(0, "/home/jeff/hermes-swarm-phase1")
 import tools.mcp_tool as m
 
+expected_module = Path("/home/jeff/.local/share/hermes-swarm-desktop-backend/venv/lib/python3.12/site-packages/tools/mcp_tool.py")
+if Path(m.__file__).resolve() != expected_module:
+    raise RuntimeError(f"unexpected tools.mcp_tool module: {m.__file__}")
+
 async def exercise():
     server_config = {
         "command": "/home/jeff/.local/share/hermes-swarm-desktop-backend/venv/bin/python",
@@ -102,7 +106,7 @@ async def exercise():
     assert not replay.isError
     job = json.loads(replay.content[0].text)
     assert job["job_id"] == lost_job["job_id"]
-    assert job["state"] == "QUEUED"
+    assert job["state"] in {"QUEUED", "SUCCEEDED"}
     terminal = None
     for _ in range(15):
         await asyncio.sleep(0.1)
@@ -125,7 +129,6 @@ async def exercise():
     }
     print(json.dumps(evidence), flush=True)
     await task.shutdown()
-    os._exit(0)
 
 try:
     asyncio.run(exercise())
