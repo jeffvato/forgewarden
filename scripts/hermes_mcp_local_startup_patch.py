@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 """Hash-guarded Hermes 0.18.2 local-stdio startup compatibility patch."""
-from __future__ import annotations
-
 import argparse
 import hashlib
 import importlib.metadata
