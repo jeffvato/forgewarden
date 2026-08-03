@@ -6,14 +6,11 @@ The CLI has no arbitrary path option so an unknown installation cannot be
 silently modified.
 """
 
-from __future__ import annotations
-
 import argparse
 import hashlib
 import importlib.metadata
 import os
 import re
-import shutil
 import sys
 import tempfile
 from datetime import datetime, timezone
