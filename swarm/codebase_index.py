@@ -11,6 +11,7 @@ import hashlib
 import json
 import os
 import re
+import stat
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
@@ -114,7 +115,7 @@ class CodebaseIndex:
         try:
             if self.index_path.is_symlink():
                 raise IndexPolicyError("index storage may not be a symlink")
-            document = json.loads(self.index_path.read_text(encoding="utf-8"))
+            document = json.loads(self._read_no_follow(self.index_path).decode("utf-8"))
             self._check_fresh(document, revision)
             entries = document["entries"]
             self._validate_entries(entries, revision)
@@ -154,7 +155,7 @@ class CodebaseIndex:
 
     def _entry(self, path: Path, revision: str) -> dict[str, Any]:
         relative = path.relative_to(self.root).as_posix()
-        data = path.read_bytes()
+        data = self._read_no_follow(path)
         if len(data) > MAX_FILE_BYTES or b"\x00" in data:
             text = ""
         else:
@@ -202,6 +203,25 @@ class CodebaseIndex:
         finally:
             if os.path.exists(temporary):
                 os.unlink(temporary)
+
+    @staticmethod
+    def _read_no_follow(path: Path) -> bytes:
+        flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+        try:
+            descriptor = os.open(path, flags)
+        except OSError as exc:
+            if path.is_symlink():
+                raise IndexPolicyError("symlinked file read rejected") from exc
+            raise
+        try:
+            if not stat.S_ISREG(os.fstat(descriptor).st_mode):
+                raise IndexPolicyError("only regular files may be indexed")
+            with os.fdopen(descriptor, "rb") as handle:
+                descriptor = -1
+                return handle.read()
+        finally:
+            if descriptor >= 0:
+                os.close(descriptor)
 
     @staticmethod
     def _require_actor(actor: str) -> None:
