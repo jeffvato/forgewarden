@@ -40,7 +40,7 @@ AI_SLOP_RE = re.compile(
     re.IGNORECASE,
 )
 QUERY_CALL_RE = re.compile(
-    r"(?:query|execute|executemany|fetch(?:one|many|all)?|request|retrieve|lookup|get)\b",
+    r"(?:query|execute|executemany|fetch(?:one|many|all)?|request|retrieve|lookup)\b",
     re.IGNORECASE,
 )
 BLOCKING_ASYNC_RE = re.compile(r"\b(?:time\.sleep|requests\.|urllib\.)")

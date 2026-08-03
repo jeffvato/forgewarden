@@ -100,6 +100,21 @@ def do_work():
     assert _finding(result, "unreachable_code")["tier"] == "SAFE"
 
 
+def test_quality_review_does_not_treat_mapping_get_as_n_plus_one(tmp_path):
+    source = tmp_path / "validator.py"
+    source.write_text(
+        """\ndef validate(entries):
+    for entry in entries:
+        if entry.get(\"path\"):
+            return True
+    return False
+""",
+        encoding="utf-8",
+    )
+    result = scan_repository(tmp_path)
+    assert not any(item["category"] == "n_plus_one_query" for item in result["findings"])
+
+
 def test_quality_review_scans_javascript_and_typescript_risk_patterns(tmp_path):
     (tmp_path / "client.ts").write_text(
         """export function choose(ok: boolean, value: string) {
