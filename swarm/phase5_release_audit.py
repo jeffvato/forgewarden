@@ -12,6 +12,8 @@ PATTERNS = (
     ("machine_fingerprint", re.compile(r"(?i)(Ubuntu-24\.04|hostname|machine[-_ ]id|serial[-_ ]number)")),
 )
 
+GENERATED_PARTS = frozenset({".integration-runtime", ".pytest_cache", ".swarm", "__pycache__"})
+
 
 class ReleaseAudit:
     """Scan a disposable candidate tree without changing it."""
@@ -40,8 +42,16 @@ class ReleaseAudit:
         findings = [
             {
                 **finding,
-                "ownership": "UNCLASSIFIED",
-                "intended_public_status": "REVIEW_REQUIRED",
+                "ownership": (
+                    "PROJECT_GENERATED"
+                    if GENERATED_PARTS.intersection(Path(finding["path"]).parts)
+                    else "UNCLASSIFIED"
+                ),
+                "intended_public_status": (
+                    "EXCLUDE_FROM_RELEASE"
+                    if GENERATED_PARTS.intersection(Path(finding["path"]).parts)
+                    else "REVIEW_REQUIRED"
+                ),
             }
             for finding in result["findings"]
         ]

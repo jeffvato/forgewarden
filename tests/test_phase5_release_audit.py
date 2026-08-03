@@ -65,6 +65,20 @@ class Phase5ReleaseAuditTests(unittest.TestCase):
             }])
             self.assertEqual(target.read_bytes(), before)
 
+    def test_inventory_classifies_only_known_generated_paths(self):
+        with tempfile.TemporaryDirectory(prefix="phase5-generated-") as temp:
+            root = Path(temp)
+            generated = root / ".pytest_cache" / "cache"
+            generated.parent.mkdir()
+            generated.write_text("/home/jeff\n", encoding="utf-8")
+            result = ReleaseAudit(root).inventory()
+            self.assertEqual(result["findings"], [{
+                "category": "user_home_path",
+                "path": ".pytest_cache/cache",
+                "ownership": "PROJECT_GENERATED",
+                "intended_public_status": "EXCLUDE_FROM_RELEASE",
+            }])
+
 
 if __name__ == "__main__":
     unittest.main()
