@@ -20,6 +20,8 @@ class Phase5ReleaseCandidateTests(unittest.TestCase):
             generated = source / "__pycache__" / "module.pyc"
             generated.parent.mkdir()
             generated.write_bytes(b"generated")
+            metadata = source / "README.md:Zone.Identifier"
+            metadata.write_text("Zone.Identifier\n", encoding="utf-8")
             before = private.read_bytes()
 
             result = build_release_candidate(source, destination)
@@ -31,6 +33,7 @@ class Phase5ReleaseCandidateTests(unittest.TestCase):
             self.assertFalse((destination / "docs" / "n8n-onboarding-report.md").exists())
             self.assertFalse((destination / "config" / "hermes-profile.yaml").exists())
             self.assertFalse((destination / "__pycache__").exists())
+            self.assertFalse((destination / "README.md:Zone.Identifier").exists())
             self.assertEqual(private.read_bytes(), before)
 
     def test_candidate_refuses_existing_destination(self):

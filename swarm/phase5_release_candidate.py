@@ -28,6 +28,8 @@ def build_release_candidate(source: Path, destination: Path) -> dict[str, object
         relative = path.relative_to(source)
         if ".git" in relative.parts:
             continue
+        if path.name.endswith(":Zone.Identifier"):
+            continue
         if relative in excluded or any(parent in excluded for parent in relative.parents):
             if path.is_file() and not path.is_symlink():
                 excluded_files += 1
