@@ -19,7 +19,6 @@ def build_release_candidate(source: Path, destination: Path) -> dict[str, object
     excluded = {
         Path(item["path"])
         for item in inventory["findings"]
-        if item["intended_public_status"] == "EXCLUDE_FROM_RELEASE"
     }
     destination.mkdir(parents=True)
     copied_files = 0
@@ -52,6 +51,11 @@ def build_release_candidate(source: Path, destination: Path) -> dict[str, object
         "excluded_files": excluded_files,
         "skipped_generated_entries": skipped_generated,
         "copied_files": copied_files,
+        "excluded_review_required_files": len({
+            Path(item["path"])
+            for item in inventory["findings"]
+            if item["intended_public_status"] == "REVIEW_REQUIRED"
+        }),
         "review_required_findings": sum(
             item["intended_public_status"] == "REVIEW_REQUIRED"
             for item in inventory["findings"]
