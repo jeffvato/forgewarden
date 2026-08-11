@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
+PYTHON="${HERMES_SWARM_PYTHON:-python3}"
+
+if [[ "${1:-}" == "--help" || "$#" == "0" ]]; then
+  cat <<'EOF'
+Forgewarden release audit (read-only)
+
+Usage:
+  forgewarden-release-audit --repository <candidate-root> [--output <json-path>]
+
+The audit never edits, publishes, deploys, or removes files.
+EOF
+  exit 0
+fi
+
+exec env PYTHONPATH="$ROOT" "$PYTHON" -m swarm.cli release-inventory "$@"

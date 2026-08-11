@@ -7,7 +7,8 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-from .adapters import CodexAdapter, GeminiAdapter, HermesAdapter, WriterInvocationSpec, last_cgroup_peak_bytes, limited_run, measure_resources, select_limits
+from .adapters import CodexAdapter, HermesAdapter, WriterInvocationSpec, last_cgroup_peak_bytes, limited_run, measure_resources, select_limits
+from . import claude_verifier
 from .core import Job, Orchestrator, SwarmError, redact, require_exact_commit, run_command
 
 
@@ -43,7 +44,7 @@ def run_real_dry_run(root: Path, runtime_root: Path | None = None, audit_dir: Pa
     runtime = Path(tempfile.mkdtemp(prefix="run-", dir=runtime_root))
     resources = measure_resources()
     limits = select_limits(resources)
-    commands = {name: shutil.which(name) for name in ("hermes", "codex", "agy")}
+    commands = {name: shutil.which(name) for name in ("hermes", "codex", "claude")}
     missing = [name for name, path in commands.items() if not path]
     if missing:
         raise SwarmError("required local CLI not found: " + ", ".join(missing))
@@ -77,14 +78,13 @@ def run_real_dry_run(root: Path, runtime_root: Path | None = None, audit_dir: Pa
                 raise SwarmError("Codex did not produce a non-empty repair commit")
             review_diff = orchestrator._git(worktree, "diff", base, commit)[:100_000]
             snapshot = _readonly_snapshot(worktree, runtime / "state", job.job_id)
-            job.state = "GEMINI_REVIEWING"
-            gemini_prompt = f"""You are the independent read-only reviewer. Do not use tools, edit, commit, push, deploy, or access secrets. Analyze only the supplied evidence for job {job.job_id}. The review target is the exact full commit SHA {commit}. Deterministic test output was: {redact(checks.stdout + checks.stderr)[:4000]}. The exact base-to-commit diff is below:\n\n{redact(review_diff)}\n\nReturn ONLY one compact JSON object. You MUST include every key in this exact skeleton, with no omissions: {{\"job_id\":\"{job.job_id}\",\"reviewed_commit\":\"{commit}\",\"verdict\":\"APPROVE\",\"risk\":\"LOW\",\"blocking_findings\":[],\"non_blocking_notes\":[],\"tests_missing\":[],\"reasoning_summary\":\"brief evidence-based summary\",\"proposed_rules\":[]}}. Set reviewed_commit exactly to {commit}. Use verdict APPROVE only for a narrow safe repair. Any proposed rule remains inactive and is only recorded as PROPOSED_DRY_RUN."""
-            gemini = GeminiAdapter(root / "schemas/gemini-review.schema.json", limits, commands["agy"])
-            gemini_result = gemini.run(snapshot, job.job_id, commit, gemini_prompt)
-            if gemini_result["verdict"] != "APPROVE" or gemini_result["risk"] != "LOW":
+            job.state = "CLAUDE_REVIEWING"
+            claude_prompt = f"""Review exact commit {commit} against its synthetic parent for job {job.job_id}. Deterministic test output was: {redact(checks.stdout + checks.stderr)[:4000]}. The exact base-to-commit diff is below:\n\n{redact(review_diff)}"""
+            claude_result = claude_verifier.run(snapshot, job.job_id, commit, claude_prompt)
+            if claude_result["verdict"] != "APPROVE" or claude_result["risk"] != "LOW":
                 job.state = "REVISION_REQUIRED"
-                raise SwarmError("Gemini did not approve the deterministic fixture repair")
-            for rule in gemini_result.get("proposed_rules", []):
+                raise SwarmError("Claude did not approve the deterministic fixture repair")
+            for rule in claude_result.get("proposed_rules", []):
                 decision = orchestrator.rules.propose(rule, job)
                 orchestrator.audit.record(job, "learned_rule_decision", decision=decision)
             job.state = "SUCCEEDED"
@@ -100,12 +100,12 @@ def run_real_dry_run(root: Path, runtime_root: Path | None = None, audit_dir: Pa
                 codex_status=codex_result["status"],
                 changed_files=codex_result["changed_files"],
                 deterministic_checks="PASSED",
-                reviewer="agy-gemini-read-only",
-                reviewer_decision=gemini_result["verdict"],
-                reviewer_risk=gemini_result["risk"],
-                reviewed_commit=gemini_result["reviewed_commit"],
-                proposed_rule_count=len(gemini_result.get("proposed_rules", [])),
+                reviewer="claude-sonnet-read-only",
+                reviewer_decision=claude_result["verdict"],
+                reviewer_risk=claude_result["risk"],
+                reviewed_commit=claude_result["reviewed_commit"],
+                proposed_rule_count=len(claude_result.get("proposed_rules", [])),
             )
-            return {"job_id": job.job_id, "state": job.state, "base": base, "commit": commit, "resources": resources, "limits": limits.__dict__, "codex": codex_result, "gemini": gemini_result}
+            return {"job_id": job.job_id, "state": job.state, "base": base, "commit": commit, "resources": resources, "limits": limits.__dict__, "codex": codex_result, "claude": claude_result}
         finally:
             run_command(["git", "worktree", "remove", "--force", str(worktree)], repo)

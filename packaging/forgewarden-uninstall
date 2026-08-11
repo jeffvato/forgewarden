@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
+PYTHON="${HERMES_SWARM_PYTHON:-python3}"
+if [[ "${1:-}" == "--help" ]]; then
+  echo "Usage: forgewarden-uninstall --manifest PATH --root ABSOLUTE_ROOT [--confirm-uninstall]"
+  exit 0
+fi
+exec env PYTHONPATH="$ROOT" "$PYTHON" -m swarm.installation "${@:-preview-uninstall}"

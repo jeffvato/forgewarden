@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "mode", "repository", "revision", "indexer_version", "actor", "finding_files", "matched_files", "missing_files"],
+  "properties": {
+    "schema_version": {"const": "1"},
+    "mode": {"const": "READ_ONLY"},
+    "repository": {"type": "string", "minLength": 1},
+    "revision": {"type": "string", "minLength": 1},
+    "indexer_version": {"type": "string", "minLength": 1},
+    "actor": {"type": "string", "minLength": 1},
+    "finding_files": {"type": "array", "items": {"type": "string", "pattern": "^(?!/).+"}},
+    "matched_files": {"type": "array", "items": {"type": "string", "pattern": "^(?!/).+"}},
+    "missing_files": {"type": "array", "items": {"type": "string", "pattern": "^(?!/).+"}}
+  }
+}

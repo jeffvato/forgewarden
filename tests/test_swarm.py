@@ -5,6 +5,7 @@ import tempfile
 import threading
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from swarm.core import (
     AuditLog, DeploymentController, Job, Orchestrator, RuleStore, ServiceLock,
@@ -50,6 +51,25 @@ class SwarmTests(unittest.TestCase):
         self.assertRegex(result["commit"], r"^[0-9a-f]{40}$")
         self.assertFalse((self.repo / "parser.py").read_text().endswith("lower()\n"))
         self.assertTrue((self.root / "state/audit.jsonl").exists())
+
+    def test_claude_reviewer_contract_is_selected_explicitly(self):
+        def fake_claude(snapshot, job_id, commit, prompt):
+            return {
+                "job_id": job_id, "reviewed_commit": commit, "verdict": "APPROVE", "risk": "LOW",
+                "blocking_findings": [], "non_blocking_notes": [], "tests_missing": [],
+                "reasoning_summary": "fake Claude exact-commit review", "proposed_rules": [],
+            }
+
+        with patch("swarm.claude_verifier.run", side_effect=fake_claude):
+            result = Orchestrator(self.root / "claude-state").run(
+                Job("job-1", "fixture-parser", self.repo, "parser defect"),
+                ["python3", str(self.codex)],
+                ["python3", "-c", "from parser import parse; assert parse(' X ') == 'x'"],
+                ["true"],
+                reviewer_kind="claude",
+            )
+        self.assertEqual(result["state"], "SUCCEEDED")
+        self.assertEqual(result["claude"]["reviewed_commit"], result["commit"])
 
     def test_high_risk_requires_jeff(self):
         result = self.run_job("payment checkout issue")

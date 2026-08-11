@@ -12,9 +12,15 @@ notifications:
   enabled: false
   provider: PLACEHOLDER
   credential_env: HERMES_SWARM_NOTIFICATION_TOKEN
+claude:
+  executable: /home/jeff/.local/bin/claude
+  model: claude-sonnet-4-6
+  output_mode: json-schema
+  review_mode: plan
+  readiness: VERIFIED_DRY_RUN_FAKE_CLI
 gemini:
   executable: /home/jeff/.local/bin/agy
   version: 1.1.4
   output_mode: prompt-json
   review_mode: plan
-  readiness: VERIFIED_DRY_RUN
+  readiness: REDUCED_COMPATIBILITY_ONLY

@@ -9,6 +9,12 @@ from swarm.phase5_release_audit import ReleaseAudit
 
 
 class Phase5ReleaseAuditTests(unittest.TestCase):
+    def test_release_audit_wrapper_is_read_only_and_documented(self):
+        root = Path(__file__).resolve().parents[1]
+        wrapper = root / "packaging/forgewarden-release-audit"
+        self.assertTrue(wrapper.is_file())
+        self.assertIn("never edits, publishes, deploys, or removes", wrapper.read_text(encoding="utf-8"))
+
     def test_clean_candidate_has_no_findings_and_does_not_mutate(self):
         with tempfile.TemporaryDirectory(prefix="phase5-clean-") as temp:
             root = Path(temp)

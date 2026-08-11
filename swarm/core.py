@@ -17,7 +17,7 @@ from typing import Any, Callable, Iterable
 
 STATES = (
     "RECEIVED", "CLASSIFIED", "WORKTREE_READY", "CODEX_RUNNING", "CHECKS_RUNNING",
-    "GEMINI_REVIEWING", "REVISION_REQUIRED", "READY_TO_DEPLOY", "AWAITING_JEFF",
+    "GEMINI_REVIEWING", "CLAUDE_REVIEWING", "REVISION_REQUIRED", "READY_TO_DEPLOY", "AWAITING_JEFF",
     "DEPLOYING", "VERIFYING_PRODUCTION", "SUCCEEDED", "ROLLED_BACK", "FAILED",
 )
 HIGH_RISK_TERMS = (
@@ -243,6 +243,7 @@ def validate_contract(payload: Any, kind: str, expected_job_id: str | None = Non
     required = {
         "codex": ("job_id", "status", "root_cause", "summary", "changed_files", "tests_added_or_changed", "commands_run", "remaining_risks", "requires_human_approval"),
         "gemini": ("job_id", "reviewed_commit", "verdict", "risk", "blocking_findings", "non_blocking_notes", "tests_missing", "reasoning_summary", "proposed_rules"),
+        "claude": ("job_id", "reviewed_commit", "verdict", "risk", "blocking_findings", "non_blocking_notes", "tests_missing", "reasoning_summary", "proposed_rules"),
     }[kind]
     missing = [key for key in required if key not in payload]
     if missing:
@@ -263,22 +264,22 @@ def validate_contract(payload: Any, kind: str, expected_job_id: str | None = Non
         allowed = set(required)
         extras = sorted(set(payload) - allowed)
         if extras:
-            raise SwarmError(f"Gemini result contains forbidden fields: {', '.join(extras)}")
+            raise SwarmError(f"{kind} result contains forbidden fields: {', '.join(extras)}")
         if expected_job_id is not None and payload["job_id"] != expected_job_id:
-            raise SwarmError(f"Gemini result job ID mismatch: expected {expected_job_id}, got {payload['job_id']}")
+            raise SwarmError(f"{kind} result job ID mismatch: expected {expected_job_id}, got {payload['job_id']}")
         if not re.fullmatch(r"[0-9a-fA-F]{40,64}", str(payload["reviewed_commit"])):
-            raise SwarmError("Gemini reviewed_commit is not a full SHA")
+            raise SwarmError(f"{kind} reviewed_commit is not a full SHA")
         if expected_commit is not None:
             require_exact_commit(expected_commit, payload["reviewed_commit"])
         if payload["verdict"] not in {"APPROVE", "REJECT", "HUMAN_REQUIRED"} or payload["risk"] not in {"LOW", "MEDIUM", "HIGH"}:
-            raise SwarmError("invalid Gemini verdict or risk")
+            raise SwarmError(f"invalid {kind} verdict or risk")
         for key in ("blocking_findings", "non_blocking_notes", "tests_missing", "proposed_rules"):
             if not isinstance(payload[key], list):
-                raise SwarmError(f"Gemini {key} must be an array")
+                raise SwarmError(f"{kind} {key} must be an array")
         if not isinstance(payload["reasoning_summary"], str) or not payload["reasoning_summary"].strip():
-            raise SwarmError("Gemini reasoning_summary must be a non-empty string")
+            raise SwarmError(f"{kind} reasoning_summary must be a non-empty string")
         if not isinstance(payload["proposed_rules"], list) or len(payload["proposed_rules"]) > 1:
-            raise SwarmError("Gemini may propose at most one rule")
+            raise SwarmError(f"{kind} may propose at most one rule")
 
 
 def require_exact_commit(expected: str, reviewed: str) -> None:
@@ -469,7 +470,9 @@ class Orchestrator:
         self.audit.record(job, "worktree_ready", base_revision=base, path=str(path))
         return path, base
 
-    def run(self, job: Job, codex_command: list[str], check_command: list[str], gemini_command: list[str]) -> dict[str, Any]:
+    def run(self, job: Job, codex_command: list[str], check_command: list[str], reviewer_command: list[str], *, reviewer_kind: str = "gemini") -> dict[str, Any]:
+        if reviewer_kind not in {"claude", "gemini"}:
+            raise SwarmError("reviewer_kind must be claude or gemini")
         self.state_dir.mkdir(parents=True, exist_ok=True)
         if restricted_file_exists(self.state_dir / "KILL_SWITCH", "global kill switch"):
             job.state = "FAILED"
@@ -538,13 +541,13 @@ class Orchestrator:
                 )
                 commit = self._git(worktree, "rev-parse", "HEAD")
                 snapshot = Path(tempfile.mkdtemp(prefix=f"review-{job.job_id}-", dir=self.state_dir))
-                # A separate checkout is created from the exact commit; Gemini never receives the writer worktree.
+                # A separate checkout is created from the exact commit; the reviewer never receives the writer worktree.
                 run = run_command(["git", "clone", "--no-hardlinks", str(worktree), str(snapshot)], self.state_dir)
                 if run.returncode:
-                    raise SwarmError("could not create read-only Gemini snapshot")
+                    raise SwarmError("could not create read-only reviewer snapshot")
                 validate_snapshot_symlinks(snapshot)
                 # Keep only the structured-output mailbox writable. Source, Git metadata,
-                # and directories are read-only to the Gemini process.
+                # and directories are read-only to the reviewer process.
                 output_dir = snapshot / ".swarm"
                 ensure_mailbox_directory(output_dir)
                 quality_report_path = output_dir / "quality-review.json"
@@ -558,20 +561,28 @@ class Orchestrator:
                         continue
                     item.chmod(0o555 if item.is_dir() else 0o444)
                 output_dir.chmod(0o755)
-                job.state = "GEMINI_REVIEWING"
+                job.state = "CLAUDE_REVIEWING" if reviewer_kind == "claude" else "GEMINI_REVIEWING"
                 self.begin_review_cycle(job)
-                self.audit.record(job, "gemini_started", reviewed_commit=commit)
-                review = run_command(gemini_command, snapshot, timeout=60, env={"SWARM_ROLE": "GEMINI_READ_ONLY", "SWARM_DRY_RUN": "1", "SWARM_REVIEWED_COMMIT": commit})
-                review_file = snapshot / ".swarm" / "gemini-review.json"
-                gemini = read_mailbox_json(review_file, "Gemini review")
-                validate_contract(gemini, "gemini")
-                if gemini["job_id"] != job.job_id:
-                    raise SwarmError("stale or mismatched Gemini review rejected")
-                require_exact_commit(commit, gemini["reviewed_commit"])
-                if checks.returncode or gemini["verdict"] != "APPROVE" or gemini["risk"] != "LOW":
-                    job.state = "AWAITING_JEFF" if gemini["verdict"] == "HUMAN_REQUIRED" else "REVISION_REQUIRED"
-                    self.audit.record(job, "review_not_approved", verdict=gemini["verdict"], risk=gemini["risk"])
-                    return {"job_id": job.job_id, "state": job.state, "commit": commit, "gemini": gemini, "quality_review": quality_review, "quality_gate": quality_gate, "safe_application_plan": safe_application_plan}
+                reviewer_name = "Claude" if reviewer_kind == "claude" else "Gemini"
+                self.audit.record(job, f"{reviewer_kind}_started", reviewed_commit=commit)
+                if reviewer_kind == "claude":
+                    from . import claude_verifier
+                    review_diff = self._git(worktree, "diff", base, commit)[:100_000]
+                    review_prompt = f"Review exact commit {commit} for job {job.job_id} in the disposable snapshot. Deterministic checks passed. The exact diff is below:\n\n{redact(review_diff)}"
+                    review_result = claude_verifier.run(snapshot, job.job_id, commit, review_prompt)
+                    validate_contract(review_result, "claude", expected_job_id=job.job_id, expected_commit=commit)
+                else:
+                    run = run_command(reviewer_command, snapshot, timeout=60, env={"SWARM_ROLE": "GEMINI_READ_ONLY", "SWARM_DRY_RUN": "1", "SWARM_REVIEWED_COMMIT": commit})
+                    review_file = snapshot / ".swarm" / "gemini-review.json"
+                    review_result = read_mailbox_json(review_file, "Gemini review")
+                    validate_contract(review_result, "gemini")
+                    if review_result["job_id"] != job.job_id:
+                        raise SwarmError("stale or mismatched Gemini review rejected")
+                    require_exact_commit(commit, review_result["reviewed_commit"])
+                if checks.returncode or review_result["verdict"] != "APPROVE" or review_result["risk"] != "LOW":
+                    job.state = "AWAITING_JEFF" if review_result["verdict"] == "HUMAN_REQUIRED" else "REVISION_REQUIRED"
+                    self.audit.record(job, "review_not_approved", reviewer=reviewer_name, verdict=review_result["verdict"], risk=review_result["risk"])
+                    return {"job_id": job.job_id, "state": job.state, "commit": commit, reviewer_kind: review_result, "quality_review": quality_review, "quality_gate": quality_gate, "safe_application_plan": safe_application_plan}
                 if quality_gate["decision"] != "ALLOW_DRY_RUN":
                     job.state = "AWAITING_JEFF"
                     self.audit.record(
@@ -580,13 +591,13 @@ class Orchestrator:
                         decision=quality_gate["decision"],
                         reason=quality_gate["reason"],
                     )
-                    return {"job_id": job.job_id, "state": job.state, "commit": commit, "gemini": gemini, "quality_review": quality_review, "quality_gate": quality_gate, "safe_application_plan": safe_application_plan}
-                if gemini["proposed_rules"]:
-                    decision = self.rules.propose(gemini["proposed_rules"][0], job)
+                    return {"job_id": job.job_id, "state": job.state, "commit": commit, reviewer_kind: review_result, "quality_review": quality_review, "quality_gate": quality_gate, "safe_application_plan": safe_application_plan}
+                if review_result["proposed_rules"]:
+                    decision = self.rules.propose(review_result["proposed_rules"][0], job)
                     self.audit.record(job, "learned_rule_decision", decision=decision)
                 job.state = "READY_TO_DEPLOY" if not self.dry_run else "SUCCEEDED"
                 self.audit.record(job, "dry_run_succeeded", commit=commit)
-                return {"job_id": job.job_id, "state": job.state, "commit": commit, "base": base, "gemini": gemini, "quality_review": quality_review, "quality_gate": quality_gate, "safe_application_plan": safe_application_plan}
+                return {"job_id": job.job_id, "state": job.state, "commit": commit, "base": base, reviewer_kind: review_result, "quality_review": quality_review, "quality_gate": quality_gate, "safe_application_plan": safe_application_plan}
             finally:
                 cleanup = run_command(["git", "worktree", "remove", "--force", str(worktree)], job.repository)
                 if cleanup.returncode:

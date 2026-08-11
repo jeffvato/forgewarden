@@ -7,17 +7,32 @@ import socket
 import threading
 from http import HTTPStatus
 from http.server import ThreadingHTTPServer
-from swarm.console import dispatch_plan, load_profiles, ConsoleHandler
+from swarm.console import addon_audit_snapshot, addon_snapshot, approval_snapshot, dispatch_plan, evidence_snapshot, installation_snapshot, job_detail, jobs_snapshot, load_profiles, ConsoleHandler
 from swarm.core import SwarmError
 
 class ConsoleTests(unittest.TestCase):
     def test_profiles_are_complete_and_global_guards_are_inherited(self):
-        profiles = load_profiles(); self.assertEqual({p["id"] for p in profiles},{"codex-writer","gemini-reviewer","claude-auditor","fable-analyst"})
+        profiles = load_profiles(); self.assertEqual({p["id"] for p in profiles},{"codex-writer","gemini-reviewer","claude-verifier","claude-auditor","fable-analyst"})
         for profile in profiles: self.assertTrue({"production","deployment","credentials","databases","remote_hosts"}.issubset(profile["forbidden_actions"]))
 
     def test_dispatch_plan_is_plan_only_and_model_scoped(self):
         result=dispatch_plan("codex-writer","implement","Harden the local fixture"); self.assertEqual(result["mode"],"PLAN_ONLY"); self.assertFalse(result["execution_started"]); self.assertTrue(result["guardrails"]["local_only"])
         with self.assertRaises(PermissionError): dispatch_plan("gemini-reviewer","implement","Write source")
+
+    def test_addon_and_installation_snapshots_are_read_only_posture(self):
+        addons = addon_snapshot()
+        self.assertEqual(addons["registry_version"], 1)
+        self.assertIn("addons", addons)
+        install = installation_snapshot()
+        self.assertEqual(install["mode"], "PLAN_ONLY")
+        self.assertEqual(install["uninstall"], "CONFIRMATION_REQUIRED")
+        self.assertEqual(addon_audit_snapshot()["events"], [])
+        self.assertIn("records", jobs_snapshot())
+        self.assertIn("records", evidence_snapshot())
+        self.assertEqual(approval_snapshot()["records"], [])
+        self.assertEqual(job_detail("phase2a-1ab6c00f50704fd782e06e8d")["job_id"], "phase2a-1ab6c00f50704fd782e06e8d")
+        with self.assertRaises(ValueError):
+            job_detail("not a job")
 
     def test_profile_registry_rejects_weakened_global_guardrails(self):
         with TemporaryDirectory() as directory:
@@ -62,6 +77,35 @@ class ConsoleTests(unittest.TestCase):
             data = json.loads(resp.read().decode())
             self.assertIn("profiles", data)
             self.assertIn("tasks", data)
+
+            # 2b. Read-only lifecycle posture endpoints
+            conn.request("GET", "/api/addons")
+            resp = conn.getresponse()
+            self.assertEqual(resp.status, HTTPStatus.OK)
+            self.assertIn("addons", json.loads(resp.read().decode()))
+            conn.request("GET", "/api/installation")
+            resp = conn.getresponse()
+            self.assertEqual(resp.status, HTTPStatus.OK)
+            self.assertEqual(json.loads(resp.read().decode())["mode"], "PLAN_ONLY")
+            conn.request("GET", "/api/audit")
+            resp = conn.getresponse()
+            self.assertEqual(resp.status, HTTPStatus.OK)
+            self.assertIn("events", json.loads(resp.read().decode()))
+            conn.request("GET", "/api/jobs")
+            resp = conn.getresponse()
+            self.assertEqual(resp.status, HTTPStatus.OK)
+            self.assertIn("records", json.loads(resp.read().decode()))
+            conn.request("GET", "/api/evidence")
+            resp = conn.getresponse()
+            self.assertEqual(resp.status, HTTPStatus.OK)
+            self.assertIn("records", json.loads(resp.read().decode()))
+            conn.request("GET", "/api/approvals")
+            resp = conn.getresponse()
+            self.assertEqual(resp.status, HTTPStatus.OK)
+            self.assertIn("records", json.loads(resp.read().decode()))
+            conn.request("GET", "/api/jobs/not%20a%20job")
+            resp = conn.getresponse()
+            self.assertEqual(resp.status, HTTPStatus.BAD_REQUEST)
 
             # 3. Test POST /api/dispatch-plan
             body = json.dumps({

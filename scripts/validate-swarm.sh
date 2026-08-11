@@ -49,7 +49,14 @@ case "${1:---portable}" in
       "$ROOT/tests/test_phase4_unattended_design.py" \
       "$ROOT/tests/test_phase4_fake_unattended.py" \
       "$ROOT/tests/test_phase5_release_readiness.py" \
-      "$ROOT/tests/test_phase5_release_audit.py"
+      "$ROOT/tests/test_phase5_release_audit.py" \
+      "$ROOT/tests/test_addon_sdk.py" \
+      "$ROOT/tests/test_addons.py" \
+      "$ROOT/tests/test_installation.py" \
+      "$ROOT/tests/test_prerequisites.py" \
+      "$ROOT/tests/test_install_smoke.py" \
+      "$ROOT/tests/test_console.py" \
+      "$ROOT/tests/test_addon_catalog.py"
     ;;
   --full)
     exec env PYTHONPATH="$ROOT" "$PYTHON" -m unittest discover -s "$ROOT/tests" -q

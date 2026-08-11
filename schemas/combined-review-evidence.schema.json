@@ -4,38 +4,159 @@
   "type": "object",
   "additionalProperties": false,
   "required": [
-    "schema_version", "mode", "job_id", "quality_report_sha256",
-    "application_plan_sha256", "audit_review_sha256", "quality_counts",
-    "quality_source_files_scanned", "safe_candidate_count", "blocked_finding_count",
-    "audit_integrity", "audit_latest_state", "audit_latest_event_sha256",
-    "verification_passed", "rollback_performed", "review_required",
-    "approval_status", "review_reasons", "mutation_allowed", "deployment"
+    "schema_version",
+    "mode",
+    "job_id",
+    "quality_report_sha256",
+    "application_plan_sha256",
+    "audit_review_sha256",
+    "quality_counts",
+    "quality_source_files_scanned",
+    "safe_candidate_count",
+    "blocked_finding_count",
+    "audit_integrity",
+    "audit_latest_state",
+    "audit_latest_event_sha256",
+    "verification_passed",
+    "rollback_performed",
+    "review_required",
+    "approval_status",
+    "review_reasons",
+    "mutation_allowed",
+    "deployment"
   ],
   "properties": {
-    "schema_version": { "const": "1" },
-    "mode": { "const": "READ_ONLY_COMBINED_REVIEW_EVIDENCE" },
-    "job_id": { "type": "string", "minLength": 1 },
-    "quality_report_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
-    "application_plan_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
-    "audit_review_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
-    "quality_counts": { "type": "object", "additionalProperties": { "type": "integer", "minimum": 0 } },
-    "quality_source_files_scanned": { "type": "integer", "minimum": 0 },
-    "safe_candidate_count": { "type": "integer", "minimum": 0 },
-    "blocked_finding_count": { "type": "integer", "minimum": 0 },
-    "audit_integrity": { "enum": ["VALID", "INCOMPLETE", "INVALID"] },
-    "audit_latest_state": { "type": ["string", "null"] },
-    "audit_latest_event_sha256": { "type": ["string", "null"], "pattern": "^[0-9a-f]{64}$" },
-    "verification_passed": { "type": ["boolean", "null"] },
-    "rollback_performed": { "type": ["boolean", "null"] },
-    "review_required": { "const": true },
-    "approval_status": { "const": "HUMAN_REVIEW_REQUIRED" },
-    "review_reasons": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
-    "mutation_allowed": { "const": false },
-    "deployment": { "const": "DISABLED" },
-    "claude_review_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
-    "claude_model": { "enum": ["claude-sonnet-4-6", "claude-opus-4-5", "claude-haiku-4-5-20251001"] },
-    "claude_finding_count": { "type": "integer", "minimum": 0 },
-    "claude_recommendation_count": { "type": "integer", "minimum": 0 },
-    "claude_limitation_count": { "type": "integer", "minimum": 0 }
+    "schema_version": {
+      "const": "1"
+    },
+    "mode": {
+      "const": "READ_ONLY_COMBINED_REVIEW_EVIDENCE"
+    },
+    "job_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "quality_report_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "application_plan_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "audit_review_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "quality_counts": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 0
+      }
+    },
+    "quality_source_files_scanned": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "safe_candidate_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "blocked_finding_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "audit_integrity": {
+      "enum": [
+        "VALID",
+        "INCOMPLETE",
+        "INVALID"
+      ]
+    },
+    "audit_latest_state": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "audit_latest_event_sha256": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "verification_passed": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "rollback_performed": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "review_required": {
+      "const": true
+    },
+    "approval_status": {
+      "const": "HUMAN_REVIEW_REQUIRED"
+    },
+    "review_reasons": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "mutation_allowed": {
+      "const": false
+    },
+    "deployment": {
+      "const": "DISABLED"
+    },
+    "claude_review_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "claude_model": {
+      "enum": [
+        "claude-sonnet-4-6",
+        "claude-opus-4-5",
+        "claude-haiku-4-5-20251001"
+      ]
+    },
+    "claude_finding_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "claude_recommendation_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "claude_limitation_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "index_evidence_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "index_evidence_revision": {
+      "type": "string",
+      "minLength": 1
+    },
+    "index_evidence_matched_file_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "index_evidence_missing_file_count": {
+      "type": "integer",
+      "minimum": 0
+    }
   }
 }

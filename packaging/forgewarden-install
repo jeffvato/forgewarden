@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
+PYTHON="${HERMES_SWARM_PYTHON:-python3}"
+
+if [[ "${1:-}" == "--version" ]]; then echo "forgewarden-install 0.1.0"; exit 0; fi
+if [[ "${1:-}" != "--help" ]]; then
+  exec env PYTHONPATH="$ROOT" "$PYTHON" -m swarm.installation "$@"
+fi
+cat <<'EOF'
+Forgewarden installer
+
+Lifecycle commands are explicit and local-only:
+
+  forgewarden-install stage-install --source <release-dir> --root <install-root> --release <version> --file <relative-path> [...]
+  forgewarden-install promote --stage <stage-dir> --root <install-root>
+  forgewarden-install rollback --backup <backup-dir> --root <install-root>
+  forgewarden-install check-prerequisites [--tool <name>] [...]
+
+Validation and uninstall preview remain available through the Forgewarden
+installation module. Promotion and rollback retain guarded backups.
+EOF

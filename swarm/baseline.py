@@ -11,7 +11,8 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-from .adapters import CodexAdapter, GeminiAdapter, HermesAdapter, WriterInvocationSpec, limited_run, measure_resources, normalize_changed_paths, select_limits
+from .adapters import CodexAdapter, HermesAdapter, WriterInvocationSpec, limited_run, measure_resources, normalize_changed_paths, select_limits
+from . import claude_verifier
 from .core import AuditLog, Job, ServiceLock, SwarmError, redact, run_command
 from .local_run import _readonly_snapshot
 from .paths import audit_root as default_audit_root, runtime_root as default_runtime_root
@@ -393,7 +394,7 @@ def run_controlled_baseline(root: Path, repository: Path = REPOSITORY, runtime_r
     limits = select_limits(resources)
     if not shutil.which("systemd-run"):
         raise SwarmError("controlled baseline requires systemd-run for aggregate memory and network isolation")
-    commands = {name: shutil.which(name) for name in ("hermes", "codex", "agy")}
+    commands = {name: shutil.which(name) for name in ("hermes", "codex", "claude")}
     if any(not value for value in commands.values()):
         raise SwarmError("required local CLI unavailable for controlled baseline")
     worktree = Path(tempfile.mkdtemp(prefix=f"controlled-{job.job_id}-", dir=state_dir))
@@ -508,16 +509,15 @@ def run_controlled_baseline(root: Path, repository: Path = REPOSITORY, runtime_r
                     raise SwarmError(f"synthetic repair changed unexpected files: {synthetic_repair_diff}")
                 audit.record(job, "trusted_commit_created", synthetic_evidence=True, commit=commit, repair_commit=commit, repair_tree=repair_tree, clean_baseline_tree=clean_tree, repair_parent=defect_commit, repair_diff=synthetic_repair_diff, staged_files=staged, hooks="disabled", signing="disabled", identity="Hermes Swarm")
                 snapshot = _readonly_snapshot(worktree, state_dir, job.job_id)
-                job.state = "GEMINI_REVIEWING"
-                audit.record(job, "gemini_started", reviewed_commit=commit, network_policy="blocked-by-systemd-IPAddrDeny")
-                review_prompt = f"""You are an independent read-only reviewer. Review only repair commit {commit} against its synthetic defect parent {defect_commit} in the supplied read-only snapshot for controlled synthetic job {job.job_id}. The clean baseline is {BASELINE_SHA}; the exact repair tree must equal the clean baseline tree {clean_tree}. The allowed changed file is exactly {WRITABLE_DEADLINE}; existing tests must be byte-identical. Deterministic argument-array command passed: {test_command!r}. Do not use network, edit, commit, deploy, or access secrets. Return only valid review JSON with reviewed_commit exactly {commit}, verdict APPROVE only if the patch is narrow and safe, risk LOW, no blocking findings, no missing tests, and proposed_rules empty."""
-                gemini = GeminiAdapter(root / "schemas/gemini-review.schema.json", limits, commands["agy"])
-                gemini_result = gemini.run(snapshot, job.job_id, commit, review_prompt)
-                if gemini_result["verdict"] != "APPROVE" or gemini_result["risk"] != "LOW":
-                    raise SwarmError("agy/Gemini did not approve controlled baseline repair")
+                job.state = "CLAUDE_REVIEWING"
+                audit.record(job, "claude_started", reviewed_commit=commit, network_policy="blocked-by-systemd-IPAddrDeny")
+                review_prompt = f"""Review only repair commit {commit} against its synthetic defect parent {defect_commit} in the supplied read-only snapshot for controlled synthetic job {job.job_id}. The clean baseline is {BASELINE_SHA}; the exact repair tree must equal the clean baseline tree {clean_tree}. The allowed changed file is exactly {WRITABLE_DEADLINE}; existing tests must be byte-identical. Deterministic argument-array command passed: {test_command!r}."""
+                claude_result = claude_verifier.run(snapshot, job.job_id, commit, review_prompt)
+                if claude_result["verdict"] != "APPROVE" or claude_result["risk"] != "LOW":
+                    raise SwarmError("Claude did not approve controlled baseline repair")
                 job.state = "SUCCEEDED"
-                audit.record(job, "controlled_baseline_succeeded", synthetic_evidence=True, clean_baseline_commit=BASELINE_SHA, clean_baseline_tree=clean_tree, defect_commit=defect_commit, defect_tree=defect_tree, repair_commit=commit, repair_tree=repair_tree, base=BASELINE_SHA, commit=commit, deterministic_checks="PASSED", reviewer="agy-gemini-read-only", reviewer_decision=gemini_result["verdict"], reviewed_commit=gemini_result["reviewed_commit"], review_parent=defect_commit, diff_gate=gate, network_policy="blocked-by-systemd-IPAddrDeny", environment_policy="production-and-credential-vars-removed", limits=limits.__dict__)
-                result = {"job_id": job.job_id, "state": job.state, "synthetic": True, "clean_baseline_commit": BASELINE_SHA, "clean_baseline_tree": clean_tree, "defect_commit": defect_commit, "defect_tree": defect_tree, "repair_commit": commit, "repair_tree": repair_tree, "base": BASELINE_SHA, "commit": commit, "diff_gate": gate, "limits": limits.__dict__, "gemini": gemini_result}
+                audit.record(job, "controlled_baseline_succeeded", synthetic_evidence=True, clean_baseline_commit=BASELINE_SHA, clean_baseline_tree=clean_tree, defect_commit=defect_commit, defect_tree=defect_tree, repair_commit=commit, repair_tree=repair_tree, base=BASELINE_SHA, commit=commit, deterministic_checks="PASSED", reviewer="claude-sonnet-read-only", reviewer_decision=claude_result["verdict"], reviewed_commit=claude_result["reviewed_commit"], review_parent=defect_commit, diff_gate=gate, network_policy="blocked-by-systemd-IPAddrDeny", environment_policy="production-and-credential-vars-removed", limits=limits.__dict__)
+                result = {"job_id": job.job_id, "state": job.state, "synthetic": True, "clean_baseline_commit": BASELINE_SHA, "clean_baseline_tree": clean_tree, "defect_commit": defect_commit, "defect_tree": defect_tree, "repair_commit": commit, "repair_tree": repair_tree, "base": BASELINE_SHA, "commit": commit, "diff_gate": gate, "limits": limits.__dict__, "claude": claude_result}
         except Exception as exc:
             job.state = "FAILED"
             audit.record(job, "controlled_baseline_failed", error=redact(str(exc)), network_policy="blocked-by-systemd-IPAddrDeny")

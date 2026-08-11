@@ -1,1 +1,54 @@
-const $=id=>document.getElementById(id);let profiles=[];async function load(){try{const [models,status]=await Promise.all([fetch('/api/models'),fetch('/api/status')]);const m=await models.json(),s=await status.json();profiles=m.profiles;$('connection').textContent='CONNECTED';$('dry-run').textContent=s.workflow.autonomous_dry_run;$('deployment').textContent=s.workflow.deployment;$('kill-switch').textContent=s.workflow.kill_switch;$('workflow-state').textContent=s.workflow.state;$('task').innerHTML=m.tasks.map(t=>`<option value="${t}">${t.replace('_',' ')}</option>`).join('');$('model').innerHTML=profiles.map(p=>`<option value="${p.id}">${p.name} — ${p.role}</option>`).join('');$('models').innerHTML=profiles.map(p=>`<article class="model"><span class="dot ${p.accent}"></span><div><h3>${p.name}</h3><p>${p.description}</p></div><span class="role">${p.role}</span></article>`).join('')}catch(e){$('connection').textContent='OFFLINE'}}$('dispatch-form').addEventListener('submit',async e=>{e.preventDefault();const result=$('result');result.hidden=false;result.className='result';result.textContent='VALIDATING GUARDRAILS…';try{const r=await fetch('/api/dispatch-plan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model_id:$('model').value,task:$('task').value,objective:$('objective').value})});const data=await r.json();if(!r.ok)throw Error(data.error);result.textContent=`PLAN READY · ${data.model.name}\n\n${data.objective}\n\nMode: ${data.mode}\nExecution started: ${data.execution_started}\nHuman approval: ${data.guardrails.requires_human_approval}\nDeployment: ${data.guardrails.deployment}\n\n${data.next_step}`}catch(err){result.className='result error';result.textContent=`BLOCKED BY GUARDRAIL\n\n${err.message}`}});load();
+const $ = id => document.getElementById(id);
+const views = { overview: 'Operations overview', jobs: 'Jobs & plans', evidence: 'Evidence posture', addons: 'Add-on platform', install: 'Install / update' };
+let profiles = [];
+const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]));
+
+function renderJobFeed(records) {
+  const feed = $('job-feed');
+  if (!records.length) { feed.innerHTML = '<span class="muted">No durable job records available.</span>'; return; }
+  feed.innerHTML = records.slice(-6).reverse().map(record => `<div class="timeline-item"><span class="timeline-dot violet"></span><div><strong>${escapeHtml(record.event || record.state || 'RECORDED EVENT')}</strong><small>${escapeHtml(record.job_id || 'unbound job')} ${record.repair_commit ? `· commit ${escapeHtml(record.repair_commit.slice(0, 12))}` : ''}</small></div><time>${escapeHtml(record.timestamp || 'RECORDED')}</time></div>`).join('');
+}
+
+function showView(name) {
+  document.querySelectorAll('.view').forEach(view => view.classList.toggle('active-view', view.id === `view-${name}`));
+  document.querySelectorAll('.nav-item').forEach(item => item.classList.toggle('active', item.dataset.view === name));
+  $('view-title').textContent = views[name];
+}
+
+function populateModels(tasks) {
+  $('task').innerHTML = tasks.map(task => `<option value="${task}">${task.replaceAll('_', ' ')}</option>`).join('');
+  $('model').innerHTML = profiles.map(profile => `<option value="${profile.id}">${profile.name} — ${profile.role}</option>`).join('');
+  $('models').innerHTML = profiles.map(profile => `<article class="model"><span class="dot ${profile.accent}"></span><div><h3>${profile.name}</h3><p>${profile.description}</p></div><span class="role">${profile.role}</span></article>`).join('');
+  $('metric-models').textContent = String(profiles.length).padStart(2, '0');
+}
+
+async function load() {
+  try {
+    const [models, status, addons, installation, audit, jobs, evidence, approvals] = await Promise.all([fetch('/api/models'), fetch('/api/status'), fetch('/api/addons'), fetch('/api/installation'), fetch('/api/audit'), fetch('/api/jobs'), fetch('/api/evidence'), fetch('/api/approvals')]);
+    const modelData = await models.json(); const statusData = await status.json(); const addonData = await addons.json(); const installData = await installation.json(); const auditData = await audit.json(); const jobData = await jobs.json(); const evidenceData = await evidence.json(); const approvalData = await approvals.json(); profiles = modelData.profiles;
+    $('connection').textContent = 'CONNECTED'; $('mode').textContent = statusData.safety.mode;
+    $('dry-run').textContent = statusData.workflow.autonomous_dry_run; $('deployment').textContent = statusData.workflow.deployment;
+    $('kill-switch').textContent = statusData.workflow.kill_switch; $('workflow-state').textContent = statusData.workflow.state;
+    const addonCount = Object.keys(addonData.addons || {}).length;
+    $('addon-state').textContent = addonCount ? `${addonCount} INSTALLED` : 'CATALOG READY';
+    $('install-mode').textContent = installData.mode.replaceAll('_', ' ');
+    $('install-promotion').textContent = installData.promotion.replaceAll('_', ' ');
+    $('install-uninstall').textContent = installData.uninstall.replaceAll('_', ' ');
+    $('metric-audit').textContent = `${auditData.events.length} EVENTS`;
+    $('evidence-live-state').textContent = `${evidenceData.records.length} REVIEW RECORDS · ${jobData.records.length} JOB EVENTS · ${approvalData.records.length} APPROVAL RECORDS`;
+    renderJobFeed(jobData.records);
+    populateModels(modelData.tasks);
+  } catch (error) { $('connection').textContent = 'OFFLINE'; document.querySelector('.connection').classList.add('offline'); }
+}
+
+document.querySelectorAll('[data-view]').forEach(item => item.addEventListener('click', () => showView(item.dataset.view)));
+document.querySelectorAll('[data-view-target]').forEach(item => item.addEventListener('click', () => showView(item.dataset.viewTarget)));
+$('dispatch-form').addEventListener('submit', async event => {
+  event.preventDefault(); const result = $('result'); result.hidden = false; result.className = 'result'; result.textContent = 'VALIDATING GUARDRAILS…';
+  try {
+    const response = await fetch('/api/dispatch-plan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model_id: $('model').value, task: $('task').value, objective: $('objective').value }) });
+    const data = await response.json(); if (!response.ok) throw Error(data.error);
+    result.textContent = `PLAN READY · ${data.model.name}\n\n${data.objective}\n\nMode: ${data.mode}\nExecution started: ${data.execution_started}\nHuman approval: ${data.guardrails.requires_human_approval}\nDeployment: ${data.guardrails.deployment}\n\n${data.next_step}`;
+  } catch (error) { result.className = 'result error'; result.textContent = `BLOCKED BY GUARDRAIL\n\n${error.message}`; }
+});
+showView('overview'); load();

@@ -29,14 +29,21 @@ def build_review_evidence(
     application_plan_path: Path,
     audit_review_path: Path,
     claude_review_path: Path | None = None,
+    index_evidence_path: Path | None = None,
 ) -> dict[str, Any]:
     quality, quality_hash = _load(quality_report_path)
     plan, plan_hash = _load(application_plan_path)
     audit, audit_hash = _load(audit_review_path)
     claude: dict[str, Any] | None = None
     claude_hash: str | None = None
+    index_evidence: dict[str, Any] | None = None
+    index_evidence_hash: str | None = None
     if claude_review_path is not None:
         claude, claude_hash = _load(claude_review_path)
+    if index_evidence_path is not None:
+        index_evidence, index_evidence_hash = _load(index_evidence_path)
+        if index_evidence.get("schema_version") != "1" or index_evidence.get("mode") != "READ_ONLY":
+            raise ValueError("index evidence is not read-only")
     if quality.get("schema_version") != "1" or quality.get("mode") != "READ_ONLY" or quality.get("auto_apply_enabled") is not False:
         raise ValueError("quality report is not read-only")
     if (
@@ -95,6 +102,13 @@ def build_review_evidence(
         "mutation_allowed": False,
         "deployment": "DISABLED",
     }
+    if index_evidence is not None:
+        result.update({
+            "index_evidence_sha256": index_evidence_hash,
+            "index_evidence_revision": index_evidence.get("revision"),
+            "index_evidence_matched_file_count": len(index_evidence.get("matched_files", [])),
+            "index_evidence_missing_file_count": len(index_evidence.get("missing_files", [])),
+        })
     if claude is not None:
         result.update({
             "claude_review_sha256": claude_hash,
@@ -113,10 +127,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--application-plan", type=Path, required=True)
     parser.add_argument("--audit-review", type=Path, required=True)
     parser.add_argument("--claude-review", type=Path)
+    parser.add_argument("--index-evidence", type=Path)
     parser.add_argument("--output", type=Path)
     args = parser.parse_args(argv)
     try:
-        result = build_review_evidence(args.quality_report, args.application_plan, args.audit_review, args.claude_review)
+        result = build_review_evidence(args.quality_report, args.application_plan, args.audit_review, args.claude_review, args.index_evidence)
         rendered = json.dumps(result, indent=2, sort_keys=True) + "\n"
         if args.output:
             from .quality_review import write_report

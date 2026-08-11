@@ -5,15 +5,76 @@ from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import unquote, urlparse
 from .paths import runtime_root
 from .phase2a import safety_status, workflow_status
+from .addons import AddonManager, AddonManifestError
+from .desktop_bridge import job_status as bridge_job_status, recent_audit
 
 ROOT = Path(__file__).resolve().parents[1]
 PROFILE_PATH = ROOT / "config" / "llm-profiles.json"
 CONSOLE_ROOT = ROOT / "console"
 TASKS = ("inspect", "implement", "test", "review", "risk_audit", "documentation", "analysis")
 GLOBAL_FORBIDDEN = {"production", "deployment", "service_restart", "credentials", "databases", "remote_hosts"}
+
+def addon_snapshot(root: Path | None = None) -> dict[str, Any]:
+    """Read the local add-on registry without enabling or executing anything."""
+    try:
+        return AddonManager(root or (runtime_root() / "addons")).list_installed()
+    except AddonManifestError as exc:
+        raise ValueError(f"Failed to read add-on registry: {exc}") from exc
+
+def addon_audit_snapshot(root: Path | None = None, limit: int = 50) -> dict[str, Any]:
+    audit = AddonManager(root or (runtime_root() / "addons")).audit
+    if not audit.exists():
+        return {"events": []}
+    from .core import read_restricted_bytes, SwarmError
+    try:
+        lines = read_restricted_bytes(audit, "add-on audit").decode("utf-8").splitlines()
+        events = [json.loads(line) for line in lines if line.strip()]
+    except (SwarmError, UnicodeError, json.JSONDecodeError) as exc:
+        raise ValueError(f"Failed to read add-on audit: {exc}") from exc
+    if not all(isinstance(event, dict) for event in events):
+        raise ValueError("add-on audit contains an invalid event")
+    return {"events": events[-max(1, min(limit, 200)):], "truncated": len(events) > limit}
+
+def installation_snapshot() -> dict[str, Any]:
+    return {"mode": "PLAN_ONLY", "installer": "AVAILABLE", "promotion": "EXPLICIT", "rollback": "BACKUP_REQUIRED", "uninstall": "CONFIRMATION_REQUIRED", "production": "DISABLED"}
+
+def jobs_snapshot() -> dict[str, Any]:
+    """Return bounded, sanitized durable job records for the console."""
+    return recent_audit(20)
+
+def job_detail(job_id: str) -> dict[str, Any]:
+    return bridge_job_status(job_id)
+
+def evidence_detail(job_id: str) -> dict[str, Any]:
+    result = job_detail(job_id)
+    result["records"] = [record for record in result["records"] if any(key in record for key in ("verdict", "risk", "repair_commit"))]
+    return result
+
+def evidence_snapshot() -> dict[str, Any]:
+    records = recent_audit(20)["records"]
+    return {"records": [record for record in records if any(key in record for key in ("verdict", "risk", "repair_commit"))]}
+
+def approval_snapshot(root: Path | None = None) -> dict[str, Any]:
+    """Return bounded non-authorizing approval metadata for human review."""
+    approval_dir = (root or runtime_root()) / "approvals"
+    if not approval_dir.exists():
+        return {"records": []}
+    from .core import read_restricted_bytes, SwarmError
+    records: list[dict[str, Any]] = []
+    for path in sorted(approval_dir.glob("*.json")):
+        if path.is_symlink() or not path.is_file():
+            raise ValueError(f"unsafe approval record: {path.name}")
+        try:
+            value = json.loads(read_restricted_bytes(path, "approval record").decode("utf-8"))
+        except (SwarmError, UnicodeError, json.JSONDecodeError) as exc:
+            raise ValueError(f"invalid approval record: {path.name}") from exc
+        if not isinstance(value, dict):
+            raise ValueError(f"invalid approval record: {path.name}")
+        records.append({key: value.get(key) for key in ("approval_id", "job_id", "reviewer", "decision", "expires_at", "consumed", "mutation_allowed", "deployment")})
+    return {"records": records[-50:]}
 
 def load_profiles(path: Path = PROFILE_PATH) -> list[dict[str, Any]]:
     from .core import read_restricted_bytes, SwarmError
@@ -61,6 +122,28 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         route = urlparse(self.path).path
         if route == "/api/status": self._json(HTTPStatus.OK, {"safety":safety_status(runtime_root()),"workflow":workflow_status(runtime_root())}); return
         if route == "/api/models": self._json(HTTPStatus.OK, {"profiles":load_profiles(),"tasks":TASKS}); return
+        if route == "/api/addons": self._json(HTTPStatus.OK, addon_snapshot()); return
+        if route == "/api/installation": self._json(HTTPStatus.OK, installation_snapshot()); return
+        if route == "/api/audit": self._json(HTTPStatus.OK, addon_audit_snapshot()); return
+        if route == "/api/jobs": self._json(HTTPStatus.OK, jobs_snapshot()); return
+        if route == "/api/evidence": self._json(HTTPStatus.OK, evidence_snapshot()); return
+        if route.startswith("/api/jobs/"):
+            try:
+                self._json(HTTPStatus.OK, job_detail(unquote(route.removeprefix("/api/jobs/"))))
+            except ValueError as exc:
+                self._json(HTTPStatus.BAD_REQUEST, {"error": str(exc)})
+            except RuntimeError as exc:
+                self._json(HTTPStatus.INTERNAL_SERVER_ERROR, {"error": str(exc)})
+            return
+        if route.startswith("/api/evidence/"):
+            try:
+                self._json(HTTPStatus.OK, evidence_detail(unquote(route.removeprefix("/api/evidence/"))))
+            except ValueError as exc:
+                self._json(HTTPStatus.BAD_REQUEST, {"error": str(exc)})
+            except RuntimeError as exc:
+                self._json(HTTPStatus.INTERNAL_SERVER_ERROR, {"error": str(exc)})
+            return
+        if route == "/api/approvals": self._json(HTTPStatus.OK, approval_snapshot()); return
         assets = {"/":("index.html","text/html; charset=utf-8"),"/styles.css":("styles.css","text/css; charset=utf-8"),"/app.js":("app.js","text/javascript; charset=utf-8")}
         if route not in assets: self._json(HTTPStatus.NOT_FOUND, {"error":"not found"}); return
         filename, content_type = assets[route]

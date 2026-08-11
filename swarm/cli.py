@@ -1,6 +1,7 @@
 import argparse
 import json
 import shlex
+from codebase_index_evidence import build_index_evidence
 from pathlib import Path
 
 from .adapters import discover_commands, measure_resources, select_limits
@@ -16,12 +17,13 @@ from .quality_audit import review_audit
 from .phase5_release_audit import ReleaseAudit
 from .review_evidence import build_review_evidence
 from .approval import create_approval_record, reconcile_approval, verify_approval
+from .codebase_index import CodebaseIndex
 from .console import serve as serve_console
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Local Hermes coding swarm (dry-run only)")
-    parser.add_argument("command", choices=["start", "stop", "status", "workflow-status", "kill-switch", "dry-run", "controlled-baseline", "gemini-review-recovery", "quality-review", "quality-apply-safe", "quality-audit", "release-inventory", "review-evidence", "claude-review", "approval-create", "approval-verify", "approval-reconcile", "phase2a-worker", "phase2a-recover-terminal", "console", "run", "autonomous-dry-run-status", "autonomous-dry-run-enable", "autonomous-dry-run-disable"], nargs="?", default="status")
+    parser.add_argument("command", choices=["start", "stop", "status", "workflow-status", "kill-switch", "dry-run", "controlled-baseline", "gemini-review-recovery", "quality-review", "quality-apply-safe", "quality-audit", "release-inventory", "review-evidence", "claude-review", "approval-create", "approval-verify", "approval-reconcile", "codebase-index-build", "codebase-index-query", "codebase-index-delete", "index-evidence", "phase2a-worker", "phase2a-recover-terminal", "console", "run", "autonomous-dry-run-status", "autonomous-dry-run-enable", "autonomous-dry-run-disable"], nargs="?", default="status")
     parser.add_argument("--state-dir", type=Path, default=Path(".swarm-state"))
     parser.add_argument("--runtime-root", type=Path)
     parser.add_argument("--audit-dir", type=Path)
@@ -40,8 +42,15 @@ def main() -> int:
     parser.add_argument("--application-plan", type=Path)
     parser.add_argument("--audit-review", type=Path)
     parser.add_argument("--claude-review", type=Path)
+    parser.add_argument("--index-evidence", type=Path)
     parser.add_argument("--evidence", type=Path)
     parser.add_argument("--approval", type=Path)
+    parser.add_argument("--index-path", type=Path)
+    parser.add_argument("--revision")
+    parser.add_argument("--term")
+    parser.add_argument("--actor")
+    parser.add_argument("--limit", type=int, default=20)
+    parser.add_argument("--no-fresh-scan", action="store_true")
     parser.add_argument("--reviewer")
     parser.add_argument("--decision", choices=["APPROVED", "REJECTED"])
     parser.add_argument("--ttl-seconds", type=int, default=3600)
@@ -71,6 +80,43 @@ def main() -> int:
     if args.command == "autonomous-dry-run-disable":
         print(disable_autonomous_dry_run(runtime_root=args.runtime_root or runtime_root()))
         return 0
+    if args.command in {"codebase-index-build", "codebase-index-query", "codebase-index-delete"}:
+        if not args.repository or not args.index_path:
+            parser.error(f"{args.command} requires --repository and --index-path")
+        if not args.revision:
+            parser.error(f"{args.command} requires --revision")
+        try:
+            index = CodebaseIndex(args.repository, args.index_path)
+            if args.command == "codebase-index-build":
+                result = index.build(args.revision)
+            elif args.command == "codebase-index-delete":
+                if not args.actor:
+                    parser.error("codebase-index-delete requires --actor")
+                index.delete(args.actor)
+                result = {"state": "DELETED", "revision": args.revision}
+            else:
+                if not args.term or not args.actor:
+                    parser.error("codebase-index-query requires --term and --actor")
+                result = {"results": index.query(args.term, args.revision, args.actor, limit=args.limit, fresh_scan=not args.no_fresh_scan)}
+            print(json.dumps(result, indent=2, sort_keys=True))
+            return 0
+        except (OSError, ValueError, SwarmError) as exc:
+            print(f"FAILED: {exc}")
+            return 1
+    if args.command == "index-evidence":
+        if not args.quality_report or not args.repository or not args.index_path or not args.revision or not args.actor:
+            parser.error("index-evidence requires --quality-report, --repository, --index-path, --revision, and --actor")
+        try:
+            result = build_index_evidence(args.quality_report, args.repository, args.index_path, args.revision, args.actor)
+            rendered = json.dumps(result, indent=2, sort_keys=True) + "\n"
+            if args.output:
+                write_report(args.output, rendered)
+            else:
+                print(rendered, end="")
+            return 0
+        except (OSError, ValueError, json.JSONDecodeError, SwarmError) as exc:
+            print(f"FAILED: {exc}")
+            return 1
     if args.command == "quality-review":
         if not args.repository:
             parser.error("quality-review requires --repository")
@@ -141,7 +187,7 @@ def main() -> int:
         if not args.quality_report or not args.application_plan or not args.audit_review:
             parser.error("review-evidence requires --quality-report, --application-plan, and --audit-review")
         try:
-            result = build_review_evidence(args.quality_report, args.application_plan, args.audit_review, args.claude_review)
+            result = build_review_evidence(args.quality_report, args.application_plan, args.audit_review, args.claude_review, args.index_evidence)
             rendered = json.dumps(result, indent=2, sort_keys=True) + "\n"
             if args.output:
                 write_report(args.output, rendered)

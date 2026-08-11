@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Any, Protocol
 
 from .adapters import CodexAdapter, GeminiAdapter, ResourceLimits, WriterInvocationSpec, limited_run, normalize_changed_paths
+from . import claude_verifier
 from .baseline import DeterministicInterpreterError, _deadline_test_command, _introduce_deadline_defect, _tracked_test_hashes, _trusted_synthetic_commit, enforce_diff_gate, scan_baseline_tree, scan_git_blobs, validate_deterministic_interpreter
 from .core import AuditLog, Job, SwarmError, redact, read_restricted_bytes, run_command, touch_restricted, validate_contract, write_restricted_text
 from .paths import audit_path, project_root, runtime_root
@@ -38,7 +39,7 @@ RUNNING_MARKER = "RUNNING"
 WRITABLE = ("csv-processor/app/ai/deadline.py", "csv-processor/tests/swarm_regressions/")
 TEST_PATH = "tests/swarm_regressions/test_deadline_contract.py"
 JOB_ID_RE = re.compile(r"^phase2a-[a-z0-9]{24}$")
-VALID_STATE_VALUES = frozenset({"QUEUED", "RUNNING", "CODEX_RUNNING", "CHECKS_RUNNING", "GEMINI_REVIEWING", "SUCCEEDED", "FAILED", "CANCELLED", "ABANDONED", "RECOVERED_ABANDONED"})
+VALID_STATE_VALUES = frozenset({"QUEUED", "RUNNING", "CODEX_RUNNING", "CHECKS_RUNNING", "GEMINI_REVIEWING", "CLAUDE_REVIEWING", "SUCCEEDED", "FAILED", "CANCELLED", "ABANDONED", "RECOVERED_ABANDONED"})
 CONTROL_RE = re.compile(r"[\x00-\x1f\x7f]")
 ISSUE_REJECT = re.compile(
     r"(?i)(https?://|ftp://|ssh://|postgres(?:ql)?://|mysql://|redis://|"
@@ -53,6 +54,7 @@ ISSUE_REJECT = re.compile(
 class JobAdapters(Protocol):
     def codex(self, worktree: Path, job_id: str, prompt: str, spec: WriterInvocationSpec) -> dict[str, Any]: ...
     def gemini(self, snapshot: Path, job_id: str, commit: str, prompt: str) -> dict[str, Any]: ...
+    def claude(self, snapshot: Path, job_id: str, commit: str, prompt: str) -> dict[str, Any]: ...
 
 
 @dataclass(frozen=True)
@@ -162,7 +164,7 @@ def workflow_status(runtime_root: Path = DEFAULT_RUNTIME) -> dict[str, Any]:
     running_marker = _runtime_file(runtime_root, RUNNING_MARKER).is_file()
     terminal = state_status in {"SUCCEEDED", "FAILED", "CANCELLED", "ABANDONED", "RECOVERED_ABANDONED"}
     stale_markers = terminal and (lock_status != "ABSENT" or running_marker)
-    replay_blocked = state_status in {"QUEUED", "RUNNING", "CODEX_RUNNING", "CHECKS_RUNNING", "GEMINI_REVIEWING"} or lock_status in {"ALIVE", "UNKNOWN"}
+    replay_blocked = state_status in {"QUEUED", "RUNNING", "CODEX_RUNNING", "CHECKS_RUNNING", "GEMINI_REVIEWING", "CLAUDE_REVIEWING"} or lock_status in {"ALIVE", "UNKNOWN"}
     if state_error or lock_status == "INVALID":
         next_action = "INVESTIGATE_INVALID_STATE"
     elif stale_markers and state_status == "RECOVERED_ABANDONED":
@@ -358,6 +360,9 @@ class ProductionAdapters:
 
     def gemini(self, snapshot: Path, job_id: str, commit: str, prompt: str) -> dict[str, Any]:
         return GeminiAdapter(PROJECT_ROOT / "schemas/gemini-review.schema.json", self.limits).run(snapshot, job_id, commit, prompt)
+
+    def claude(self, snapshot: Path, job_id: str, commit: str, prompt: str) -> dict[str, Any]:
+        return claude_verifier.run(snapshot, job_id, commit, prompt)
 
 
 HEARTBEAT_SECONDS = 2.0
@@ -767,11 +772,13 @@ def _execute_worker_job(job: Job, profile: Profile, issue_summary: str, runtime_
         for item in snapshot.rglob("*"):
             if ".git" not in item.parts and not item.is_symlink():
                 item.chmod(0o555 if item.is_dir() else 0o444)
-        _transition(runtime_root, audit, job, "GEMINI_REVIEWING", repair_commit=commit, repair_tree=repair_tree, review_parent=defect_commit)
-        review = adapter.gemini(snapshot, job.job_id, commit, f"Review exact commit {commit} against synthetic parent {defect_commit} read-only. Deterministic tests passed.")
-        validate_contract(review, "gemini", expected_job_id=job.job_id, expected_commit=commit)
+        _transition(runtime_root, audit, job, "CLAUDE_REVIEWING", repair_commit=commit, repair_tree=repair_tree, review_parent=defect_commit)
+        reviewer = getattr(adapter, "claude", None)
+        review_kind = "claude" if reviewer is not None else "gemini"
+        review = (reviewer or adapter.gemini)(snapshot, job.job_id, commit, f"Review exact commit {commit} against synthetic parent {defect_commit} read-only. Deterministic tests passed.")
+        validate_contract(review, review_kind, expected_job_id=job.job_id, expected_commit=commit)
         if review["verdict"] != "APPROVE" or review["risk"] != "LOW" or review["blocking_findings"] or review["tests_missing"]:
-            raise SwarmError("Gemini review did not satisfy approval requirements")
+            raise SwarmError(f"{review_kind.title()} review did not satisfy approval requirements")
         if review.get("proposed_rules"):
             audit.record(job, "learned_rule_proposed", proposed_rule_count=len(review["proposed_rules"]), activation_decision="NOT_ACTIVATED")
         audit.record(job, "succeeded", repair_commit=commit, repair_tree=repair_tree, deterministic="PASSED", verdict=review["verdict"], risk=review["risk"], reviewed_commit=commit, review_parent=defect_commit)
@@ -800,7 +807,7 @@ def run_worker_job(job_id: str, *, runtime_root: Path = DEFAULT_RUNTIME, audit_p
     def heartbeat() -> None:
         while not stop_heartbeat.wait(HEARTBEAT_SECONDS):
             current = _read_state(runtime_root)
-            if current.get("job_id") != job_id or current.get("state") not in {"RUNNING", "CODEX_RUNNING", "CHECKS_RUNNING", "GEMINI_REVIEWING"}:
+            if current.get("job_id") != job_id or current.get("state") not in {"RUNNING", "CODEX_RUNNING", "CHECKS_RUNNING", "GEMINI_REVIEWING", "CLAUDE_REVIEWING"}:
                 return
             current["heartbeat_at"] = time.time()
             _write_state(runtime_root, current)
