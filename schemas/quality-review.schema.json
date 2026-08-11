@@ -133,6 +133,7 @@
               "nested_ternary",
               "parse_failure",
               "pass_through_wrapper",
+              "sql_injection",
               "silent_failure",
               "stale_state",
               "structural_bloat",

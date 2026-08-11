@@ -61,8 +61,23 @@ RISKY findings for human review and requires a Codex-listed test change for
 CAREFUL findings; Gemini approval cannot override those gates. It does not
 edit, commit, deploy, or invoke an external model. Python syntax-aware and
 conservative JavaScript/TypeScript detectors are included; unsupported
-languages still receive text-level checks only. The report declares this detector coverage so
-“no finding” is not confused with “not syntax-covered.”
+languages still receive text-level checks only. The report declares this
+detector coverage so "no finding" is not confused with "not syntax-covered."
+
+The review also flags direct SQL-like interpolation, concatenation, formatting,
+and template expressions at common query sinks as `sql_injection` RISKY
+findings. This is a conservative pattern detector, not whole-program taint
+analysis or a guarantee against zero-day vulnerabilities. See
+`docs/security-analysis.md` for coverage, limits, and the safe fixture
+boundary.
+
+
+Vulnerability intelligence is available as a separate read-only evidence
+command. It accepts explicitly supplied OSV, NVD, and CISA KEV JSON snapshots,
+matches package names from requirements.txt and package.json, and evaluates supported OSV event ranges and marks unresolved or NVD product
+matches for review. See
+`docs/vulnerability-intelligence.md`. It performs no network
+requests or production scanning. The separate `vulnerability-update` command can refresh one explicitly configured official feed with HTTPS allowlisting and atomic caching.
 
 The only currently enabled SAFE transformer is an explicit, one-line Python
 unused-import removal. It requires a clean linked Git worktree and named

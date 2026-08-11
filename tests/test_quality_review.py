@@ -115,6 +115,43 @@ def test_quality_review_does_not_treat_mapping_get_as_n_plus_one(tmp_path):
     assert not any(item["category"] == "n_plus_one_query" for item in result["findings"])
 
 
+def test_quality_review_flags_dynamic_sql_at_query_sink_but_not_parameterized_sql(tmp_path):
+    (tmp_path / "queries.py").write_text(
+        """\ndef unsafe(user_id, cursor):
+    cursor.execute(f\"SELECT * FROM users WHERE id = {user_id}\")
+
+
+def safe(user_id, cursor):
+    cursor.execute(\"SELECT * FROM users WHERE id = ?\", (user_id,))
+""",
+        encoding="utf-8",
+    )
+
+    result = scan_repository(tmp_path)
+
+    findings = [item for item in result["findings"] if item["category"] == "sql_injection"]
+    assert len(findings) == 1
+    assert findings[0]["tier"] == "RISKY"
+    assert findings[0]["confidence"] == "MEDIUM"
+    assert findings[0]["auto_apply"] is False
+
+
+def test_quality_review_flags_javascript_template_sql_at_query_sink(tmp_path):
+    (tmp_path / "queries.js").write_text(
+        "function find(userId, db)\n"
+        "  return db.query(" + chr(96) + "SELECT * FROM users WHERE id = ${userId}" + chr(96) + ");\n"
+        "}\n",
+        encoding="utf-8",
+    )
+
+    result = scan_repository(tmp_path)
+
+    finding = _finding(result, "sql_injection")
+    assert finding["file"] == "queries.js"
+    assert finding["tier"] == "RISKY"
+    assert finding["auto_apply"] is False
+
+
 def test_quality_review_scans_javascript_and_typescript_risk_patterns(tmp_path):
     (tmp_path / "client.ts").write_text(
         """export function choose(ok: boolean, value: string) {

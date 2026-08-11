@@ -41,6 +41,19 @@ QUERY_CALL_RE = re.compile(
     r"(?:query|execute|executemany|fetch(?:one|many|all)?|request|retrieve|lookup)\b",
     re.IGNORECASE,
 )
+SQL_SINK_RE = re.compile(
+    r"(?:\.\s*(?:execute|executemany|executescript|executeSQL|query|raw)\s*\(|"
+    r"\b(?:execute|executescript|executeSQL|query|raw)\s*\()",
+    re.IGNORECASE,
+)
+SQL_KEYWORD_RE = re.compile(
+    r"\b(?:select|insert|update|delete|replace|merge|alter|drop|create)\b",
+    re.IGNORECASE,
+)
+SQL_UNSAFE_EXPRESSION_RE = re.compile(
+    r"(?:\bf[\"']|\x60[^\x60]*\$\{|[\"'][^\n\"']*\b(?:select|insert|update|delete)\b[^\n\"']*[\"']\s*(?:\+|%|\.format\s*\())",
+    re.IGNORECASE,
+)
 BLOCKING_ASYNC_RE = re.compile(r"\b(?:time\.sleep|requests\.|urllib\.)")
 TRANSIENT_STATE_RE = re.compile(r"\b(?:QUEUED|RUNNING|IN_PROGRESS|STARTED|PENDING)\b")
 TERMINAL_STATE_RE = re.compile(r"\b(?:SUCCEEDED|FAILED|COMPLETED|CANCELLED|ABANDONED|DONE)\b")
@@ -65,7 +78,7 @@ DETECTOR_COVERAGE = [
         "mode": "SYNTAX_AWARE",
         "detectors": [
             "concurrency_risk", "duplicate_logic", "leaky_abstraction", "n_plus_one_query",
-            "naming_rot", "nested_ternary", "pass_through_wrapper", "silent_failure",
+            "naming_rot", "nested_ternary", "pass_through_wrapper", "silent_failure", "sql_injection",
             "structural_bloat", "unbounded_growth", "unreachable_code", "unused_import",
         ],
     },
@@ -75,14 +88,14 @@ DETECTOR_COVERAGE = [
         "mode": "TEXT_ONLY",
         "detectors": [
             "concurrency_risk", "n_plus_one_query", "naming_rot", "nested_ternary",
-            "pass_through_wrapper", "silent_failure",
+            "pass_through_wrapper", "silent_failure", "sql_injection",
         ],
     },
     {
         "language": "supported_source_text",
         "extensions": sorted(SOURCE_SUFFIXES),
         "mode": "TEXT_ONLY",
-        "detectors": ["ai_slop", "stale_state"],
+        "detectors": ["ai_slop", "sql_injection", "stale_state"],
     },
 ]
 
@@ -359,8 +372,37 @@ def _python_function_signatures(relative: str, source: str) -> list[tuple[str, s
     return signatures
 
 
+def _scan_sql_injection(relative: str, source: str) -> list[dict[str, Any]]:
+    """Flag direct, text-visible SQL construction at common query sinks.
+
+    This is intentionally conservative and advisory. It catches obvious
+    interpolation, concatenation, formatting, and template-literal use at a
+    query call, but does not claim to perform whole-program taint analysis.
+    Parameterized calls remain unflagged when the query is passed as a plain
+    literal with separate bind arguments.
+    """
+    findings: list[dict[str, Any]] = []
+    for line_number, line in enumerate(source.splitlines(), start=1):
+        stripped = line.strip()
+        if stripped.startswith(("#", "//", "/*", "*")):
+            continue
+        if not SQL_SINK_RE.search(line) or not SQL_KEYWORD_RE.search(line):
+            continue
+        if not SQL_UNSAFE_EXPRESSION_RE.search(line):
+            continue
+        findings.append(_finding(
+            category="sql_injection", tier="RISKY", confidence="MEDIUM", file=relative,
+            line=line_number, summary="SQL-like text is built dynamically at a query sink",
+            evidence=_line(source, line_number),
+            rationale="String interpolation, concatenation, or formatting at a SQL sink can allow untrusted input to alter query structure.",
+            suggested_action="Trace input provenance and replace dynamic SQL construction with parameterized queries or a reviewed query-builder boundary; add a negative injection test.",
+        ))
+    return findings
+
+
 def _scan_text(relative: str, source: str, suffix: str) -> list[dict[str, Any]]:
     findings: list[dict[str, Any]] = []
+    findings.extend(_scan_sql_injection(relative, source))
     for line_number, line in enumerate(source.splitlines(), start=1):
         if AI_SLOP_RE.search(line):
             findings.append(_finding(

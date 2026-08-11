@@ -12,6 +12,7 @@ from .local_run import run_real_dry_run
 from .phase2a import disable_autonomous_dry_run, enable_autonomous_dry_run, engage_kill_switch, recover_terminal_abandoned, run_worker_job, safety_status, workflow_status
 from .paths import audit_root, runtime_root
 from .quality_review import scan_repository, write_report
+from .vulnerability_index import build_evidence, update_feed, write_evidence
 from .quality_apply import apply_safe_findings
 from .quality_audit import review_audit
 from .phase5_release_audit import ReleaseAudit
@@ -23,7 +24,7 @@ from .console import serve as serve_console
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Local Hermes coding swarm (dry-run only)")
-    parser.add_argument("command", choices=["start", "stop", "status", "workflow-status", "kill-switch", "dry-run", "controlled-baseline", "gemini-review-recovery", "quality-review", "quality-apply-safe", "quality-audit", "release-inventory", "review-evidence", "claude-review", "approval-create", "approval-verify", "approval-reconcile", "codebase-index-build", "codebase-index-query", "codebase-index-delete", "index-evidence", "phase2a-worker", "phase2a-recover-terminal", "console", "run", "autonomous-dry-run-status", "autonomous-dry-run-enable", "autonomous-dry-run-disable"], nargs="?", default="status")
+    parser.add_argument("command", choices=["start", "stop", "status", "workflow-status", "kill-switch", "dry-run", "controlled-baseline", "gemini-review-recovery", "quality-review", "quality-apply-safe", "quality-audit", "release-inventory", "review-evidence", "claude-review", "approval-create", "approval-verify", "approval-reconcile", "codebase-index-build", "codebase-index-query", "codebase-index-delete", "index-evidence", "vulnerability-evidence", "vulnerability-update", "phase2a-worker", "phase2a-recover-terminal", "console", "run", "autonomous-dry-run-status", "autonomous-dry-run-enable", "autonomous-dry-run-disable"], nargs="?", default="status")
     parser.add_argument("--state-dir", type=Path, default=Path(".swarm-state"))
     parser.add_argument("--runtime-root", type=Path)
     parser.add_argument("--audit-dir", type=Path)
@@ -46,6 +47,10 @@ def main() -> int:
     parser.add_argument("--evidence", type=Path)
     parser.add_argument("--approval", type=Path)
     parser.add_argument("--index-path", type=Path)
+    parser.add_argument("--feed", type=Path, action="append", default=[])
+    parser.add_argument("--feed-source", choices=["osv", "nvd", "cisa_kev"])
+    parser.add_argument("--feed-url")
+    parser.add_argument("--feed-output", type=Path)
     parser.add_argument("--revision")
     parser.add_argument("--term")
     parser.add_argument("--actor")
@@ -115,6 +120,26 @@ def main() -> int:
                 print(rendered, end="")
             return 0
         except (OSError, ValueError, json.JSONDecodeError, SwarmError) as exc:
+            print(f"FAILED: {exc}")
+            return 1
+    if args.command == "vulnerability-update":
+        if not args.feed_source or not args.feed_url or not args.feed_output:
+            parser.error("vulnerability-update requires --feed-source, --feed-url, and --feed-output")
+        try:
+            print(json.dumps(update_feed(args.feed_source, args.feed_url, args.feed_output), indent=2, sort_keys=True))
+            return 0
+        except (OSError, ValueError, json.JSONDecodeError) as exc:
+            print(f"FAILED: {exc}")
+            return 1
+    if args.command == "vulnerability-evidence":
+        if not args.repository or not args.feed or not args.output:
+            parser.error("vulnerability-evidence requires --repository, --feed, and --output")
+        try:
+            result = build_evidence(args.repository, args.feed)
+            write_evidence(args.output, result)
+            print(json.dumps(result, indent=2, sort_keys=True))
+            return 0
+        except (OSError, ValueError, json.JSONDecodeError) as exc:
             print(f"FAILED: {exc}")
             return 1
     if args.command == "quality-review":

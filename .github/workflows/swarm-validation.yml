@@ -96,6 +96,32 @@ jobs:
           for artifact, schema in checks:
               jsonschema.validate(json.loads(Path(artifact).read_text()), json.loads(Path(schema).read_text()))
           PY
+      - name: Publish PR review summary
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          quality = json.loads(Path("artifacts/quality-review.json").read_text())
+          index = json.loads(Path("artifacts/index-evidence.json").read_text())
+          counts = quality.get("counts", {})
+          lines = [
+              "## Forge Warden PR review",
+              "",
+              "- Mode: read-only",
+              f"- Source files scanned: {quality.get('source_files_scanned', 0)}",
+              f"- Risk counts: SAFE={counts.get('SAFE', 0)}, CAREFUL={counts.get('CAREFUL', 0)}, RISKY={counts.get('RISKY', 0)}",
+              f"- Indexed finding files matched: {len(index.get('matched_files', []))}",
+              f"- Finding files missing from index: {len(index.get('missing_files', []))}",
+              f"- Revision: `{index.get('revision', 'unknown')}`",
+              "",
+              "> This review is advisory. It does not authorize mutation, merge, deployment, or publishing.",
+              "> Detector coverage and language limitations remain in the quality-review artifact.",
+          ]
+          Path(os.environ["GITHUB_STEP_SUMMARY"]).write_text("\n".join(lines) + "\n", encoding="utf-8")
+          Path("artifacts/review-summary.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+          PY
       - name: Upload read-only review artifacts
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
