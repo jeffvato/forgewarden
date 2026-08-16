@@ -11,6 +11,17 @@ from swarm.console import addon_audit_snapshot, addon_snapshot, approval_snapsho
 from swarm.core import SwarmError
 
 class ConsoleTests(unittest.TestCase):
+    def test_console_exposes_navigation_and_status_accessibility_hooks(self):
+        html = (Path(__file__).parents[1] / "console" / "index.html").read_text(encoding="utf-8")
+        script = (Path(__file__).parents[1] / "console" / "app.js").read_text(encoding="utf-8")
+        self.assertIn('<nav aria-label="Primary navigation">', html)
+        self.assertIn("$('connection').setAttribute('aria-live', 'polite')", script)
+        self.assertIn("$('result').setAttribute('aria-live', 'polite')", script)
+        self.assertIn("item.setAttribute('aria-current'", script)
+        self.assertIn("item.removeAttribute('aria-current')", script)
+        self.assertIn("function renderAddons", script)
+        self.assertIn("id = 'addon-registry'", script)
+        self.assertIn("manifest.name || manifest.id || 'Unknown add-on'", script)
     def test_profiles_are_complete_and_global_guards_are_inherited(self):
         profiles = load_profiles(); self.assertEqual({p["id"] for p in profiles},{"codex-writer","gemini-reviewer","claude-verifier","claude-auditor","fable-analyst"})
         for profile in profiles: self.assertTrue({"production","deployment","credentials","databases","remote_hosts"}.issubset(profile["forbidden_actions"]))

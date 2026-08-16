@@ -9,6 +9,7 @@ from unittest.mock import patch
 
 from swarm.adapters import CodexAdapter, ResourceLimits, WriterInvocationSpec, _codex_environment
 from swarm.core import SwarmError, validate_contract
+from swarm.paths import runtime_root
 
 
 def _user_bus_available() -> bool:
@@ -84,7 +85,7 @@ class CodexAdapterProcessTests(unittest.TestCase):
         self.assertIn("PYTHONDONTWRITEBYTECODE", capture["env_names"])
         self.assertIn("PYTHONPYCACHEPREFIX", capture["env_names"])
         self.assertIn("PYTEST_ADDOPTS", capture["env_names"])
-        self.assertTrue(capture["pycache"].startswith("/home/jeff/hermes-swarm-runtime/python-cache/"))
+        self.assertTrue(capture["pycache"].startswith(str(runtime_root() / "python-cache") + "/"))
         self.assertEqual(capture["pytest_opts"], "-p no:cacheprovider")
         self.assertFalse(adapter.last_cache_directory.exists())
         codex_env = _codex_environment()

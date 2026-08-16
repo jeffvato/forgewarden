@@ -9,9 +9,30 @@ function renderJobFeed(records) {
   feed.innerHTML = records.slice(-6).reverse().map(record => `<div class="timeline-item"><span class="timeline-dot violet"></span><div><strong>${escapeHtml(record.event || record.state || 'RECORDED EVENT')}</strong><small>${escapeHtml(record.job_id || 'unbound job')} ${record.repair_commit ? `· commit ${escapeHtml(record.repair_commit.slice(0, 12))}` : ''}</small></div><time>${escapeHtml(record.timestamp || 'RECORDED')}</time></div>`).join('');
 }
 
+function renderAddons(snapshot) {
+  const existing = $('addon-registry');
+  if (existing) existing.remove();
+  const card = document.querySelector('#view-addons .roadmap-card');
+  if (!card) return;
+  const entries = Object.values(snapshot.addons || {});
+  const section = document.createElement('section');
+  section.id = 'addon-registry';
+  section.className = 'panel addon-registry';
+  section.innerHTML = entries.length ? `<div class="panel-head"><span class="kicker">LOCAL REGISTRY</span><span class="badge">READ-ONLY</span></div>${entries.map(entry => {
+    const manifest = entry.manifest || {};
+    return `<article class="roadmap-line"><div><strong>${escapeHtml(manifest.name || manifest.id || 'Unknown add-on')}</strong><small>${escapeHtml(manifest.publisher || 'Unknown publisher')} · v${escapeHtml(manifest.version || '0.0.0')}</small></div><span class="roadmap-status">${escapeHtml(entry.status || 'UNKNOWN')}</span></article>`;
+  }).join('')}` : '<div class="panel-head"><span class="kicker">LOCAL REGISTRY</span><span class="badge">READY</span></div><p class="muted">No add-ons installed. Local admission and lifecycle controls remain human-gated.</p>';
+  card.insertAdjacentElement('afterend', section);
+}
+
 function showView(name) {
   document.querySelectorAll('.view').forEach(view => view.classList.toggle('active-view', view.id === `view-${name}`));
-  document.querySelectorAll('.nav-item').forEach(item => item.classList.toggle('active', item.dataset.view === name));
+  document.querySelectorAll('.nav-item').forEach(item => {
+    const active = item.dataset.view === name;
+    item.classList.toggle('active', active);
+    if (active) item.setAttribute('aria-current', 'page');
+    else item.removeAttribute('aria-current');
+  });
   $('view-title').textContent = views[name];
 }
 
@@ -23,6 +44,8 @@ function populateModels(tasks) {
 }
 
 async function load() {
+  $('connection').setAttribute('aria-live', 'polite');
+  $('result').setAttribute('aria-live', 'polite');
   try {
     const [models, status, addons, installation, audit, jobs, evidence, approvals] = await Promise.all([fetch('/api/models'), fetch('/api/status'), fetch('/api/addons'), fetch('/api/installation'), fetch('/api/audit'), fetch('/api/jobs'), fetch('/api/evidence'), fetch('/api/approvals')]);
     const modelData = await models.json(); const statusData = await status.json(); const addonData = await addons.json(); const installData = await installation.json(); const auditData = await audit.json(); const jobData = await jobs.json(); const evidenceData = await evidence.json(); const approvalData = await approvals.json(); profiles = modelData.profiles;
@@ -31,6 +54,7 @@ async function load() {
     $('kill-switch').textContent = statusData.workflow.kill_switch; $('workflow-state').textContent = statusData.workflow.state;
     const addonCount = Object.keys(addonData.addons || {}).length;
     $('addon-state').textContent = addonCount ? `${addonCount} INSTALLED` : 'CATALOG READY';
+    renderAddons(addonData);
     $('install-mode').textContent = installData.mode.replaceAll('_', ' ');
     $('install-promotion').textContent = installData.promotion.replaceAll('_', ' ');
     $('install-uninstall').textContent = installData.uninstall.replaceAll('_', ' ');
