@@ -1,5 +1,8 @@
 # Hermes + Codex + Gemini coding swarm (Phase 1)
 
+![Forgewarden](docs/forgewarden-hero.jpg)
+
+
 This is a local-only, dry-run implementation of the setup-kit specification.
 It is intentionally independent of `~/n8n` and never edits, deploys, pushes,
 restarts, or contacts remote infrastructure.
