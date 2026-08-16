@@ -1,0 +1,26 @@
+# Forgewarden read-only management console for Azure Container Apps.
+FROM python:3.11-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app \
+    HERMES_SWARM_RUNTIME_ROOT=/var/lib/forgewarden/runtime \
+    HERMES_SWARM_AUDIT_ROOT=/var/lib/forgewarden/audit
+
+RUN groupadd --system forgewarden \
+    && useradd --system --gid forgewarden --home-dir /app --no-create-home forgewarden \
+    && mkdir -p /app /var/lib/forgewarden/runtime /var/lib/forgewarden/audit \
+    && chown -R forgewarden:forgewarden /app /var/lib/forgewarden
+
+WORKDIR /app
+COPY --chown=forgewarden:forgewarden config ./config
+COPY --chown=forgewarden:forgewarden console ./console
+COPY --chown=forgewarden:forgewarden schemas ./schemas
+COPY --chown=forgewarden:forgewarden swarm ./swarm
+
+USER forgewarden
+EXPOSE 8787
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8787/api/status', timeout=3)"
+
+CMD ["python", "-m", "swarm.console", "--host", "0.0.0.0", "--port", "8787"]
