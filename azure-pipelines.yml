@@ -20,7 +20,11 @@ steps:
       versionSpec: '3.11'
 
   - script: |
-      PYTHONPATH=. pytest -q
+      python -m pip install pytest
+    displayName: Install CI test dependency
+
+  - script: |
+      PYTHONPATH=. python -m pytest -q
     displayName: Run full pytest suite
 
   - script: |
