@@ -3,7 +3,7 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: required exact-commit reviewer resource recovery
+- Current focus: preserve schema-valid Jeff-mediated Gemini exact-commit evidence
 - Current task: FWQ-0006 — BLOCKED
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
@@ -34,10 +34,10 @@ On every restart or continuation:
 - Files changed: current candidate is clean; its relevant Core changes are `swarm/continuation.py` and `tests/test_continuation.py`
 - Deterministic validation: reviewer-path repair commit `8efd8eb9b1eada5a287e4934f265474042992cef`; `PYTHONPATH=. python3 -m pytest -q` — 390 passed, 1 skipped; candidate validation previously passed with 388 passed, 1 skipped; DRY_RUN/deployment-disabled/kill-switch workflow status remains healthy
 - Claude review: schema-valid exact-SHA `APPROVE` / `LOW` result preserved in `docs/fwq-0006-claude-review-514217e.json`. It supersedes the earlier unpreserved `REJECT` / `MEDIUM` attempt, which cannot be evaluated or acted on without findings. The current preserved review lists no blocking findings and four non-blocking test-coverage gaps.
-- Gemini review: FAILED_CLOSED — after the external-network/schema repair, the client still terminates in sandbox/permission startup before input processing or emitting a payload; `--dangerously-skip-permissions` was rejected because it would violate the read-only boundary.
-- Unresolved findings: Gemini evidence is absent. Claude’s preserved review is approving but identifies non-blocking coverage gaps; no reviewer result may be inferred or synthesized; no reviewer was permitted to write repository content.
+- Gemini review: configured automated adapter remains FAILED_CLOSED before input processing or emitting a payload. Jeff reports a manual APPROVE/no-blocking review of the exact SHA, but its complete schema-required payload has not been supplied or validated; the automated adapter is not treated as successful.
+- Unresolved findings: a manual Gemini result may satisfy the independent-review role because policy does not require a particular adapter, but its required schema fields are absent. Claude’s preserved review is approving with non-blocking coverage gaps; no reviewer result may be inferred or synthesized.
 - Blocker: B-001
-- Next action: restore Gemini's non-interactive read-only sandbox/permission startup without auto-approval, then obtain and preserve its exact-SHA review before accepting FWQ-0006.
+- Next action: obtain the complete Jeff-mediated manual Gemini payload, validate it against `schemas/gemini-review.schema.json` and the exact candidate SHA, preserve it durably, then accept FWQ-0006 only if deterministic validation remains clean.
 
 ## Stop conditions
 
@@ -46,5 +46,5 @@ Do not stop merely because a task or review cycle finished. Stop only under the 
 ## Current stop condition
 
 - Reason: REQUIRED_RESOURCE_UNAVAILABLE
-- Exact condition: Claude’s current preserved exact-SHA review approves at LOW risk, but Gemini terminates before input/output under its read-only sandbox. No other READY Core task exists independently of this gate.
-- First resume action: diagnose Gemini's sandbox startup without auto-approval, then obtain and preserve its authorized read-only exact-SHA review before continuing the checkpoint cycle.
+- Exact condition: policy permits an independent Jeff-mediated Gemini review rather than requiring the configured adapter, but the reported manual APPROVE/no-blocking outcome is not a complete schema-valid payload and therefore cannot be accepted as exact-commit evidence. No other READY Core task exists independently of this gate.
+- First resume action: obtain and validate the complete manual Gemini payload, bind it to candidate `514217e474e46872c12efdad181d11ae90bfe57e`, and then continue the checkpoint cycle.
