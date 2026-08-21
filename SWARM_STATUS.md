@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: reconcile FWQ-0006 exact-commit review evidence
-- Current task: FWQ-0006 — REVIEW
+- Current focus: required exact-commit reviewer resource recovery
+- Current task: FWQ-0006 — BLOCKED
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -33,11 +33,11 @@ On every restart or continuation:
 - Accepted commit: none
 - Files changed: current candidate is clean; its relevant Core changes are `swarm/continuation.py` and `tests/test_continuation.py`
 - Deterministic validation: `PYTHONPATH=. python3 -m pytest -q` — 388 passed, 1 skipped; `PYTHONPATH=. python3 -m swarm.cli workflow-status` reports DRY_RUN, deployment DISABLED, kill switch ENGAGED, read-only; `git fsck --no-dangling` and `git diff --check` passed
-- Claude review: unavailable; no exact-commit result recorded
-- Gemini review: unavailable; no exact-commit result recorded
-- Unresolved findings: required independent exact-commit review evidence is absent; no reviewer result may be inferred or synthesized
+- Claude review: FAILED_CLOSED — authorized read-only attempts against the exact candidate produced no schema-valid result (first attempt exhausted its bounded turns; final isolated pass aborted after 192 seconds without a payload)
+- Gemini review: FAILED_CLOSED — authorized read-only attempts against the exact candidate terminated before emitting a review payload
+- Unresolved findings: required independent exact-commit review evidence is absent; no reviewer result may be inferred or synthesized; no reviewer was permitted to write repository content
 - Blocker: B-001
-- Next action: provide the approved, read-only Claude and Gemini review resources for exact candidate `514217e474e46872c12efdad181d11ae90bfe57e`; repair any legitimate findings, rerun validation, and record both results before accepting FWQ-0006.
+- Next action: restore schema-valid, read-only Claude and Gemini review operation for exact candidate `514217e474e46872c12efdad181d11ae90bfe57e`; repair any legitimate findings, rerun validation, and record both results before accepting FWQ-0006.
 
 ## Stop conditions
 
@@ -46,5 +46,5 @@ Do not stop merely because a task or review cycle finished. Stop only under the 
 ## Current stop condition
 
 - Reason: REQUIRED_RESOURCE_UNAVAILABLE
-- Exact condition: although local Claude and Gemini client executables are installed, obtaining the required reviews would contact external model services. `AGENTS.md` prohibits remote-host access absent an explicit Jeff-authorized workflow, and no other READY Core task exists independently of this review gate.
-- First resume action: run both authorized read-only reviews against the recorded candidate SHA, preserve their exact structured findings, then continue the repair/validation/checkpoint cycle.
+- Exact condition: Jeff authorized the limited read-only external workflow, but neither configured reviewer produced a schema-valid exact-commit result. Claude exhausted its review flow and then aborted its 192-second isolated pass without a payload; Gemini terminated before emitting a payload. No other READY Core task exists independently of this gate.
+- First resume action: repair or replace the reviewer execution path without expanding reviewer authority, then run both authorized read-only exact-SHA reviews and preserve their structured findings before continuing the repair/validation/checkpoint cycle.

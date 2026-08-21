@@ -98,7 +98,7 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 
 ### FWQ-0006 — Supervisor continuation loop
 - Requirement: Core supervisor/orchestration
-- State: REVIEW
+- State: BLOCKED
 - Priority: P1
 - Dependencies: FWQ-0002, FWQ-0003, FWQ-0004, FWQ-0005
 - Description: Implement the bounded persistent loop: select → inspect/dispatch Codex work unit → deterministic validation → Claude review → Gemini exact-commit review → Codex repair → revalidate → accept/checkpoint → immediately select next READY task.
@@ -111,7 +111,7 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
   - dry-run and deployment prohibitions remain enforced.
 - Expected validation: integration tests with mocked agent adapters and disposable repositories; failure/restart tests.
 - Security considerations: supervisor may sequence work but must not create new authority or bypass Z3/policy.
-- Completion evidence: Implementation and deterministic tests exist, but the prior persistent checkpoint records both required exact-commit reviews as "not started" and no Claude/Gemini review evidence is present in the repository. The prior DONE state is therefore not accepted; obtain independent reviews for a fresh exact candidate before marking this task DONE.
+- Completion evidence: Implementation and deterministic tests exist, but the prior persistent checkpoint recorded both required exact-commit reviews as "not started." Jeff authorized read-only external review of candidate `514217e474e46872c12efdad181d11ae90bfe57e`; Claude and Gemini each failed closed without a schema-valid result, so no approval can be inferred. The prior DONE state is not accepted; restore a functioning independent review resource and obtain both exact-commit results before marking this task DONE.
 
 ## Future queue population
 
