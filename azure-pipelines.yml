@@ -1,0 +1,54 @@
+trigger:
+  branches:
+    include:
+      - main
+
+pr:
+  branches:
+    include:
+      - main
+
+pool:
+  vmImage: ubuntu-latest
+
+steps:
+  - checkout: self
+    fetchDepth: 1
+
+  - task: UsePythonVersion@0
+    inputs:
+      versionSpec: '3.11'
+
+  - script: |
+      PYTHONPATH=. pytest -q
+    displayName: Run full pytest suite
+
+  - script: |
+      git diff --check
+    displayName: Check whitespace errors
+
+  - script: |
+      PYTHONPATH=. python - <<'PY'
+      from pathlib import Path
+      from swarm.supervisor_state import load_supervisor_state
+
+      state = load_supervisor_state(Path.cwd())
+      assert state.resume.interrupted is False
+      print("ForgeWarden control state validated")
+      PY
+    displayName: Validate ForgeWarden control state
+
+  - script: |
+      PYTHONPATH=. python - <<'PY'
+      from pathlib import Path
+
+      agents = Path("AGENTS.md").read_text(encoding="utf-8")
+      status = Path("SWARM_STATUS.md").read_text(encoding="utf-8")
+      assert "`DRY_RUN` remains enforced" in agents
+      assert "Deployment remains disabled" in agents
+      assert "- Repository safety mode: DRY_RUN" in status
+      assert "- Deployment: disabled" in status
+      assert "Kill-switch policy: remains engaged" in status
+      print("DRY_RUN, deployment-disabled, and kill-switch invariants validated")
+      PY
+    displayName: Validate safety invariants
