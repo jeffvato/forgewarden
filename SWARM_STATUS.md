@@ -32,12 +32,12 @@ On every restart or continuation:
 - Candidate commit: `514217e474e46872c12efdad181d11ae90bfe57e` (the clean Core candidate awaiting review; later commits only record this control-state reconciliation)
 - Accepted commit: none
 - Files changed: current candidate is clean; its relevant Core changes are `swarm/continuation.py` and `tests/test_continuation.py`
-- Deterministic validation: `PYTHONPATH=. python3 -m pytest -q` — 388 passed, 1 skipped; `PYTHONPATH=. python3 -m swarm.cli workflow-status` reports DRY_RUN, deployment DISABLED, kill switch ENGAGED, read-only; `git fsck --no-dangling` and `git diff --check` passed
-- Claude review: FAILED_CLOSED — authorized read-only attempts against the exact candidate produced no schema-valid result (first attempt exhausted its bounded turns; final isolated pass aborted after 192 seconds without a payload)
-- Gemini review: FAILED_CLOSED — authorized read-only attempts against the exact candidate terminated before emitting a review payload
-- Unresolved findings: required independent exact-commit review evidence is absent; no reviewer result may be inferred or synthesized; no reviewer was permitted to write repository content
+- Deterministic validation: reviewer-path repair commit `8efd8eb9b1eada5a287e4934f265474042992cef`; `PYTHONPATH=. python3 -m pytest -q` — 390 passed, 1 skipped; candidate validation previously passed with 388 passed, 1 skipped; DRY_RUN/deployment-disabled/kill-switch workflow status remains healthy
+- Claude review: schema-valid exact-SHA result received for `514217e474e46872c12efdad181d11ae90bfe57e`: `REJECT` / `MEDIUM`. The previous invocation path did not durably retain its structured payload, so its findings cannot be acted on or used as acceptance evidence.
+- Gemini review: FAILED_CLOSED — after the external-network/schema repair, the client still terminates in sandbox/permission startup before input processing or emitting a payload; `--dangerously-skip-permissions` was rejected because it would violate the read-only boundary.
+- Unresolved findings: Claude reported a medium-severity rejection but its findings require a fresh preserved review; Gemini evidence is absent. No reviewer result may be inferred or synthesized; no reviewer was permitted to write repository content.
 - Blocker: B-001
-- Next action: restore schema-valid, read-only Claude and Gemini review operation for exact candidate `514217e474e46872c12efdad181d11ae90bfe57e`; repair any legitimate findings, rerun validation, and record both results before accepting FWQ-0006.
+- Next action: obtain a fresh preserved Claude exact-SHA review payload and repair its legitimate findings; restore Gemini's non-interactive read-only sandbox/permission startup without auto-approval; then rerun both exact-SHA reviews before accepting FWQ-0006.
 
 ## Stop conditions
 
@@ -46,5 +46,5 @@ Do not stop merely because a task or review cycle finished. Stop only under the 
 ## Current stop condition
 
 - Reason: REQUIRED_RESOURCE_UNAVAILABLE
-- Exact condition: Jeff authorized the limited read-only external workflow, but neither configured reviewer produced a schema-valid exact-commit result. Claude exhausted its review flow and then aborted its 192-second isolated pass without a payload; Gemini terminated before emitting a payload. No other READY Core task exists independently of this gate.
-- First resume action: repair or replace the reviewer execution path without expanding reviewer authority, then run both authorized read-only exact-SHA reviews and preserve their structured findings before continuing the repair/validation/checkpoint cycle.
+- Exact condition: the Claude verifier now reaches a schema-valid `REJECT` / `MEDIUM` exact-SHA result but the prior invocation did not preserve the structured findings, while Gemini terminates before input/output under its read-only sandbox. No other READY Core task exists independently of this gate.
+- First resume action: preserve a fresh Claude result, diagnose Gemini's sandbox startup without auto-approval, then run both authorized read-only exact-SHA reviews and preserve their structured findings before continuing the repair/validation/checkpoint cycle.
