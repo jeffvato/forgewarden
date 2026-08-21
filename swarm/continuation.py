@@ -41,10 +41,15 @@ def run_bounded_work_unit(state: SupervisorState, stop_context: StopContext, che
         if repair is None: return ContinuationPlan(StopDecision(True, "REVIEW_REPAIR_REQUIRED", "repair and obtain fresh reviews"), plan.selection, "stop")
         result = repair(result)
         if not isinstance(result, WorkUnitResult) or not validate(result): return ContinuationPlan(StopDecision(True, "REPAIR_VALIDATION_FAILED", "repair and revalidate"), plan.selection, "stop")
-        cycle = create_review_cycle(result.candidate_commit)
-        for review in reviews(result.candidate_commit): cycle = record_review(cycle, review)
-        complete_review_cycle(cycle)
-    accepted = WorkUnitCheckpoint("ForgeWarden Core", task.task_id, repository_head, result.candidate_commit, result.candidate_commit, result.changed_files, result.validation, "APPROVED", "APPROVED", (), None, "advance queue")
+        try:
+            cycle = create_review_cycle(result.candidate_commit)
+            for review in reviews(result.candidate_commit): cycle = record_review(cycle, review)
+            complete_review_cycle(cycle)
+        except Exception:
+            return ContinuationPlan(StopDecision(True, "REPAIR_REVIEW_FAILED", "repair and obtain fresh reviews"), plan.selection, "stop")
+    evidence = {role: review for role, review in cycle.reviews.items()}
+    findings = tuple(f"{role}:{item}" for role, review in evidence.items() for item in review.findings)
+    accepted = WorkUnitCheckpoint("ForgeWarden Core", task.task_id, repository_head, result.candidate_commit, result.candidate_commit, result.changed_files, result.validation, evidence["CLAUDE"].disposition, evidence["GEMINI"].disposition, findings, None, "advance queue")
     write_checkpoint(checkpoint_path, accepted)
     reconcile_checkpoint(load_checkpoint(checkpoint_path), result.candidate_commit)
     return ContinuationPlan(StopDecision(False, None, None), plan.selection, "accepted; advance queue")
@@ -57,6 +62,6 @@ def plan_continuation(state: SupervisorState, stop_context: StopContext) -> Cont
     selection = select_ready_task(state)
     if selection.selected is None:
         if selection.ineligible:
-            return ContinuationPlan(StopDecision(False, None, None), selection, "await dependency resolution or safe independent work")
+            return ContinuationPlan(StopDecision(True, "NO_EXECUTABLE_READY_TASKS", "resolve blocked dependencies or activate safe independent work"), selection, "stop")
         return ContinuationPlan(StopDecision(True, "ALL_ACTIVE_WORK_COMPLETE", "await explicit activation of further approved work"), selection, "stop")
     return ContinuationPlan(stop, selection, f"inspect and dispatch {selection.selected.task_id} in DRY_RUN mode")

@@ -47,3 +47,7 @@ def test_stop_record_persists_reason_and_resume_action(tmp_path):
     assert json.loads(path.read_text(encoding="utf-8"))["reason"] == "POLICY_INVARIANT_CONFLICT"
     with pytest.raises(StopConditionError):
         persist_stop_decision(path, evaluate_stop_conditions(StopContext()))
+def test_symlinked_parent_stop_record_path_fails_closed(tmp_path):
+    real=tmp_path/"real"; real.mkdir(); linked=tmp_path/"linked"; linked.symlink_to(real, target_is_directory=True)
+    with pytest.raises(StopConditionError, match="symlink"):
+        persist_stop_decision(linked/"stop.json", evaluate_stop_conditions(StopContext(policy_invariant_conflict=True)))

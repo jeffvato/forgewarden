@@ -62,3 +62,7 @@ def test_oversized_and_symlink_replacement_loads_fail_closed(tmp_path):
     with pytest.raises(CheckpointError): load_checkpoint(path)
     target=tmp_path/"target"; target.write_text("{}",encoding="utf-8"); path.unlink(); path.symlink_to(target)
     with pytest.raises(CheckpointError): load_checkpoint(path)
+def test_symlinked_parent_checkpoint_path_fails_closed(tmp_path):
+    real=tmp_path/"real"; real.mkdir(); linked=tmp_path/"linked"; linked.symlink_to(real, target_is_directory=True)
+    with pytest.raises(CheckpointError, match="symlink"):
+        write_checkpoint(linked/"checkpoint.json", _checkpoint())

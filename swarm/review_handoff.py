@@ -30,4 +30,5 @@ def record_review(cycle: ReviewCycle, result: ReviewResult) -> ReviewCycle:
 def complete_review_cycle(cycle: ReviewCycle) -> ReviewCycle:
     if set(cycle.reviews) != _ROLES: raise ReviewHandoffError("both Claude and Gemini reviews are required")
     if any(review.disposition == "REJECTED" for review in cycle.reviews.values()): raise ReviewHandoffError("rejected review requires repair")
+    if any(review.disposition == "FINDINGS" and review.severity in {"HIGH", "CRITICAL"} for review in cycle.reviews.values()): raise ReviewHandoffError("high or critical findings require repair")
     return cycle

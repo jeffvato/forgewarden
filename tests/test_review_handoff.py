@@ -19,3 +19,8 @@ def test_completion_requires_both_reviewers_and_string_findings():
     cycle=record_review(create_review_cycle(SHA_A),result())
     with pytest.raises(ReviewHandoffError,match="both"): complete_review_cycle(cycle)
     with pytest.raises(ReviewHandoffError,match="findings"): record_review(create_review_cycle(SHA_A),ReviewResult("CLAUDE",SHA_A,(1,),"LOW","FINDINGS","ok"))
+def test_high_findings_block_completion():
+    cycle=create_review_cycle(SHA_A)
+    cycle=record_review(cycle,ReviewResult("CLAUDE",SHA_A,("risk",),"HIGH","FINDINGS","ok"))
+    cycle=record_review(cycle,result("GEMINI"))
+    with pytest.raises(ReviewHandoffError,match="high"): complete_review_cycle(cycle)
