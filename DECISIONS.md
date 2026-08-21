@@ -46,3 +46,6 @@ A task is not complete because a file exists, code compiles, a happy-path test p
 
 ## D-015 — Persistent supervisor controls continuation
 The long-running development model is not one immortal Codex chat. A deterministic supervisor uses persistent queue/status state to relaunch bounded Codex work units, validate them, coordinate Claude and Gemini review, checkpoint progress, and claim the next READY task until an explicit stop condition occurs.
+
+## D-016 — ForgeWarden Core scope is frozen
+ForgeWarden Core is feature-frozen. New capabilities may enter Core only when they are required for trust, orchestration, safety, reliability, deterministic recovery, or compatibility of the approved add-on boundary/API. All other new product features, security capabilities, integrations, user-facing modules, and future expansion belong in the roadmap and should be implemented through the add-on system where appropriate. Core scope may be expanded only by an explicit approved architectural decision; ordinary feature requests must not silently enlarge it. Defects, security vulnerabilities, reliability failures, and blockers to the approved Core mission are fixes, not scope expansion.
