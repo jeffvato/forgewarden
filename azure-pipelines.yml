@@ -3,6 +3,14 @@ trigger:
     include:
       - main
 
+resources:
+  repositories:
+    - repository: baseline
+      type: github
+      name: jeffvato/n8n-csv-baseline-v2
+      endpoint: jeffvato
+      ref: refs/heads/main
+
 pr:
   branches:
     include:
@@ -15,9 +23,20 @@ steps:
   - checkout: self
     fetchDepth: 1
 
+  - checkout: baseline
+    path: s/baseline
+    fetchDepth: 0
+
   - task: UsePythonVersion@0
     inputs:
       versionSpec: '3.11'
+
+  - script: |
+      sudo mkdir -p /home/jeff/swarm-repositories /home/jeff/anaconda3/bin
+      sudo ln -sfn "$(Pipeline.Workspace)/s/baseline" /home/jeff/swarm-repositories/n8n-csv-baseline-v2
+      sudo cp "$(python -c 'import sys; print(sys.executable)')" /home/jeff/anaconda3/bin/python3.11
+      sudo ln -sfn python3.11 /home/jeff/anaconda3/bin/python3
+    displayName: Prepare ForgeWarden baseline fixture
 
   - script: |
       python -m pip install pytest jsonschema PyYAML

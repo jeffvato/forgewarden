@@ -82,6 +82,10 @@ class Phase2ATests(unittest.TestCase):
         cls._original_profile_path = phase2a.PROFILE_PATH
         cls._original_schema_path = phase2a.PROFILE_SCHEMA_PATH
         cls._original_validate_profile = phase2a.validate_profile
+        if not cls._original_repository.is_dir():
+            raise unittest.SkipTest(
+                f"Phase 2A host fixture is unavailable: {cls._original_repository}"
+            )
         cls._fixture_root = Path(tempfile.mkdtemp(prefix="phase2a-baseline-"))
         cls._fixture_repository = cls._fixture_root / "repository"
         subprocess.run(
