@@ -4,7 +4,7 @@
 
 - Active phase: ForgeWarden Core
 - Current focus: active Core queue complete
-- Current task: none; FWQ-0006 accepted
+- Current task: FWQ-0006 — accepted; active Core queue complete
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -28,9 +28,10 @@ On every restart or continuation:
 ## Work-unit checkpoint
 
 - Task ID: FWQ-0006
-- Starting commit: `a06bd035a1c79067d9e1679fc266901de2a12e63` (the original FWQ-0006 implementation commit)
-- Candidate commit: `514217e474e46872c12efdad181d11ae90bfe57e` (the clean Core candidate awaiting review; later commits only record this control-state reconciliation)
-- Accepted commit: `514217e474e46872c12efdad181d11ae90bfe57e`
+- Starting commit: a06bd035a1c79067d9e1679fc266901de2a12e63
+- Candidate commit: 514217e474e46872c12efdad181d11ae90bfe57e
+- Candidate context: original FWQ-0006 implementation plus later hardening and CI-only safety changes through the exact reviewed candidate
+- Accepted commit: 514217e474e46872c12efdad181d11ae90bfe57e
 - Files changed: current candidate is clean; its relevant Core changes are `swarm/continuation.py` and `tests/test_continuation.py`
 - Deterministic validation: exact candidate detached-Git-worktree suite — 388 passed, 1 skipped; `git diff --check` and `git fsck --no-dangling` passed; DRY_RUN/deployment-disabled/kill-switch workflow status remains healthy
 - Claude review: schema-valid exact-SHA `APPROVE` / `LOW` result preserved in `docs/fwq-0006-claude-review-514217e.json`. It supersedes the earlier unpreserved `REJECT` / `MEDIUM` attempt, which cannot be evaluated or acted on without findings. The current preserved review lists no blocking findings and four non-blocking test-coverage gaps.
