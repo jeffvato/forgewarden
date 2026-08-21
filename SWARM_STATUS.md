@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: persistent supervisor/work-queue control plane
-- Current task: none claimed yet
+- Current focus: active Core queue complete
+- Current task: none; FWQ-0006 completed
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -31,13 +31,13 @@ On every restart or continuation:
 - Starting commit: none
 - Candidate commit: none
 - Accepted commit: none
-- Files changed: none
-- Deterministic validation: not started
+- Files changed: `swarm/continuation.py` and `tests/test_continuation.py` added; no existing product-code changes
+- Deterministic validation: focused and repository-wide test suites passed
 - Claude review: not started
 - Gemini review: not started
 - Unresolved findings: none
 - Blocker: none
-- Next action: claim `FWQ-0001` from `WORK_QUEUE.md` after these control-plane files are merged into the working branch used by Codex.
+- Next action: await explicit activation of further approved Core work; remain DRY_RUN-only with no deployment or authority-expansion behavior.
 
 ## Stop conditions
 

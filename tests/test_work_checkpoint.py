@@ -1,0 +1,59 @@
+from __future__ import annotations
+
+import json
+
+import pytest
+
+from swarm.work_checkpoint import CheckpointError, WorkUnitCheckpoint, load_checkpoint, reconcile_checkpoint, write_checkpoint
+
+
+SHA_A = "a" * 40
+SHA_B = "b" * 40
+
+
+def _checkpoint(**changes) -> WorkUnitCheckpoint:
+    values = dict(active_phase="ForgeWarden Core", task_id="FWQ-0003", starting_commit=SHA_A, candidate_commit=None, accepted_commit=None, changed_files=("swarm/work_checkpoint.py",), deterministic_validation=("pytest",), claude_review="not started", gemini_review="not started", unresolved_findings=(), blocker=None, next_action="continue safely")
+    values.update(changes)
+    return WorkUnitCheckpoint(**values)
+
+
+def test_atomic_checkpoint_round_trip_and_reconciliation(tmp_path):
+    path = tmp_path / "checkpoint.json"
+    checkpoint = _checkpoint(candidate_commit=SHA_B, accepted_commit=SHA_B)
+    write_checkpoint(path, checkpoint)
+
+    assert load_checkpoint(path) == checkpoint
+    assert reconcile_checkpoint(checkpoint, SHA_B)["task_id"] == "FWQ-0003"
+
+
+def test_corruption_and_interrupted_write_are_not_accepted(tmp_path):
+    path = tmp_path / "checkpoint.json"
+    path.write_text("{", encoding="utf-8")
+    with pytest.raises(CheckpointError, match="corrupt or incomplete"):
+        load_checkpoint(path)
+
+    write_checkpoint(path, _checkpoint())
+    data = json.loads(path.read_text(encoding="utf-8"))
+    data["checkpoint"]["task_id"] = "FWQ-9999"
+    path.write_text(json.dumps(data), encoding="utf-8")
+    with pytest.raises(CheckpointError, match="integrity hash mismatch"):
+        load_checkpoint(path)
+
+
+def test_stale_commit_and_invalid_transitions_fail_closed(tmp_path):
+    checkpoint = _checkpoint(candidate_commit=SHA_B)
+    with pytest.raises(CheckpointError, match="commit mismatch"):
+        reconcile_checkpoint(checkpoint, SHA_A)
+    with pytest.raises(CheckpointError, match="accepted commit must equal"):
+        write_checkpoint(tmp_path / "checkpoint.json", _checkpoint(candidate_commit=SHA_A, accepted_commit=SHA_B))
+    with pytest.raises(CheckpointError, match="without traversal"):
+        write_checkpoint(tmp_path / "checkpoint.json", _checkpoint(changed_files=("../escape",)))
+
+
+def test_unsafe_checkpoint_path_and_schema_fail_closed(tmp_path):
+    target = tmp_path / "target.json"
+    target.write_text("x", encoding="utf-8")
+    link = tmp_path / "checkpoint.json"
+    link.symlink_to(target)
+    with pytest.raises(CheckpointError, match="unsafe checkpoint target"):
+        write_checkpoint(link, _checkpoint())

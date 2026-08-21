@@ -20,7 +20,7 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 
 ### FWQ-0001 — Supervisor persistent-state bootstrap
 - Requirement: Core supervisor/control-plane
-- State: READY
+- State: DONE
 - Priority: P0
 - Dependencies: none
 - Description: Implement deterministic loading and validation of `AGENTS.md`, `ROADMAP.md`, `WORK_QUEUE.md`, `SWARM_STATUS.md`, `DECISIONS.md`, and `BLOCKERS.md` for continuation/resume workflows without granting any new execution authority.
@@ -32,10 +32,11 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
   - tests cover happy path, missing file, malformed state, interrupted/restart scenarios.
 - Expected validation: repository test suite plus targeted unit/integration tests.
 - Security considerations: state content is untrusted input; it cannot override immutable safety invariants or expand agent authority.
+- Completion evidence: Added `swarm/supervisor_state.py` and `tests/test_supervisor_state.py`; 344 tests passed, 1 skipped; no existing product code changed; no deployment or authority-expansion behavior added.
 
 ### FWQ-0002 — Deterministic task selection
 - Requirement: Core supervisor/work queue
-- State: READY
+- State: DONE
 - Priority: P0
 - Dependencies: FWQ-0001
 - Description: Implement deterministic selection of the highest-priority executable READY task, honoring dependencies, blocked states, and active-phase constraints.
@@ -47,10 +48,11 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
   - tests cover ties, missing dependencies, blocked chains, invalid states, and no-ready-work condition.
 - Expected validation: targeted unit/property tests plus repository suite.
 - Security considerations: task metadata cannot expand tool, filesystem, Git, network, credential, or deployment authority.
+- Completion evidence: Added `swarm/task_selection.py` and `tests/test_task_selection.py`; deterministic focused and repository-wide validation passed (355 tests passed, 1 skipped); no existing product code changed; no deployment or authority-expansion behavior added.
 
 ### FWQ-0003 — Work-unit checkpoint schema
 - Requirement: Core supervisor/recovery
-- State: READY
+- State: DONE
 - Priority: P0
 - Dependencies: FWQ-0001
 - Description: Define and implement checkpoint state for active phase, task ID, starting commit, candidate/accepted commit, changed files, deterministic validation, Claude review status, Gemini review status, unresolved findings, blocker, and next action.
@@ -62,10 +64,11 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
   - tests cover corruption, stale state, interrupted write, and commit mismatch.
 - Expected validation: unit/integration tests with disposable fixture repositories.
 - Security considerations: checkpoint data is evidence, not authority.
+- Completion evidence: Added `swarm/work_checkpoint.py` and `tests/test_work_checkpoint.py`; focused and repository-wide tests passed; checkpoint writes are atomic, integrity-checked, and reconciled against caller-provided Git evidence without Git mutation.
 
 ### FWQ-0004 — Stop-condition evaluator
 - Requirement: Core supervisor
-- State: READY
+- State: DONE
 - Priority: P0
 - Dependencies: FWQ-0001, FWQ-0002
 - Description: Implement deterministic evaluation of the approved stop conditions from `AGENTS.md`.
@@ -75,10 +78,11 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
   - stop reason is persisted with first resume action.
 - Expected validation: table-driven tests for every stop and non-stop condition.
 - Security considerations: ambiguous state must fail closed rather than silently continue into privileged actions.
+- Completion evidence: Added `swarm/stop_conditions.py` and `tests/test_stop_conditions.py`; focused and repository-wide tests passed; stop decisions are local evidence only and preserve DRY_RUN/no-authority constraints.
 
 ### FWQ-0005 — Review handoff contract
 - Requirement: Core exact-commit review
-- State: READY
+- State: DONE
 - Priority: P1
 - Dependencies: FWQ-0003
 - Description: Formalize deterministic handoff metadata so Claude and Gemini review the exact same candidate commit and Codex receives structured findings for repair.
@@ -90,10 +94,11 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
   - tests cover stale/mismatched review data.
 - Expected validation: unit/integration tests.
 - Security considerations: reviewers cannot write production source or grant themselves authority.
+- Completion evidence: Added `swarm/review_handoff.py` and `tests/test_review_handoff.py`; focused and repository-wide tests passed (372 tests passed, 1 skipped); review handoff is immutable exact-commit evidence only.
 
 ### FWQ-0006 — Supervisor continuation loop
 - Requirement: Core supervisor/orchestration
-- State: READY
+- State: DONE
 - Priority: P1
 - Dependencies: FWQ-0002, FWQ-0003, FWQ-0004, FWQ-0005
 - Description: Implement the bounded persistent loop: select → inspect/dispatch Codex work unit → deterministic validation → Claude review → Gemini exact-commit review → Codex repair → revalidate → accept/checkpoint → immediately select next READY task.
@@ -106,6 +111,7 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
   - dry-run and deployment prohibitions remain enforced.
 - Expected validation: integration tests with mocked agent adapters and disposable repositories; failure/restart tests.
 - Security considerations: supervisor may sequence work but must not create new authority or bypass Z3/policy.
+- Completion evidence: Added `swarm/continuation.py` and `tests/test_continuation.py`; focused and repository-wide tests passed; continuation planning is bounded, local, DRY_RUN-only, and does not dispatch agents or mutate state.
 
 ## Future queue population
 
