@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: active Core queue complete
-- Current task: none; FWQ-0006 completed
+- Current focus: reconcile FWQ-0006 exact-commit review evidence
+- Current task: FWQ-0006 — REVIEW
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -27,18 +27,24 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: none
-- Starting commit: none
-- Candidate commit: none
+- Task ID: FWQ-0006
+- Starting commit: `a06bd035a1c79067d9e1679fc266901de2a12e63` (the original FWQ-0006 implementation commit)
+- Candidate commit: `514217e474e46872c12efdad181d11ae90bfe57e` (the clean Core candidate awaiting review; later commits only record this control-state reconciliation)
 - Accepted commit: none
-- Files changed: `swarm/continuation.py` and `tests/test_continuation.py` added; no existing product-code changes
-- Deterministic validation: focused and repository-wide test suites passed
-- Claude review: not started
-- Gemini review: not started
-- Unresolved findings: none
-- Blocker: none
-- Next action: await explicit activation of further approved Core work; remain DRY_RUN-only with no deployment or authority-expansion behavior.
+- Files changed: current candidate is clean; its relevant Core changes are `swarm/continuation.py` and `tests/test_continuation.py`
+- Deterministic validation: `PYTHONPATH=. python3 -m pytest -q` — 388 passed, 1 skipped; `PYTHONPATH=. python3 -m swarm.cli workflow-status` reports DRY_RUN, deployment DISABLED, kill switch ENGAGED, read-only; `git fsck --no-dangling` and `git diff --check` passed
+- Claude review: unavailable; no exact-commit result recorded
+- Gemini review: unavailable; no exact-commit result recorded
+- Unresolved findings: required independent exact-commit review evidence is absent; no reviewer result may be inferred or synthesized
+- Blocker: B-001
+- Next action: provide the approved, read-only Claude and Gemini review resources for exact candidate `514217e474e46872c12efdad181d11ae90bfe57e`; repair any legitimate findings, rerun validation, and record both results before accepting FWQ-0006.
 
 ## Stop conditions
 
 Do not stop merely because a task or review cycle finished. Stop only under the explicit conditions in `AGENTS.md`, and record the exact reason and first resume action here.
+
+## Current stop condition
+
+- Reason: REQUIRED_RESOURCE_UNAVAILABLE
+- Exact condition: although local Claude and Gemini client executables are installed, obtaining the required reviews would contact external model services. `AGENTS.md` prohibits remote-host access absent an explicit Jeff-authorized workflow, and no other READY Core task exists independently of this review gate.
+- First resume action: run both authorized read-only reviews against the recorded candidate SHA, preserve their exact structured findings, then continue the repair/validation/checkpoint cycle.
