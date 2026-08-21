@@ -46,5 +46,5 @@ Do not stop merely because a task or review cycle finished. Stop only under the 
 ## Current stop condition
 
 - Reason: REQUIRED_RESOURCE_UNAVAILABLE
-- Exact condition: the Claude verifier now reaches a schema-valid `REJECT` / `MEDIUM` exact-SHA result but the prior invocation did not preserve the structured findings, while Gemini terminates before input/output under its read-only sandbox. No other READY Core task exists independently of this gate.
-- First resume action: preserve a fresh Claude result, diagnose Gemini's sandbox startup without auto-approval, then run both authorized read-only exact-SHA reviews and preserve their structured findings before continuing the repair/validation/checkpoint cycle.
+- Exact condition: Claude’s current preserved exact-SHA review approves at LOW risk, but Gemini terminates before input/output under its read-only sandbox. No other READY Core task exists independently of this gate.
+- First resume action: diagnose Gemini's sandbox startup without auto-approval, then obtain and preserve its authorized read-only exact-SHA review before continuing the checkpoint cycle.

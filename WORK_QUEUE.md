@@ -111,7 +111,7 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
   - dry-run and deployment prohibitions remain enforced.
 - Expected validation: integration tests with mocked agent adapters and disposable repositories; failure/restart tests.
 - Security considerations: supervisor may sequence work but must not create new authority or bypass Z3/policy.
-- Completion evidence: Implementation and deterministic tests exist, but the prior persistent checkpoint recorded both required exact-commit reviews as "not started." Jeff authorized read-only external review of candidate `514217e474e46872c12efdad181d11ae90bfe57e`. The repaired Claude path returned a schema-valid exact-SHA `REJECT` / `MEDIUM` result, but its payload was not durably retained by the prior invocation path; Gemini still terminates before input processing or emitting a payload. No approval can be inferred and no repair may be made without the reviewer findings. The prior DONE state is not accepted.
+- Completion evidence: Implementation and deterministic tests exist. The current preserved Claude review approves exact candidate `514217e474e46872c12efdad181d11ae90bfe57e` at LOW risk with no blocking findings; its prior unpreserved REJECT/MEDIUM attempt is superseded and cannot be acted on. Gemini still terminates before input processing or emitting a payload. The task cannot be accepted until Gemini’s exact-SHA review is preserved.
 
 ## Future queue population
 
