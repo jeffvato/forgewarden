@@ -33,11 +33,11 @@ On every restart or continuation:
 - Accepted commit: none
 - Files changed: current candidate is clean; its relevant Core changes are `swarm/continuation.py` and `tests/test_continuation.py`
 - Deterministic validation: reviewer-path repair commit `8efd8eb9b1eada5a287e4934f265474042992cef`; `PYTHONPATH=. python3 -m pytest -q` — 390 passed, 1 skipped; candidate validation previously passed with 388 passed, 1 skipped; DRY_RUN/deployment-disabled/kill-switch workflow status remains healthy
-- Claude review: schema-valid exact-SHA result received for `514217e474e46872c12efdad181d11ae90bfe57e`: `REJECT` / `MEDIUM`. The previous invocation path did not durably retain its structured payload, so its findings cannot be acted on or used as acceptance evidence.
+- Claude review: schema-valid exact-SHA `APPROVE` / `LOW` result preserved in `docs/fwq-0006-claude-review-514217e.json`. It supersedes the earlier unpreserved `REJECT` / `MEDIUM` attempt, which cannot be evaluated or acted on without findings. The current preserved review lists no blocking findings and four non-blocking test-coverage gaps.
 - Gemini review: FAILED_CLOSED — after the external-network/schema repair, the client still terminates in sandbox/permission startup before input processing or emitting a payload; `--dangerously-skip-permissions` was rejected because it would violate the read-only boundary.
-- Unresolved findings: Claude reported a medium-severity rejection but its findings require a fresh preserved review; Gemini evidence is absent. No reviewer result may be inferred or synthesized; no reviewer was permitted to write repository content.
+- Unresolved findings: Gemini evidence is absent. Claude’s preserved review is approving but identifies non-blocking coverage gaps; no reviewer result may be inferred or synthesized; no reviewer was permitted to write repository content.
 - Blocker: B-001
-- Next action: obtain a fresh preserved Claude exact-SHA review payload and repair its legitimate findings; restore Gemini's non-interactive read-only sandbox/permission startup without auto-approval; then rerun both exact-SHA reviews before accepting FWQ-0006.
+- Next action: restore Gemini's non-interactive read-only sandbox/permission startup without auto-approval, then obtain and preserve its exact-SHA review before accepting FWQ-0006.
 
 ## Stop conditions
 
