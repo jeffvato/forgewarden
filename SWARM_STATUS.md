@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: preserve schema-valid Jeff-mediated Gemini exact-commit evidence
-- Current task: FWQ-0006 — BLOCKED
+- Current focus: active Core queue complete
+- Current task: none; FWQ-0006 accepted
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -30,14 +30,14 @@ On every restart or continuation:
 - Task ID: FWQ-0006
 - Starting commit: `a06bd035a1c79067d9e1679fc266901de2a12e63` (the original FWQ-0006 implementation commit)
 - Candidate commit: `514217e474e46872c12efdad181d11ae90bfe57e` (the clean Core candidate awaiting review; later commits only record this control-state reconciliation)
-- Accepted commit: none
+- Accepted commit: `514217e474e46872c12efdad181d11ae90bfe57e`
 - Files changed: current candidate is clean; its relevant Core changes are `swarm/continuation.py` and `tests/test_continuation.py`
-- Deterministic validation: reviewer-path repair commit `8efd8eb9b1eada5a287e4934f265474042992cef`; `PYTHONPATH=. python3 -m pytest -q` — 390 passed, 1 skipped; candidate validation previously passed with 388 passed, 1 skipped; DRY_RUN/deployment-disabled/kill-switch workflow status remains healthy
+- Deterministic validation: exact candidate detached-Git-worktree suite — 388 passed, 1 skipped; `git diff --check` and `git fsck --no-dangling` passed; DRY_RUN/deployment-disabled/kill-switch workflow status remains healthy
 - Claude review: schema-valid exact-SHA `APPROVE` / `LOW` result preserved in `docs/fwq-0006-claude-review-514217e.json`. It supersedes the earlier unpreserved `REJECT` / `MEDIUM` attempt, which cannot be evaluated or acted on without findings. The current preserved review lists no blocking findings and four non-blocking test-coverage gaps.
-- Gemini review: configured automated adapter remains FAILED_CLOSED before input processing or emitting a payload. Jeff reports a manual APPROVE/no-blocking review of the exact SHA, but its complete schema-required payload has not been supplied or validated; the automated adapter is not treated as successful.
-- Unresolved findings: a manual Gemini result may satisfy the independent-review role because policy does not require a particular adapter, but its required schema fields are absent. Claude’s preserved review is approving with non-blocking coverage gaps; no reviewer result may be inferred or synthesized.
-- Blocker: B-001
-- Next action: obtain the complete Jeff-mediated manual Gemini payload, validate it against `schemas/gemini-review.schema.json` and the exact candidate SHA, preserve it durably, then accept FWQ-0006 only if deterministic validation remains clean.
+- Gemini review: Jeff-mediated manual independent review is schema-valid, exact-SHA-bound, and APPROVE/LOW in `docs/fwq-0006-gemini-manual-review-514217e.json`. The configured automated Gemini adapter remains FAILED_CLOSED and is not represented as successful.
+- Unresolved findings: no blocking findings; Claude and Gemini evidence retain non-blocking coverage/reproducibility notes for future approved work.
+- Blocker: none
+- Next action: await explicit activation of further approved Core work; remain DRY_RUN-only with deployment disabled and kill-switch policy engaged.
 
 ## Stop conditions
 
@@ -45,6 +45,6 @@ Do not stop merely because a task or review cycle finished. Stop only under the 
 
 ## Current stop condition
 
-- Reason: REQUIRED_RESOURCE_UNAVAILABLE
-- Exact condition: policy permits an independent Jeff-mediated Gemini review rather than requiring the configured adapter, but the reported manual APPROVE/no-blocking outcome is not a complete schema-valid payload and therefore cannot be accepted as exact-commit evidence. No other READY Core task exists independently of this gate.
-- First resume action: obtain and validate the complete manual Gemini payload, bind it to candidate `514217e474e46872c12efdad181d11ae90bfe57e`, and then continue the checkpoint cycle.
+- Reason: ALL_ACTIVE_WORK_COMPLETE
+- Exact condition: every approved active Core task is DONE; FWQ-0006 has deterministic validation and two schema-valid independent exact-SHA approvals.
+- First resume action: await explicit activation of further approved Core work.

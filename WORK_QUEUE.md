@@ -98,7 +98,7 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 
 ### FWQ-0006 — Supervisor continuation loop
 - Requirement: Core supervisor/orchestration
-- State: BLOCKED
+- State: DONE
 - Priority: P1
 - Dependencies: FWQ-0002, FWQ-0003, FWQ-0004, FWQ-0005
 - Description: Implement the bounded persistent loop: select → inspect/dispatch Codex work unit → deterministic validation → Claude review → Gemini exact-commit review → Codex repair → revalidate → accept/checkpoint → immediately select next READY task.
@@ -111,7 +111,7 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
   - dry-run and deployment prohibitions remain enforced.
 - Expected validation: integration tests with mocked agent adapters and disposable repositories; failure/restart tests.
 - Security considerations: supervisor may sequence work but must not create new authority or bypass Z3/policy.
-- Completion evidence: Implementation and deterministic tests exist. The current preserved Claude review approves exact candidate `514217e474e46872c12efdad181d11ae90bfe57e` at LOW risk with no blocking findings; its prior unpreserved REJECT/MEDIUM attempt is superseded and cannot be acted on. Gemini still terminates before input processing or emitting a payload. The task cannot be accepted until Gemini’s exact-SHA review is preserved.
+- Completion evidence: Candidate `514217e474e46872c12efdad181d11ae90bfe57e` passed authoritative detached-worktree validation (388 passed, 1 skipped). Claude exact-SHA evidence is APPROVE/LOW in `docs/fwq-0006-claude-review-514217e.json`; Jeff-mediated manual independent Gemini exact-SHA evidence is APPROVE/LOW and schema-valid in `docs/fwq-0006-gemini-manual-review-514217e.json`. The configured automated Gemini adapter remained unavailable and was not treated as successful. No unresolved critical/high-confidence finding remains.
 
 ## Future queue population
 
