@@ -37,6 +37,7 @@ def test_ordinary_failures_and_completion_do_not_stop_work():
 def test_unsafe_repository_wins_deterministically():
     decision = evaluate_stop_conditions(StopContext(requires_customer_authority=True, repository_unsafe_or_ambiguous=True))
     assert decision.reason == "UNSAFE_REPOSITORY"
+    assert evaluate_stop_conditions(StopContext(repository_unsafe_or_ambiguous=True, required_resource_unavailable=True, safe_independent_work_available=False)).reason == "UNSAFE_REPOSITORY"
 
 
 def test_stop_record_persists_reason_and_resume_action(tmp_path):

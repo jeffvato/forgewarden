@@ -21,8 +21,13 @@ def create_review_cycle(candidate_commit: str) -> ReviewCycle:
     return ReviewCycle(candidate_commit.lower(), MappingProxyType({}))
 def record_review(cycle: ReviewCycle, result: ReviewResult) -> ReviewCycle:
     if result.role not in _ROLES or result.severity not in _SEVERITIES or result.disposition not in _DISPOSITIONS: raise ReviewHandoffError("invalid review role, severity, or disposition")
-    if result.reviewed_commit.lower() != cycle.candidate_commit: raise ReviewHandoffError("stale or mismatched review commit")
+    if not _SHA1.fullmatch(result.reviewed_commit) or result.reviewed_commit.lower() != cycle.candidate_commit: raise ReviewHandoffError("stale or mismatched review commit")
+    if any(not isinstance(finding, str) or not finding.strip() for finding in result.findings): raise ReviewHandoffError("findings must contain non-empty strings")
     if result.role in cycle.reviews: raise ReviewHandoffError("review role already recorded")
     if result.disposition == "REJECTED" and not result.rationale.strip(): raise ReviewHandoffError("rejected review requires rationale")
     reviews = dict(cycle.reviews); reviews[result.role] = result
     return ReviewCycle(cycle.candidate_commit, MappingProxyType(reviews))
+def complete_review_cycle(cycle: ReviewCycle) -> ReviewCycle:
+    if set(cycle.reviews) != _ROLES: raise ReviewHandoffError("both Claude and Gemini reviews are required")
+    if any(review.disposition == "REJECTED" for review in cycle.reviews.values()): raise ReviewHandoffError("rejected review requires repair")
+    return cycle

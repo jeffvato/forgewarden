@@ -44,11 +44,11 @@ _REASONS = (
 
 def evaluate_stop_conditions(context: StopContext) -> StopDecision:
     """Return one deterministic approved stop decision; ordinary failures never stop work."""
-    if context.required_resource_unavailable and not context.safe_independent_work_available:
-        return StopDecision(True, "REQUIRED_RESOURCE_UNAVAILABLE", "restore the required resource or identify safe independent work")
     for attribute, reason, resume in _REASONS:
         if getattr(context, attribute):
             return StopDecision(True, reason, resume)
+    if context.required_resource_unavailable and not context.safe_independent_work_available:
+        return StopDecision(True, "REQUIRED_RESOURCE_UNAVAILABLE", "restore the required resource or identify safe independent work")
     return StopDecision(False, None, None)
 
 
@@ -57,8 +57,15 @@ def persist_stop_decision(path: Path, decision: StopDecision) -> None:
     if not decision.should_stop or not decision.reason or not decision.first_resume_action:
         raise StopConditionError("only complete stop decisions may be persisted")
     path = Path(path)
+    if not hasattr(os, "O_NOFOLLOW") or not hasattr(os, "O_DIRECTORY"):
+        raise StopConditionError("safe stop-record primitives unavailable")
     if not path.is_absolute() or not path.parent.is_dir() or path.is_symlink():
         raise StopConditionError("stop-record path must be an absolute non-symlink path in an existing directory")
+    current = Path(path.anchor)
+    for part in path.parent.parts[1:]:
+        current /= part
+        if current.is_symlink():
+            raise StopConditionError("stop-record path contains symlink")
     payload = json.dumps(asdict(decision), sort_keys=True).encode("utf-8")
     temporary = path.parent / f".{path.name}.{uuid.uuid4().hex}.tmp"
     try:
@@ -68,5 +75,10 @@ def persist_stop_decision(path: Path, decision: StopDecision) -> None:
             handle.flush()
             os.fsync(handle.fileno())
         os.replace(temporary, path)
+        directory = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            os.fsync(directory)
+        finally:
+            os.close(directory)
     finally:
         temporary.unlink(missing_ok=True)

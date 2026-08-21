@@ -17,6 +17,7 @@ from typing import Mapping
 _SHA1 = re.compile(r"[0-9a-fA-F]{40}")
 _TASK_ID = re.compile(r"FWQ-[0-9]{4}")
 _VERSION = 1
+MAX_CHECKPOINT_BYTES = 1_048_576
 
 
 class CheckpointError(ValueError):
@@ -104,10 +105,19 @@ def load_checkpoint(path: Path) -> WorkUnitCheckpoint:
     """Load a complete checkpoint envelope and verify its integrity before use."""
     path = Path(path)
     _safe_parent(path)
-    if path.is_symlink() or not path.is_file():
+    if not hasattr(os, "O_NOFOLLOW") or path.is_symlink() or not path.is_file():
         raise CheckpointError(f"checkpoint is missing or unsafe: {path}")
     try:
-        raw = path.read_bytes()
+        descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+        try:
+            metadata = os.fstat(descriptor)
+            if not stat.S_ISREG(metadata.st_mode) or metadata.st_size > MAX_CHECKPOINT_BYTES:
+                raise CheckpointError("checkpoint is missing or unsafe")
+            raw = os.read(descriptor, MAX_CHECKPOINT_BYTES + 1)
+            if len(raw) > MAX_CHECKPOINT_BYTES:
+                raise CheckpointError("checkpoint is corrupt or incomplete")
+        finally:
+            os.close(descriptor)
         envelope = json.loads(raw.decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise CheckpointError("checkpoint is corrupt or incomplete") from exc

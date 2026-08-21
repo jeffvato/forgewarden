@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from swarm.work_checkpoint import CheckpointError, WorkUnitCheckpoint, load_checkpoint, reconcile_checkpoint, write_checkpoint
+from swarm.work_checkpoint import CheckpointError, MAX_CHECKPOINT_BYTES, WorkUnitCheckpoint, load_checkpoint, reconcile_checkpoint, write_checkpoint
 
 
 SHA_A = "a" * 40
@@ -57,3 +57,8 @@ def test_unsafe_checkpoint_path_and_schema_fail_closed(tmp_path):
     link.symlink_to(target)
     with pytest.raises(CheckpointError, match="unsafe checkpoint target"):
         write_checkpoint(link, _checkpoint())
+def test_oversized_and_symlink_replacement_loads_fail_closed(tmp_path):
+    path=tmp_path/"checkpoint.json"; path.write_bytes(b"x"*(MAX_CHECKPOINT_BYTES+1))
+    with pytest.raises(CheckpointError): load_checkpoint(path)
+    target=tmp_path/"target"; target.write_text("{}",encoding="utf-8"); path.unlink(); path.symlink_to(target)
+    with pytest.raises(CheckpointError): load_checkpoint(path)
