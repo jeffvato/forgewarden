@@ -142,6 +142,14 @@ def run(snapshot: Path, job_id: str, commit: str, prompt: str, *, diagnostic_pat
         diagnostic.update({"status": "CONTRACT_FAILED", "error": str(exc)[:2000]})
         _write_diagnostic(diagnostic_path, diagnostic)
         raise ClaudeVerificationError(str(exc)) from exc
-    diagnostic.update({"status": "VALIDATED", "verdict": result["verdict"], "risk": result["risk"]})
+    diagnostic.update({
+        "status": "VALIDATED",
+        "verdict": result["verdict"],
+        "risk": result["risk"],
+        # The contract has already bound and validated this untrusted provider
+        # output. Preserve it verbatim as exact-commit review evidence so a
+        # rejection can be repaired rather than lost at a process boundary.
+        "review_payload": result,
+    })
     _write_diagnostic(diagnostic_path, diagnostic)
     return result

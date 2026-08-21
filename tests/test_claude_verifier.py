@@ -28,9 +28,13 @@ def test_fake_cli_is_commit_bound_and_read_only():
             encoding="utf-8",
         )
         fake.chmod(0o700)
+        diagnostic = root / "evidence" / "claude.json"
         with patch.object(claude_verifier, "CLAUDE", fake):
-            result = claude_verifier.run(root, job, commit, "Review exact commit safely.")
+            result = claude_verifier.run(root, job, commit, "Review exact commit safely.", diagnostic_path=diagnostic)
         assert result["reviewed_commit"] == commit
+        evidence = json.loads(diagnostic.read_text(encoding="utf-8"))
+        assert evidence["status"] == "VALIDATED"
+        assert evidence["review_payload"] == payload
 
 
 def test_wrong_commit_fails_before_provider_call():
