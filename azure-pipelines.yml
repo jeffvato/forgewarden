@@ -20,8 +20,8 @@ steps:
       versionSpec: '3.11'
 
   - script: |
-      python -m pip install pytest
-    displayName: Install CI test dependency
+      python -m pip install pytest jsonschema PyYAML
+    displayName: Install CI test dependencies
 
   - script: |
       PYTHONPATH=. python -m pytest -q
