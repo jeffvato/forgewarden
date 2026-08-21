@@ -278,7 +278,7 @@ def last_cgroup_peak_bytes() -> int:
     return _last_cgroup_peak_bytes
 
 
-def limited_run(command: list[str], cwd: Path, prompt: str, limits: ResourceLimits, env: dict[str, str] | None = None, use_cgroup: bool = False, minimal_environment: bool = False, environment_builder=None) -> subprocess.CompletedProcess[str]:
+def limited_run(command: list[str], cwd: Path, prompt: str, limits: ResourceLimits, env: dict[str, str] | None = None, use_cgroup: bool = False, minimal_environment: bool = False, environment_builder=None, network_isolated: bool = True) -> subprocess.CompletedProcess[str]:
     child_env = environment_builder(env) if environment_builder else (_minimal_test_environment(env) if minimal_environment else _safe_agent_environment(env))
     global _last_cgroup_peak_bytes
     cgroup_path: Path | None = None
@@ -291,9 +291,10 @@ def limited_run(command: list[str], cwd: Path, prompt: str, limits: ResourceLimi
             systemd_run, "--user", "--scope", "--quiet",
             "-p", f"MemoryMax={limits.memory_bytes}",
             "-p", "MemorySwapMax=0",
-            "-p", "IPAddressDeny=any",
-            "--", *command,
         ]
+        if network_isolated:
+            wrapped_command.extend(("-p", "IPAddressDeny=any"))
+        wrapped_command.extend(("--", *command))
     try:
         process = subprocess.Popen(
             wrapped_command,
@@ -515,10 +516,11 @@ class CodexAdapter:
 
 
 class GeminiAdapter:
-    def __init__(self, schema: Path, limits: ResourceLimits, executable: str = "/home/jeff/.local/bin/agy"):
+    def __init__(self, schema: Path, limits: ResourceLimits, executable: str = "/home/jeff/.local/bin/agy", *, allow_external_review: bool = False):
         self.schema = schema
         self.limits = limits
         self.executable = executable
+        self.allow_external_review = allow_external_review
         self.last_attempts: list[dict[str, Any]] = []
         self.last_schema: dict[str, Any] | None = None
 
@@ -566,8 +568,16 @@ class GeminiAdapter:
         )
         current_prompt = base_prompt
         for attempt in range(2 if formatting_retry else 1):
-            command = [self.executable, "--prompt", current_prompt, "--mode", "plan", "--sandbox", "--print-timeout", f"{self.limits.timeout_seconds}s"]
-            result = limited_run(command, snapshot, current_prompt, self.limits, {"SWARM_ROLE": "GEMINI_READ_ONLY", "SWARM_DRY_RUN": "1", "SWARM_REVIEWED_COMMIT": commit}, use_cgroup=True)
+            command = [
+                self.executable, "--prompt", current_prompt, "--mode", "plan", "--sandbox",
+                "--output-format", "json", "--json-schema", json.dumps(schema, separators=(",", ":"), sort_keys=True),
+                "--print-timeout", f"{self.limits.timeout_seconds}s",
+            ]
+            result = limited_run(
+                command, snapshot, current_prompt, self.limits,
+                {"SWARM_ROLE": "GEMINI_READ_ONLY", "SWARM_DRY_RUN": "1", "SWARM_REVIEWED_COMMIT": commit},
+                use_cgroup=True, network_isolated=not self.allow_external_review,
+            )
             attempt_record: dict[str, Any] = {"attempt": attempt + 1, "exit_code": result.returncode, "schema_path": str(schema_path)}
             if result.returncode:
                 attempt_record["validation"] = "PROCESS_FAILED"

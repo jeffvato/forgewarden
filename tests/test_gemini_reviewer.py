@@ -95,6 +95,32 @@ class GeminiReviewContractTests(unittest.TestCase):
         self.assertIn("formatting-only retry", calls[1])
         self.assertIn(self.commit, calls[1])
 
+    def test_external_review_is_explicit_and_uses_native_schema_output(self):
+        calls = []
+        def fake_run(command, cwd, prompt, limits, env, **kwargs):
+            calls.append((command, kwargs))
+            return CompletedProcess(command, 0, json.dumps(self.payload()), "")
+        adapter = GeminiAdapter(self.schema, ResourceLimits(), "fake-agy", allow_external_review=True)
+        with patch("swarm.adapters.limited_run", side_effect=fake_run):
+            self.assertEqual(adapter.run(self.snapshot, self.job, self.commit, "review evidence"), self.payload())
+        command, kwargs = calls[0]
+        self.assertIn("--output-format", command)
+        self.assertEqual(command[command.index("--output-format") + 1], "json")
+        self.assertIn("--json-schema", command)
+        self.assertEqual(json.loads(command[command.index("--json-schema") + 1])["properties"]["reviewed_commit"]["const"], self.commit)
+        self.assertTrue(kwargs["use_cgroup"])
+        self.assertFalse(kwargs["network_isolated"])
+
+    def test_default_review_remains_network_isolated(self):
+        calls = []
+        def fake_run(command, cwd, prompt, limits, env, **kwargs):
+            calls.append(kwargs)
+            return CompletedProcess(command, 0, json.dumps(self.payload()), "")
+        adapter = GeminiAdapter(self.schema, ResourceLimits(), "fake-agy")
+        with patch("swarm.adapters.limited_run", side_effect=fake_run):
+            adapter.run(self.snapshot, self.job, self.commit, "review evidence")
+        self.assertTrue(calls[0]["network_isolated"])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -20,7 +20,7 @@ claude:
   readiness: VERIFIED_DRY_RUN_FAKE_CLI
 gemini:
   executable: /home/jeff/.local/bin/agy
-  version: 1.1.4
-  output_mode: prompt-json
+  version: 1.1.17
+  output_mode: json-schema
   review_mode: plan
   readiness: REDUCED_COMPATIBILITY_ONLY

@@ -11,12 +11,18 @@ The accepted field is `tests_missing`. The alias `missing_tests` is invalid and
 is never normalized. `APPROVE` is rejected if `blocking_findings` or
 `tests_missing` is non-empty.
 
-`agy 1.1.4` does not expose a structured-output/schema option in its help, so
-the dynamic schema is persisted with the review snapshot and the returned JSON
-is independently validated. The prompt includes the exact required JSON
-structure. One formatting-only retry is permitted; it receives only the
-validation error and the same required structure, while retaining the same job,
-commit, and review evidence. A second invalid response fails closed.
+`agy 1.1.17` exposes JSON-schema output. The adapter binds the dynamic schema
+to the exact job and commit in both the CLI request and local validation. The
+prompt also includes the exact required JSON structure as defense in depth. One
+formatting-only retry is permitted; it receives only the validation error and
+the same required structure, while retaining the same job, commit, and review
+evidence. A second invalid response fails closed.
+
+The adapter defaults to network isolation. A remote review can run only when
+the trusted caller explicitly constructs it with `allow_external_review=True`;
+that opt-in retains the read-only plan/sandbox mode, cgroup resource limits,
+exact-SHA schema binding, and local validation. It does not authorize any
+mutation, deployment, credential access, or other network action.
 
 ## Retained review recovery
 
