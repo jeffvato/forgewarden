@@ -37,4 +37,13 @@ def test_accepted_checkpoint_preserves_actual_review_evidence(tmp_path):
     assert run_bounded_work_unit(state,StopContext(),path,SHA,lambda _:result,lambda _:True,reviews).next_action == "accepted; advance queue"
     checkpoint=load_checkpoint(path)
     assert checkpoint.claude_review == "FINDINGS" and checkpoint.gemini_review == "APPROVED"
-    assert checkpoint.unresolved_findings == ("CLAUDE:low-note", "GEMINI:gemini-note")
+    assert checkpoint.unresolved_findings == ("CLAUDE|FINDINGS|LOW|ok|low-note", "GEMINI|APPROVED|LOW|ok|gemini-note")
+def test_callback_exceptions_are_structured_stops(tmp_path):
+    state=_state(_task("FWQ-0001")); result=WorkUnitResult(SHA,("x",),("ok",)); ok=lambda sha:()
+    assert run_bounded_work_unit(state,StopContext(),tmp_path/"a",SHA,lambda _:(_ for _ in ()).throw(RuntimeError()),lambda _:True,ok).stop.reason == "DISPATCH_EXCEPTION"
+    assert run_bounded_work_unit(state,StopContext(),tmp_path/"b",SHA,lambda _:result,lambda _:(_ for _ in ()).throw(RuntimeError()),ok).stop.reason == "VALIDATION_EXCEPTION"
+    assert run_bounded_work_unit(state,StopContext(),tmp_path/"c",SHA,lambda _:result,lambda _:True,lambda _:(_ for _ in ()).throw(RuntimeError())).stop.reason == "REVIEW_REPAIR_REQUIRED"
+def test_initial_record_review_error_is_structured(tmp_path):
+    state=_state(_task("FWQ-0001")); result=WorkUnitResult(SHA,("x",),("ok",))
+    bad=lambda sha:(ReviewResult("CLAUDE","b"*40,(),"LOW","APPROVED","ok"),)
+    assert run_bounded_work_unit(state,StopContext(),tmp_path/"c",SHA,lambda _:result,lambda _:True,bad).stop.reason == "REVIEW_REPAIR_REQUIRED"

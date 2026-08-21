@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 
 import pytest
+import swarm.work_checkpoint as checkpoint_module
 
 from swarm.work_checkpoint import CheckpointError, MAX_CHECKPOINT_BYTES, WorkUnitCheckpoint, load_checkpoint, reconcile_checkpoint, write_checkpoint
 
@@ -66,3 +67,7 @@ def test_symlinked_parent_checkpoint_path_fails_closed(tmp_path):
     real=tmp_path/"real"; real.mkdir(); linked=tmp_path/"linked"; linked.symlink_to(real, target_is_directory=True)
     with pytest.raises(CheckpointError, match="symlink"):
         write_checkpoint(linked/"checkpoint.json", _checkpoint())
+def test_write_requires_no_follow_primitive(tmp_path, monkeypatch):
+    monkeypatch.delattr(checkpoint_module.os, "O_NOFOLLOW", raising=False)
+    with pytest.raises(CheckpointError, match="primitive"):
+        write_checkpoint(tmp_path/"checkpoint.json", _checkpoint())

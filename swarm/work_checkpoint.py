@@ -76,6 +76,8 @@ def _payload(checkpoint: WorkUnitCheckpoint) -> dict[str, object]:
 
 def write_checkpoint(path: Path, checkpoint: WorkUnitCheckpoint) -> None:
     """Durably replace one checkpoint; incomplete writes are never valid JSON evidence."""
+    if not hasattr(os, "O_NOFOLLOW"):
+        raise CheckpointError("safe checkpoint write primitive unavailable")
     _validate(checkpoint)
     path = Path(path)
     _safe_parent(path)
@@ -84,7 +86,7 @@ def write_checkpoint(path: Path, checkpoint: WorkUnitCheckpoint) -> None:
     payload = _payload(checkpoint)
     envelope = {**payload, "sha256": hashlib.sha256(_canonical(payload)).hexdigest()}
     temporary = path.parent / f".{path.name}.{uuid.uuid4().hex}.tmp"
-    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW
     try:
         descriptor = os.open(temporary, flags, 0o600)
         with os.fdopen(descriptor, "wb") as handle:

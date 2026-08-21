@@ -28,19 +28,30 @@ def run_bounded_work_unit(state: SupervisorState, stop_context: StopContext, che
     prior = WorkUnitCheckpoint("ForgeWarden Core", task.task_id, repository_head, None, None, (), (), "PENDING", "PENDING", (), None, "dispatch")
     write_checkpoint(checkpoint_path, prior)
     reconcile_checkpoint(load_checkpoint(checkpoint_path), repository_head)
-    result = dispatch(task)
+    try:
+        result = dispatch(task)
+    except Exception:
+        return ContinuationPlan(StopDecision(True, "DISPATCH_EXCEPTION", "repair dispatch callback"), plan.selection, "stop")
     if not isinstance(result, WorkUnitResult):
         return ContinuationPlan(StopDecision(True, "DISPATCH_RESULT_INVALID", "repair dispatch result"), plan.selection, "stop")
-    if not validate(result):
-        return ContinuationPlan(StopDecision(True, "VALIDATION_FAILED", "repair and revalidate"), plan.selection, "stop")
-    cycle = create_review_cycle(result.candidate_commit)
-    for review in reviews(result.candidate_commit): cycle = record_review(cycle, review)
     try:
+        valid = validate(result)
+    except Exception:
+        return ContinuationPlan(StopDecision(True, "VALIDATION_EXCEPTION", "repair validation callback"), plan.selection, "stop")
+    if not valid:
+        return ContinuationPlan(StopDecision(True, "VALIDATION_FAILED", "repair and revalidate"), plan.selection, "stop")
+    try:
+        cycle = create_review_cycle(result.candidate_commit)
+        for review in reviews(result.candidate_commit): cycle = record_review(cycle, review)
         complete_review_cycle(cycle)
     except Exception:
         if repair is None: return ContinuationPlan(StopDecision(True, "REVIEW_REPAIR_REQUIRED", "repair and obtain fresh reviews"), plan.selection, "stop")
-        result = repair(result)
-        if not isinstance(result, WorkUnitResult) or not validate(result): return ContinuationPlan(StopDecision(True, "REPAIR_VALIDATION_FAILED", "repair and revalidate"), plan.selection, "stop")
+        try:
+            result = repair(result)
+            valid = isinstance(result, WorkUnitResult) and validate(result)
+        except Exception:
+            return ContinuationPlan(StopDecision(True, "REPAIR_VALIDATION_FAILED", "repair and revalidate"), plan.selection, "stop")
+        if not valid: return ContinuationPlan(StopDecision(True, "REPAIR_VALIDATION_FAILED", "repair and revalidate"), plan.selection, "stop")
         try:
             cycle = create_review_cycle(result.candidate_commit)
             for review in reviews(result.candidate_commit): cycle = record_review(cycle, review)
@@ -48,7 +59,7 @@ def run_bounded_work_unit(state: SupervisorState, stop_context: StopContext, che
         except Exception:
             return ContinuationPlan(StopDecision(True, "REPAIR_REVIEW_FAILED", "repair and obtain fresh reviews"), plan.selection, "stop")
     evidence = {role: review for role, review in cycle.reviews.items()}
-    findings = tuple(f"{role}:{item}" for role, review in evidence.items() for item in review.findings)
+    findings = tuple(f"{role}|{review.disposition}|{review.severity}|{review.rationale}|{finding}" for role, review in sorted(evidence.items()) for finding in (review.findings or ("",)))
     accepted = WorkUnitCheckpoint("ForgeWarden Core", task.task_id, repository_head, result.candidate_commit, result.candidate_commit, result.changed_files, result.validation, evidence["CLAUDE"].disposition, evidence["GEMINI"].disposition, findings, None, "advance queue")
     write_checkpoint(checkpoint_path, accepted)
     reconcile_checkpoint(load_checkpoint(checkpoint_path), result.candidate_commit)
