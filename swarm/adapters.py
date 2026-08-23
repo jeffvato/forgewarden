@@ -578,7 +578,6 @@ class GeminiAdapter:
         write_mailbox_json(schema_path, schema, "Gemini schema")
         self.last_attempts = []
         required = self._required_structure(job_id, commit)
-        provider_schema = self._provider_schema(schema)
         base_prompt = (
             f"{prompt}\n\nIMPORTANT: Return exactly one JSON object. The alias `missing_tests` is forbidden; "
             "the required field is `tests_missing`. Do not omit any required field. The exact required structure is:\n"
@@ -587,8 +586,8 @@ class GeminiAdapter:
         current_prompt = base_prompt
         for attempt in range(2 if formatting_retry else 1):
             command = [
-                self.executable, f"--print={current_prompt}", "--agent", "code-review-agent", "--model", "gemini-3.5-flash-low", "--mode", "plan", "--sandbox",
-                "--output-format", "json", "--json-schema", json.dumps(provider_schema, separators=(",", ":"), sort_keys=True),
+                self.executable, f"--print={current_prompt}", "--agent", "code-review-agent", "--sandbox",
+                "--output-format", "json",
                 "--print-timeout", f"{self.limits.timeout_seconds}s",
             ]
             result = limited_run(
