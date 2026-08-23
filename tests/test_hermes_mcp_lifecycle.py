@@ -6,9 +6,11 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from tests.host_fixtures import requires_host_fixture
 
 
 PYTHON = "/home/jeff/.local/share/hermes-swarm-desktop-backend/venv/bin/python"
+LIFECYCLE_FIXTURE = ("/home/jeff/hermes-swarm-phase1", PYTHON)
 
 
 class HermesMcpLifecycleTests(unittest.TestCase):
@@ -175,6 +177,7 @@ except BaseException as exc:
         self.assertGreater(evidence["reconnected_generation"], evidence["initial_generation"])
         self.assertTrue(evidence["ready"])
 
+    @requires_host_fixture(LIFECYCLE_FIXTURE, "Hermes MCP lifecycle integration")
     def test_official_hermes_probe_discovers_seven_tools_under_five_seconds(self):
         env = {
             "PATH": "/usr/bin:/bin",
@@ -201,6 +204,7 @@ except BaseException as exc:
         self.assertIn("Connected (", result.stdout)
         self.assertIn("Tools discovered: 7", result.stdout)
 
+    @requires_host_fixture(LIFECYCLE_FIXTURE, "Hermes MCP lifecycle integration")
     def test_readiness_requires_strictly_newer_generation(self):
         script = r'''
 import asyncio, json, sys

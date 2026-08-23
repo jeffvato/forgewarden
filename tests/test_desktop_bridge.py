@@ -8,6 +8,14 @@ from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
 from swarm import desktop_bridge as bridge
+from tests.host_fixtures import requires_host_fixture
+
+
+DESKTOP_FIXTURE = (
+    "/home/jeff/hermes-swarm-phase1",
+    "/home/jeff/.local/bin/hermes-swarm-mcp",
+    "/home/jeff/.local/share/hermes-swarm-desktop-backend/venv/bin/python",
+)
 
 
 class DesktopBridgeTests(unittest.TestCase):
@@ -163,6 +171,7 @@ class DesktopBridgeTests(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 bridge.engage_kill_switch()
 
+    @requires_host_fixture(DESKTOP_FIXTURE, "desktop MCP bridge integration")
     def test_stdio_handshake_registers_exactly_seven_tools_and_no_protocol_corruption(self):
         script = r'''
 import asyncio, json
@@ -224,6 +233,7 @@ print(json.dumps(asyncio.run(handshake())))
             time.sleep(0.05)
         self.fail(f"MCP fixture child was not reaped: {children}")
 
+    @requires_host_fixture(DESKTOP_FIXTURE, "desktop MCP bridge integration")
     def test_stdio_session_is_persistent_and_tool_errors_do_not_kill_it(self):
         script = r'''
 import asyncio, json, psutil
@@ -273,6 +283,7 @@ print(json.dumps(asyncio.run(exercise())))
         self.assertEqual(json.loads(result.stdout), {"calls": 3, "mode": "DRY_RUN", "error_is_error": True})
         self.assert_no_bridge_children()
 
+    @requires_host_fixture(DESKTOP_FIXTURE, "desktop MCP bridge integration")
     def test_stdio_ping_and_status_repetitions_share_one_session(self):
         script = r'''
 import asyncio, json
@@ -308,6 +319,7 @@ print(json.dumps(asyncio.run(exercise())))
         self.assertEqual(json.loads(result.stdout), True)
         self.assert_no_bridge_children()
 
+    @requires_host_fixture(DESKTOP_FIXTURE, "desktop MCP bridge integration")
     def test_independent_stdio_session_survives_other_session_close(self):
         script = r'''
 import asyncio, json

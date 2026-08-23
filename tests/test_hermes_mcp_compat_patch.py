@@ -11,6 +11,14 @@ from scripts import hermes_mcp_generation_patch as generation_patch
 from scripts import hermes_mcp_local_startup_patch as local_startup_patch
 from scripts import hermes_mcp_loop_owner_patch as loop_owner_patch
 from scripts import hermes_mcp_loop_wakeup_patch as wakeup_patch
+from tests.host_fixtures import requires_host_fixture
+
+
+MCP_PYTHON = ("/home/jeff/.local/share/hermes-swarm-desktop-backend/venv/bin/python",)
+MCP_BACKUPS = (
+    "/home/jeff/hermes-swarm-desktop-backend-backups/mcp_tool.py.backup-20260720T170408Z-generation",
+    "/home/jeff/hermes-swarm-desktop-backend-backups/mcp_tool.py.backup-20260720T175425Z-local-osv",
+)
 
 
 class HermesMcpCompatPatchTests(unittest.TestCase):
@@ -28,6 +36,7 @@ class HermesMcpCompatPatchTests(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             patch.patched_source(b"def _is_session_expired_error(exc):\n    pass\n")
 
+    @requires_host_fixture(MCP_PYTHON, "Hermes MCP compatibility integration")
     def test_bare_closed_resource_is_classified_and_reconnect_retries_once(self):
         script = r'''
 import asyncio, json
@@ -88,6 +97,7 @@ print(json.dumps(asyncio.run(check())))
         self.assertEqual(patch.TARGET.name, "mcp_tool.py")
         self.assertEqual(patch.EXPECTED_HERMES_VERSION, "0.18.2")
 
+    @requires_host_fixture(MCP_BACKUPS, "Hermes MCP patch backup fixtures")
     def test_generation_patch_has_fixed_hash_contract_and_is_idempotent(self):
         self.assertEqual(generation_patch.EXPECTED_HERMES_VERSION, "0.18.2")
         self.assertEqual(len(generation_patch.EXPECTED_PREPATCH_SHA256), 64)
@@ -104,6 +114,7 @@ print(json.dumps(asyncio.run(check())))
             wakeup_patch.EXPECTED_POSTPATCH_SHA256,
         )
 
+    @requires_host_fixture(MCP_BACKUPS, "Hermes MCP patch backup fixtures")
     def test_startup_compatibility_chain_has_fixed_hashes(self):
         source = Path(
             "/home/jeff/hermes-swarm-desktop-backend-backups/"

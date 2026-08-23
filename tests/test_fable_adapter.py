@@ -7,6 +7,11 @@ from unittest.mock import patch
 
 from swarm import fable_adapter as f
 from swarm.core import SwarmError
+from tests.host_fixtures import requires_host_fixture
+
+
+DETERMINISTIC_PYTHON = ("/home/jeff/anaconda3/bin/python3",)
+CLAUDE_FIXTURE = ("/home/jeff/.local/bin/claude",)
 
 
 class FableAdapterTests(unittest.TestCase):
@@ -84,6 +89,7 @@ class FableAdapterTests(unittest.TestCase):
         with self.assertRaises(f.FableAdapterError):
             f._validate(payload, inv)
 
+    @requires_host_fixture(CLAUDE_FIXTURE, "installed Claude launcher")
     def test_subprocess_contract_is_read_only_and_fixed(self):
         job = "fable-" + "e" * 24
         inv = f.FableInvocation(job, target_usd=35.0)
@@ -103,6 +109,7 @@ class FableAdapterTests(unittest.TestCase):
             self.assertEqual(kwargs["timeout"], 300)
             self.assertTrue((evidence / f"{job}.json").is_file())
 
+    @requires_host_fixture(DETERMINISTIC_PYTHON, "deterministic interpreter fixture")
     def test_real_fake_cli_receives_exact_read_only_contract(self):
         job = "fable-" + "f" * 24
         inv = f.FableInvocation(job, target_usd=35.0)
@@ -152,6 +159,7 @@ class FableAdapterTests(unittest.TestCase):
             self.assertEqual(ledger["spent_usd"], 2.75)
             self.assertEqual(ledger["reserved_usd"], 0.0)
 
+    @requires_host_fixture(DETERMINISTIC_PYTHON, "deterministic interpreter fixture")
     def test_real_fake_cli_wrong_job_or_model_fails_closed(self):
         with TemporaryDirectory() as temp:
             root = Path(temp)

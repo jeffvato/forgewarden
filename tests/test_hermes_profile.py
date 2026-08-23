@@ -5,12 +5,14 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from tests.host_fixtures import requires_host_fixture
 
 
 HERMES = Path("/home/jeff/.local/bin/hermes")
 MARKER = "HERMES-SWARM-DISPOSABLE-MARKER-7F4C"
 
 
+@requires_host_fixture((HERMES,), "installed Hermes profile surface")
 class HermesDisposableProfileTests(unittest.TestCase):
     def test_installed_surface_has_no_profile_or_config_subcommand(self):
         result = subprocess.run([str(HERMES), "--help"], text=True, capture_output=True, check=True)
