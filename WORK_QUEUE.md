@@ -115,7 +115,7 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 
 ### FWQ-0007 — Immutable policy/invariant gate contract
 - Requirement: Core trust model and deterministic safety
-- State: IN_PROGRESS
+- State: REVIEW
 - Priority: P0
 - Dependencies: FWQ-0001, FWQ-0004, FWQ-0006
 - Description: Centralize the immutable DRY_RUN, deployment-disabled, and kill-switch policy contract used by authoritative safety reporting and activation admission without granting authority or changing the current safety defaults.

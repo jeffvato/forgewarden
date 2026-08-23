@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: active Core queue complete
-- Current task: FWQ-0006 — accepted; active Core queue complete
+- Current focus: FWQ-0007 exact-commit review
+- Current task: FWQ-0007 — candidate awaiting Claude and Gemini review
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -27,18 +27,18 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FWQ-0006
-- Starting commit: a06bd035a1c79067d9e1679fc266901de2a12e63
-- Candidate commit: 514217e474e46872c12efdad181d11ae90bfe57e
-- Candidate context: original FWQ-0006 implementation plus later hardening and CI-only safety changes through the exact reviewed candidate
-- Accepted commit: 514217e474e46872c12efdad181d11ae90bfe57e
-- Files changed: current candidate is clean; its relevant Core changes are `swarm/continuation.py` and `tests/test_continuation.py`
-- Deterministic validation: exact candidate detached-Git-worktree suite — 388 passed, 1 skipped; `git diff --check` and `git fsck --no-dangling` passed; DRY_RUN/deployment-disabled/kill-switch workflow status remains healthy
-- Claude review: schema-valid exact-SHA `APPROVE` / `LOW` result preserved in `docs/fwq-0006-claude-review-514217e.json`. It supersedes the earlier unpreserved `REJECT` / `MEDIUM` attempt, which cannot be evaluated or acted on without findings. The current preserved review lists no blocking findings and four non-blocking test-coverage gaps.
-- Gemini review: Jeff-mediated manual independent review is schema-valid, exact-SHA-bound, and APPROVE/LOW in `docs/fwq-0006-gemini-manual-review-514217e.json`. The configured automated Gemini adapter remains FAILED_CLOSED and is not represented as successful.
-- Unresolved findings: no blocking findings; Claude and Gemini evidence retain non-blocking coverage/reproducibility notes for future approved work.
-- Blocker: none
-- Next action: await explicit activation of further approved Core work; remain DRY_RUN-only with deployment disabled and kill-switch policy engaged.
+- Task ID: FWQ-0007
+- Starting commit: 595557c
+- Candidate commit: dd51951
+- Candidate context: immutable read-only safety invariant gate wired into Phase 2A status and activation admission
+- Accepted commit: pending exact-commit review
+- Files changed: `WORK_QUEUE.md`, `swarm/policy_gate.py`, `swarm/phase2a.py`, and `tests/test_policy_gate.py`
+- Deterministic validation: focused policy-gate tests — 9 passed; Core focused tests — 59 passed, 10 subtests; full Linux-style suite — 376 passed, 20 skipped, with 3 container-only environment mismatches; `git diff --check` and Python compilation passed.
+- Claude review: pending; the required exact-commit review resource is unavailable in the current environment.
+- Gemini review: pending; the required independent exact-commit review resource is unavailable in the current environment.
+- Unresolved findings: none from deterministic validation; external review is still required.
+- Blocker: exact-commit Claude and Gemini review resources are unavailable.
+- Next action: obtain both reviews for `dd51951`, repair any legitimate findings, then update acceptance evidence; remain DRY_RUN-only with deployment disabled and kill-switch policy engaged.
 
 ## Stop conditions
 
@@ -46,6 +46,6 @@ Do not stop merely because a task or review cycle finished. Stop only under the 
 
 ## Current stop condition
 
-- Reason: ALL_ACTIVE_WORK_COMPLETE
-- Exact condition: every approved active Core task is DONE; FWQ-0006 has deterministic validation and two schema-valid independent exact-SHA approvals.
-- First resume action: await explicit activation of further approved Core work.
+- Reason: REVIEW_RESOURCES_UNAVAILABLE
+- Exact condition: FWQ-0007 deterministic validation is complete, but required Claude and Gemini exact-commit reviews cannot be obtained in this environment.
+- First resume action: provide or enable the review resources, review exact candidate `dd51951`, and continue from `WORK_QUEUE.md` state `REVIEW`.
