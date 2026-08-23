@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: FWQ-0007 acceptance checkpoint
-- Current task: FWQ-0007 — accepted; select the next READY task
+- Current focus: FWQ-0008 accepted-work evidence bundle
+- Current task: FWQ-0008 — approved READY; inspect existing evidence paths before implementation
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -38,7 +38,7 @@ On every restart or continuation:
 - Gemini review: independent manual review of exact commit `dd51951b628886c13e07ff8cddccf170da99d6e4` returned schema-valid `APPROVE` / `LOW` with no blocking findings or missing tests; evidence is stored in `docs/fwq-0007-gemini-manual-review-dd51951.json`. Earlier automated `agy` provider failures remain non-evidence.
 - Unresolved findings: none.
 - Blocker: none for FWQ-0007.
-- Next action: run the final deterministic suite, checkpoint acceptance, and select the next READY task; remain DRY_RUN-only with deployment disabled and kill-switch policy engaged.
+- Next action: inspect existing evidence, audit, schema, and checkpoint paths, then implement only the smallest FWQ-0008 change; remain DRY_RUN-only with deployment disabled and kill-switch policy engaged.
 
 ## Stop conditions
 
@@ -47,5 +47,5 @@ Do not stop merely because a task or review cycle finished. Stop only under the 
 ## Current stop condition
 
 - Reason: NONE
-- Exact condition: FWQ-0007 has complete deterministic, Claude, and independent Gemini evidence bound to the same exact commit.
-- First resume action: complete the final validation/checkpoint and select the next READY work item.
+- Exact condition: FWQ-0007 is complete and FWQ-0008 is explicitly approved READY with complete acceptance criteria.
+- First resume action: inspect the existing evidence/audit implementation and claim FWQ-0008 without changing safety state.

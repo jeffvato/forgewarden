@@ -129,6 +129,24 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 - Security considerations: policy evidence is untrusted input; it cannot override immutable safety values or grant execution authority.
 - Completion evidence: Candidate `dd51951b628886c13e07ff8cddccf170da99d6e4` passed the focused policy-gate checks and the full Linux-style suite. Claude returned `APPROVE` / `LOW` with no blocking findings, and independent manual Gemini review returned schema-valid `APPROVE` / `LOW` with no blocking findings or missing tests in `docs/fwq-0007-gemini-manual-review-dd51951.json`. DRY_RUN, deployment-disabled, and engaged-kill-switch policy remain unchanged.
 
+### FWQ-0008 — Immutable accepted-work evidence bundle
+- Requirement: Core trust model and immutable evidence (FW-EVID)
+- State: READY
+- Priority: P1
+- Dependencies: FWQ-0003, FWQ-0005, FWQ-0007
+- Description: Define and implement a deterministic, redacted evidence bundle for an accepted dry-run work unit, binding its job ID, exact candidate and accepted commits, changed files, deterministic validation, Claude/Gemini review outcomes, policy state, and evidence hash without creating execution authority.
+- Approval: Explicitly approved by Jeff on 2026-08-23 as the next Core roadmap work item.
+- Acceptance criteria:
+  - the bundle has a strict schema and binds every record to one valid job ID and exact full commit;
+  - accepted evidence cannot be replaced, replayed, duplicated, or mixed across jobs or commits;
+  - writes and reads are atomic, restricted, and symlink-safe, with append-only or hash-chained integrity evidence;
+  - records contain only redacted metadata and hashes, never credentials, secrets, raw prompts, source contents, or unrestricted commands;
+  - malformed, stale, mismatched, incomplete, or unsafe evidence fails closed;
+  - tests cover valid acceptance, each binding mismatch, tampering, replay, symlink/path attacks, redaction, and interrupted writes;
+  - DRY_RUN, deployment-disabled, kill-switch, sole-writer, and human-authority constraints remain unchanged.
+- Expected validation: focused evidence-contract tests, repository suite, schema validation, secret/redaction checks, and exact-commit review.
+- Security considerations: evidence is untrusted input and audit data, never authority; no reviewer or evidence record may authorize deployment, clear a kill switch, access credentials, or expand filesystem, Git, network, or remote-host scope.
+
 ## Future queue population
 
 After the supervisor/control-plane work is validated, populate subsequent Core tasks from the active phase of `ROADMAP.md` and existing repository requirements. Broader FW-BME/FW-SOC/FW-SAAS/FW-SUPPLY/FW-NET/FW-ASM/FW-DSPM implementation remains parked until its phase is explicitly activated.
