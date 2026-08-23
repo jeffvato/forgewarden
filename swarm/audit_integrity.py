@@ -96,7 +96,9 @@ def _validate_record(record: Any, expected_job_id: str | None) -> dict[str, Any]
     if not isinstance(event, str) or not _IDENTIFIER.fullmatch(event):
         raise AuditIntegrityError("invalid audit event")
     for key in ("previous_event_sha256", "event_sha256"):
-        if key in record and (not isinstance(record[key], str) or not _SHA256.fullmatch(record[key])):
+        if key in record and not (
+            key == "previous_event_sha256" and record[key] is None
+        ) and (not isinstance(record[key], str) or not _SHA256.fullmatch(record[key])):
             raise AuditIntegrityError("invalid audit hash link")
     # A sensitive field may only be represented by the writer's redaction marker.
     for key, value in record.items():
