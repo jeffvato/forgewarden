@@ -20,7 +20,8 @@ existing `/home/jeff/hermes-sandbox/review/task.md` is not changed. Codex is
 invoked as `codex exec` with workspace-write, an isolated fixture worktree,
 `--skip-git-repo-check`, and a Codex-compatible projection of the supplied
 schema. The returned JSON is then validated against the full supplied schema.
-The Gemini-compatible reviewer is invoked as `agy --print --sandbox --output-format json`.
+The Gemini-compatible reviewer is invoked as `agy --print --agent code-review-agent
+--sandbox --disable-slash-commands --output-format json`.
 ForgeWarden validates the returned JSON envelope and exact review contract locally; agy
 native agent/schema/plan flags are intentionally avoided because they can return plan
 artifacts or provider errors instead of the review payload. It uses a separate read-only

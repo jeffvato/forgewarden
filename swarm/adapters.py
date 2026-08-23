@@ -552,23 +552,6 @@ class GeminiAdapter:
             "proposed_rules": [],
         }, indent=2)
 
-    @staticmethod
-    def _provider_schema(schema: dict[str, Any]) -> dict[str, Any]:
-        """Project the contract to provider-friendly JSON Schema.
-
-        Exact job/commit binding remains enforced locally by validate_contract;
-        some CLI schema adapters mishandle const/pattern constraints and emit
-        empty values instead of a structured result.
-        """
-        value = json.loads(json.dumps(schema))
-        value.pop("$schema", None)
-        value.pop("title", None)
-        for name in ("job_id", "reviewed_commit"):
-            properties = value.get("properties", {})
-            if isinstance(properties.get(name), dict):
-                properties[name] = {"type": "string"}
-        return value
-
     def run(self, snapshot: Path, job_id: str, commit: str, prompt: str, *, formatting_retry: bool = True) -> dict[str, Any]:
         result_dir = ensure_mailbox_directory(snapshot / ".swarm")
         output = result_dir / "gemini-review.json"
@@ -586,8 +569,8 @@ class GeminiAdapter:
         current_prompt = base_prompt
         for attempt in range(2 if formatting_retry else 1):
             command = [
-                self.executable, f"--print={current_prompt}", "--agent", "code-review-agent", "--sandbox",
-                "--output-format", "json",
+            self.executable, f"--print={current_prompt}", "--agent", "code-review-agent", "--sandbox",
+                "--disable-slash-commands", "--output-format", "json",
                 "--print-timeout", f"{self.limits.timeout_seconds}s",
             ]
             result = limited_run(
@@ -602,6 +585,10 @@ class GeminiAdapter:
                 self.last_attempts.append(attempt_record)
                 raise SwarmError(f"Gemini failed ({result.returncode}): {redact(result.stderr + result.stdout)}")
             try:
+                envelope = json.loads(result.stdout)
+                if isinstance(envelope, dict) and envelope.get("status") not in (None, "SUCCESS"):
+                    detail = redact(str(envelope.get("error") or envelope.get("response") or envelope.get("status")))[:2000]
+                    raise SwarmError(f"agy provider returned status {envelope.get('status')}: {detail}")
                 payload = self._extract_json(result.stdout)
                 attempt_record["payload"] = redact(json.dumps(payload, sort_keys=True))[:12000]
                 validate_contract(payload, "gemini", expected_job_id=job_id, expected_commit=commit)

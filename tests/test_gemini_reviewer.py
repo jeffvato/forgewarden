@@ -116,6 +116,7 @@ class GeminiReviewContractTests(unittest.TestCase):
         self.assertNotIn("--prompt", command)
         self.assertIn("--agent", command)
         self.assertEqual(command[command.index("--agent") + 1], "code-review-agent")
+        self.assertIn("--disable-slash-commands", command)
         self.assertNotIn("--model", command)
         self.assertIn("--output-format", command)
         self.assertEqual(command[command.index("--output-format") + 1], "json")
@@ -128,6 +129,21 @@ class GeminiReviewContractTests(unittest.TestCase):
         with patch("swarm.adapters.limited_run", return_value=CompletedProcess([], 0, json.dumps(envelope), "")):
             adapter = GeminiAdapter(self.schema, ResourceLimits(), "fake-agy")
             self.assertEqual(adapter.run(self.snapshot, self.job, self.commit, "review evidence", formatting_retry=False), self.payload())
+
+    def test_provider_error_envelope_is_reported_without_fake_review(self):
+        envelope = {"status": "ERROR", "response": "", "error": "provider unavailable"}
+        with patch("swarm.adapters.limited_run", return_value=CompletedProcess([], 0, json.dumps(envelope), "")):
+            adapter = GeminiAdapter(self.schema, ResourceLimits(), "fake-agy")
+            with self.assertRaisesRegex(SwarmError, "provider returned status ERROR"):
+                adapter.run(self.snapshot, self.job, self.commit, "review evidence", formatting_retry=False)
+
+    def test_provider_envelope_with_mismatched_payload_fails_local_contract(self):
+        payload = self.payload(); payload["reviewed_commit"] = "b" * 40
+        envelope = {"status": "SUCCESS", "response": json.dumps(payload)}
+        with patch("swarm.adapters.limited_run", return_value=CompletedProcess([], 0, json.dumps(envelope), "")):
+            adapter = GeminiAdapter(self.schema, ResourceLimits(), "fake-agy")
+            with self.assertRaisesRegex(SwarmError, "reviewed commit mismatch"):
+                adapter.run(self.snapshot, self.job, self.commit, "review evidence", formatting_retry=False)
 
     def test_default_review_remains_network_isolated(self):
         calls = []
