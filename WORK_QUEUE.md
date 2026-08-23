@@ -113,6 +113,21 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 - Security considerations: supervisor may sequence work but must not create new authority or bypass Z3/policy.
 - Completion evidence: Candidate `514217e474e46872c12efdad181d11ae90bfe57e` passed authoritative detached-worktree validation (388 passed, 1 skipped). Claude exact-SHA evidence is APPROVE/LOW in `docs/fwq-0006-claude-review-514217e.json`; Jeff-mediated manual independent Gemini exact-SHA evidence is APPROVE/LOW and schema-valid in `docs/fwq-0006-gemini-manual-review-514217e.json`. The configured automated Gemini adapter remained unavailable and was not treated as successful. No unresolved critical/high-confidence finding remains.
 
+### FWQ-0007 — Immutable policy/invariant gate contract
+- Requirement: Core trust model and deterministic safety
+- State: IN_PROGRESS
+- Priority: P0
+- Dependencies: FWQ-0001, FWQ-0004, FWQ-0006
+- Description: Centralize the immutable DRY_RUN, deployment-disabled, and kill-switch policy contract used by authoritative safety reporting and activation admission without granting authority or changing the current safety defaults.
+- Acceptance criteria:
+  - the contract is read-only and deterministic;
+  - missing, malformed, or unsafe invariant evidence fails closed;
+  - activation admission uses the contract before proceeding;
+  - tests cover safe evidence, each invariant violation, missing fields, and optional cleared-for-dry-run reporting;
+  - no deployment, kill-switch clearing, credential, remote-host, or authority-expansion behavior is added.
+- Expected validation: focused policy-gate tests plus repository suite and safety-invariant validation.
+- Security considerations: policy evidence is untrusted input; it cannot override immutable safety values or grant execution authority.
+
 ## Future queue population
 
 After the supervisor/control-plane work is validated, populate subsequent Core tasks from the active phase of `ROADMAP.md` and existing repository requirements. Broader FW-BME/FW-SOC/FW-SAAS/FW-SUPPLY/FW-NET/FW-ASM/FW-DSPM implementation remains parked until its phase is explicitly activated.

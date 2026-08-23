@@ -23,6 +23,7 @@ from . import claude_verifier
 from .baseline import DeterministicInterpreterError, _deadline_test_command, _introduce_deadline_defect, _tracked_test_hashes, _trusted_synthetic_commit, enforce_diff_gate, scan_baseline_tree, scan_git_blobs, validate_deterministic_interpreter
 from .core import AuditLog, Job, SwarmError, redact, read_restricted_bytes, run_command, touch_restricted, validate_contract, write_restricted_text
 from .paths import audit_path, project_root, runtime_root
+from .policy_gate import validate_safety_evidence
 
 PROFILE_ID = "csv_deadline_dry_run_v1"
 BASELINE_SHA = "bad64e7cf14e3c586d395341b25467841847dec6"
@@ -133,12 +134,14 @@ def activation_status(runtime_root: Path = DEFAULT_RUNTIME) -> str:
 
 def safety_status(runtime_root: Path = DEFAULT_RUNTIME) -> dict[str, str]:
     """Return the authoritative local safety state without changing it."""
-    return {
+    evidence = {
         "mode": "DRY_RUN",
         "deployment": "DISABLED" if _deployment_disabled(runtime_root) else "ENABLED",
         "autonomous_dry_run": activation_status(runtime_root),
         "kill_switch": "ENGAGED" if _kill_switch_engaged(runtime_root) else "CLEARED_FOR_DRY_RUN",
     }
+    validate_safety_evidence(evidence, require_kill_switch=False)
+    return evidence
 
 
 def workflow_status(runtime_root: Path = DEFAULT_RUNTIME) -> dict[str, Any]:
@@ -216,10 +219,17 @@ def _user_bus_and_cgroup_ready() -> None:
 
 
 def validate_activation(profile: Profile, runtime_root: Path = DEFAULT_RUNTIME, *, require_kill_switch: bool = True) -> dict[str, Any]:
-    if require_kill_switch and not _kill_switch_engaged(runtime_root):
-        raise SwarmError("activation requires the kill switch to be engaged")
-    if not _deployment_disabled(runtime_root):
-        raise SwarmError("deployment is enabled; refusing autonomous activation")
+    try:
+        validate_safety_evidence(
+            {
+                "mode": "DRY_RUN",
+                "deployment": "DISABLED" if _deployment_disabled(runtime_root) else "ENABLED",
+                "kill_switch": "ENGAGED" if _kill_switch_engaged(runtime_root) else "CLEARED_FOR_DRY_RUN",
+            },
+            require_kill_switch=require_kill_switch,
+        )
+    except ValueError as exc:
+        raise SwarmError(str(exc)) from exc
     _user_bus_and_cgroup_ready()
     baseline = _repo_head_and_clean(profile)
     tree_scan = scan_baseline_tree(profile.repository)
