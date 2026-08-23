@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: FWQ-0008 accepted-work evidence bundle
-- Current task: FWQ-0008 — approved READY; inspect existing evidence paths before implementation
+- Current focus: FWQ-0008 exact-commit review
+- Current task: FWQ-0008 — candidate awaiting Claude and independent Gemini review
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -27,18 +27,18 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FWQ-0007
-- Starting commit: 595557c
-- Candidate commit: dd51951
-- Candidate context: immutable read-only safety invariant gate wired into Phase 2A status and activation admission
-- Accepted commit: `dd51951b628886c13e07ff8cddccf170da99d6e4`
-- Files changed: `WORK_QUEUE.md`, `swarm/policy_gate.py`, `swarm/phase2a.py`, and `tests/test_policy_gate.py`
-- Deterministic validation: focused policy-gate tests — 9 passed; review-runner and Gemini parser tests — 10 passed; final full Linux-style suite on the exact candidate — 403 passed, 1 skipped; `git diff --check` and Python compilation passed. The Windows interpreter is not a supported environment because this Linux-targeted code imports `fcntl` and `resource`.
-- Claude review: exact commit `dd51951b628886c13e07ff8cddccf170da99d6e4` returned `APPROVE` / `LOW`; no blocking findings and no missing tests. Four minor non-blocking notes were recorded (constant rebinding is theoretically possible, one extra invalid-token test could be added, the catch could be narrower, and the status reporter intentionally preserves its existing superset response).
-- Gemini review: independent manual review of exact commit `dd51951b628886c13e07ff8cddccf170da99d6e4` returned schema-valid `APPROVE` / `LOW` with no blocking findings or missing tests; evidence is stored in `docs/fwq-0007-gemini-manual-review-dd51951.json`. Earlier automated `agy` provider failures remain non-evidence.
-- Unresolved findings: none.
-- Blocker: none for FWQ-0007.
-- Next action: inspect existing evidence, audit, schema, and checkpoint paths, then implement only the smallest FWQ-0008 change; remain DRY_RUN-only with deployment disabled and kill-switch policy engaged.
+- Task ID: FWQ-0008
+- Starting commit: `82520fe`
+- Candidate commit: `17866de76ec26685e4b2d1379509d7beebabfd1b`
+- Candidate context: strict create-once, redacted, hash-bound accepted dry-run work evidence
+- Accepted commit: pending exact-commit review
+- Files changed: `schemas/accepted-work-evidence.schema.json`, `swarm/accepted_work_evidence.py`, and `tests/test_accepted_work_evidence.py`
+- Deterministic validation: focused FWQ-0008/checkpoint/continuation tests — 24 passed; schema validation passed; full Linux-style suite on the candidate — 410 passed, 1 skipped; `git diff --check` passed.
+- Claude review: pending exact candidate review.
+- Gemini review: pending independent exact candidate review.
+- Unresolved findings: none from deterministic validation; review findings pending.
+- Blocker: none; required review resources are available through the established manual/CLI process.
+- Next action: review exact candidate `17866de76ec26685e4b2d1379509d7beebabfd1b`; repair any legitimate findings, rerun validation, and accept only after both reviews approve.
 
 ## Stop conditions
 
@@ -47,5 +47,5 @@ Do not stop merely because a task or review cycle finished. Stop only under the 
 ## Current stop condition
 
 - Reason: NONE
-- Exact condition: FWQ-0007 is complete and FWQ-0008 is explicitly approved READY with complete acceptance criteria.
-- First resume action: inspect the existing evidence/audit implementation and claim FWQ-0008 without changing safety state.
+- Exact condition: FWQ-0008 has a validated exact candidate and is awaiting the required independent reviews.
+- First resume action: run the exact-commit Claude/Gemini review cycle for candidate `17866de76ec26685e4b2d1379509d7beebabfd1b`.

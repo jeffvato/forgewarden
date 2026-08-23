@@ -131,7 +131,7 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 
 ### FWQ-0008 — Immutable accepted-work evidence bundle
 - Requirement: Core trust model and immutable evidence (FW-EVID)
-- State: READY
+- State: REVIEW
 - Priority: P1
 - Dependencies: FWQ-0003, FWQ-0005, FWQ-0007
 - Description: Define and implement a deterministic, redacted evidence bundle for an accepted dry-run work unit, binding its job ID, exact candidate and accepted commits, changed files, deterministic validation, Claude/Gemini review outcomes, policy state, and evidence hash without creating execution authority.
@@ -146,6 +146,7 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
   - DRY_RUN, deployment-disabled, kill-switch, sole-writer, and human-authority constraints remain unchanged.
 - Expected validation: focused evidence-contract tests, repository suite, schema validation, secret/redaction checks, and exact-commit review.
 - Security considerations: evidence is untrusted input and audit data, never authority; no reviewer or evidence record may authorize deployment, clear a kill switch, access credentials, or expand filesystem, Git, network, or remote-host scope.
+- Candidate evidence: Commit `17866de76ec26685e4b2d1379509d7beebabfd1b` adds the strict schema, create-once redacted evidence builder/reader, and focused attack-path tests. Focused validation passed (24 tests); schema validation passed; full Linux-style suite passed (410 passed, 1 skipped). Exact Claude and independent Gemini review remain required before acceptance.
 
 ## Future queue population
 
