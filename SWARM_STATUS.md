@@ -4,7 +4,7 @@
 
 - Active phase: ForgeWarden Core
 - Current focus: FWQ-0007 exact-commit review
-- Current task: FWQ-0007 — candidate awaiting Claude and Gemini review
+- Current task: FWQ-0007 — candidate awaiting independent Gemini review
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -34,11 +34,11 @@ On every restart or continuation:
 - Accepted commit: pending exact-commit review
 - Files changed: `WORK_QUEUE.md`, `swarm/policy_gate.py`, `swarm/phase2a.py`, and `tests/test_policy_gate.py`
 - Deterministic validation: focused policy-gate tests — 9 passed; Core focused tests — 59 passed, 10 subtests; full Linux-style suite — 376 passed, 20 skipped, with 3 container-only environment mismatches; `git diff --check` and Python compilation passed.
-- Claude review: pending; the required exact-commit review resource is unavailable in the current environment.
-- Gemini review: pending; the required independent exact-commit review resource is unavailable in the current environment.
+- Claude review: exact commit `dd51951b628886c13e07ff8cddccf170da99d6e4` returned `APPROVE` / `LOW`; no blocking findings and no missing tests. Four minor non-blocking notes were recorded (constant rebinding is theoretically possible, one extra invalid-token test could be added, the catch could be narrower, and the status reporter intentionally preserves its existing superset response).
+- Gemini review: attempted twice through installed `agy` with the exact commit and bounded read-only settings; both attempts terminated at the provider with zero input/output tokens and no review payload. This is not approval evidence.
 - Unresolved findings: none from deterministic validation; external review is still required.
-- Blocker: exact-commit Claude and Gemini review resources are unavailable.
-- Next action: obtain both reviews for `dd51951`, repair any legitimate findings, then update acceptance evidence; remain DRY_RUN-only with deployment disabled and kill-switch policy engaged.
+- Blocker: independent exact-commit Gemini review resource is unavailable; Claude evidence is complete.
+- Next action: obtain a valid independent Gemini review for `dd51951`, repair any legitimate findings, then update acceptance evidence; remain DRY_RUN-only with deployment disabled and kill-switch policy engaged.
 
 ## Stop conditions
 
@@ -47,5 +47,5 @@ Do not stop merely because a task or review cycle finished. Stop only under the 
 ## Current stop condition
 
 - Reason: REVIEW_RESOURCES_UNAVAILABLE
-- Exact condition: FWQ-0007 deterministic validation is complete, but required Claude and Gemini exact-commit reviews cannot be obtained in this environment.
-- First resume action: provide or enable the review resources, review exact candidate `dd51951`, and continue from `WORK_QUEUE.md` state `REVIEW`.
+- Exact condition: FWQ-0007 deterministic validation and Claude exact-commit review are complete, but the independent Gemini provider terminates without returning a review payload.
+- First resume action: provide or enable an independent Gemini review resource, review exact candidate `dd51951`, and continue from `WORK_QUEUE.md` state `REVIEW`.
