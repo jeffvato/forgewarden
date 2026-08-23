@@ -164,7 +164,7 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
   - tests cover valid history, malformed lines, truncation, bounds, tampering, replay, mixed jobs, redaction, and symlink attacks.
 - Expected validation: focused audit-reader tests, schema validation, repository suite, and `git diff --check`.
 - Security considerations: audit content is untrusted evidence; a valid audit read is informational and cannot authorize any action.
-- Candidate: `587ece2` (`Allow Claude read-only snapshot inspection`), including the FWQ-0009 implementation, FIFO repair, and Claude verifier communication repair. Focused audit tests pass (7 passed); Claude/review-runner tests pass (13 passed); full Linux suite passes (421 passed, 1 skipped); `git diff --check` passes. Fresh exact-commit Claude and Codex reviews are required.
+- Candidate: `4d40a16` (`Fix Claude verifier diagnostics and validation tests`), including the FWQ-0009 implementation, FIFO repair, and Claude communication repair. Focused audit tests pass (7 passed); Claude/review-runner tests pass (13 passed); full Linux suite passes (422 passed, 1 skipped); `git diff --check` passes. Claude exact-commit review returned APPROVE/LOW with no blocking findings.
 
 ## Future queue population
 
