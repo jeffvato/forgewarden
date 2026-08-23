@@ -164,7 +164,7 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
   - tests cover valid history, malformed lines, truncation, bounds, tampering, replay, mixed jobs, redaction, and symlink attacks.
 - Expected validation: focused audit-reader tests, schema validation, repository suite, and `git diff --check`.
 - Security considerations: audit content is untrusted evidence; a valid audit read is informational and cannot authorize any action.
-- Candidate: `267004d25a17700161c2be6f2fb376d49e80e9b3` (`Implement FWQ-0009 audit integrity reader`). Added `swarm/audit_integrity.py` and focused integrity tests. Compile and `git diff --check` pass; Linux pytest remains to be run in the CI environment because the current Windows interpreter lacks `fcntl`.
+- Candidate: `63c9d3f` (`Allow null root audit hash link`), including the FWQ-0009 implementation and repairs for traversal, hash-chain restart, TOCTOU, non-regular files, redaction keys, and boundary coverage. Focused tests pass (5 passed, 1 skipped); full Linux suite passes (419 passed, 2 skipped); `git diff --check` passes.
 
 ## Future queue population
 

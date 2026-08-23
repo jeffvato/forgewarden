@@ -29,16 +29,16 @@ On every restart or continuation:
 
 - Task ID: FWQ-0009
 - Starting commit: `d20a6062fc564ed18bd17e3922ff468e42754d7b`
-- Candidate commit: `267004d25a17700161c2be6f2fb376d49e80e9b3`
+- Candidate commit: `63c9d3f`
 - Candidate context: bounded read-only audit-event integrity reader
 - Accepted commit: pending implementation and exact-commit review
 - Files changed: `swarm/audit_integrity.py`, `tests/test_audit_integrity.py`
-- Deterministic validation: compile and `git diff --check` passed; pytest requires Linux because `fcntl` is unavailable in the current Windows interpreter
+- Deterministic validation: focused tests 5 passed/1 skipped; full Linux suite 419 passed/2 skipped; compile and `git diff --check` passed
 - Claude review: pending candidate
 - Gemini review: pending candidate; FWQ-0008 provider blocker remains recorded separately.
 - Unresolved findings: none for FWQ-0009; FWQ-0008 remains blocked by B-002.
 - Blocker: none for FWQ-0009.
-- Next action: run Linux focused/full pytest and obtain exact-commit Claude/Gemini reviews for the candidate.
+- Next action: obtain exact-commit Claude and Codex CLI reviews for `63c9d3f`; Gemini is retired per Jeff's direction.
 
 ## Stop conditions
 
