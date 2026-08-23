@@ -86,13 +86,14 @@ def run(snapshot: Path, job_id: str, commit: str, prompt: str, *, diagnostic_pat
         f"Review only the exact commit {commit} in this disposable snapshot. "
         "Return one JSON object matching the supplied schema. APPROVE only when the "
         "deterministic checks passed, the patch is narrow, and there are no blocking "
-        "findings or missing tests. Do not use tools, shell, edits, Git, MCP, deployment, "
+        "findings or missing tests. You may use the read-only file tool to inspect files "
+        "inside this disposable snapshot. Do not use shell, Git, edits, MCP, deployment, "
         "or network resources. Do not authorize any action beyond this verification.\n\n" + context
     )
     argv = [
         str(CLAUDE), "-p", verifier_prompt, "--model", MODEL, "--output-format", "json",
         "--json-schema", json.dumps(schema_value, separators=(",", ":"), sort_keys=True),
-        "--tools", "", "--permission-mode", "plan", "--no-session-persistence",
+        "--tools", "Read", "--permission-mode", "plan", "--no-session-persistence",
         "--max-turns", "5", "--strict-mcp-config", "--disable-slash-commands", "--no-chrome",
     ]
     if not snapshot.is_dir() or snapshot.is_symlink():

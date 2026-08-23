@@ -23,10 +23,10 @@ production data, or `/home/jeff/n8n`. The child receives only the normal Claude
 Code authentication environment, fixed locale/path settings, and no copied
 credential values.
 
-The process runs from a fresh temporary directory under `/tmp` rather than any
-repository checkout, so Claude Code cannot infer a project from the swarm’s
-caller working directory. MCP configuration is strict and empty, slash
-commands and Chrome integration are disabled.
+The exact-commit verifier runs from a disposable archived snapshot and permits
+only Claude's read-only file tool so it can inspect the candidate files it was
+given. Shell, Git, edit, MCP, network, and Chrome access remain disabled. The
+general advisory adapter runs from a fresh temporary directory with no tools.
 
 Each invocation is bounded to five turns and 180 seconds, uses plan mode,
 disables tools, disables session persistence, and requires strict structured
