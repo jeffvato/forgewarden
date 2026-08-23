@@ -71,6 +71,37 @@ def test_review_cycle_rejects_provider_result_for_different_commit(repo_fixture:
     assert all(item["state"] == "UNAVAILABLE" for item in result["reviews"])
 
 
+def test_review_cycle_uses_independent_provider_snapshots(repo_fixture: Path):
+    sha = repo_fixture.joinpath(".candidate-sha").read_text().strip()
+    snapshots = []
+
+    def approved(snapshot, job_id, commit, context):
+        snapshots.append(snapshot)
+        return {
+            "job_id": job_id,
+            "reviewed_commit": commit,
+            "verdict": "APPROVE",
+            "risk": "LOW",
+            "blocking_findings": [],
+            "non_blocking_notes": [],
+            "tests_missing": [],
+            "reasoning_summary": "approved",
+            "proposed_rules": [],
+        }
+
+    result = run_review_cycle(
+        repo_fixture,
+        sha,
+        "phase2a-" + "d" * 24,
+        "review",
+        claude_runner=approved,
+        gemini_runner=approved,
+    )
+    assert result["state"] == "APPROVED"
+    assert len(snapshots) == 2
+    assert snapshots[0] != snapshots[1]
+
+
 @pytest.fixture
 def repo_fixture(tmp_path: Path) -> Path:
     import subprocess

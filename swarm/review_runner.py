@@ -7,6 +7,7 @@ import re
 import subprocess
 import tarfile
 import tempfile
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any, Callable
 
@@ -107,28 +108,37 @@ def run_review_cycle(
     if len(review_context.encode("utf-8")) > 24_000:
         raise ReviewRunnerError("review context plus exact candidate patch exceeds the 24000-byte bound")
     with tempfile.TemporaryDirectory(prefix=f"forgewarden-review-{job_id}-") as temporary:
-        snapshot = Path(temporary) / "snapshot"
-        snapshot.mkdir()
-        _extract_archive(repository, commit, snapshot)
+        snapshots = {provider: Path(temporary) / provider.lower() for provider in ("CLAUDE", "GEMINI")}
+        for snapshot in snapshots.values():
+            snapshot.mkdir()
+            _extract_archive(repository, commit, snapshot)
 
         claude = claude_runner or claude_verifier.run
         gemini = gemini_runner
         if gemini is None:
             adapter = GeminiAdapter(
-                snapshot / "schemas/gemini-review.schema.json",
+                snapshots["GEMINI"] / "schemas/gemini-review.schema.json",
                 ResourceLimits(),
                 allow_external_review=allow_external_review,
             )
             gemini = adapter.run
 
-        records: list[dict[str, Any]] = []
-        for provider, invoke in (("CLAUDE", claude), ("GEMINI", gemini)):
+        providers = (("CLAUDE", claude), ("GEMINI", gemini))
+
+        def invoke_provider(provider: str, invoke: Callable[..., dict[str, Any]]) -> dict[str, Any]:
             try:
-                result = invoke(snapshot, job_id, commit, review_context)
+                result = invoke(snapshots[provider], job_id, commit, review_context)
                 validate_contract(result, provider.lower(), expected_job_id=job_id, expected_commit=commit)
-                records.append(_review_record(provider, result=result))
+                return _review_record(provider, result=result)
             except Exception as exc:  # provider boundaries must not hide the other review
-                records.append(_review_record(provider, error=redact(str(exc))))
+                return _review_record(provider, error=redact(str(exc)))
+
+        # Providers are independent read-only reviewers. Run them concurrently so
+        # a slow or unavailable provider cannot prevent the other review from
+        # completing. Each adapter owns its bounded subprocess timeout.
+        with ThreadPoolExecutor(max_workers=2, thread_name_prefix="forgewarden-review") as executor:
+            futures = [executor.submit(invoke_provider, provider, invoke) for provider, invoke in providers]
+            records = [future.result() for future in futures]
 
     approved = all(record["state"] == "APPROVED" for record in records)
     return {

@@ -34,8 +34,9 @@ PYTHONPATH=. python3 -m swarm.cli review-cycle \
   --allow-external-review
 ```
 
-It creates a disposable Git archive, invokes Claude and `agy` independently,
-validates both responses against the exact job ID and commit, and returns
+It creates two independent disposable Git archives from the same exact commit,
+invokes Claude and `agy` concurrently, validates both responses against the exact
+job ID and commit, and returns
 `APPROVED` only when both are low-risk approvals with no blocking findings or
 missing tests. Provider failures are returned as `UNAVAILABLE`; they never
 become approval evidence. The external-review flag is explicit because the
