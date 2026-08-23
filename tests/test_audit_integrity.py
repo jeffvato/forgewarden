@@ -53,7 +53,7 @@ def test_rejects_symlink_and_duplicate_terminal_event(tmp_path):
 
 
 def test_valid_hash_chain_is_accepted_and_broken_chain_rejected(tmp_path):
-    first = _record()
+    first = _record(previous_event_sha256=None)
     first["event_sha256"] = hashlib.sha256(json.dumps(first, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
     second = _record(event="started", state="RUNNING", previous_event_sha256=first["event_sha256"])
     second["event_sha256"] = hashlib.sha256(json.dumps(second, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
