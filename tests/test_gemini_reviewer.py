@@ -60,6 +60,13 @@ class GeminiReviewContractTests(unittest.TestCase):
                 with self.assertRaises(SwarmError):
                     validate_contract(payload, "gemini", expected_job_id=self.job, expected_commit=self.commit)
 
+    def test_extracts_antigravity_structured_output_envelope(self):
+        payload = self.payload()
+        wrapped = json.dumps({"status": "SUCCESS", "response": "prose", "structured_output": payload})
+        with patch("swarm.adapters.limited_run", return_value=CompletedProcess([], 0, wrapped, "")):
+            adapter = GeminiAdapter(self.schema, ResourceLimits(), "fake-agy")
+            self.assertEqual(adapter.run(self.snapshot, self.job, self.commit, "review evidence", formatting_retry=False), payload)
+
     def test_approve_with_blocking_findings_or_missing_tests_is_rejected(self):
         for key, value in (("blocking_findings", [{"finding": "block"}]), ("tests_missing", ["test"] )):
             payload = self.payload()
@@ -79,7 +86,7 @@ class GeminiReviewContractTests(unittest.TestCase):
         calls = []
 
         def fake_run(command, cwd, prompt, limits, env, **kwargs):
-            calls.append(prompt)
+            calls.append((command, prompt))
             response = invalid if len(calls) == 1 else valid
             return CompletedProcess(command, 0, json.dumps(response), "")
 
@@ -91,9 +98,10 @@ class GeminiReviewContractTests(unittest.TestCase):
         self.assertEqual(adapter.last_attempts[0]["validation"], "FAILED")
         self.assertIn("missing_tests", adapter.last_attempts[0]["payload"])
         self.assertEqual(adapter.last_attempts[1]["validation"], "PASSED")
-        self.assertIn('"tests_missing": []', calls[0])
-        self.assertIn("formatting-only retry", calls[1])
-        self.assertIn(self.commit, calls[1])
+        self.assertEqual(calls[0][1], "")
+        self.assertIn('"tests_missing": []', calls[0][0][1])
+        self.assertIn("formatting-only retry", calls[1][0][1])
+        self.assertIn(self.commit, calls[1][0][1])
 
     def test_external_review_is_explicit_and_uses_native_schema_output(self):
         calls = []
@@ -104,10 +112,17 @@ class GeminiReviewContractTests(unittest.TestCase):
         with patch("swarm.adapters.limited_run", side_effect=fake_run):
             self.assertEqual(adapter.run(self.snapshot, self.job, self.commit, "review evidence"), self.payload())
         command, kwargs = calls[0]
+        self.assertTrue(command[1].startswith("--print="))
+        self.assertNotIn("--prompt", command)
+        self.assertIn("--agent", command)
+        self.assertEqual(command[command.index("--agent") + 1], "code-review-agent")
+        self.assertIn("--model", command)
+        self.assertEqual(command[command.index("--model") + 1], "gemini-3.5-flash-low")
         self.assertIn("--output-format", command)
         self.assertEqual(command[command.index("--output-format") + 1], "json")
         self.assertIn("--json-schema", command)
-        self.assertEqual(json.loads(command[command.index("--json-schema") + 1])["properties"]["reviewed_commit"]["const"], self.commit)
+        provider_schema = json.loads(command[command.index("--json-schema") + 1])
+        self.assertNotIn("const", provider_schema["properties"]["reviewed_commit"])
         self.assertTrue(kwargs["use_cgroup"])
         self.assertFalse(kwargs["network_isolated"])
 

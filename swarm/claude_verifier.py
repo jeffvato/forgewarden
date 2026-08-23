@@ -93,7 +93,7 @@ def run(snapshot: Path, job_id: str, commit: str, prompt: str, *, diagnostic_pat
         str(CLAUDE), "-p", verifier_prompt, "--model", MODEL, "--output-format", "json",
         "--json-schema", json.dumps(schema_value, separators=(",", ":"), sort_keys=True),
         "--tools", "", "--permission-mode", "plan", "--no-session-persistence",
-        "--max-turns", "3", "--strict-mcp-config", "--disable-slash-commands", "--no-chrome",
+        "--max-turns", "5", "--strict-mcp-config", "--disable-slash-commands", "--no-chrome",
     ]
     if not snapshot.is_dir() or snapshot.is_symlink():
         raise ClaudeVerificationError("Claude verifier snapshot is unavailable")

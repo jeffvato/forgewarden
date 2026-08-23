@@ -28,7 +28,7 @@ repository checkout, so Claude Code cannot infer a project from the swarm’s
 caller working directory. MCP configuration is strict and empty, slash
 commands and Chrome integration are disabled.
 
-Each invocation is bounded to three turns and 180 seconds, uses plan mode,
+Each invocation is bounded to five turns and 180 seconds, uses plan mode,
 disables tools, disables session persistence, and requires strict structured
 JSON bound to the job ID and selected model. Results remain in memory; the
 adapter writes no provider evidence and cannot authorize mutations.

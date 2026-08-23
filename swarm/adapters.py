@@ -552,6 +552,23 @@ class GeminiAdapter:
             "proposed_rules": [],
         }, indent=2)
 
+    @staticmethod
+    def _provider_schema(schema: dict[str, Any]) -> dict[str, Any]:
+        """Project the contract to provider-friendly JSON Schema.
+
+        Exact job/commit binding remains enforced locally by validate_contract;
+        some CLI schema adapters mishandle const/pattern constraints and emit
+        empty values instead of a structured result.
+        """
+        value = json.loads(json.dumps(schema))
+        value.pop("$schema", None)
+        value.pop("title", None)
+        for name in ("job_id", "reviewed_commit"):
+            properties = value.get("properties", {})
+            if isinstance(properties.get(name), dict):
+                properties[name] = {"type": "string"}
+        return value
+
     def run(self, snapshot: Path, job_id: str, commit: str, prompt: str, *, formatting_retry: bool = True) -> dict[str, Any]:
         result_dir = ensure_mailbox_directory(snapshot / ".swarm")
         output = result_dir / "gemini-review.json"
@@ -561,6 +578,7 @@ class GeminiAdapter:
         write_mailbox_json(schema_path, schema, "Gemini schema")
         self.last_attempts = []
         required = self._required_structure(job_id, commit)
+        provider_schema = self._provider_schema(schema)
         base_prompt = (
             f"{prompt}\n\nIMPORTANT: Return exactly one JSON object. The alias `missing_tests` is forbidden; "
             "the required field is `tests_missing`. Do not omit any required field. The exact required structure is:\n"
@@ -569,12 +587,12 @@ class GeminiAdapter:
         current_prompt = base_prompt
         for attempt in range(2 if formatting_retry else 1):
             command = [
-                self.executable, "--prompt", current_prompt, "--mode", "plan", "--sandbox",
-                "--output-format", "json", "--json-schema", json.dumps(schema, separators=(",", ":"), sort_keys=True),
+                self.executable, f"--print={current_prompt}", "--agent", "code-review-agent", "--model", "gemini-3.5-flash-low", "--mode", "plan", "--sandbox",
+                "--output-format", "json", "--json-schema", json.dumps(provider_schema, separators=(",", ":"), sort_keys=True),
                 "--print-timeout", f"{self.limits.timeout_seconds}s",
             ]
             result = limited_run(
-                command, snapshot, current_prompt, self.limits,
+                command, snapshot, "", self.limits,
                 {"SWARM_ROLE": "GEMINI_READ_ONLY", "SWARM_DRY_RUN": "1", "SWARM_REVIEWED_COMMIT": commit},
                 use_cgroup=True, network_isolated=not self.allow_external_review,
             )
@@ -613,6 +631,8 @@ class GeminiAdapter:
     def _extract_json(output: str) -> dict[str, Any]:
         try:
             value = json.loads(output)
+            if isinstance(value, dict) and isinstance(value.get("structured_output"), dict):
+                return value["structured_output"]
             if isinstance(value, dict) and all(key in value for key in ("job_id", "reviewed_commit", "verdict")):
                 return value
             if isinstance(value, dict) and isinstance(value.get("response"), str):

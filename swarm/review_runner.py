@@ -102,6 +102,10 @@ def run_review_cycle(
     if not isinstance(context, str) or not context.strip():
         raise ReviewRunnerError("review context must be non-empty text")
     commit = _validate_inputs(repository, candidate_commit, job_id)
+    patch = _git(repository, "show", "--format=fuller", "--stat", "--patch", commit)
+    review_context = context + "\n\nExact candidate patch from Git:\n" + patch
+    if len(review_context.encode("utf-8")) > 24_000:
+        raise ReviewRunnerError("review context plus exact candidate patch exceeds the 24000-byte bound")
     with tempfile.TemporaryDirectory(prefix=f"forgewarden-review-{job_id}-") as temporary:
         snapshot = Path(temporary) / "snapshot"
         snapshot.mkdir()
@@ -120,7 +124,7 @@ def run_review_cycle(
         records: list[dict[str, Any]] = []
         for provider, invoke in (("CLAUDE", claude), ("GEMINI", gemini)):
             try:
-                result = invoke(snapshot, job_id, commit, context)
+                result = invoke(snapshot, job_id, commit, review_context)
                 validate_contract(result, provider.lower(), expected_job_id=job_id, expected_commit=commit)
                 records.append(_review_record(provider, result=result))
             except Exception as exc:  # provider boundaries must not hide the other review
