@@ -164,7 +164,7 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
   - tests cover valid history, malformed lines, truncation, bounds, tampering, replay, mixed jobs, redaction, and symlink attacks.
 - Expected validation: focused audit-reader tests, schema validation, repository suite, and `git diff --check`.
 - Security considerations: audit content is untrusted evidence; a valid audit read is informational and cannot authorize any action.
-- Candidate: `63c9d3f` (`Allow null root audit hash link`), including the FWQ-0009 implementation and repairs for traversal, hash-chain restart, TOCTOU, non-regular files, redaction keys, and boundary coverage. Focused tests pass (5 passed, 1 skipped); full Linux suite passes (419 passed, 2 skipped); `git diff --check` passes.
+- Candidate: `87935af` (`Close FIFO audit reader denial of service`), including the FWQ-0009 implementation and repairs for traversal, hash-chain restart, TOCTOU, FIFO/device handling, redaction keys, hash tampering, and boundary coverage. Focused tests pass (7 passed); full Linux suite passes (421 passed, 1 skipped); `git diff --check` passes.
 
 ## Future queue population
 
