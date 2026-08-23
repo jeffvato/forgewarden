@@ -31,12 +31,14 @@ general advisory adapter runs from a fresh temporary directory with no tools.
 The exact-commit verifier is bounded to twenty-four turns and 180 seconds, while
 the general advisory adapter remains bounded to three turns. Both use plan mode,
 disables tools, disables session persistence, and requires strict structured
-JSON bound to the job ID and selected model. Results remain in memory; the
-adapter writes no provider evidence and cannot authorize mutations.
+JSON bound to the job ID and selected model. The general advisory adapter keeps
+results in memory; the exact-commit verifier writes only its bounded mode-0600
+diagnostic record and cannot authorize mutations.
 
 The fake-CLI tests verify the exact read-only argv, sanitized payload, model
-allowlist, schema binding, timeout/process failure behavior, and absence of
-durable provider output. No real Claude invocation is part of repository CI.
+allowlist, schema binding, timeout/process failure behavior, diagnostic prompt
+redaction, and absence of unauthorized provider output. No real Claude
+invocation is part of repository CI.
 
 The packaged explicit entry point is:
 

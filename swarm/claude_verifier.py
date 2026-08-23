@@ -62,7 +62,9 @@ def _payload(stdout: str) -> dict[str, Any]:
         raise ClaudeVerificationError("Claude verifier returned invalid JSON") from exc
     if not isinstance(envelope, dict):
         raise ClaudeVerificationError("Claude verifier returned a non-object")
-    result = envelope.get("structured_output", envelope.get("result", envelope))
+    if "structured_output" not in envelope and "result" not in envelope:
+        raise ClaudeVerificationError("Claude verifier response envelope is missing result")
+    result = envelope.get("structured_output", envelope.get("result"))
     if isinstance(result, str):
         try:
             result = json.loads(result)
@@ -103,7 +105,7 @@ def run(snapshot: Path, job_id: str, commit: str, prompt: str, *, diagnostic_pat
     started = time.monotonic()
     diagnostic: dict[str, Any] = {
         "job_id": job_id, "reviewed_commit": commit, "model": MODEL,
-        "argv": argv[:-1] + ["<sanitized-prompt>"], "snapshot": str(snapshot),
+        "argv": argv[:2] + ["<sanitized-prompt>"] + argv[3:], "snapshot": str(snapshot),
         "status": "STARTED",
     }
     try:
@@ -149,9 +151,7 @@ def run(snapshot: Path, job_id: str, commit: str, prompt: str, *, diagnostic_pat
         "status": "VALIDATED",
         "verdict": result["verdict"],
         "risk": result["risk"],
-        # The contract has already bound and validated this untrusted provider
-        # output. Preserve it verbatim as exact-commit review evidence so a
-        # rejection can be repaired rather than lost at a process boundary.
+        # Preserve validated provider output as exact-commit repair evidence.
         "review_payload": result,
     })
     _write_diagnostic(diagnostic_path, diagnostic)

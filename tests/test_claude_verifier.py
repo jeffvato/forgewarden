@@ -4,6 +4,8 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
+import pytest
+
 from swarm import claude_verifier
 
 
@@ -40,11 +42,30 @@ def test_fake_cli_is_commit_bound_and_read_only():
 
 def test_wrong_commit_fails_before_provider_call():
     with TemporaryDirectory() as temp:
-        with patch.object(claude_verifier, "CLAUDE", Path(sys.executable)):
-            try:
-                claude_verifier.run(Path(temp), "phase2a-" + "a" * 24, "c" * 40, "x")
-            except Exception:
-                pass
+        with patch.object(claude_verifier, "CLAUDE", Path(sys.executable)), patch.object(claude_verifier.subprocess, "run") as provider:
+            with pytest.raises(claude_verifier.ClaudeVerificationError, match="invalid review commit"):
+                claude_verifier.run(Path(temp), "phase2a-" + "a" * 24, "c" * 39, "x")
+            provider.assert_not_called()
+
+
+def test_diagnostic_replaces_prompt_and_rejects_symlink(tmp_path):
+    job = "phase2a-" + "a" * 24
+    commit = "b" * 40
+    fake = tmp_path / "fake-claude.py"
+    payload = {"job_id": job, "reviewed_commit": commit, "verdict": "APPROVE", "risk": "LOW", "blocking_findings": [], "non_blocking_notes": [], "tests_missing": [], "reasoning_summary": "ok", "proposed_rules": []}
+    fake.write_text("#!/usr/bin/env python3\nimport json\nprint(json.dumps({'result': " + repr(payload) + "}))\n", encoding="utf-8")
+    fake.chmod(0o700)
+    diagnostic = tmp_path / "diagnostic.json"
+    with patch.object(claude_verifier, "CLAUDE", fake):
+        claude_verifier.run(tmp_path, job, commit, "secret prompt", diagnostic_path=diagnostic)
+    evidence = json.loads(diagnostic.read_text(encoding="utf-8"))
+    assert evidence["argv"][2] == "<sanitized-prompt>"
+    assert "secret prompt" not in json.dumps(evidence)
+    assert evidence["argv"][-1] == "--no-chrome"
+    link = tmp_path / "diagnostic-link.json"
+    link.symlink_to(diagnostic)
+    with patch.object(claude_verifier, "CLAUDE", fake), pytest.raises(claude_verifier.ClaudeVerificationError, match="symlinked"):
+        claude_verifier.run(tmp_path, job, commit, "safe", diagnostic_path=link)
 
 
 def test_provider_failure_preserves_diagnostic_stderr():
