@@ -20,11 +20,12 @@ from .review_evidence import build_review_evidence
 from .approval import create_approval_record, reconcile_approval, verify_approval
 from .codebase_index import CodebaseIndex
 from .console import serve as serve_console
+from .review_runner import read_context, render_result, run_review_cycle
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Local Hermes coding swarm (dry-run only)")
-    parser.add_argument("command", choices=["start", "stop", "status", "workflow-status", "kill-switch", "dry-run", "controlled-baseline", "gemini-review-recovery", "quality-review", "quality-apply-safe", "quality-audit", "release-inventory", "review-evidence", "claude-review", "approval-create", "approval-verify", "approval-reconcile", "codebase-index-build", "codebase-index-query", "codebase-index-delete", "index-evidence", "vulnerability-evidence", "vulnerability-update", "phase2a-worker", "phase2a-recover-terminal", "console", "run", "autonomous-dry-run-status", "autonomous-dry-run-enable", "autonomous-dry-run-disable"], nargs="?", default="status")
+    parser.add_argument("command", choices=["start", "stop", "status", "workflow-status", "kill-switch", "dry-run", "controlled-baseline", "gemini-review-recovery", "quality-review", "quality-apply-safe", "quality-audit", "release-inventory", "review-evidence", "claude-review", "review-cycle", "approval-create", "approval-verify", "approval-reconcile", "codebase-index-build", "codebase-index-query", "codebase-index-delete", "index-evidence", "vulnerability-evidence", "vulnerability-update", "phase2a-worker", "phase2a-recover-terminal", "console", "run", "autonomous-dry-run-status", "autonomous-dry-run-enable", "autonomous-dry-run-disable"], nargs="?", default="status")
     parser.add_argument("--state-dir", type=Path, default=Path(".swarm-state"))
     parser.add_argument("--runtime-root", type=Path)
     parser.add_argument("--audit-dir", type=Path)
@@ -51,7 +52,7 @@ def main() -> int:
     parser.add_argument("--feed-source", choices=["osv", "nvd", "cisa_kev"])
     parser.add_argument("--feed-url")
     parser.add_argument("--feed-output", type=Path)
-    parser.add_argument("--revision")
+    parser.add_argument("--revision", "--candidate-commit", dest="revision")
     parser.add_argument("--term")
     parser.add_argument("--actor")
     parser.add_argument("--limit", type=int, default=20)
@@ -60,6 +61,7 @@ def main() -> int:
     parser.add_argument("--decision", choices=["APPROVED", "REJECTED"])
     parser.add_argument("--ttl-seconds", type=int, default=3600)
     parser.add_argument("--consume", action="store_true")
+    parser.add_argument("--allow-external-review", action="store_true", help="allow the Gemini-compatible reviewer to contact its provider")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8787)
     args = parser.parse_args()
@@ -171,6 +173,22 @@ def main() -> int:
             result = run_claude(args.job_id, read_restricted_bytes(context_path, "Claude review context").decode("utf-8"), model=args.model)
             print(json.dumps(result, indent=2, sort_keys=True))
             return 0
+        except (OSError, ValueError, SwarmError) as exc:
+            print(f"FAILED: {exc}")
+            return 1
+    if args.command == "review-cycle":
+        if not args.repository or not args.revision or not args.context_file or not args.job_id:
+            parser.error("review-cycle requires --repository, --revision, --context-file, and --job-id")
+        try:
+            result = run_review_cycle(
+                args.repository,
+                args.revision,
+                args.job_id,
+                read_context(args.context_file.expanduser()),
+                allow_external_review=args.allow_external_review,
+            )
+            print(render_result(result), end="")
+            return 0 if result["state"] == "APPROVED" else 1
         except (OSError, ValueError, SwarmError) as exc:
             print(f"FAILED: {exc}")
             return 1

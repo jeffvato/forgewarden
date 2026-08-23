@@ -1,0 +1,154 @@
+"""Bounded, read-only exact-commit review orchestration."""
+
+from __future__ import annotations
+
+import json
+import re
+import subprocess
+import tarfile
+import tempfile
+from pathlib import Path
+from typing import Any, Callable
+
+from . import claude_verifier
+from .adapters import GeminiAdapter, ResourceLimits
+from .core import SwarmError, read_restricted_bytes, redact, validate_contract, validate_snapshot_symlinks
+
+_FULL_SHA = re.compile(r"^[0-9a-fA-F]{40,64}$")
+_JOB_ID = re.compile(r"^phase2a-[a-z0-9]{24}$")
+
+
+class ReviewRunnerError(SwarmError):
+    """The exact-commit review cycle could not be completed safely."""
+
+
+def _git(repository: Path, *args: str) -> str:
+    result = subprocess.run(
+        ["git", "-C", str(repository), *args],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        check=False,
+    )
+    if result.returncode:
+        raise ReviewRunnerError(f"Git review preparation failed: {result.stderr.strip()[:1000]}")
+    return result.stdout.strip()
+
+
+def _validate_inputs(repository: Path, candidate_commit: str, job_id: str) -> str:
+    if not repository.is_dir() or repository.is_symlink():
+        raise ReviewRunnerError("review repository must be a regular directory")
+    if not _FULL_SHA.fullmatch(candidate_commit):
+        raise ReviewRunnerError("review requires a full Git commit SHA")
+    if not _JOB_ID.fullmatch(job_id):
+        raise ReviewRunnerError("review requires a Phase 2A job ID")
+    resolved = _git(repository, "rev-parse", "--verify", f"{candidate_commit}^{{commit}}")
+    if resolved.lower() != candidate_commit.lower():
+        raise ReviewRunnerError("candidate commit does not resolve to the supplied full SHA")
+    return resolved
+
+
+def _extract_archive(repository: Path, commit: str, destination: Path) -> None:
+    process = subprocess.Popen(
+        ["git", "-C", str(repository), "archive", "--format=tar", commit],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    assert process.stdout is not None
+    try:
+        with tarfile.open(fileobj=process.stdout, mode="r|") as archive:
+            root = destination.resolve()
+            for member in archive:
+                target = (destination / member.name).resolve()
+                try:
+                    target.relative_to(root)
+                except ValueError as exc:
+                    raise ReviewRunnerError("Git archive contains an escaping path") from exc
+                archive.extract(member, destination, filter="data")
+    finally:
+        process.stdout.close()
+    stderr = process.stderr.read().decode("utf-8", errors="replace") if process.stderr else ""
+    if process.wait() != 0:
+        raise ReviewRunnerError(f"Git archive failed: {stderr[:1000]}")
+    validate_snapshot_symlinks(destination)
+
+
+def _review_record(provider: str, result: dict[str, Any] | None = None, error: str | None = None) -> dict[str, Any]:
+    if result is not None:
+        return {
+            "provider": provider,
+            "state": "APPROVED" if result.get("verdict") == "APPROVE" and result.get("risk") == "LOW" and not result.get("blocking_findings") and not result.get("tests_missing") else "REVIEW_RETURNED",
+            "result": result,
+        }
+    return {"provider": provider, "state": "UNAVAILABLE", "error": str(error or "review failed")[:2000]}
+
+
+def run_review_cycle(
+    repository: Path,
+    candidate_commit: str,
+    job_id: str,
+    context: str,
+    *,
+    allow_external_review: bool = False,
+    claude_runner: Callable[..., dict[str, Any]] | None = None,
+    gemini_runner: Callable[..., dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    """Run both independent reviewers without changing the repository.
+
+    Provider failures are captured as ``UNAVAILABLE`` and never converted into
+    approval. The overall cycle is approved only when both providers return a
+    valid low-risk approval for the exact candidate commit.
+    """
+    if not isinstance(context, str) or not context.strip():
+        raise ReviewRunnerError("review context must be non-empty text")
+    commit = _validate_inputs(repository, candidate_commit, job_id)
+    with tempfile.TemporaryDirectory(prefix=f"forgewarden-review-{job_id}-") as temporary:
+        snapshot = Path(temporary) / "snapshot"
+        snapshot.mkdir()
+        _extract_archive(repository, commit, snapshot)
+
+        claude = claude_runner or claude_verifier.run
+        gemini = gemini_runner
+        if gemini is None:
+            adapter = GeminiAdapter(
+                snapshot / "schemas/gemini-review.schema.json",
+                ResourceLimits(),
+                allow_external_review=allow_external_review,
+            )
+            gemini = adapter.run
+
+        records: list[dict[str, Any]] = []
+        for provider, invoke in (("CLAUDE", claude), ("GEMINI", gemini)):
+            try:
+                result = invoke(snapshot, job_id, commit, context)
+                validate_contract(result, provider.lower(), expected_job_id=job_id, expected_commit=commit)
+                records.append(_review_record(provider, result=result))
+            except Exception as exc:  # provider boundaries must not hide the other review
+                records.append(_review_record(provider, error=redact(str(exc))))
+
+    approved = all(record["state"] == "APPROVED" for record in records)
+    return {
+        "state": "APPROVED" if approved else "REVIEW_REQUIRED",
+        "candidate_commit": commit,
+        "job_id": job_id,
+        "mutation_allowed": False,
+        "deployment": "DISABLED",
+        "kill_switch": "ENGAGED",
+        "reviews": records,
+    }
+
+
+def read_context(path: Path) -> str:
+    """Read a bounded, non-symlinked review context file."""
+    if path.is_symlink() or any(parent.is_symlink() for parent in (path.parent, *path.parent.parents)):
+        raise ReviewRunnerError("review context path is symlinked")
+    if not path.is_file():
+        raise ReviewRunnerError("review context file is missing")
+    content = read_restricted_bytes(path, "review context")
+    if len(content) > 24_000:
+        raise ReviewRunnerError("review context exceeds the 24000-byte bound")
+    return content.decode("utf-8")
+
+
+def render_result(result: dict[str, Any]) -> str:
+    return json.dumps(result, indent=2, sort_keys=True) + "\n"

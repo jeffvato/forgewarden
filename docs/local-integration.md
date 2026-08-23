@@ -23,6 +23,24 @@ schema. The returned JSON is then validated against the full supplied schema.
 The Gemini-compatible reviewer is invoked as `agy --print --mode plan --sandbox`, and its
 separate read-only snapshot tied to the exact full commit SHA.
 
+The combined exact-commit review runner is:
+
+```bash
+PYTHONPATH=. python3 -m swarm.cli review-cycle \
+  --repository /path/to/repository \
+  --candidate-commit <full-commit-sha> \
+  --job-id phase2a-abcdefghijklmnopqrstuvwx \
+  --context-file /path/to/sanitized-review-context.txt \
+  --allow-external-review
+```
+
+It creates a disposable Git archive, invokes Claude and `agy` independently,
+validates both responses against the exact job ID and commit, and returns
+`APPROVED` only when both are low-risk approvals with no blocking findings or
+missing tests. Provider failures are returned as `UNAVAILABLE`; they never
+become approval evidence. The external-review flag is explicit because the
+Gemini-compatible reviewer needs provider network access.
+
 ## Verification result
 
 The initially discovered `gemini` command returned an unsupported-account error,
