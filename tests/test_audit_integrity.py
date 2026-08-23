@@ -64,3 +64,37 @@ def test_valid_hash_chain_is_accepted_and_broken_chain_rejected(tmp_path):
     _write(path, [first, second])
     with pytest.raises(AuditIntegrityError, match="chain"):
         read_audit_events(path, audit_root=tmp_path)
+
+
+def test_rejects_parent_traversal_and_mid_file_chain_restart(tmp_path):
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    secret = outside / "secret.jsonl"
+    _write(secret, [_record(data="outside")])
+    with pytest.raises(AuditIntegrityError, match="outside"):
+        read_audit_events(tmp_path / "sub" / ".." / "outside" / "secret.jsonl", audit_root=tmp_path / "audit")
+
+    first = _record(data="tampered")
+    second = _record(event="started", state="RUNNING")
+    second["event_sha256"] = hashlib.sha256(json.dumps(second, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    path = tmp_path / "audit.jsonl"
+    _write(path, [first, second])
+    with pytest.raises(AuditIntegrityError, match="chain"):
+        read_audit_events(path, audit_root=tmp_path)
+
+
+def test_rejects_bounds_sensitive_fields_and_non_regular_files(tmp_path):
+    path = tmp_path / "audit.jsonl"
+    _write(path, [_record(api_key="bare-secret")])
+    with pytest.raises(AuditIntegrityError, match="sensitive"):
+        read_audit_events(path, audit_root=tmp_path)
+    _write(path, [_record(data=["x"] * 65)])
+    with pytest.raises(AuditIntegrityError, match="entries"):
+        read_audit_events(path, audit_root=tmp_path)
+    fifo = tmp_path / "audit-fifo"
+    try:
+        fifo.mkfifo()
+    except (AttributeError, NotImplementedError, OSError):
+        pytest.skip("FIFO test requires a POSIX filesystem")
+    with pytest.raises(AuditIntegrityError, match="regular"):
+        read_audit_events(fifo, audit_root=tmp_path)

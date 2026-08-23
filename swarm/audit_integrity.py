@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import stat
 import re
 from pathlib import Path
 from typing import Any
@@ -27,7 +28,7 @@ _TIMESTAMP = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 _SENSITIVE_KEY = re.compile(
     r"(?i)(credential|secret|token|password|authorization|customer|order|distributor|"
-    r"email|phone|address|card|cookie|session|payload|prompt|output|reasoning|summary|root[_-]?cause)"
+    r"email|phone|address|card|cookie|session|payload|prompt|output|reasoning|summary|root[_-]?cause|key)"
 )
 
 MAX_BYTES = 4 * 1024 * 1024
@@ -40,15 +41,21 @@ TERMINAL_STATES = frozenset({"SUCCEEDED", "FAILED", "CANCELLED", "ABANDONED", "R
 
 def _reject_symlinks(path: Path, root: Path | None) -> None:
     path = path.absolute()
-    if root is not None:
-        root = root.absolute()
-        if root.is_symlink() or path == root or root not in path.parents:
-            raise AuditIntegrityError("audit path is outside the configured audit root")
+    if root is None:
+        from .paths import audit_root
+        root = audit_root()
+    root = root.absolute()
+    if root.is_symlink():
+        raise AuditIntegrityError("configured audit root is a symlink")
     current = path
     while current != current.parent:
         if current.is_symlink():
             raise AuditIntegrityError("symlinks are not allowed in audit paths")
         current = current.parent
+    resolved_root = root.resolve(strict=False)
+    resolved_path = path.resolve(strict=False)
+    if resolved_path == resolved_root or resolved_root not in resolved_path.parents:
+        raise AuditIntegrityError("audit path is outside the configured audit root")
 
 
 def _safe_value(value: Any, key: str, depth: int = 0) -> Any:
@@ -108,24 +115,31 @@ def read_audit_events(path: Path, *, expected_job_id: str | None = None, audit_r
     """Validate and return redacted audit summaries without modifying the source."""
     path = Path(path)
     _reject_symlinks(path, audit_root)
+    fd = None
     try:
-        size = path.stat().st_size
-    except FileNotFoundError:
-        return ()
-    if size > MAX_BYTES:
-        raise AuditIntegrityError("audit file exceeds size limit")
-    try:
-        with path.open("rb") as handle:
-            raw = handle.read(MAX_BYTES + 1)
+        fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+        metadata = os.fstat(fd)
+        if not stat.S_ISREG(metadata.st_mode):
+            raise AuditIntegrityError("audit path is not a regular file")
+        if metadata.st_size > MAX_BYTES:
+            raise AuditIntegrityError("audit file exceeds size limit")
+        raw = os.read(fd, MAX_BYTES + 1)
     except OSError as exc:
+        if getattr(exc, "errno", None) == 2:
+            return ()
         raise AuditIntegrityError("audit file cannot be read") from exc
+    finally:
+        if fd is not None:
+            os.close(fd)
     if len(raw) > MAX_BYTES or (raw and not raw.endswith(b"\n")):
         raise AuditIntegrityError("audit file is truncated")
-    lines = raw.splitlines()
+    lines = raw.split(b"\n")
+    if lines and lines[-1] == b"":
+        lines.pop()
     if len(lines) > MAX_LINES:
         raise AuditIntegrityError("audit file has too many records")
     records: list[dict[str, Any]] = []
-    chain_mode = False
+    chain_mode: bool | None = None
     previous_hash: str | None = None
     terminal_signatures: set[tuple[str, str, str]] = set()
     for line in lines:
@@ -136,8 +150,13 @@ def read_audit_events(path: Path, *, expected_job_id: str | None = None, audit_r
         except (UnicodeDecodeError, json.JSONDecodeError) as exc:
             raise AuditIntegrityError("audit contains malformed JSON") from exc
         has_hash = "event_sha256" in record or "previous_event_sha256" in record
-        if has_hash:
-            chain_mode = True
+        if chain_mode is None:
+            chain_mode = has_hash
+        elif has_hash != chain_mode:
+            raise AuditIntegrityError("audit hash chain is incomplete")
+        if chain_mode:
+            if "event_sha256" not in record or "previous_event_sha256" not in record:
+                raise AuditIntegrityError("audit hash chain is incomplete")
             if records and record.get("previous_event_sha256") != previous_hash:
                 raise AuditIntegrityError("audit hash chain is broken")
             if not records and record.get("previous_event_sha256") not in (None, ""):
