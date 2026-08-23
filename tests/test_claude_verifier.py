@@ -24,6 +24,7 @@ def test_fake_cli_is_commit_bound_and_read_only():
             "args = sys.argv[1:]\n"
             "assert '--tools' in args and args[args.index('--tools') + 1] == 'Read'\n"
             "assert '--permission-mode' in args and args[args.index('--permission-mode') + 1] == 'plan'\n"
+            f"assert args[args.index('--max-turns') + 1] == '{claude_verifier.MAX_TURNS}'\n"
             f"print(json.dumps({{'result': {json.dumps(payload)}}}))\n",
             encoding="utf-8",
         )

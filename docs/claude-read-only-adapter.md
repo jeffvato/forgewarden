@@ -28,7 +28,8 @@ only Claude's read-only file tool so it can inspect the candidate files it was
 given. Shell, Git, edit, MCP, network, and Chrome access remain disabled. The
 general advisory adapter runs from a fresh temporary directory with no tools.
 
-Each invocation is bounded to five turns and 180 seconds, uses plan mode,
+The exact-commit verifier is bounded to twelve turns and 180 seconds, while
+the general advisory adapter remains bounded to three turns. Both use plan mode,
 disables tools, disables session persistence, and requires strict structured
 JSON bound to the job ID and selected model. Results remain in memory; the
 adapter writes no provider evidence and cannot authorize mutations.

@@ -15,6 +15,7 @@ from .core import SwarmError, validate_contract
 MODEL = MODEL_ALIASES["sonnet"]
 TIMEOUT_SECONDS = 180
 MAX_OUTPUT_BYTES = 131072
+MAX_TURNS = 12
 
 
 def _write_diagnostic(path: Path | None, payload: dict[str, Any]) -> None:
@@ -94,7 +95,7 @@ def run(snapshot: Path, job_id: str, commit: str, prompt: str, *, diagnostic_pat
         str(CLAUDE), "-p", verifier_prompt, "--model", MODEL, "--output-format", "json",
         "--json-schema", json.dumps(schema_value, separators=(",", ":"), sort_keys=True),
         "--tools", "Read", "--permission-mode", "plan", "--no-session-persistence",
-        "--max-turns", "5", "--strict-mcp-config", "--disable-slash-commands", "--no-chrome",
+        "--max-turns", str(MAX_TURNS), "--strict-mcp-config", "--disable-slash-commands", "--no-chrome",
     ]
     if not snapshot.is_dir() or snapshot.is_symlink():
         raise ClaudeVerificationError("Claude verifier snapshot is unavailable")
