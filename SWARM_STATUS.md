@@ -4,7 +4,7 @@
 
 - Active phase: ForgeWarden Core
 - Current focus: FWQ-0009 audit-event integrity reader
-- Current task: FWQ-0009 — approved READY; FWQ-0008 remains blocked on Gemini capacity
+- Current task: FWQ-0009 — candidate ready for Linux validation and exact-commit review; FWQ-0008 remains blocked on Gemini capacity
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -29,16 +29,16 @@ On every restart or continuation:
 
 - Task ID: FWQ-0009
 - Starting commit: `d20a6062fc564ed18bd17e3922ff468e42754d7b`
-- Candidate commit: pending implementation
+- Candidate commit: `267004d25a17700161c2be6f2fb376d49e80e9b3`
 - Candidate context: bounded read-only audit-event integrity reader
 - Accepted commit: pending implementation and exact-commit review
-- Files changed: pending implementation
-- Deterministic validation: pending implementation
+- Files changed: `swarm/audit_integrity.py`, `tests/test_audit_integrity.py`
+- Deterministic validation: compile and `git diff --check` passed; pytest requires Linux because `fcntl` is unavailable in the current Windows interpreter
 - Claude review: pending candidate
 - Gemini review: pending candidate; FWQ-0008 provider blocker remains recorded separately.
 - Unresolved findings: none for FWQ-0009; FWQ-0008 remains blocked by B-002.
 - Blocker: none for FWQ-0009.
-- Next action: inspect the existing AuditLog writers and consumers, implement the smallest safe reader, and preserve DRY_RUN/deployment-disabled/kill-switch policy.
+- Next action: run Linux focused/full pytest and obtain exact-commit Claude/Gemini reviews for the candidate.
 
 ## Stop conditions
 

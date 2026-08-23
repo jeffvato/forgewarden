@@ -150,7 +150,7 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 
 ### FWQ-0009 — Deterministic audit-event integrity reader
 - Requirement: Core trust model and immutable evidence (FW-EVID)
-- State: READY
+- State: REVIEW
 - Priority: P1
 - Dependencies: FWQ-0003, FWQ-0007
 - Description: Implement a read-only, bounded audit-event reader that validates local audit JSONL structure, event integrity, job binding, redaction, and safe path handling without treating audit data as authority.
@@ -164,6 +164,7 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
   - tests cover valid history, malformed lines, truncation, bounds, tampering, replay, mixed jobs, redaction, and symlink attacks.
 - Expected validation: focused audit-reader tests, schema validation, repository suite, and `git diff --check`.
 - Security considerations: audit content is untrusted evidence; a valid audit read is informational and cannot authorize any action.
+- Candidate: `267004d25a17700161c2be6f2fb376d49e80e9b3` (`Implement FWQ-0009 audit integrity reader`). Added `swarm/audit_integrity.py` and focused integrity tests. Compile and `git diff --check` pass; Linux pytest remains to be run in the CI environment because the current Windows interpreter lacks `fcntl`.
 
 ## Future queue population
 
