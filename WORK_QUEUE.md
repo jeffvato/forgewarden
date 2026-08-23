@@ -146,7 +146,7 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
   - DRY_RUN, deployment-disabled, kill-switch, sole-writer, and human-authority constraints remain unchanged.
 - Expected validation: focused evidence-contract tests, repository suite, schema validation, secret/redaction checks, and exact-commit review.
 - Security considerations: evidence is untrusted input and audit data, never authority; no reviewer or evidence record may authorize deployment, clear a kill switch, access credentials, or expand filesystem, Git, network, or remote-host scope.
-- Candidate evidence: Final candidate `1c48482ad52814bf7fddd879e76903622fa9cc88` includes the strict schema, create-once redacted evidence builder/reader, focused attack-path tests, and the concurrent independent-review runner fix. Focused validation passed (18 review/evidence tests); schema validation passed; full Linux-style suite passed (411 passed, 1 skipped). Exact Claude and independent Gemini review remain required before acceptance.
+- Candidate evidence: Final candidate `9feb4ee68d91c8e2936459228d31082c50b2655e` includes the strict schema, create-once redacted evidence builder/reader, concurrent independent-review runner, and hardened agy JSON-envelope/error handling. Focused validation passed (14 review tests); full Linux-style suite passed (414 passed, 1 skipped). Exact Claude and independent Gemini review remain required before acceptance.
 
 ## Future queue population
 
