@@ -93,8 +93,30 @@ def test_rejects_bounds_sensitive_fields_and_non_regular_files(tmp_path):
         read_audit_events(path, audit_root=tmp_path)
     fifo = tmp_path / "audit-fifo"
     try:
-        fifo.mkfifo()
+        import os
+        os.mkfifo(fifo)
     except (AttributeError, NotImplementedError, OSError):
         pytest.skip("FIFO test requires a POSIX filesystem")
     with pytest.raises(AuditIntegrityError, match="regular"):
         read_audit_events(fifo, audit_root=tmp_path)
+
+
+def test_rejects_tampered_hash_and_configured_bounds(tmp_path, monkeypatch):
+    path = tmp_path / "audit.jsonl"
+    record = _record(previous_event_sha256=None, data="original")
+    record["event_sha256"] = hashlib.sha256(json.dumps(record, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    record["data"] = "tampered"
+    _write(path, [record])
+    with pytest.raises(AuditIntegrityError, match="hash does not match"):
+        read_audit_events(path, audit_root=tmp_path)
+
+    monkeypatch.setattr("swarm.audit_integrity.MAX_LINE_BYTES", 16)
+    _write(path, [_record(data="x" * 32)])
+    with pytest.raises(AuditIntegrityError, match="oversized"):
+        read_audit_events(path, audit_root=tmp_path)
+
+    monkeypatch.setattr("swarm.audit_integrity.MAX_LINE_BYTES", 64 * 1024)
+    monkeypatch.setattr("swarm.audit_integrity.MAX_LINES", 1)
+    _write(path, [_record(), _record(event="started", state="RUNNING")])
+    with pytest.raises(AuditIntegrityError, match="too many records"):
+        read_audit_events(path, audit_root=tmp_path)
