@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: FWQ-0007 exact-commit review
-- Current task: FWQ-0007 — candidate awaiting independent Gemini review
+- Current focus: FWQ-0007 acceptance checkpoint
+- Current task: FWQ-0007 — accepted; select the next READY task
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -31,14 +31,14 @@ On every restart or continuation:
 - Starting commit: 595557c
 - Candidate commit: dd51951
 - Candidate context: immutable read-only safety invariant gate wired into Phase 2A status and activation admission
-- Accepted commit: pending exact-commit review
+- Accepted commit: `dd51951b628886c13e07ff8cddccf170da99d6e4`
 - Files changed: `WORK_QUEUE.md`, `swarm/policy_gate.py`, `swarm/phase2a.py`, and `tests/test_policy_gate.py`
-- Deterministic validation: focused policy-gate tests — 9 passed; Core focused tests — 59 passed, 10 subtests; full Linux-style suite — 376 passed, 20 skipped, with 3 container-only environment mismatches; `git diff --check` and Python compilation passed.
+- Deterministic validation: focused policy-gate tests — 9 passed; review-runner and Gemini parser tests — 10 passed; final full Linux-style suite on the exact candidate — 403 passed, 1 skipped; `git diff --check` and Python compilation passed. The Windows interpreter is not a supported environment because this Linux-targeted code imports `fcntl` and `resource`.
 - Claude review: exact commit `dd51951b628886c13e07ff8cddccf170da99d6e4` returned `APPROVE` / `LOW`; no blocking findings and no missing tests. Four minor non-blocking notes were recorded (constant rebinding is theoretically possible, one extra invalid-token test could be added, the catch could be narrower, and the status reporter intentionally preserves its existing superset response).
-- Gemini review: attempted twice through installed `agy` with the exact commit and bounded read-only settings; both attempts terminated at the provider with zero input/output tokens and no review payload. This is not approval evidence.
-- Unresolved findings: none from deterministic validation; external review is still required.
-- Blocker: independent exact-commit Gemini review resource is unavailable; Claude evidence is complete.
-- Next action: obtain a valid independent Gemini review for `dd51951`, repair any legitimate findings, then update acceptance evidence; remain DRY_RUN-only with deployment disabled and kill-switch policy engaged.
+- Gemini review: independent manual review of exact commit `dd51951b628886c13e07ff8cddccf170da99d6e4` returned schema-valid `APPROVE` / `LOW` with no blocking findings or missing tests; evidence is stored in `docs/fwq-0007-gemini-manual-review-dd51951.json`. Earlier automated `agy` provider failures remain non-evidence.
+- Unresolved findings: none.
+- Blocker: none for FWQ-0007.
+- Next action: run the final deterministic suite, checkpoint acceptance, and select the next READY task; remain DRY_RUN-only with deployment disabled and kill-switch policy engaged.
 
 ## Stop conditions
 
@@ -46,6 +46,6 @@ Do not stop merely because a task or review cycle finished. Stop only under the 
 
 ## Current stop condition
 
-- Reason: REVIEW_RESOURCES_UNAVAILABLE
-- Exact condition: FWQ-0007 deterministic validation and Claude exact-commit review are complete, but the independent Gemini provider terminates without returning a review payload.
-- First resume action: provide or enable an independent Gemini review resource, review exact candidate `dd51951`, and continue from `WORK_QUEUE.md` state `REVIEW`.
+- Reason: NONE
+- Exact condition: FWQ-0007 has complete deterministic, Claude, and independent Gemini evidence bound to the same exact commit.
+- First resume action: complete the final validation/checkpoint and select the next READY work item.

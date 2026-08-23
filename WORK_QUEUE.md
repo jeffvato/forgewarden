@@ -115,7 +115,7 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 
 ### FWQ-0007 — Immutable policy/invariant gate contract
 - Requirement: Core trust model and deterministic safety
-- State: REVIEW
+- State: DONE
 - Priority: P0
 - Dependencies: FWQ-0001, FWQ-0004, FWQ-0006
 - Description: Centralize the immutable DRY_RUN, deployment-disabled, and kill-switch policy contract used by authoritative safety reporting and activation admission without granting authority or changing the current safety defaults.
@@ -127,6 +127,7 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
   - no deployment, kill-switch clearing, credential, remote-host, or authority-expansion behavior is added.
 - Expected validation: focused policy-gate tests plus repository suite and safety-invariant validation.
 - Security considerations: policy evidence is untrusted input; it cannot override immutable safety values or grant execution authority.
+- Completion evidence: Candidate `dd51951b628886c13e07ff8cddccf170da99d6e4` passed the focused policy-gate checks and the full Linux-style suite. Claude returned `APPROVE` / `LOW` with no blocking findings, and independent manual Gemini review returned schema-valid `APPROVE` / `LOW` with no blocking findings or missing tests in `docs/fwq-0007-gemini-manual-review-dd51951.json`. DRY_RUN, deployment-disabled, and engaged-kill-switch policy remain unchanged.
 
 ## Future queue population
 
