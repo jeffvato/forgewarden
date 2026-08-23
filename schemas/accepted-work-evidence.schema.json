@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AcceptedDryRunWorkEvidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "mode", "job_id", "candidate_commit", "accepted_commit",
+    "changed_files", "deterministic_validation", "claude_review", "gemini_review",
+    "policy", "previous_event_sha256", "evidence_sha256", "event_sha256"
+  ],
+  "properties": {
+    "schema_version": {"const": "1"},
+    "mode": {"const": "ACCEPTED_DRY_RUN_WORK_EVIDENCE"},
+    "job_id": {"type": "string", "pattern": "^phase2a-[a-z0-9]{24}$"},
+    "candidate_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "accepted_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "changed_files": {
+      "type": "array", "minItems": 1, "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^(?!/)(?!.*\\\\)(?!.*(^|/)\\.\\.?(/|$)).+"}
+    },
+    "deterministic_validation": {
+      "type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1, "maxLength": 512}
+    },
+    "claude_review": {"$ref": "#/$defs/review"},
+    "gemini_review": {"$ref": "#/$defs/review"},
+    "policy": {
+      "type": "object", "additionalProperties": false,
+      "required": ["mode", "deployment", "kill_switch", "mutation_allowed"],
+      "properties": {
+        "mode": {"const": "DRY_RUN"},
+        "deployment": {"const": "DISABLED"},
+        "kill_switch": {"const": "ENGAGED"},
+        "mutation_allowed": {"const": false}
+      }
+    },
+    "previous_event_sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+    "evidence_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "event_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  },
+  "$defs": {
+    "review": {
+      "type": "object", "additionalProperties": false,
+      "required": ["reviewed_commit", "verdict", "risk", "blocking_finding_count", "missing_test_count"],
+      "properties": {
+        "reviewed_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "verdict": {"const": "APPROVE"},
+        "risk": {"const": "LOW"},
+        "blocking_finding_count": {"const": 0},
+        "missing_test_count": {"const": 0}
+      }
+    }
+  }
+}
