@@ -15,7 +15,7 @@ from .core import SwarmError, validate_contract
 MODEL = MODEL_ALIASES["sonnet"]
 TIMEOUT_SECONDS = 180
 MAX_OUTPUT_BYTES = 131072
-MAX_TURNS = 12
+MAX_TURNS = 24
 
 
 def _write_diagnostic(path: Path | None, payload: dict[str, Any]) -> None:
@@ -87,8 +87,9 @@ def run(snapshot: Path, job_id: str, commit: str, prompt: str, *, diagnostic_pat
         f"Review only the exact commit {commit} in this disposable snapshot. "
         "Return one JSON object matching the supplied schema. APPROVE only when the "
         "deterministic checks passed, the patch is narrow, and there are no blocking "
-        "findings or missing tests. You may use the read-only file tool to inspect files "
-        "inside this disposable snapshot. Do not use shell, Git, edits, MCP, deployment, "
+        "findings or missing tests. You may use the read-only file tool to inspect only "
+        "the changed files named in the review context inside this disposable snapshot. "
+        "Do not enumerate unrelated repository files. Do not use shell, Git, edits, MCP, deployment, "
         "or network resources. Do not authorize any action beyond this verification.\n\n" + context
     )
     argv = [
