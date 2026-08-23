@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: FWQ-0008 exact-commit review
-- Current task: FWQ-0008 — candidate awaiting Claude and independent Gemini review
+- Current focus: FWQ-0009 audit-event integrity reader
+- Current task: FWQ-0009 — approved READY; FWQ-0008 remains blocked on Gemini capacity
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -27,18 +27,18 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FWQ-0008
-- Starting commit: `82520fe`
-- Candidate commit: `9feb4ee68d91c8e2936459228d31082c50b2655e`
-- Candidate context: strict accepted-work evidence plus concurrent reviewer execution and hardened agy JSON-envelope/error handling
-- Accepted commit: pending exact-commit review
-- Files changed: `schemas/accepted-work-evidence.schema.json`, `swarm/accepted_work_evidence.py`, `tests/test_accepted_work_evidence.py`, `swarm/review_runner.py`, `tests/test_review_runner.py`, `swarm/adapters.py`, `tests/test_gemini_reviewer.py`, and `docs/local-integration.md`
-- Deterministic validation: focused review tests — 14 passed; schema validation passed; full Linux-style suite on the candidate — 414 passed, 1 skipped; `git diff --check` passed.
-- Claude review: pending exact candidate review.
-- Gemini review: pending independent exact candidate review.
-- Unresolved findings: none from deterministic validation; review findings pending.
-- Blocker: none; required review resources are available through the established manual/CLI process.
-- Next action: review exact candidate `9feb4ee68d91c8e2936459228d31082c50b2655e`; repair any legitimate findings, rerun validation, and accept only after both reviews approve.
+- Task ID: FWQ-0009
+- Starting commit: `d20a6062fc564ed18bd17e3922ff468e42754d7b`
+- Candidate commit: pending implementation
+- Candidate context: bounded read-only audit-event integrity reader
+- Accepted commit: pending implementation and exact-commit review
+- Files changed: pending implementation
+- Deterministic validation: pending implementation
+- Claude review: pending candidate
+- Gemini review: pending candidate; FWQ-0008 provider blocker remains recorded separately.
+- Unresolved findings: none for FWQ-0009; FWQ-0008 remains blocked by B-002.
+- Blocker: none for FWQ-0009.
+- Next action: inspect the existing AuditLog writers and consumers, implement the smallest safe reader, and preserve DRY_RUN/deployment-disabled/kill-switch policy.
 
 ## Stop conditions
 
@@ -47,5 +47,5 @@ Do not stop merely because a task or review cycle finished. Stop only under the 
 ## Current stop condition
 
 - Reason: NONE
-- Exact condition: FWQ-0008 has a validated exact candidate and is awaiting the required independent reviews.
-- First resume action: run the exact-commit Claude/Gemini review cycle for candidate `9feb4ee68d91c8e2936459228d31082c50b2655e`.
+- Exact condition: FWQ-0008 is blocked by B-002, while FWQ-0009 is explicitly approved READY and independent.
+- First resume action: claim FWQ-0009 and inspect existing audit paths without changing safety state.

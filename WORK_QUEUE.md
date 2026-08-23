@@ -131,7 +131,7 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 
 ### FWQ-0008 — Immutable accepted-work evidence bundle
 - Requirement: Core trust model and immutable evidence (FW-EVID)
-- State: REVIEW
+- State: BLOCKED
 - Priority: P1
 - Dependencies: FWQ-0003, FWQ-0005, FWQ-0007
 - Description: Define and implement a deterministic, redacted evidence bundle for an accepted dry-run work unit, binding its job ID, exact candidate and accepted commits, changed files, deterministic validation, Claude/Gemini review outcomes, policy state, and evidence hash without creating execution authority.
@@ -147,6 +147,23 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 - Expected validation: focused evidence-contract tests, repository suite, schema validation, secret/redaction checks, and exact-commit review.
 - Security considerations: evidence is untrusted input and audit data, never authority; no reviewer or evidence record may authorize deployment, clear a kill switch, access credentials, or expand filesystem, Git, network, or remote-host scope.
 - Candidate evidence: Final candidate `9feb4ee68d91c8e2936459228d31082c50b2655e` includes the strict schema, create-once redacted evidence builder/reader, concurrent independent-review runner, and hardened agy JSON-envelope/error handling. Focused validation passed (14 review tests); full Linux-style suite passed (414 passed, 1 skipped). Exact Claude and independent Gemini review remain required before acceptance.
+
+### FWQ-0009 — Deterministic audit-event integrity reader
+- Requirement: Core trust model and immutable evidence (FW-EVID)
+- State: READY
+- Priority: P1
+- Dependencies: FWQ-0003, FWQ-0007
+- Description: Implement a read-only, bounded audit-event reader that validates local audit JSONL structure, event integrity, job binding, redaction, and safe path handling without treating audit data as authority.
+- Approval: Explicitly approved by Jeff on 2026-08-23 as the next independent Core work item while FWQ-0008 awaits Gemini capacity.
+- Acceptance criteria:
+  - reads only regular, local, no-follow audit files under the approved audit root;
+  - enforces file, line, event-count, and field-size bounds and fails closed on malformed or truncated JSONL;
+  - validates required event fields, exact job binding, allowed state/event values, and redaction of secret-like data;
+  - detects tampering, duplicate/replayed terminal events, invalid hash links, symlink/path attacks, and mixed-job records;
+  - returns redacted summaries only and never grants execution, deployment, credential, Git, network, or kill-switch authority;
+  - tests cover valid history, malformed lines, truncation, bounds, tampering, replay, mixed jobs, redaction, and symlink attacks.
+- Expected validation: focused audit-reader tests, schema validation, repository suite, and `git diff --check`.
+- Security considerations: audit content is untrusted evidence; a valid audit read is informational and cannot authorize any action.
 
 ## Future queue population
 

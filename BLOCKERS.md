@@ -4,7 +4,15 @@ This file records only genuine blockers that require Customer Root authority, un
 
 ## Current blockers
 
-None.
+### B-002 — Independent Gemini review capacity unavailable
+
+- Related task/requirement: FWQ-0008 — Immutable accepted-work evidence bundle; D-004 and D-014 exact-commit review/evidence requirements
+- Exact condition: agy launches but either ignores the no-tools boundary and times out, or reports `Individual quota reached`; no valid Gemini payload has been returned for candidate `9feb4ee68d91c8e2936459228d31082c50b2655e`.
+- Why work cannot complete safely: FWQ-0008 requires an independent exact-commit Gemini review; provider output cannot be fabricated or replaced by Claude evidence.
+- Required resource: a functioning Gemini/agy review capacity bound to the exact candidate.
+- Independent READY work: FWQ-0009 audit-event integrity reader.
+- Current candidate/checkpoint: `9feb4ee68d91c8e2936459228d31082c50b2655e` / FWQ-0008.
+- First resume action: obtain a valid Gemini payload for the exact candidate, validate its job ID and SHA, then resume FWQ-0008 acceptance.
 
 ## Resolved blockers
 
