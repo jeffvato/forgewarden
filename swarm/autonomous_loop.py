@@ -1,0 +1,238 @@
+"""Durable, bounded ForgeWarden continuation controller.
+
+This module owns orchestration state; worker callbacks only perform the bounded
+operation described by the lease and return evidence to this controller.
+"""
+from __future__ import annotations
+
+import json
+import os
+import re
+import tempfile
+import time
+import uuid
+from dataclasses import asdict, dataclass
+from pathlib import Path
+from typing import Any, Callable, Mapping
+
+from .work_checkpoint import WorkUnitCheckpoint, write_checkpoint
+
+_SHA = re.compile(r"^[0-9a-fA-F]{40}$")
+_TASK = re.compile(r"^FWQ-[0-9]{4}$")
+_TERMINAL = {"DONE", "FAILED"}
+
+
+class AutonomousLoopError(RuntimeError):
+    """The durable loop cannot safely continue."""
+
+
+@dataclass(frozen=True)
+class TaskSpec:
+    task_id: str
+    requirement: str
+    description: str
+    dependencies: tuple[str, ...] = ()
+    priority: int = 0
+    allowed_paths: tuple[str, ...] = ()
+    acceptance: tuple[str, ...] = ()
+    retry_budget: int = 1
+    worker_type: str = "CODEX"
+
+
+@dataclass(frozen=True)
+class WorkerLease:
+    lease_id: str
+    task_id: str
+    session_id: str
+    repository: str
+    allowed_paths: tuple[str, ...]
+    operation: str
+    commands: tuple[str, ...]
+    expires_at: float
+    deployment: str = "DISABLED"
+    dry_run: bool = True
+    authority_expansion: bool = False
+
+
+@dataclass(frozen=True)
+class WorkerResult:
+    candidate_commit: str
+    changed_files: tuple[str, ...]
+    tests: tuple[str, ...]
+    summary: str = ""
+
+
+def _now() -> float:
+    return time.time()
+
+
+def _validate_task(task: TaskSpec) -> None:
+    if not _TASK.fullmatch(task.task_id):
+        raise AutonomousLoopError("invalid task ID")
+    if task.priority < 0 or task.retry_budget < 0:
+        raise AutonomousLoopError("task priority and retry budget must be non-negative")
+    if any(not path or Path(path).is_absolute() or ".." in Path(path).parts for path in task.allowed_paths):
+        raise AutonomousLoopError("task allowed paths must be relative and contained")
+    if any(dep == task.task_id for dep in task.dependencies):
+        raise AutonomousLoopError("task cannot depend on itself")
+
+
+class AutonomousOrchestrator:
+    """Persisted queue runner that continues until work or authority ends."""
+
+    def __init__(self, state_path: Path, repository: Path, tasks: tuple[TaskSpec, ...], *, lease_seconds: float = 300.0, checkpoint_path: Path | None = None, audit_path: Path | None = None, session_id: str | None = None):
+        self.state_path = Path(state_path)
+        self.repository = Path(repository).resolve()
+        self.checkpoint_path = Path(checkpoint_path) if checkpoint_path else self.state_path.with_name("work-checkpoint.json")
+        self.audit_path = Path(audit_path) if audit_path else self.state_path.with_name("execution-log.jsonl")
+        self.lease_seconds = lease_seconds
+        self.tasks = {task.task_id: task for task in tasks}
+        if len(self.tasks) != len(tasks) or any(task.task_id != key for key, task in self.tasks.items()):
+            raise AutonomousLoopError("task IDs must be unique")
+        for task in tasks:
+            _validate_task(task)
+        for task in tasks:
+            if any(dep not in self.tasks for dep in task.dependencies):
+                raise AutonomousLoopError(f"unknown dependency for {task.task_id}")
+        self.session_id = session_id or uuid.uuid4().hex
+
+    def _write(self, payload: Mapping[str, Any]) -> None:
+        path = self.state_path
+        if not path.is_absolute() or any(parent.is_symlink() for parent in (path.parent, *path.parent.parents)):
+            raise AutonomousLoopError("unsafe durable state path")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        descriptor, temporary_name = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
+        os.close(descriptor)
+        temporary = Path(temporary_name)
+        try:
+            with temporary.open("w", encoding="utf-8") as handle:
+                json.dump(payload, handle, sort_keys=True, indent=2)
+                handle.write("\n")
+                handle.flush()
+                os.fsync(handle.fileno())
+            os.replace(temporary, path)
+        finally:
+            temporary.unlink(missing_ok=True)
+
+    def _log(self, event: str, **data: Any) -> None:
+        self.audit_path.parent.mkdir(parents=True, exist_ok=True)
+        with self.audit_path.open("a", encoding="utf-8") as handle:
+            handle.write(json.dumps({"timestamp": _now(), "session_id": self.session_id, "event": event, **data}, sort_keys=True) + "\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+
+    def _initial(self) -> dict[str, Any]:
+        return {"version": 1, "session_id": self.session_id, "phase": "ForgeWarden Core", "milestone": None, "current_work_package": None, "queued_tasks": {task_id: {"state": "READY", "attempts": 0} for task_id in self.tasks}, "active_task": None, "completed_tasks": [], "failed_tasks": [], "retry_count": {}, "worker_assigned": None, "worker_lease": None, "repository_head_before": None, "repository_head_after": None, "test_results": [], "reviewer_result": None, "acceptance_result": None, "unresolved_blockers": [], "next_action": "select next eligible task", "timestamps": {"created_at": _now(), "updated_at": _now()}, "stop_reason": None, "dry_run": True, "deployment": "DISABLED", "kill_switch": "ENGAGED"}
+
+    def _load(self) -> dict[str, Any]:
+        if not self.state_path.exists():
+            state = self._initial()
+            self._write(state)
+            self._log("run_initialized")
+            return state
+        try:
+            state = json.loads(self.state_path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+            raise AutonomousLoopError("durable execution state is unreadable") from exc
+        if not isinstance(state, dict) or state.get("version") != 1 or state.get("dry_run") is not True or state.get("deployment") != "DISABLED":
+            raise AutonomousLoopError("durable state violates safety contract")
+        if set(state.get("queued_tasks", {})) != set(self.tasks) or not isinstance(state.get("completed_tasks"), list) or not isinstance(state.get("failed_tasks"), list):
+            raise AutonomousLoopError("durable state task queue does not match the approved queue")
+        if state.get("session_id") != self.session_id and self.session_id:
+            self.session_id = str(state["session_id"])
+        self._recover_stale(state)
+        return state
+
+    def _recover_stale(self, state: dict[str, Any]) -> None:
+        lease = state.get("worker_lease")
+        if lease and float(lease.get("expires_at", 0)) <= _now():
+            task_id = state.get("active_task")
+            if task_id in self.tasks:
+                state["queued_tasks"][task_id]["state"] = "READY"
+                state["queued_tasks"][task_id]["attempts"] = state["queued_tasks"][task_id].get("attempts", 0) + 1
+            state["active_task"] = None
+            state["worker_assigned"] = None
+            state["worker_lease"] = None
+            state["next_action"] = "recovered expired worker lease"
+            state["timestamps"]["updated_at"] = _now()
+            self._write(state)
+            self._log("stale_lease_recovered", task_id=task_id)
+
+    def _select(self, state: Mapping[str, Any]) -> TaskSpec | None:
+        ready = []
+        for task in self.tasks.values():
+            record = state["queued_tasks"][task.task_id]
+            if record["state"] != "READY":
+                continue
+            if all(state["queued_tasks"][dep]["state"] == "DONE" for dep in task.dependencies):
+                ready.append(task)
+        return min(ready, key=lambda item: (item.priority, item.task_id)) if ready else None
+
+    def _checkpoint(self, task: TaskSpec, state: Mapping[str, Any], *, starting: str, candidate: str | None, accepted: str | None, validation: tuple[str, ...], reviews: tuple[str, ...], next_action: str) -> None:
+        write_checkpoint(self.checkpoint_path, WorkUnitCheckpoint("ForgeWarden Core", task.task_id, starting, candidate, accepted, (), validation, reviews[0] if reviews else "not started", reviews[1] if len(reviews) > 1 else "not started", (), None, next_action))
+
+    def run(self, *, dispatch: Callable[[TaskSpec, WorkerLease], WorkerResult], validate: Callable[[TaskSpec, WorkerResult], bool], commit: Callable[[TaskSpec, WorkerResult], str], review: Callable[[TaskSpec, str, WorkerLease], tuple[str, ...]], repair: Callable[[TaskSpec, WorkerResult, WorkerLease], WorkerResult] | None = None, max_steps: int | None = None, authorized: Callable[[], bool] | None = None) -> dict[str, Any]:
+        state = self._load()
+        steps = 0
+        while max_steps is None or steps < max_steps:
+            if authorized is not None and not authorized():
+                state["stop_reason"] = "SUPERVISOR_TERMINATED"
+                state["next_action"] = "resume only after explicit authorization"
+                break
+            task = self._select(state)
+            if task is None:
+                state["stop_reason"] = "ALL_ACTIVE_WORK_COMPLETE"
+                state["next_action"] = "await next approved queue item"
+                break
+            record = state["queued_tasks"][task.task_id]
+            attempts = int(record.get("attempts", 0))
+            lease = WorkerLease(uuid.uuid4().hex, task.task_id, self.session_id, str(self.repository), task.allowed_paths, "IMPLEMENT_AND_TEST", ("approved deterministic test commands",), _now() + self.lease_seconds)
+            state.update({"active_task": task.task_id, "current_work_package": task.task_id, "worker_assigned": task.worker_type, "worker_lease": asdict(lease), "repository_head_before": state.get("repository_head_after"), "next_action": "dispatch bounded worker"})
+            record["state"] = "IN_PROGRESS"
+            state["timestamps"]["updated_at"] = _now()
+            self._write(state); self._log("worker_dispatched", task_id=task.task_id, lease_id=lease.lease_id)
+            try:
+                result = dispatch(task, lease)
+                if not isinstance(result, WorkerResult) or not _SHA.fullmatch(result.candidate_commit):
+                    raise AutonomousLoopError("worker returned invalid candidate evidence")
+                if any(not file or Path(file).is_absolute() or ".." in Path(file).parts for file in result.changed_files):
+                    raise AutonomousLoopError("worker returned an escaping changed path")
+                if task.allowed_paths and any(not any(file == allowed or file.startswith(allowed.rstrip("/") + "/") for allowed in task.allowed_paths) for file in result.changed_files):
+                    raise AutonomousLoopError("worker changed a path outside its lease")
+                if not validate(task, result):
+                    raise AutonomousLoopError("deterministic validation failed")
+                candidate = commit(task, result)
+                if not _SHA.fullmatch(candidate) or candidate.lower() != result.candidate_commit.lower():
+                    raise AutonomousLoopError("trusted commit did not match worker candidate")
+                reviews = tuple(review(task, candidate, lease))
+                if len(reviews) < 2:
+                    raise AutonomousLoopError("independent reviewer results are incomplete")
+                if repair and any(item.upper() not in {"APPROVED", "APPROVE", "LOW"} for item in reviews):
+                    if attempts >= task.retry_budget:
+                        raise AutonomousLoopError("review repair budget exhausted")
+                    result = repair(task, result, lease)
+                    if not validate(task, result):
+                        raise AutonomousLoopError("repair validation failed")
+                    candidate = commit(task, result)
+                    if not _SHA.fullmatch(candidate) or candidate.lower() != result.candidate_commit.lower():
+                        raise AutonomousLoopError("repair commit did not match candidate")
+                    reviews = tuple(review(task, candidate, lease))
+                if any(item.upper() not in {"APPROVED", "APPROVE", "LOW"} for item in reviews):
+                    raise AutonomousLoopError("review rejected candidate")
+                self._checkpoint(task, state, starting=state.get("repository_head_before") or candidate, candidate=candidate, accepted=candidate, validation=result.tests, reviews=reviews, next_action="select next eligible task")
+                record["state"] = "DONE"; state["completed_tasks"].append(task.task_id); state["repository_head_after"] = candidate; state["test_results"] = list(result.tests); state["reviewer_result"] = list(reviews); state["acceptance_result"] = "PASSED"
+                self._log("task_accepted", task_id=task.task_id, candidate_commit=candidate)
+            except Exception as exc:
+                record["attempts"] = attempts + 1; state["retry_count"][task.task_id] = attempts + 1
+                if attempts < task.retry_budget:
+                    record["state"] = "READY"; state["next_action"] = "retry failed task"
+                else:
+                    record["state"] = "FAILED"; state["failed_tasks"].append(task.task_id); state["unresolved_blockers"].append(f"{task.task_id}: {str(exc)[:500]}"); state["next_action"] = "continue with independent eligible work"
+                self._log("task_failed", task_id=task.task_id, error=str(exc)[:500], retry=attempts < task.retry_budget)
+            finally:
+                state["active_task"] = None; state["worker_assigned"] = None; state["worker_lease"] = None; state["timestamps"]["updated_at"] = _now(); self._write(state)
+            steps += 1
+        if state.get("stop_reason") is None and max_steps is not None and steps >= max_steps:
+            state["stop_reason"] = "STEP_BOUND_REACHED"; state["next_action"] = "resume durable run"
+        state["timestamps"]["updated_at"] = _now(); self._write(state); self._log("run_checkpointed", stop_reason=state.get("stop_reason"), steps=steps)
+        return state
