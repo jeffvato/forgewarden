@@ -54,13 +54,14 @@ def run_deterministic_tests(task: TaskSpec, result: WorkerResult, repository: Wo
 class ExactReviewAdapter:
     """Use the existing independent review runner and convert its evidence."""
 
-    def __init__(self, context: str, *, allow_external_review: bool = False):
+    def __init__(self, context: str, *, allow_external_review: bool = False, reviewers: tuple[str, ...] = ("CLAUDE",)):
         self.context = context
         self.allow_external_review = allow_external_review
+        self.reviewers = reviewers
 
     def review(self, task: TaskSpec, commit: str, lease: WorkerLease) -> dict[str, ReviewResult]:
         job_id = "phase2a-" + hashlib.sha256(task.task_id.encode("utf-8")).hexdigest()[:24]
-        result = run_review_cycle(Path(lease.repository), commit, job_id, self.context, allow_external_review=self.allow_external_review)
+        result = run_review_cycle(Path(lease.repository), commit, job_id, self.context, allow_external_review=self.allow_external_review, reviewers=self.reviewers)
         if result["state"] != "APPROVED":
             raise RuntimeError("independent exact-commit review did not approve")
         reviews: dict[str, ReviewResult] = {}
@@ -83,6 +84,7 @@ class ExactReviewAdapter:
                 job_id,
                 self.context,
                 allow_external_review=self.allow_external_review,
+                reviewers=self.reviewers,
             )
             if result["state"] == "APPROVED":
                 return "PASSED"

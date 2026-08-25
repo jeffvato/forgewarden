@@ -27,8 +27,10 @@ def record_review(cycle: ReviewCycle, result: ReviewResult) -> ReviewCycle:
     if result.disposition == "REJECTED" and not result.rationale.strip(): raise ReviewHandoffError("rejected review requires rationale")
     reviews = dict(cycle.reviews); reviews[result.role] = result
     return ReviewCycle(cycle.candidate_commit, MappingProxyType(reviews))
-def complete_review_cycle(cycle: ReviewCycle) -> ReviewCycle:
-    if set(cycle.reviews) != _ROLES: raise ReviewHandoffError("both Claude and Gemini reviews are required")
+def complete_review_cycle(cycle: ReviewCycle, required_roles: frozenset[str] | set[str] = _ROLES) -> ReviewCycle:
+    required = frozenset(required_roles)
+    if not required or not required.issubset(_ROLES): raise ReviewHandoffError("review cycle contains an unsupported reviewer role")
+    if set(cycle.reviews) != required: raise ReviewHandoffError("required reviewer evidence is incomplete")
     if any(review.disposition == "REJECTED" for review in cycle.reviews.values()): raise ReviewHandoffError("rejected review requires repair")
     if any(review.disposition == "FINDINGS" and review.severity in {"HIGH", "CRITICAL"} for review in cycle.reviews.values()): raise ReviewHandoffError("high or critical findings require repair")
     return cycle

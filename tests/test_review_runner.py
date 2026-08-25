@@ -102,6 +102,34 @@ def test_review_cycle_uses_independent_provider_snapshots(repo_fixture: Path):
     assert snapshots[0] != snapshots[1]
 
 
+def test_review_cycle_supports_explicit_claude_only_mode(repo_fixture: Path):
+    sha = repo_fixture.joinpath(".candidate-sha").read_text().strip()
+
+    def approved(snapshot, job_id, commit, context):
+        return {
+            "job_id": job_id,
+            "reviewed_commit": commit,
+            "verdict": "APPROVE",
+            "risk": "LOW",
+            "blocking_findings": [],
+            "non_blocking_notes": [],
+            "tests_missing": [],
+            "reasoning_summary": "approved",
+            "proposed_rules": [],
+        }
+
+    result = run_review_cycle(
+        repo_fixture,
+        sha,
+        "phase2a-" + "e" * 24,
+        "review",
+        claude_runner=approved,
+        reviewers=("CLAUDE",),
+    )
+    assert result["state"] == "APPROVED"
+    assert [item["provider"] for item in result["reviews"]] == ["CLAUDE"]
+
+
 @pytest.fixture
 def repo_fixture(tmp_path: Path) -> Path:
     import subprocess

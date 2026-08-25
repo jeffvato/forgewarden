@@ -316,7 +316,7 @@ class AutonomousOrchestrator:
                         if not isinstance(value, ReviewResult):
                             raise AutonomousLoopError("reviewer returned invalid exact-commit evidence")
                         cycle = record_review(cycle, value)
-                    complete_review_cycle(cycle)
+                    complete_review_cycle(cycle, required_roles=set(review_payload))
                     reviews = tuple(f"{role}:{value.disposition}:{value.severity}" for role, value in sorted(cycle.reviews.items()))
                     reviews_approved = True
                 else:

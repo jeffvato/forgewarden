@@ -11,7 +11,7 @@ Deployment remains disabled and any configured kill switch remains engaged.
 2. The trusted ForgeWarden Python orchestrator owns deterministic workflow control, policy enforcement, allowed paths, hashes, tests, Git operations, resource limits, audit, cleanup, rollback, and work sequencing.
 3. Codex is the sole application-code writer. Codex may inspect, implement, repair, refactor, and test within approved scope.
 4. Claude is an architecture, requirements, threat-model, and adversarial-review agent. Claude returns findings and recommendations; it does not independently modify production source.
-5. Gemini is an independent read-only exact-commit reviewer. Gemini reviews the exact candidate commit and returns correctness, regression, security, and test findings.
+5. The active Core plan uses Claude as the sole read-only exact-commit reviewer, per Jeff's authorization. Gemini remains optional and must never be treated as approval evidence unless explicitly enabled for a given task.
 6. Deterministic checks are authoritative. AI agents never gain authority merely by issuing instructions to one another.
 
 ## Persistent project state
@@ -39,7 +39,7 @@ For each bounded work unit:
 4. Run applicable formatter, lint, type/static checks, unit/integration/security/invariant tests, secret/dependency checks, and repository-specific validation.
 5. Produce one coherent candidate commit using the approved Git workflow and record its exact hash.
 6. Obtain Claude architecture/adversarial review of that exact candidate.
-7. Obtain Gemini independent read-only review of that exact candidate.
+7. Obtain Claude read-only review of that exact candidate. Gemini may be run as supplemental review when explicitly enabled, but is not required for the active Core plan.
 8. Codex repairs legitimate findings, strengthens regression tests, reruns validation, and presents a new exact candidate when needed.
 9. Accept a work unit only when acceptance criteria and deterministic validation pass and no unresolved critical/high-confidence finding remains.
 10. Update `WORK_QUEUE.md` and `SWARM_STATUS.md`, then immediately claim the next READY task.

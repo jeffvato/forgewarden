@@ -15,9 +15,10 @@ def test_stale_and_duplicate_reviews_fail_closed():
 def test_rejection_requires_rationale_and_invalid_sha_rejected():
     with pytest.raises(ReviewHandoffError,match="full"): create_review_cycle("short")
     with pytest.raises(ReviewHandoffError,match="rationale"): record_review(create_review_cycle(SHA_A),result(disposition="REJECTED",rationale=""))
-def test_completion_requires_both_reviewers_and_string_findings():
+def test_completion_requires_configured_reviewers_and_string_findings():
     cycle=record_review(create_review_cycle(SHA_A),result())
-    with pytest.raises(ReviewHandoffError,match="both"): complete_review_cycle(cycle)
+    with pytest.raises(ReviewHandoffError,match="required reviewer evidence"): complete_review_cycle(cycle)
+    assert complete_review_cycle(cycle, required_roles={"CLAUDE"}).reviews["CLAUDE"].disposition == "APPROVED"
     with pytest.raises(ReviewHandoffError,match="findings"): record_review(create_review_cycle(SHA_A),ReviewResult("CLAUDE",SHA_A,(1,),"LOW","FINDINGS","ok"))
 def test_high_findings_block_completion():
     cycle=create_review_cycle(SHA_A)

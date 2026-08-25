@@ -93,6 +93,7 @@ def run_review_cycle(
     allow_external_review: bool = False,
     claude_runner: Callable[..., dict[str, Any]] | None = None,
     gemini_runner: Callable[..., dict[str, Any]] | None = None,
+    reviewers: tuple[str, ...] = ("CLAUDE", "GEMINI"),
 ) -> dict[str, Any]:
     """Run both independent reviewers without changing the repository.
 
@@ -107,15 +108,18 @@ def run_review_cycle(
     review_context = context + "\n\nExact candidate patch from Git:\n" + patch
     if len(review_context.encode("utf-8")) > 24_000:
         raise ReviewRunnerError("review context plus exact candidate patch exceeds the 24000-byte bound")
+    requested = tuple(dict.fromkeys(reviewers))
+    if not requested or any(provider not in {"CLAUDE", "GEMINI"} for provider in requested):
+        raise ReviewRunnerError("reviewers must contain CLAUDE and/or GEMINI")
     with tempfile.TemporaryDirectory(prefix=f"forgewarden-review-{job_id}-") as temporary:
-        snapshots = {provider: Path(temporary) / provider.lower() for provider in ("CLAUDE", "GEMINI")}
+        snapshots = {provider: Path(temporary) / provider.lower() for provider in requested}
         for snapshot in snapshots.values():
             snapshot.mkdir()
             _extract_archive(repository, commit, snapshot)
 
         claude = claude_runner or claude_verifier.run
         gemini = gemini_runner
-        if gemini is None:
+        if "GEMINI" in requested and gemini is None:
             adapter = GeminiAdapter(
                 snapshots["GEMINI"] / "schemas/gemini-review.schema.json",
                 ResourceLimits(),
@@ -123,7 +127,8 @@ def run_review_cycle(
             )
             gemini = adapter.run
 
-        providers = (("CLAUDE", claude), ("GEMINI", gemini))
+        provider_map = {"CLAUDE": claude, "GEMINI": gemini}
+        providers = tuple((provider, provider_map[provider]) for provider in requested)
 
         def invoke_provider(provider: str, invoke: Callable[..., dict[str, Any]]) -> dict[str, Any]:
             try:
