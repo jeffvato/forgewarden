@@ -168,7 +168,7 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 
 ### FWQ-0010 — Populate the next bounded Core work item
 - Requirement: Core supervisor/roadmap
-- State: READY
+- State: DONE
 - Priority: P2
 - Dependencies: FWQ-0009
 - Approval: Explicitly authorized by the active Core queue-population plan.
@@ -198,7 +198,7 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 
 ### FWQ-0012 — Deterministic Core queue-state reconciliation
 - Requirement: Core supervisor/roadmap
-- State: READY
+- State: BLOCKED
 - Priority: P2
 - Dependencies: FWQ-0011
 - Approval: Explicitly authorized by the active Core queue-population plan.
