@@ -187,6 +187,11 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 - Dependencies: FWQ-0010
 - Approval: Explicitly authorized by the active Core queue-population plan.
 - Description: Implement deterministic reconciliation of an accepted Core work-unit checkpoint against repository state and immutable safety invariants, without mutating Git or granting execution authority.
+- Target path: swarm/work_checkpoint.py
+- Allowed paths: swarm/work_checkpoint.py, tests/test_work_checkpoint.py
+- Test command: python3 -m pytest -q tests/test_work_checkpoint.py
+- Expected behavior: implement deterministic checkpoint reconciliation and fail-closed validation.
+- Failing assertion: stale or mismatched checkpoint evidence is accepted as valid.
 - Acceptance criteria:
   - checkpoint task identity, active phase, and commit references are validated against repository evidence;
   - stale, malformed, mismatched, or incomplete checkpoint state fails closed;

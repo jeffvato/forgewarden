@@ -7,7 +7,7 @@ from pathlib import Path
 
 from .autonomous_loop import TaskSpec
 from .supervisor_state import SupervisorState
-from .task_selection import load_validated_work_items
+from .task_selection import load_validated_work_items, select_ready_task
 
 
 def _candidate_commit(repository: Path, value: str) -> str | None:
@@ -23,9 +23,10 @@ def derive_control_transition_tasks(repository: Path, state: SupervisorState) ->
     checkpoint = state.resume.checkpoint
     candidate = _candidate_commit(repository, checkpoint.get("Candidate commit", "none"))
     result: list[TaskSpec] = []
-    ordered = sorted(items.values(), key=lambda item: (0 if item.state in {"REVIEW", "BLOCKED"} else 1, item.priority, item.task_id))
+    selected = select_ready_task(state).selected
+    ordered = sorted(items.values(), key=lambda item: (0 if selected and item.task_id == selected.task_id else (1 if item.state in {"REVIEW", "BLOCKED"} else 2), item.priority, item.task_id))
     for item in ordered:
-        if item.state not in {"REVIEW", "BLOCKED", "DONE"}:
+        if item.state not in {"REVIEW", "BLOCKED", "DONE"} and not (selected and item.task_id == selected.task_id):
             continue
         result.append(TaskSpec(
             task_id=item.task_id,
@@ -38,5 +39,10 @@ def derive_control_transition_tasks(repository: Path, state: SupervisorState) ->
             blocker_external=item.state == "BLOCKED",
             blocker_resolved=False,
             authorized=True,
+            target_path=item.target_path,
+            allowed_paths=item.allowed_paths,
+            test_command=item.test_command,
+            expected_behavior=item.expected_behavior,
+            failing_assertion=item.failing_assertion,
         ))
     return tuple(result)

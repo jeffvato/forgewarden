@@ -15,6 +15,7 @@ _TASK_ID = re.compile(r"FWQ-[0-9]{4}")
 _PRIORITY = re.compile(r"P([0-9]+)")
 _STATES = frozenset({"BLOCKED", "READY", "IN_PROGRESS", "REVIEW", "REPAIR", "VALIDATED", "DONE"})
 _REQUIRED_FIELDS = ("Requirement", "State", "Priority", "Dependencies", "Description")
+_OPTIONAL_FIELDS = ("Target path", "Allowed paths", "Test command", "Expected behavior", "Failing assertion")
 
 
 class TaskSelectionError(ValueError):
@@ -29,6 +30,11 @@ class WorkItem:
     state: str
     priority: int
     dependencies: tuple[str, ...]
+    target_path: str | None = None
+    allowed_paths: tuple[str, ...] = ()
+    test_command: tuple[str, ...] = ()
+    expected_behavior: str = "implement the approved task"
+    failing_assertion: str = "the approved regression assertion"
 
 
 @dataclass(frozen=True)
@@ -87,7 +93,10 @@ def _parse_tasks(state: SupervisorState) -> dict[str, WorkItem]:
         dependencies = () if raw_dependencies == "none" else tuple(item.strip() for item in raw_dependencies.split(","))
         if raw_dependencies != "none" and (not dependencies or any(not _TASK_ID.fullmatch(item) for item in dependencies) or len(set(dependencies)) != len(dependencies)):
             raise TaskSelectionError(f"malformed task {current_id}: invalid dependencies")
-        tasks[current_id] = WorkItem(current_id, current_title, fields["Requirement"], task_state, int(priority.group(1)), dependencies)
+        target_path = fields.get("Target path")
+        allowed_paths = tuple(item.strip() for item in fields.get("Allowed paths", "").split(",") if item.strip())
+        test_command = tuple(item for item in fields.get("Test command", "").split() if item)
+        tasks[current_id] = WorkItem(current_id, current_title, fields["Requirement"], task_state, int(priority.group(1)), dependencies, target_path, allowed_paths, test_command, fields.get("Expected behavior", "implement the approved task"), fields.get("Failing assertion", "the approved regression assertion"))
 
     for line in content.splitlines():
         heading = _TASK_HEADING.fullmatch(line)
@@ -101,7 +110,7 @@ def _parse_tasks(state: SupervisorState) -> dict[str, WorkItem]:
         if current_id is None or not line.startswith("- "):
             continue
         field, separator, value = line[2:].partition(":")
-        if field in _REQUIRED_FIELDS and separator:
+        if field in _REQUIRED_FIELDS + _OPTIONAL_FIELDS and separator:
             if field in fields:
                 raise TaskSelectionError(f"malformed task {current_id}: duplicate field {field}")
             fields[field] = value.strip()
