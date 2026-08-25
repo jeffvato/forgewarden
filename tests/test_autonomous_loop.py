@@ -51,6 +51,29 @@ def test_durable_loop_dispatches_checkpoint_and_automatically_selects_next(tmp_p
     assert any(json.loads(line)["event"] == "task_accepted" for line in events)
 
 
+def test_legacy_review_callback_rejects_empty_results(tmp_path: Path):
+    runner = AutonomousOrchestrator(tmp_path / "run.json", tmp_path / "repo", (TaskSpec("FWQ-0001", "Core", "empty", retry_budget=0),))
+    state = runner.run(
+        dispatch=lambda task, lease: WorkerResult(SHA_A, (), ("pytest",)),
+        validate=lambda task, result: True,
+        commit=lambda task, result: result.candidate_commit,
+        review=lambda task, sha, lease: (),
+    )
+    assert state["failed_tasks"] == ["FWQ-0001"]
+    assert "reviewer results are incomplete" in state["unresolved_blockers"][0]
+
+
+def test_legacy_review_callback_accepts_one_approved_claude_result(tmp_path: Path):
+    runner = AutonomousOrchestrator(tmp_path / "run.json", tmp_path / "repo", (TaskSpec("FWQ-0001", "Core", "single"),))
+    state = runner.run(
+        dispatch=lambda task, lease: WorkerResult(SHA_A, (), ("pytest",)),
+        validate=lambda task, result: True,
+        commit=lambda task, result: result.candidate_commit,
+        review=lambda task, sha, lease: ("APPROVED",),
+    )
+    assert state["completed_tasks"] == ["FWQ-0001"]
+
+
 def test_recover_restart_and_retry_then_continue(tmp_path: Path):
     tasks = (TaskSpec("FWQ-0001", "Core first", "first", priority=0, retry_budget=2), _tasks()[1])
     runner = AutonomousOrchestrator(tmp_path / "run.json", tmp_path / "repo", tasks)

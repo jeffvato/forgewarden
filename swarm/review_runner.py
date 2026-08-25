@@ -98,8 +98,8 @@ def run_review_cycle(
     """Run the configured independent reviewers without changing the repository.
 
     Provider failures are captured as ``UNAVAILABLE`` and never converted into
-    approval. The overall cycle is approved only when both providers return a
-    valid low-risk approval for the exact candidate commit.
+    approval. The overall cycle is approved only when every configured reviewer
+    returns a valid low-risk approval for the exact candidate commit.
     """
     if not isinstance(context, str) or not context.strip():
         raise ReviewRunnerError("review context must be non-empty text")
