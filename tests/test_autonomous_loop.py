@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import json
 import sys
+import subprocess
 import time
 from pathlib import Path
 
-from swarm.autonomous_loop import AutonomousOrchestrator, TaskSpec, WorkerLease, WorkerResult
+from swarm.autonomous_loop import AutonomousOrchestrator, GitCheckpointController, TaskSpec, WorkerLease, WorkerResult
 from swarm.cli import main
 from test_supervisor_state import _write_control_files
 
@@ -130,3 +131,19 @@ def test_cli_exposes_read_only_durable_loop_status(tmp_path: Path, capsys, monke
     payload = json.loads(capsys.readouterr().out)
     assert payload["selected_task"] == "FWQ-0001"
     assert payload["durable_state"] is None
+
+
+def test_trusted_git_controller_commits_uncommitted_worker_evidence(tmp_path: Path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "init", "-q", str(repo)], check=True)
+    (repo / "allowed.py").write_text("before\n", encoding="utf-8")
+    subprocess.run(["git", "-C", str(repo), "add", "allowed.py"], check=True)
+    subprocess.run(["git", "-C", str(repo), "-c", "user.name=Test", "-c", "user.email=test@example.test", "commit", "-qm", "base"], check=True)
+    (repo / "allowed.py").write_text("after\n", encoding="utf-8")
+    task = TaskSpec("FWQ-0001", "Core git", "git", allowed_paths=("allowed.py",))
+    result = WorkerResult(None, ("allowed.py",), ("pytest -q",))
+    controller = GitCheckpointController(repo)
+    accepted = controller.commit_worker_changes(task, result)
+    assert len(accepted) == 40
+    assert controller.head() == accepted

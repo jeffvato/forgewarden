@@ -8,6 +8,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import subprocess
 import tempfile
 import time
 import uuid
@@ -57,7 +58,7 @@ class WorkerLease:
 
 @dataclass(frozen=True)
 class WorkerResult:
-    candidate_commit: str
+    candidate_commit: str | None
     changed_files: tuple[str, ...]
     tests: tuple[str, ...]
     summary: str = ""
@@ -206,7 +207,7 @@ class AutonomousOrchestrator:
             self._write(state); self._log("worker_dispatched", task_id=task.task_id, lease_id=lease.lease_id)
             try:
                 result = dispatch(task, lease)
-                if not isinstance(result, WorkerResult) or not _SHA.fullmatch(result.candidate_commit):
+                if not isinstance(result, WorkerResult) or (result.candidate_commit is not None and not _SHA.fullmatch(result.candidate_commit)):
                     raise AutonomousLoopError("worker returned invalid candidate evidence")
                 if any(not file or Path(file).is_absolute() or ".." in Path(file).parts for file in result.changed_files):
                     raise AutonomousLoopError("worker returned an escaping changed path")
@@ -215,7 +216,7 @@ class AutonomousOrchestrator:
                 if not validate(task, result):
                     raise AutonomousLoopError("deterministic validation failed")
                 candidate = commit(task, result)
-                if not _SHA.fullmatch(candidate) or candidate.lower() != result.candidate_commit.lower():
+                if not _SHA.fullmatch(candidate) or (result.candidate_commit is not None and candidate.lower() != result.candidate_commit.lower()):
                     raise AutonomousLoopError("trusted commit did not match worker candidate")
                 reviews = tuple(review(task, candidate, lease))
                 if len(reviews) < 2:
@@ -227,7 +228,7 @@ class AutonomousOrchestrator:
                     if not validate(task, result):
                         raise AutonomousLoopError("repair validation failed")
                     candidate = commit(task, result)
-                    if not _SHA.fullmatch(candidate) or candidate.lower() != result.candidate_commit.lower():
+                    if not _SHA.fullmatch(candidate) or (result.candidate_commit is not None and candidate.lower() != result.candidate_commit.lower()):
                         raise AutonomousLoopError("repair commit did not match candidate")
                     reviews = tuple(review(task, candidate, lease))
                 if any(item.upper() not in {"APPROVED", "APPROVE", "LOW"} for item in reviews):
@@ -244,8 +245,48 @@ class AutonomousOrchestrator:
                 self._log("task_failed", task_id=task.task_id, error=str(exc)[:500], retry=attempts < task.retry_budget)
             finally:
                 state["active_task"] = None; state["worker_assigned"] = None; state["worker_lease"] = None; state["timestamps"]["updated_at"] = _now(); self._write(state)
-            steps += 1
+                steps += 1
         if state.get("stop_reason") is None and max_steps is not None and steps >= max_steps:
             state["stop_reason"] = "STEP_BOUND_REACHED"; state["next_action"] = "resume durable run"
         state["timestamps"]["updated_at"] = _now(); self._write(state); self._log("run_checkpointed", stop_reason=state.get("stop_reason"), steps=steps)
         return state
+
+
+class GitCheckpointController:
+    """Trusted Git owner for an isolated worker checkout."""
+
+    def __init__(self, repository: Path):
+        self.repository = Path(repository).resolve()
+        if not self.repository.is_dir() or self.repository.is_symlink():
+            raise AutonomousLoopError("Git checkpoint repository must be a regular directory")
+
+    def _git(self, *args: str) -> str:
+        result = subprocess.run(["git", "-C", str(self.repository), *args], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
+        if result.returncode:
+            raise AutonomousLoopError(f"Git operation failed: {result.stderr.strip()[:500]}")
+        return result.stdout.strip()
+
+    def head(self) -> str:
+        value = self._git("rev-parse", "HEAD")
+        if not _SHA.fullmatch(value):
+            raise AutonomousLoopError("Git HEAD is not a full commit SHA")
+        return value
+
+    def commit_worker_changes(self, task: TaskSpec, result: WorkerResult) -> str:
+        if not result.changed_files:
+            raise AutonomousLoopError("worker produced no changed files")
+        allowed = task.allowed_paths
+        for file in result.changed_files:
+            path = Path(file)
+            if path.is_absolute() or ".." in path.parts or (allowed and not any(file == item or file.startswith(item.rstrip("/") + "/") for item in allowed)):
+                raise AutonomousLoopError("worker changed a path outside the trusted Git scope")
+        status = subprocess.run(["git", "-C", str(self.repository), "status", "--porcelain", "--untracked-files=all"], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
+        if status.returncode:
+            raise AutonomousLoopError(f"Git status failed: {status.stderr.strip()[:500]}")
+        actual = tuple(sorted(filter(None, status.stdout.splitlines())))
+        actual_paths = tuple(sorted(line[3:] for line in actual if len(line) >= 4))
+        if tuple(sorted(result.changed_files)) != actual_paths:
+            raise AutonomousLoopError("worker evidence does not match the actual Git worktree")
+        self._git("add", "--", *result.changed_files)
+        self._git("-c", "user.name=ForgeWarden", "-c", "user.email=forgewarden@localhost", "commit", "-m", f"Accept {task.task_id}")
+        return self.head()
