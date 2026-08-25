@@ -29,13 +29,14 @@ class CodexTaskAdapter:
         return WorkerResult(None, tuple(payload["changed_files"]), tuple(task.test_command), payload.get("summary", ""))
 
 
-def run_deterministic_tests(task: TaskSpec, result: WorkerResult, lease: WorkerLease, limits: ResourceLimits | None = None) -> bool:
+def run_deterministic_tests(task: TaskSpec, result: WorkerResult, repository: WorkerLease | Path | str, limits: ResourceLimits | None = None) -> bool:
     """Run only the task's explicit, shell-free validation command."""
     if not task.test_command:
         return False
     if any(not item for item in task.test_command):
         return False
-    completed = subprocess.run(list(task.test_command), cwd=lease.repository, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=False, timeout=(limits or ResourceLimits()).timeout_seconds)
+    cwd = repository.repository if isinstance(repository, WorkerLease) else Path(repository)
+    completed = subprocess.run(list(task.test_command), cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=False, timeout=(limits or ResourceLimits()).timeout_seconds)
     return completed.returncode == 0
 
 

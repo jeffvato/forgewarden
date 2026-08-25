@@ -175,3 +175,13 @@ def test_real_adapter_validation_requires_explicit_shell_free_test_command(tmp_p
     lease = WorkerLease("lease", task.task_id, "session", str(tmp_path), (), "TEST", (), time.time() + 60)
     assert run_deterministic_tests(task, WorkerResult(None, (), task.test_command), lease)
     assert not run_deterministic_tests(TaskSpec("FWQ-0001", "Core test", "test"), WorkerResult(None, (), ()), lease)
+
+
+def test_cli_autonomous_loop_run_persists_without_dispatch_when_step_bound_is_zero(tmp_path: Path, capsys, monkeypatch):
+    manifest = tmp_path / "tasks.json"
+    manifest.write_text(json.dumps({"tasks": [{"task_id": "FWQ-0001", "requirement": "Core test", "description": "bounded", "target_path": "allowed.py", "allowed_paths": ["allowed.py"], "test_command": ["python3", "-c", "print('ok')"]}]}), encoding="utf-8")
+    monkeypatch.setattr(sys, "argv", ["swarm", "autonomous-loop-run", "--repository", str(tmp_path), "--task-manifest", str(manifest), "--state-dir", str(tmp_path / "state"), "--max-steps", "0"])
+    assert main() == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["stop_reason"] == "STEP_BOUND_REACHED"
+    assert (tmp_path / "state" / "autonomous-loop.json").is_file()

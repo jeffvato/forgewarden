@@ -21,12 +21,13 @@ from .approval import create_approval_record, reconcile_approval, verify_approva
 from .codebase_index import CodebaseIndex
 from .console import serve as serve_console
 from .review_runner import read_context, render_result, run_review_cycle
-from .autonomous_loop import AutonomousLoopError
+from .autonomous_loop import AutonomousLoopError, AutonomousOrchestrator, TaskSpec, WorkerLease
+from .autonomous_adapters import CodexTaskAdapter, ExactReviewAdapter, commit_with_trusted_git, run_deterministic_tests
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Local Hermes coding swarm (dry-run only)")
-    parser.add_argument("command", choices=["start", "stop", "status", "workflow-status", "kill-switch", "dry-run", "controlled-baseline", "gemini-review-recovery", "quality-review", "quality-apply-safe", "quality-audit", "release-inventory", "review-evidence", "claude-review", "review-cycle", "approval-create", "approval-verify", "approval-reconcile", "codebase-index-build", "codebase-index-query", "codebase-index-delete", "index-evidence", "vulnerability-evidence", "vulnerability-update", "phase2a-worker", "phase2a-recover-terminal", "console", "run", "autonomous-loop-status", "autonomous-dry-run-status", "autonomous-dry-run-enable", "autonomous-dry-run-disable"], nargs="?", default="status")
+    parser.add_argument("command", choices=["start", "stop", "status", "workflow-status", "kill-switch", "dry-run", "controlled-baseline", "gemini-review-recovery", "quality-review", "quality-apply-safe", "quality-audit", "release-inventory", "review-evidence", "claude-review", "review-cycle", "approval-create", "approval-verify", "approval-reconcile", "codebase-index-build", "codebase-index-query", "codebase-index-delete", "index-evidence", "vulnerability-evidence", "vulnerability-update", "phase2a-worker", "phase2a-recover-terminal", "console", "run", "autonomous-loop-status", "autonomous-loop-run", "autonomous-dry-run-status", "autonomous-dry-run-enable", "autonomous-dry-run-disable"], nargs="?", default="status")
     parser.add_argument("--state-dir", type=Path, default=Path(".swarm-state"))
     parser.add_argument("--runtime-root", type=Path)
     parser.add_argument("--audit-dir", type=Path)
@@ -49,6 +50,9 @@ def main() -> int:
     parser.add_argument("--evidence", type=Path)
     parser.add_argument("--approval", type=Path)
     parser.add_argument("--index-path", type=Path)
+    parser.add_argument("--task-manifest", type=Path)
+    parser.add_argument("--codex-executable", default="codex")
+    parser.add_argument("--max-steps", type=int)
     parser.add_argument("--feed", type=Path, action="append", default=[])
     parser.add_argument("--feed-source", choices=["osv", "nvd", "cisa_kev"])
     parser.add_argument("--feed-url")
@@ -92,6 +96,35 @@ def main() -> int:
             print(json.dumps({"active_phase": selection.active_phase, "selected_task": selection.selected.task_id if selection.selected else None, "selection_reason": selection.reason, "durable_state": durable}, sort_keys=True))
             return 0
         except (OSError, ValueError, SwarmError, AutonomousLoopError, json.JSONDecodeError) as exc:
+            print(f"FAILED: {exc}")
+            return 1
+    if args.command == "autonomous-loop-run":
+        if not args.repository or not args.task_manifest:
+            parser.error("autonomous-loop-run requires --repository and --task-manifest")
+        try:
+            manifest = json.loads(args.task_manifest.read_text(encoding="utf-8"))
+            if not isinstance(manifest, dict) or not isinstance(manifest.get("tasks"), list) or len(manifest["tasks"]) > 100:
+                raise AutonomousLoopError("task manifest must contain at most 100 tasks")
+            tasks = []
+            for item in manifest["tasks"]:
+                if not isinstance(item, dict):
+                    raise AutonomousLoopError("task manifest entries must be objects")
+                tasks.append(TaskSpec(
+                    task_id=item["task_id"], requirement=item["requirement"], description=item["description"],
+                    dependencies=tuple(item.get("dependencies", ())), priority=int(item.get("priority", 0)),
+                    allowed_paths=tuple(item.get("allowed_paths", ())), acceptance=tuple(item.get("acceptance", ())),
+                    retry_budget=int(item.get("retry_budget", 1)), worker_type=str(item.get("worker_type", "CODEX")),
+                    target_path=item.get("target_path"), expected_behavior=str(item.get("expected_behavior", "implement the approved task")),
+                    failing_assertion=str(item.get("failing_assertion", "the approved regression assertion")), test_command=tuple(item.get("test_command", ())),
+                ))
+            args.state_dir.mkdir(parents=True, exist_ok=True)
+            codex = CodexTaskAdapter(Path(__file__).resolve().parents[1] / "schemas/codex-result.schema.json", args.codex_executable)
+            reviewer = ExactReviewAdapter(str(manifest.get("review_context", "ForgeWarden exact-commit review")), allow_external_review=args.allow_external_review)
+            orchestrator = AutonomousOrchestrator(args.state_dir / "autonomous-loop.json", args.repository, tuple(tasks), checkpoint_path=args.state_dir / "work-checkpoint.json", audit_path=args.state_dir / "execution-log.jsonl")
+            result = orchestrator.run(dispatch=codex.dispatch, validate=lambda task, value: run_deterministic_tests(task, value, args.repository), commit=lambda task, value: commit_with_trusted_git(task, value, WorkerLease("commit", task.task_id, orchestrator.session_id, str(args.repository), task.allowed_paths, "COMMIT", (), 0)), review=lambda task, commit, lease: reviewer.review(task, commit, lease), max_steps=args.max_steps)
+            print(json.dumps(result, indent=2, sort_keys=True))
+            return 0
+        except (OSError, ValueError, KeyError, TypeError, json.JSONDecodeError, AutonomousLoopError, SwarmError) as exc:
             print(f"FAILED: {exc}")
             return 1
     if args.command == "console":
