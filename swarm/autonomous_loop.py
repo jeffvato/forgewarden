@@ -143,6 +143,11 @@ class AutonomousOrchestrator:
         self._recover_stale(state)
         return state
 
+    def status(self) -> dict[str, Any]:
+        """Return validated durable state without selecting or dispatching work."""
+        state = self._load()
+        return json.loads(json.dumps(state, sort_keys=True))
+
     def _recover_stale(self, state: dict[str, Any]) -> None:
         lease = state.get("worker_lease")
         if lease and float(lease.get("expires_at", 0)) <= _now():

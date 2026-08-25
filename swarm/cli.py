@@ -21,11 +21,12 @@ from .approval import create_approval_record, reconcile_approval, verify_approva
 from .codebase_index import CodebaseIndex
 from .console import serve as serve_console
 from .review_runner import read_context, render_result, run_review_cycle
+from .autonomous_loop import AutonomousLoopError
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Local Hermes coding swarm (dry-run only)")
-    parser.add_argument("command", choices=["start", "stop", "status", "workflow-status", "kill-switch", "dry-run", "controlled-baseline", "gemini-review-recovery", "quality-review", "quality-apply-safe", "quality-audit", "release-inventory", "review-evidence", "claude-review", "review-cycle", "approval-create", "approval-verify", "approval-reconcile", "codebase-index-build", "codebase-index-query", "codebase-index-delete", "index-evidence", "vulnerability-evidence", "vulnerability-update", "phase2a-worker", "phase2a-recover-terminal", "console", "run", "autonomous-dry-run-status", "autonomous-dry-run-enable", "autonomous-dry-run-disable"], nargs="?", default="status")
+    parser.add_argument("command", choices=["start", "stop", "status", "workflow-status", "kill-switch", "dry-run", "controlled-baseline", "gemini-review-recovery", "quality-review", "quality-apply-safe", "quality-audit", "release-inventory", "review-evidence", "claude-review", "review-cycle", "approval-create", "approval-verify", "approval-reconcile", "codebase-index-build", "codebase-index-query", "codebase-index-delete", "index-evidence", "vulnerability-evidence", "vulnerability-update", "phase2a-worker", "phase2a-recover-terminal", "console", "run", "autonomous-loop-status", "autonomous-dry-run-status", "autonomous-dry-run-enable", "autonomous-dry-run-disable"], nargs="?", default="status")
     parser.add_argument("--state-dir", type=Path, default=Path(".swarm-state"))
     parser.add_argument("--runtime-root", type=Path)
     parser.add_argument("--audit-dir", type=Path)
@@ -71,6 +72,28 @@ def main() -> int:
     if args.command == "workflow-status":
         print(json.dumps(workflow_status(args.runtime_root or runtime_root()), sort_keys=True))
         return 0
+    if args.command == "autonomous-loop-status":
+        if not args.repository:
+            parser.error("autonomous-loop-status requires --repository")
+        try:
+            from .supervisor_state import load_supervisor_state
+            state = load_supervisor_state(args.repository)
+            selection = __import__("swarm.task_selection", fromlist=["select_ready_task"]).select_ready_task(state)
+            durable_path = args.state_dir / "autonomous-loop.json"
+            if durable_path.exists():
+                # The durable state is read through the controller only when a
+                # caller has supplied the same approved task set; control-state
+                # status remains authoritative for queue eligibility.
+                durable = json.loads(durable_path.read_text(encoding="utf-8"))
+                if not isinstance(durable, dict) or durable.get("version") != 1 or durable.get("dry_run") is not True or durable.get("deployment") != "DISABLED":
+                    raise AutonomousLoopError("durable state violates safety contract")
+            else:
+                durable = None
+            print(json.dumps({"active_phase": selection.active_phase, "selected_task": selection.selected.task_id if selection.selected else None, "selection_reason": selection.reason, "durable_state": durable}, sort_keys=True))
+            return 0
+        except (OSError, ValueError, SwarmError, AutonomousLoopError, json.JSONDecodeError) as exc:
+            print(f"FAILED: {exc}")
+            return 1
     if args.command == "console":
         serve_console(args.host, args.port)
         return 0

@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import json
+import sys
 import time
 from pathlib import Path
 
 from swarm.autonomous_loop import AutonomousOrchestrator, TaskSpec, WorkerLease, WorkerResult
+from swarm.cli import main
+from test_supervisor_state import _write_control_files
 
 
 SHA_A = "a" * 40
@@ -116,3 +119,14 @@ def test_worker_scope_and_tampered_queue_are_rejected(tmp_path: Path):
         assert "queue" in str(exc)
     else:
         raise AssertionError("tampered queue must fail closed")
+
+
+def test_cli_exposes_read_only_durable_loop_status(tmp_path: Path, capsys, monkeypatch):
+    _write_control_files(tmp_path)
+    status = tmp_path / "SWARM_STATUS.md"
+    status.write_text(status.read_text(encoding="utf-8").replace("## Current state\n", "## Current state\n- Active phase: ForgeWarden Core\n"), encoding="utf-8")
+    monkeypatch.setattr(sys, "argv", ["swarm", "autonomous-loop-status", "--repository", str(tmp_path), "--state-dir", str(tmp_path / "state")])
+    assert main() == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["selected_task"] == "FWQ-0001"
+    assert payload["durable_state"] is None
