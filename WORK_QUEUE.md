@@ -180,6 +180,22 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 - Expected validation: `python3 -m pytest -q tests/test_task_selection.py` plus queue/state inspection.
 - Security considerations: queue metadata is untrusted input and cannot expand agent authority; broader roadmap families remain parked until their phase is explicitly activated.
 
+### FWQ-0011 — Deterministic Core checkpoint reconciliation
+- Requirement: Core supervisor/recovery
+- State: READY
+- Priority: P2
+- Dependencies: FWQ-0010
+- Approval: Explicitly authorized by the active Core queue-population plan.
+- Description: Implement deterministic reconciliation of an accepted Core work-unit checkpoint against repository state and immutable safety invariants, without mutating Git or granting execution authority.
+- Acceptance criteria:
+  - checkpoint task identity, active phase, and commit references are validated against repository evidence;
+  - stale, malformed, mismatched, or incomplete checkpoint state fails closed;
+  - reconciliation returns redacted diagnostics and preserves the next safe resume action;
+  - no execution, deployment, credential, Git, network, remote-host, or kill-switch authority is introduced;
+  - broader security families remain parked until their phase is explicitly activated.
+- Expected validation: focused checkpoint-reconciliation tests, repository suite, schema validation, and `git diff --check`.
+- Security considerations: checkpoint state is untrusted evidence, not authority; reconciliation cannot authorize deployment, clear a kill switch, or expand agent scope.
+
 ## Future queue population
 
 After the supervisor/control-plane work is validated, populate subsequent Core tasks from the active phase of `ROADMAP.md` and existing repository requirements. Broader FW-BME/FW-SOC/FW-SAAS/FW-SUPPLY/FW-NET/FW-ASM/FW-DSPM implementation remains parked until its phase is explicitly activated.
