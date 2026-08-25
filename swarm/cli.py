@@ -21,7 +21,7 @@ from .approval import create_approval_record, reconcile_approval, verify_approva
 from .codebase_index import CodebaseIndex
 from .console import serve as serve_console
 from .review_runner import read_context, render_result, run_review_cycle
-from .autonomous_loop import AutonomousLoopError, AutonomousOrchestrator, GitCheckpointController, TaskSpec
+from .autonomous_loop import AutonomousLoopError, AutonomousOrchestrator, GitCheckpointController, TaskSpec, WorkerLease
 from .autonomous_adapters import CodexTaskAdapter, ExactReviewAdapter, run_deterministic_tests
 from .supervisor_state import load_supervisor_state
 from .task_selection import select_ready_task
