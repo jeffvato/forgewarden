@@ -173,3 +173,11 @@ def select_ready_task(state: SupervisorState) -> SelectionDecision:
         eligible_task_ids=tuple(item.task_id for item in eligible),
         ineligible=MappingProxyType(ineligible),
     )
+
+
+def load_validated_work_items(state: SupervisorState) -> Mapping[str, WorkItem]:
+    """Return the validated active queue for trusted read-only planning."""
+    active_phase = _active_phase(state)
+    tasks = _parse_tasks(state)
+    _validate_graph(tasks, active_phase)
+    return MappingProxyType(dict(tasks))

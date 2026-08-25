@@ -183,7 +183,7 @@ def _read_control_file(root_descriptor: int, path: Path, name: str) -> str:
     finally:
         os.close(descriptor)
     try:
-        return bytes(payload).decode("utf-8")
+        return bytes(payload).decode("utf-8").replace("\r\n", "\n").replace("\r", "\n")
     except UnicodeDecodeError as exc:
         raise ControlStateError(f"control file is not valid UTF-8: {name}") from exc
 
@@ -245,7 +245,7 @@ def _parse_resume_state(status_content: str) -> ResumeState:
         if separator and field in CHECKPOINT_FIELDS:
             if field in checkpoint:
                 raise ControlStateError(f"malformed SWARM_STATUS.md checkpoint: duplicate field: {field}")
-            checkpoint[field] = value.strip()
+            checkpoint[field] = value.strip().strip("`").strip()
 
     missing = [field for field in CHECKPOINT_FIELDS if not checkpoint.get(field)]
     if missing:

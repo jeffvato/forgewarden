@@ -26,6 +26,7 @@ from .autonomous_adapters import CodexTaskAdapter, ExactReviewAdapter, run_deter
 from .supervisor_state import load_supervisor_state
 from .task_selection import select_ready_task
 from .plan_derivation import derive_next_core_task
+from .control_manifest import derive_control_transition_tasks
 
 
 def main() -> int:
@@ -101,14 +102,21 @@ def main() -> int:
             print(f"FAILED: {exc}")
             return 1
     if args.command == "autonomous-loop-run":
-        if not args.repository or not args.task_manifest:
-            parser.error("autonomous-loop-run requires --repository and --task-manifest")
+        if not args.repository:
+            parser.error("autonomous-loop-run requires --repository")
         try:
-            if args.task_manifest.is_symlink() or any(parent.is_symlink() for parent in (args.task_manifest.parent, *args.task_manifest.parent.parents)):
-                raise AutonomousLoopError("task manifest path is symlinked")
-            if args.task_manifest.stat().st_size > 1_048_576:
-                raise AutonomousLoopError("task manifest exceeds the 1 MiB bound")
-            manifest = json.loads(args.task_manifest.read_text(encoding="utf-8"))
+            control_files = (args.repository / "AGENTS.md", args.repository / "WORK_QUEUE.md", args.repository / "SWARM_STATUS.md")
+            control_state = load_supervisor_state(args.repository) if all(path.is_file() for path in control_files) else None
+            if args.task_manifest:
+                if args.task_manifest.is_symlink() or any(parent.is_symlink() for parent in (args.task_manifest.parent, *args.task_manifest.parent.parents)):
+                    raise AutonomousLoopError("task manifest path is symlinked")
+                if args.task_manifest.stat().st_size > 1_048_576:
+                    raise AutonomousLoopError("task manifest exceeds the 1 MiB bound")
+                manifest = json.loads(args.task_manifest.read_text(encoding="utf-8"))
+            elif control_state is not None:
+                manifest = {"tasks": [{"task_id": task.task_id, "requirement": task.requirement, "description": task.description, "dependencies": list(task.dependencies), "priority": task.priority, "initial_state": task.initial_state, "review_commit": task.review_commit, "blocker_external": task.blocker_external} for task in derive_control_transition_tasks(args.repository, control_state)]}
+            else:
+                raise AutonomousLoopError("autonomous-loop-run needs a task manifest when control state is absent")
             if not isinstance(manifest, dict) or not isinstance(manifest.get("tasks"), list) or len(manifest["tasks"]) > 100:
                 raise AutonomousLoopError("task manifest must contain at most 100 tasks")
             tasks = []
@@ -143,9 +151,8 @@ def main() -> int:
                 plan_task = derive_next_core_task(args.repository, {task.task_id for task in tasks})
                 if plan_task is not None:
                     plan_tasks.append(plan_task)
-            control_files = (args.repository / "AGENTS.md", args.repository / "WORK_QUEUE.md", args.repository / "SWARM_STATUS.md")
             if all(path.is_file() for path in control_files):
-                control_state = load_supervisor_state(args.repository)
+                assert control_state is not None
                 selected = select_ready_task(control_state).selected
                 queue_mentions_task = bool(tasks) and f"### {tasks[0].task_id} —" in control_state.files["WORK_QUEUE.md"].content
                 transition_only = bool(tasks) and tasks[0].initial_state in {"REVIEW", "BLOCKED"} and queue_mentions_task
