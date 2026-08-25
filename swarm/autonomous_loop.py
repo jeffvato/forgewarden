@@ -289,6 +289,13 @@ class GitCheckpointController:
             raise AutonomousLoopError("Git HEAD is not a full commit SHA")
         return value
 
+    def ensure_clean(self) -> None:
+        status = subprocess.run(["git", "-C", str(self.repository), "status", "--porcelain", "--untracked-files=all"], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
+        if status.returncode:
+            raise AutonomousLoopError("repository is not a valid Git checkout")
+        if status.stdout.strip():
+            raise AutonomousLoopError("repository worktree must be clean before autonomous execution")
+
     def commit_worker_changes(self, task: TaskSpec, result: WorkerResult) -> str:
         if not result.changed_files:
             raise AutonomousLoopError("worker produced no changed files")

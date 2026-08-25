@@ -178,10 +178,15 @@ def test_real_adapter_validation_requires_explicit_shell_free_test_command(tmp_p
 
 
 def test_cli_autonomous_loop_run_persists_without_dispatch_when_step_bound_is_zero(tmp_path: Path, capsys, monkeypatch):
-    manifest = tmp_path / "tasks.json"
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    (tmp_path / "allowed.py").write_text("value = 1\n", encoding="utf-8")
+    subprocess.run(["git", "-C", str(tmp_path), "add", "allowed.py"], check=True)
+    subprocess.run(["git", "-C", str(tmp_path), "-c", "user.name=Test", "-c", "user.email=test@example.test", "commit", "-qm", "base"], check=True)
+    manifest = tmp_path.parent / f"{tmp_path.name}-tasks.json"
     manifest.write_text(json.dumps({"tasks": [{"task_id": "FWQ-0001", "requirement": "Core test", "description": "bounded", "target_path": "allowed.py", "allowed_paths": ["allowed.py"], "test_command": ["python3", "-c", "print('ok')"]}]}), encoding="utf-8")
-    monkeypatch.setattr(sys, "argv", ["swarm", "autonomous-loop-run", "--repository", str(tmp_path), "--task-manifest", str(manifest), "--state-dir", str(tmp_path / "state"), "--max-steps", "0"])
+    state_dir = tmp_path.parent / f"{tmp_path.name}-state"
+    monkeypatch.setattr(sys, "argv", ["swarm", "autonomous-loop-run", "--repository", str(tmp_path), "--task-manifest", str(manifest), "--state-dir", str(state_dir), "--max-steps", "0"])
     assert main() == 0
     payload = json.loads(capsys.readouterr().out)
     assert payload["stop_reason"] == "STEP_BOUND_REACHED"
-    assert (tmp_path / "state" / "autonomous-loop.json").is_file()
+    assert (state_dir / "autonomous-loop.json").is_file()

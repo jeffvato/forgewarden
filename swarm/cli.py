@@ -21,8 +21,8 @@ from .approval import create_approval_record, reconcile_approval, verify_approva
 from .codebase_index import CodebaseIndex
 from .console import serve as serve_console
 from .review_runner import read_context, render_result, run_review_cycle
-from .autonomous_loop import AutonomousLoopError, AutonomousOrchestrator, TaskSpec, WorkerLease
-from .autonomous_adapters import CodexTaskAdapter, ExactReviewAdapter, commit_with_trusted_git, run_deterministic_tests
+from .autonomous_loop import AutonomousLoopError, AutonomousOrchestrator, GitCheckpointController, TaskSpec
+from .autonomous_adapters import CodexTaskAdapter, ExactReviewAdapter, run_deterministic_tests
 
 
 def main() -> int:
@@ -102,6 +102,10 @@ def main() -> int:
         if not args.repository or not args.task_manifest:
             parser.error("autonomous-loop-run requires --repository and --task-manifest")
         try:
+            if args.task_manifest.is_symlink() or any(parent.is_symlink() for parent in (args.task_manifest.parent, *args.task_manifest.parent.parents)):
+                raise AutonomousLoopError("task manifest path is symlinked")
+            if args.task_manifest.stat().st_size > 1_048_576:
+                raise AutonomousLoopError("task manifest exceeds the 1 MiB bound")
             manifest = json.loads(args.task_manifest.read_text(encoding="utf-8"))
             if not isinstance(manifest, dict) or not isinstance(manifest.get("tasks"), list) or len(manifest["tasks"]) > 100:
                 raise AutonomousLoopError("task manifest must contain at most 100 tasks")
@@ -117,11 +121,19 @@ def main() -> int:
                     target_path=item.get("target_path"), expected_behavior=str(item.get("expected_behavior", "implement the approved task")),
                     failing_assertion=str(item.get("failing_assertion", "the approved regression assertion")), test_command=tuple(item.get("test_command", ())),
                 ))
+            git_controller = GitCheckpointController(args.repository)
+            git_controller.ensure_clean()
+            try:
+                args.state_dir.resolve().relative_to(args.repository.resolve())
+            except ValueError:
+                pass
+            else:
+                raise AutonomousLoopError("autonomous state directory must be outside the Git repository")
             args.state_dir.mkdir(parents=True, exist_ok=True)
             codex = CodexTaskAdapter(Path(__file__).resolve().parents[1] / "schemas/codex-result.schema.json", args.codex_executable)
             reviewer = ExactReviewAdapter(str(manifest.get("review_context", "ForgeWarden exact-commit review")), allow_external_review=args.allow_external_review)
             orchestrator = AutonomousOrchestrator(args.state_dir / "autonomous-loop.json", args.repository, tuple(tasks), checkpoint_path=args.state_dir / "work-checkpoint.json", audit_path=args.state_dir / "execution-log.jsonl")
-            result = orchestrator.run(dispatch=codex.dispatch, validate=lambda task, value: run_deterministic_tests(task, value, args.repository), commit=lambda task, value: commit_with_trusted_git(task, value, WorkerLease("commit", task.task_id, orchestrator.session_id, str(args.repository), task.allowed_paths, "COMMIT", (), 0)), review=lambda task, commit, lease: reviewer.review(task, commit, lease), max_steps=args.max_steps)
+            result = orchestrator.run(dispatch=codex.dispatch, validate=lambda task, value: run_deterministic_tests(task, value, args.repository), commit=lambda task, value: git_controller.commit_worker_changes(task, value), review=lambda task, commit, lease: reviewer.review(task, commit, lease), max_steps=args.max_steps)
             print(json.dumps(result, indent=2, sort_keys=True))
             return 0
         except (OSError, ValueError, KeyError, TypeError, json.JSONDecodeError, AutonomousLoopError, SwarmError) as exc:
