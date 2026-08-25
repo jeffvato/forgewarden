@@ -271,3 +271,15 @@ def test_review_resolver_does_not_promote_without_exact_candidate_evidence(tmp_p
     task = TaskSpec("FWQ-0009", "Core review", "review", initial_state="REVIEW")
     lease = WorkerLease("review", task.task_id, "session", str(tmp_path), (), "REVIEW", (), time.time() + 60)
     assert ExactReviewAdapter("review").resolve_review(task, lease) == "UNRESOLVED"
+
+
+def test_runner_stops_only_for_explicit_external_review_resource_blocker(tmp_path: Path):
+    task = TaskSpec("FWQ-0009", "Core review", "review", initial_state="REVIEW", review_disposition="EXTERNAL")
+    runner = AutonomousOrchestrator(tmp_path / "run.json", tmp_path / "repo", (task,))
+    state = runner.run(
+        dispatch=lambda task, lease: (_ for _ in ()).throw(AssertionError("blocked review must not dispatch")),
+        validate=lambda task, result: True,
+        commit=lambda task, result: SHA_A,
+        review=lambda task, commit, lease: ("APPROVED", "LOW"),
+    )
+    assert state["stop_reason"] == "REQUIRED_RESOURCE_UNAVAILABLE"

@@ -81,6 +81,10 @@ def progress_queue(tasks: dict[str, TaskSpec], state: dict[str, Any], *, review_
                     state["queued_tasks"][repair_id] = {"state": "READY", "attempts": 0}
                     transitions.append(f"{task.task_id}:REVIEW->REPAIR:{repair_id}")
                     changed = True
+                elif disposition == "EXTERNAL":
+                    record["blocker_external"] = True
+                    record["blocker"] = "required review resource unavailable"
+                    transitions.append(f"{task.task_id}:REVIEW->EXTERNAL_BLOCKER")
             elif current == "BLOCKED":
                 dependencies_done = all(state["queued_tasks"].get(dep, {}).get("state") == "DONE" for dep in task.dependencies)
                 resolved = blocker_resolver(task, record) if blocker_resolver else task.blocker_resolved
@@ -274,8 +278,16 @@ class AutonomousOrchestrator:
                 self._log("queue_progressed", transitions=transitions)
             task = self._select(state)
             if task is None:
-                state["stop_reason"] = "ALL_ACTIVE_WORK_COMPLETE"
-                state["next_action"] = "await next approved queue item"
+                unresolved = [task_id for task_id, record in state["queued_tasks"].items() if record["state"] not in {"DONE", "FAILED"}]
+                if unresolved and all(state["queued_tasks"][task_id].get("blocker_external") for task_id in unresolved):
+                    state["stop_reason"] = "REQUIRED_RESOURCE_UNAVAILABLE"
+                    state["next_action"] = "restore review resource and resume queue evaluation"
+                elif unresolved:
+                    state["stop_reason"] = "QUEUE_REQUIRES_REEVALUATION"
+                    state["next_action"] = "resolve internal queue evidence or derive authorized Core work"
+                else:
+                    state["stop_reason"] = "ALL_ACTIVE_WORK_COMPLETE"
+                    state["next_action"] = "await next approved queue item"
                 break
             record = state["queued_tasks"][task.task_id]
             attempts = int(record.get("attempts", 0))
