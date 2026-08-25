@@ -43,12 +43,18 @@ def test_corruption_and_interrupted_write_are_not_accepted(tmp_path):
 
 def test_stale_commit_and_invalid_transitions_fail_closed(tmp_path):
     checkpoint = _checkpoint(candidate_commit=SHA_B)
-    with pytest.raises(CheckpointError, match="commit mismatch"):
+    with pytest.raises(CheckpointError, match="not accepted"):
         reconcile_checkpoint(checkpoint, SHA_A)
     with pytest.raises(CheckpointError, match="accepted commit must equal"):
         write_checkpoint(tmp_path / "checkpoint.json", _checkpoint(candidate_commit=SHA_A, accepted_commit=SHA_B))
     with pytest.raises(CheckpointError, match="without traversal"):
         write_checkpoint(tmp_path / "checkpoint.json", _checkpoint(changed_files=("../escape",)))
+
+
+def test_candidate_only_checkpoint_cannot_reconcile_as_accepted():
+    checkpoint = _checkpoint(candidate_commit=SHA_B)
+    with pytest.raises(CheckpointError, match="not accepted"):
+        reconcile_checkpoint(checkpoint, SHA_B)
 
 
 def test_unsafe_checkpoint_path_and_schema_fail_closed(tmp_path):

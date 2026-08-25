@@ -153,7 +153,7 @@ def reconcile_checkpoint(checkpoint: WorkUnitCheckpoint, repository_head: str) -
     # A candidate is only evidence of an accepted state once it is recorded as
     # accepted; candidate-only checkpoints are incomplete and fail closed.
     if checkpoint.candidate_commit is not None and checkpoint.accepted_commit is None:
-        raise CheckpointError("checkpoint commit mismatch: candidate is not accepted")
+        raise CheckpointError("checkpoint not accepted: candidate commit has not been accepted")
     expected = checkpoint.accepted_commit or checkpoint.starting_commit
     if repository_head.lower() != expected.lower():
         raise CheckpointError(f"checkpoint commit mismatch: expected {expected}, got {repository_head}")
