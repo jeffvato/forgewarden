@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any, Callable, Mapping
 
 from .work_checkpoint import WorkUnitCheckpoint, write_checkpoint
+from .policy_gate import validate_safety_evidence
 
 _SHA = re.compile(r"^[0-9a-fA-F]{40}$")
 _TASK = re.compile(r"^FWQ-[0-9]{4}$")
@@ -148,6 +149,12 @@ class AutonomousOrchestrator:
         state = self._load()
         return json.loads(json.dumps(state, sort_keys=True))
 
+    def _enforce_safety(self) -> None:
+        validate_safety_evidence(
+            {"mode": "DRY_RUN", "deployment": "DISABLED", "kill_switch": "ENGAGED", "mutation_allowed": False},
+            require_kill_switch=True,
+        )
+
     def _recover_stale(self, state: dict[str, Any]) -> None:
         lease = state.get("worker_lease")
         if lease and float(lease.get("expires_at", 0)) <= _now():
@@ -177,6 +184,7 @@ class AutonomousOrchestrator:
         write_checkpoint(self.checkpoint_path, WorkUnitCheckpoint("ForgeWarden Core", task.task_id, starting, candidate, accepted, (), validation, reviews[0] if reviews else "not started", reviews[1] if len(reviews) > 1 else "not started", (), None, next_action))
 
     def run(self, *, dispatch: Callable[[TaskSpec, WorkerLease], WorkerResult], validate: Callable[[TaskSpec, WorkerResult], bool], commit: Callable[[TaskSpec, WorkerResult], str], review: Callable[[TaskSpec, str, WorkerLease], tuple[str, ...]], repair: Callable[[TaskSpec, WorkerResult, WorkerLease], WorkerResult] | None = None, max_steps: int | None = None, authorized: Callable[[], bool] | None = None) -> dict[str, Any]:
+        self._enforce_safety()
         state = self._load()
         steps = 0
         while max_steps is None or steps < max_steps:
