@@ -6,7 +6,8 @@ from types import MappingProxyType
 import pytest
 
 from swarm.supervisor_state import ControlFile, ResumeState, SupervisorState
-from swarm.task_selection import TaskSelectionError, select_ready_task
+from swarm.task_selection import TaskSelectionError, load_validated_work_items, select_ready_task
+from swarm.control_manifest import derive_control_transition_tasks
 
 
 def _task(task_id: str, *, state: str = "READY", priority: str = "P0", dependencies: str = "none", requirement: str = "Core supervisor") -> str:
@@ -62,6 +63,28 @@ def test_completed_dependencies_make_ready_task_executable():
 
     assert decision.selected is not None
     assert decision.selected.task_id == "FWQ-0002"
+
+
+def test_optional_executable_metadata_is_preserved_for_ready_work():
+    task = _task("FWQ-0011", dependencies="FWQ-0010") + "\n" + "\n".join((
+        "- Target path: swarm/work_checkpoint.py",
+        "- Allowed paths: swarm/work_checkpoint.py, tests/test_work_checkpoint.py",
+        "- Test command: python3 -m pytest -q tests/test_work_checkpoint.py",
+        "- Expected behavior: implement deterministic checkpoint reconciliation",
+        "- Failing assertion: stale checkpoint evidence is accepted",
+    ))
+    state = _state(_task("FWQ-0010", state="DONE"), task)
+    item = load_validated_work_items(state)["FWQ-0011"]
+    assert item.target_path == "swarm/work_checkpoint.py"
+    assert item.allowed_paths == ("swarm/work_checkpoint.py", "tests/test_work_checkpoint.py")
+    assert item.test_command == ("python3", "-m", "pytest", "-q", "tests/test_work_checkpoint.py")
+
+
+def test_control_manifest_emits_selected_ready_task_first():
+    state = _state(_task("FWQ-0010", state="DONE"), _task("FWQ-0011", dependencies="FWQ-0010"), _task("FWQ-0009", state="REVIEW"))
+    tasks = derive_control_transition_tasks(Path("/repo"), state)
+    assert tasks[0].task_id == "FWQ-0011"
+    assert tasks[0].initial_state == "READY"
 
 
 @pytest.mark.parametrize(
