@@ -285,6 +285,17 @@ def test_review_resolver_preserves_provider_unavailability_as_external(tmp_path:
     assert ExactReviewAdapter("review").resolve_review(task, lease) == "EXTERNAL"
 
 
+def test_codex_adapter_cleans_generated_mailbox_artifacts(tmp_path: Path):
+    from swarm.autonomous_adapters import CodexTaskAdapter
+
+    mailbox = tmp_path / ".swarm"
+    mailbox.mkdir()
+    (mailbox / "codex-result-codex-fwq-0010.json").write_text("{}", encoding="utf-8")
+    (mailbox / "codex-result-codex-fwq-0010.schema.json").write_text("{}", encoding="utf-8")
+    CodexTaskAdapter._remove_mailbox_artifacts(tmp_path, "codex-fwq-0010")
+    assert not mailbox.exists()
+
+
 def test_runner_stops_only_for_explicit_external_review_resource_blocker(tmp_path: Path):
     task = TaskSpec("FWQ-0009", "Core review", "review", initial_state="REVIEW", review_disposition="EXTERNAL")
     runner = AutonomousOrchestrator(tmp_path / "run.json", tmp_path / "repo", (task,))

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import shutil
 import subprocess
 from pathlib import Path
 from typing import Any
@@ -26,7 +27,17 @@ class CodexTaskAdapter:
         job_id = "codex-" + task.task_id.lower()
         spec = WriterInvocationSpec(job_id, Path(lease.repository), Path(lease.repository), task.target_path, task.target_path, task.expected_behavior, task.failing_assertion, task.allowed_paths)
         payload = CodexAdapter(self.schema, self.limits, self.executable).run(spec, spec.prompt())
+        self._remove_mailbox_artifacts(Path(lease.repository), job_id)
         return WorkerResult(None, tuple(payload["changed_files"]), tuple(task.test_command), payload.get("summary", ""))
+
+    @staticmethod
+    def _remove_mailbox_artifacts(repository: Path, job_id: str) -> None:
+        """Keep the worker's declared Git scope free of adapter bookkeeping."""
+        mailbox = repository / ".swarm"
+        for name in (f"codex-result-{job_id}.json", f"codex-result-{job_id}.schema.json"):
+            (mailbox / name).unlink(missing_ok=True)
+        if mailbox.is_dir() and not any(mailbox.iterdir()):
+            mailbox.rmdir()
 
 
 def run_deterministic_tests(task: TaskSpec, result: WorkerResult, repository: WorkerLease | Path | str, limits: ResourceLimits | None = None) -> bool:
