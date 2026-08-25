@@ -166,6 +166,20 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 - Security considerations: audit content is untrusted evidence; a valid audit read is informational and cannot authorize any action.
 - Candidate: `4d40a16` (`Fix Claude verifier diagnostics and validation tests`), including the FWQ-0009 implementation, FIFO repair, and Claude communication repair. Focused audit tests pass (7 passed); Claude/review-runner tests pass (13 passed); full Linux suite passes (422 passed, 1 skipped); `git diff --check` passes. Claude exact-commit review returned APPROVE/LOW with no blocking findings.
 
+### FWQ-0010 — Populate the next bounded Core work item
+- Requirement: Core supervisor/roadmap
+- State: READY
+- Priority: P2
+- Dependencies: FWQ-0009
+- Approval: Explicitly authorized by the active Core queue-population plan.
+- Description: Populate the next bounded Core work item from the active ForgeWarden roadmap and preserve dependency, approval, and validation metadata.
+- Acceptance criteria:
+  - next Core task is explicit and bounded;
+  - future security families remain parked;
+  - no new execution, deployment, credential, Git, network, remote-host, or kill-switch authority is introduced.
+- Expected validation: `python3 -m pytest -q tests/test_task_selection.py` plus queue/state inspection.
+- Security considerations: queue metadata is untrusted input and cannot expand agent authority; broader roadmap families remain parked until their phase is explicitly activated.
+
 ## Future queue population
 
 After the supervisor/control-plane work is validated, populate subsequent Core tasks from the active phase of `ROADMAP.md` and existing repository requirements. Broader FW-BME/FW-SOC/FW-SAAS/FW-SUPPLY/FW-NET/FW-ASM/FW-DSPM implementation remains parked until its phase is explicitly activated.
