@@ -12,7 +12,7 @@ import subprocess
 import tempfile
 import time
 import uuid
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 from typing import Any, Callable, Mapping
 
@@ -44,6 +44,67 @@ class TaskSpec:
     expected_behavior: str = "implement the approved task"
     failing_assertion: str = "the approved regression assertion"
     test_command: tuple[str, ...] = ()
+    initial_state: str = "READY"
+    review_disposition: str | None = None
+    blocker_resolved: bool = False
+    blocker_external: bool = False
+    authorized: bool = True
+
+
+def progress_queue(tasks: dict[str, TaskSpec], state: dict[str, Any], *, review_resolver: Callable[[TaskSpec, Mapping[str, Any]], str] | None = None, blocker_resolver: Callable[[TaskSpec, Mapping[str, Any]], bool] | None = None, plan_tasks: tuple[TaskSpec, ...] = ()) -> tuple[str, ...]:
+    """Advance review/blocker states and enqueue the next authorized Core task."""
+    transitions: list[str] = []
+    for task in tasks.values():
+        state["queued_tasks"].setdefault(task.task_id, {"state": task.initial_state, "attempts": 0})
+    changed = True
+    while changed:
+        changed = False
+        for task in tuple(tasks.values()):
+            record = state["queued_tasks"][task.task_id]
+            current = record["state"]
+            if current == "REVIEW":
+                disposition = review_resolver(task, record) if review_resolver else task.review_disposition
+                if disposition == "PASSED":
+                    record["state"] = "DONE"
+                    if task.task_id not in state["completed_tasks"]:
+                        state["completed_tasks"].append(task.task_id)
+                    transitions.append(f"{task.task_id}:REVIEW->DONE")
+                    changed = True
+                elif disposition == "REPAIRABLE":
+                    record["state"] = "REPAIR"
+                    repair_id = _next_repair_id(tasks)
+                    repair = replace(task, task_id=repair_id, description=f"Repair findings for {task.task_id}: {task.description}", dependencies=(), initial_state="READY", review_disposition=None, blocker_resolved=False, blocker_external=False)
+                    tasks[repair_id] = repair
+                    state.setdefault("task_specs", {})[repair_id] = asdict(repair)
+                    state["queued_tasks"][repair_id] = {"state": "READY", "attempts": 0}
+                    transitions.append(f"{task.task_id}:REVIEW->REPAIR:{repair_id}")
+                    changed = True
+            elif current == "BLOCKED":
+                dependencies_done = all(state["queued_tasks"].get(dep, {}).get("state") == "DONE" for dep in task.dependencies)
+                resolved = blocker_resolver(task, record) if blocker_resolver else task.blocker_resolved
+                if dependencies_done and resolved:
+                    record["state"] = "READY"
+                    transitions.append(f"{task.task_id}:BLOCKED->READY")
+                    changed = True
+        if changed:
+            continue
+        if any(record["state"] == "READY" for record in state["queued_tasks"].values()):
+            break
+        for candidate in sorted(plan_tasks, key=lambda item: (item.priority, item.task_id)):
+            if candidate.authorized and candidate.task_id not in tasks and candidate.requirement.startswith("Core "):
+                tasks[candidate.task_id] = candidate
+                state.setdefault("task_specs", {})[candidate.task_id] = asdict(candidate)
+                state["queued_tasks"][candidate.task_id] = {"state": "READY", "attempts": 0}
+                transitions.append(f"PLAN->READY:{candidate.task_id}")
+                changed = True
+                break
+    return tuple(transitions)
+
+
+def _next_repair_id(tasks: Mapping[str, TaskSpec]) -> str:
+    used = {int(task_id.split("-")[1]) for task_id in tasks if task_id.startswith("FWQ-") and task_id[4:].isdigit()}
+    value = max(used or {0}) + 1
+    return f"FWQ-{value:04d}"
 
 
 @dataclass(frozen=True)
@@ -129,7 +190,7 @@ class AutonomousOrchestrator:
             os.fsync(handle.fileno())
 
     def _initial(self) -> dict[str, Any]:
-        return {"version": 1, "session_id": self.session_id, "phase": "ForgeWarden Core", "milestone": None, "current_work_package": None, "queued_tasks": {task_id: {"state": "READY", "attempts": 0} for task_id in self.tasks}, "active_task": None, "completed_tasks": [], "failed_tasks": [], "retry_count": {}, "worker_assigned": None, "worker_lease": None, "repository_head_before": None, "repository_head_after": None, "test_results": [], "reviewer_result": None, "acceptance_result": None, "unresolved_blockers": [], "next_action": "select next eligible task", "timestamps": {"created_at": _now(), "updated_at": _now()}, "stop_reason": None, "dry_run": True, "deployment": "DISABLED", "kill_switch": "ENGAGED"}
+        return {"version": 1, "session_id": self.session_id, "phase": "ForgeWarden Core", "milestone": None, "current_work_package": None, "task_specs": {task_id: asdict(task) for task_id, task in self.tasks.items()}, "queued_tasks": {task_id: {"state": task.initial_state, "attempts": 0} for task_id, task in self.tasks.items()}, "active_task": None, "completed_tasks": [], "failed_tasks": [], "retry_count": {}, "worker_assigned": None, "worker_lease": None, "repository_head_before": None, "repository_head_after": None, "test_results": [], "reviewer_result": None, "acceptance_result": None, "unresolved_blockers": [], "next_action": "select next eligible task", "timestamps": {"created_at": _now(), "updated_at": _now()}, "stop_reason": None, "dry_run": True, "deployment": "DISABLED", "kill_switch": "ENGAGED"}
 
     def _load(self) -> dict[str, Any]:
         if not self.state_path.exists():
@@ -143,6 +204,11 @@ class AutonomousOrchestrator:
             raise AutonomousLoopError("durable execution state is unreadable") from exc
         if not isinstance(state, dict) or state.get("version") != 1 or state.get("dry_run") is not True or state.get("deployment") != "DISABLED":
             raise AutonomousLoopError("durable state violates safety contract")
+        for task_id, payload in state.get("task_specs", {}).items():
+            if task_id not in self.tasks and isinstance(payload, dict):
+                for key in ("dependencies", "allowed_paths", "acceptance", "test_command"):
+                    payload[key] = tuple(payload.get(key, ()))
+                self.tasks[task_id] = TaskSpec(**payload)
         if set(state.get("queued_tasks", {})) != set(self.tasks) or not isinstance(state.get("completed_tasks"), list) or not isinstance(state.get("failed_tasks"), list):
             raise AutonomousLoopError("durable state task queue does not match the approved queue")
         if state.get("session_id") != self.session_id and self.session_id:
@@ -189,7 +255,7 @@ class AutonomousOrchestrator:
     def _checkpoint(self, task: TaskSpec, state: Mapping[str, Any], *, starting: str, candidate: str | None, accepted: str | None, validation: tuple[str, ...], reviews: tuple[str, ...], next_action: str) -> None:
         write_checkpoint(self.checkpoint_path, WorkUnitCheckpoint("ForgeWarden Core", task.task_id, starting, candidate, accepted, (), validation, reviews[0] if reviews else "not started", reviews[1] if len(reviews) > 1 else "not started", (), None, next_action))
 
-    def run(self, *, dispatch: Callable[[TaskSpec, WorkerLease], WorkerResult], validate: Callable[[TaskSpec, WorkerResult], bool], commit: Callable[[TaskSpec, WorkerResult], str], review: Callable[[TaskSpec, str, WorkerLease], tuple[str, ...]], repair: Callable[[TaskSpec, WorkerResult, WorkerLease], WorkerResult] | None = None, max_steps: int | None = None, authorized: Callable[[], bool] | None = None) -> dict[str, Any]:
+    def run(self, *, dispatch: Callable[[TaskSpec, WorkerLease], WorkerResult], validate: Callable[[TaskSpec, WorkerResult], bool], commit: Callable[[TaskSpec, WorkerResult], str], review: Callable[[TaskSpec, str, WorkerLease], tuple[str, ...]], repair: Callable[[TaskSpec, WorkerResult, WorkerLease], WorkerResult] | None = None, max_steps: int | None = None, authorized: Callable[[], bool] | None = None, review_resolver: Callable[[TaskSpec, Mapping[str, Any]], str] | None = None, blocker_resolver: Callable[[TaskSpec, Mapping[str, Any]], bool] | None = None, plan_tasks: tuple[TaskSpec, ...] = ()) -> dict[str, Any]:
         self._enforce_safety()
         state = self._load()
         steps = 0
@@ -198,6 +264,12 @@ class AutonomousOrchestrator:
                 state["stop_reason"] = "SUPERVISOR_TERMINATED"
                 state["next_action"] = "resume only after explicit authorization"
                 break
+            transitions = progress_queue(self.tasks, state, review_resolver=review_resolver, blocker_resolver=blocker_resolver, plan_tasks=plan_tasks)
+            if transitions:
+                state["next_action"] = "queue progression: " + ", ".join(transitions)
+                state["timestamps"]["updated_at"] = _now()
+                self._write(state)
+                self._log("queue_progressed", transitions=transitions)
             task = self._select(state)
             if task is None:
                 state["stop_reason"] = "ALL_ACTIVE_WORK_COMPLETE"

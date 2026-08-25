@@ -120,13 +120,29 @@ def main() -> int:
                     allowed_paths=tuple(item.get("allowed_paths", ())), acceptance=tuple(item.get("acceptance", ())),
                     retry_budget=int(item.get("retry_budget", 1)), worker_type=str(item.get("worker_type", "CODEX")),
                     target_path=item.get("target_path"), expected_behavior=str(item.get("expected_behavior", "implement the approved task")),
-                    failing_assertion=str(item.get("failing_assertion", "the approved regression assertion")), test_command=tuple(item.get("test_command", ())),
+                        failing_assertion=str(item.get("failing_assertion", "the approved regression assertion")), test_command=tuple(item.get("test_command", ())),
+                        initial_state=str(item.get("initial_state", "READY")), review_disposition=item.get("review_disposition"),
+                        blocker_resolved=bool(item.get("blocker_resolved", False)), blocker_external=bool(item.get("blocker_external", False)), authorized=bool(item.get("authorized", True)),
+                    ))
+            plan_tasks = []
+            for item in manifest.get("plan_tasks", []):
+                if not isinstance(item, dict):
+                    raise AutonomousLoopError("plan task entries must be objects")
+                plan_tasks.append(TaskSpec(
+                    task_id=item["task_id"], requirement=item["requirement"], description=item["description"],
+                    dependencies=tuple(item.get("dependencies", ())), priority=int(item.get("priority", 0)),
+                    allowed_paths=tuple(item.get("allowed_paths", ())), acceptance=tuple(item.get("acceptance", ())),
+                    retry_budget=int(item.get("retry_budget", 1)), worker_type=str(item.get("worker_type", "CODEX")),
+                    target_path=item.get("target_path"), expected_behavior=str(item.get("expected_behavior", "implement the approved task")),
+                    failing_assertion=str(item.get("failing_assertion", "the approved regression assertion")), test_command=tuple(item.get("test_command", ())), authorized=bool(item.get("authorized", True)),
                 ))
             control_files = (args.repository / "AGENTS.md", args.repository / "WORK_QUEUE.md", args.repository / "SWARM_STATUS.md")
             if all(path.is_file() for path in control_files):
                 control_state = load_supervisor_state(args.repository)
                 selected = select_ready_task(control_state).selected
-                if selected is None or not tasks or tasks[0].task_id != selected.task_id:
+                queue_mentions_task = bool(tasks) and f"### {tasks[0].task_id} —" in control_state.files["WORK_QUEUE.md"].content
+                transition_only = bool(tasks) and tasks[0].initial_state in {"REVIEW", "BLOCKED"} and queue_mentions_task
+                if (selected is None and not transition_only) or (selected is not None and (not tasks or tasks[0].task_id != selected.task_id)):
                     raise AutonomousLoopError("task manifest does not begin with the authoritative eligible queue task")
             git_controller = GitCheckpointController(args.repository)
             git_controller.ensure_clean()
@@ -140,7 +156,7 @@ def main() -> int:
             codex = CodexTaskAdapter(Path(__file__).resolve().parents[1] / "schemas/codex-result.schema.json", args.codex_executable)
             reviewer = ExactReviewAdapter(str(manifest.get("review_context", "ForgeWarden exact-commit review")), allow_external_review=args.allow_external_review)
             orchestrator = AutonomousOrchestrator(args.state_dir / "autonomous-loop.json", args.repository, tuple(tasks), checkpoint_path=args.state_dir / "work-checkpoint.json", audit_path=args.state_dir / "execution-log.jsonl")
-            result = orchestrator.run(dispatch=codex.dispatch, validate=lambda task, value: run_deterministic_tests(task, value, args.repository), commit=lambda task, value: git_controller.commit_worker_changes(task, value), review=lambda task, commit, lease: reviewer.review(task, commit, lease), max_steps=args.max_steps)
+            result = orchestrator.run(dispatch=codex.dispatch, validate=lambda task, value: run_deterministic_tests(task, value, args.repository), commit=lambda task, value: git_controller.commit_worker_changes(task, value), review=lambda task, commit, lease: reviewer.review(task, commit, lease), max_steps=args.max_steps, plan_tasks=tuple(plan_tasks))
             print(json.dumps(result, indent=2, sort_keys=True))
             return 0
         except (OSError, ValueError, KeyError, TypeError, json.JSONDecodeError, AutonomousLoopError, SwarmError) as exc:

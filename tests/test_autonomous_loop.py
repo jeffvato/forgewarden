@@ -6,7 +6,7 @@ import subprocess
 import time
 from pathlib import Path
 
-from swarm.autonomous_loop import AutonomousOrchestrator, GitCheckpointController, TaskSpec, WorkerLease, WorkerResult
+from swarm.autonomous_loop import AutonomousOrchestrator, GitCheckpointController, TaskSpec, WorkerLease, WorkerResult, progress_queue
 from swarm.autonomous_adapters import run_deterministic_tests
 from swarm.cli import main
 from swarm.review_handoff import ReviewResult
@@ -205,3 +205,52 @@ def test_cli_run_refuses_manifest_that_bypasses_authoritative_queue(tmp_path: Pa
     monkeypatch.setattr(sys, "argv", ["swarm", "autonomous-loop-run", "--repository", str(tmp_path), "--task-manifest", str(manifest), "--state-dir", str(tmp_path.parent / f"{tmp_path.name}-state"), "--max-steps", "0"])
     assert main() == 1
     assert "authoritative eligible queue task" in capsys.readouterr().out
+
+
+def test_review_pass_promotes_task_and_unlocks_dependency():
+    tasks = {
+        "FWQ-0001": TaskSpec("FWQ-0001", "Core review", "review", initial_state="REVIEW", review_disposition="PASSED"),
+        "FWQ-0002": TaskSpec("FWQ-0002", "Core next", "next", dependencies=("FWQ-0001",), initial_state="READY"),
+    }
+    state = {"queued_tasks": {"FWQ-0001": {"state": "REVIEW", "attempts": 0}, "FWQ-0002": {"state": "READY", "attempts": 0}}, "completed_tasks": [], "task_specs": {}}
+    transitions = progress_queue(tasks, state)
+    assert transitions == ("FWQ-0001:REVIEW->DONE",)
+    assert state["queued_tasks"]["FWQ-0001"]["state"] == "DONE"
+
+
+def test_repairable_review_creates_ready_repair_task():
+    tasks = {"FWQ-0009": TaskSpec("FWQ-0009", "Core review", "audit", initial_state="REVIEW", review_disposition="REPAIRABLE")}
+    state = {"queued_tasks": {"FWQ-0009": {"state": "REVIEW", "attempts": 0}}, "completed_tasks": [], "task_specs": {}}
+    transitions = progress_queue(tasks, state)
+    assert transitions == ("FWQ-0009:REVIEW->REPAIR:FWQ-0010",)
+    assert state["queued_tasks"]["FWQ-0010"]["state"] == "READY"
+
+
+def test_internal_blocker_resolution_and_plan_derivation_prevent_stall():
+    tasks = {"FWQ-0001": TaskSpec("FWQ-0001", "Core blocked", "blocked", initial_state="BLOCKED", blocker_resolved=True)}
+    plan = (TaskSpec("FWQ-0011", "Core planned", "next authorized work", priority=2),)
+    state = {"queued_tasks": {"FWQ-0001": {"state": "BLOCKED", "attempts": 0}}, "completed_tasks": [], "task_specs": {}}
+    transitions = progress_queue(tasks, state, plan_tasks=plan)
+    assert transitions == ("FWQ-0001:BLOCKED->READY",)
+    assert state["queued_tasks"]["FWQ-0001"]["state"] == "READY"
+    state["queued_tasks"]["FWQ-0001"]["state"] = "DONE"
+    state["completed_tasks"].append("FWQ-0001")
+    tasks.pop("FWQ-0001")
+    transitions = progress_queue(tasks, state, plan_tasks=plan)
+    assert transitions == ("PLAN->READY:FWQ-0011",)
+
+
+def test_runner_advances_review_only_queue_and_executes_derived_plan_task(tmp_path: Path):
+    review_task = TaskSpec("FWQ-0009", "Core review", "reviewed package", initial_state="REVIEW", review_disposition="PASSED")
+    plan_task = TaskSpec("FWQ-0010", "Core follow-up", "next package", priority=1)
+    runner = AutonomousOrchestrator(tmp_path / "run.json", tmp_path / "repo", (review_task,))
+    dispatched: list[str] = []
+    state = runner.run(
+        dispatch=lambda task, lease: (dispatched.append(task.task_id) or WorkerResult(SHA_A, ("swarm/next.py",), ("pytest",))),
+        validate=lambda task, result: True,
+        commit=lambda task, result: result.candidate_commit or SHA_A,
+        review=lambda task, commit, lease: ("APPROVED", "LOW"),
+        plan_tasks=(plan_task,),
+    )
+    assert dispatched == ["FWQ-0010"]
+    assert state["completed_tasks"] == ["FWQ-0009", "FWQ-0010"]
