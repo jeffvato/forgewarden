@@ -8,6 +8,7 @@ from pathlib import Path
 
 from swarm.autonomous_loop import AutonomousOrchestrator, GitCheckpointController, TaskSpec, WorkerLease, WorkerResult, progress_queue
 from swarm.autonomous_adapters import run_deterministic_tests
+from swarm.plan_derivation import derive_next_core_task
 from swarm.cli import main
 from swarm.review_handoff import ReviewResult
 from test_supervisor_state import _write_control_files
@@ -254,3 +255,13 @@ def test_runner_advances_review_only_queue_and_executes_derived_plan_task(tmp_pa
     )
     assert dispatched == ["FWQ-0010"]
     assert state["completed_tasks"] == ["FWQ-0009", "FWQ-0010"]
+
+
+def test_plan_derivation_creates_only_bounded_core_queue_population_task(tmp_path: Path):
+    (tmp_path / "ROADMAP.md").write_text("# ForgeWarden Roadmap\n## Current implementation priority\nForgeWarden Core\n## Phase discipline\n", encoding="utf-8")
+    (tmp_path / "WORK_QUEUE.md").write_text("# ForgeWarden Work Queue\n## Future queue population\n", encoding="utf-8")
+    task = derive_next_core_task(tmp_path, {"FWQ-0001", "FWQ-0009"})
+    assert task is not None
+    assert task.task_id == "FWQ-0010"
+    assert task.requirement.startswith("Core ")
+    assert task.allowed_paths == ("WORK_QUEUE.md",)

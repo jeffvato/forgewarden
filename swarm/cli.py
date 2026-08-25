@@ -25,6 +25,7 @@ from .autonomous_loop import AutonomousLoopError, AutonomousOrchestrator, GitChe
 from .autonomous_adapters import CodexTaskAdapter, ExactReviewAdapter, run_deterministic_tests
 from .supervisor_state import load_supervisor_state
 from .task_selection import select_ready_task
+from .plan_derivation import derive_next_core_task
 
 
 def main() -> int:
@@ -136,6 +137,10 @@ def main() -> int:
                     target_path=item.get("target_path"), expected_behavior=str(item.get("expected_behavior", "implement the approved task")),
                     failing_assertion=str(item.get("failing_assertion", "the approved regression assertion")), test_command=tuple(item.get("test_command", ())), authorized=bool(item.get("authorized", True)),
                 ))
+            if not plan_tasks:
+                plan_task = derive_next_core_task(args.repository, {task.task_id for task in tasks})
+                if plan_task is not None:
+                    plan_tasks.append(plan_task)
             control_files = (args.repository / "AGENTS.md", args.repository / "WORK_QUEUE.md", args.repository / "SWARM_STATUS.md")
             if all(path.is_file() for path in control_files):
                 control_state = load_supervisor_state(args.repository)
