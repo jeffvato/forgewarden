@@ -40,6 +40,10 @@ class TaskSpec:
     acceptance: tuple[str, ...] = ()
     retry_budget: int = 1
     worker_type: str = "CODEX"
+    target_path: str | None = None
+    expected_behavior: str = "implement the approved task"
+    failing_assertion: str = "the approved regression assertion"
+    test_command: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)

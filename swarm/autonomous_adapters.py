@@ -1,0 +1,65 @@
+"""Adapters that bind the durable loop to ForgeWarden's existing workers."""
+from __future__ import annotations
+
+import hashlib
+import subprocess
+from pathlib import Path
+from typing import Any
+
+from .adapters import CodexAdapter, ResourceLimits, WriterInvocationSpec
+from .autonomous_loop import GitCheckpointController, TaskSpec, WorkerLease, WorkerResult
+from .review_handoff import ReviewResult
+from .review_runner import run_review_cycle
+
+
+class CodexTaskAdapter:
+    """Dispatch Codex in the leased checkout; Codex never creates Git history."""
+
+    def __init__(self, schema: Path, executable: str, limits: ResourceLimits | None = None):
+        self.schema = Path(schema)
+        self.executable = executable
+        self.limits = limits or ResourceLimits()
+
+    def dispatch(self, task: TaskSpec, lease: WorkerLease) -> WorkerResult:
+        if not task.target_path:
+            raise ValueError(f"{task.task_id} lacks an explicit Codex target path")
+        job_id = "codex-" + task.task_id.lower()
+        spec = WriterInvocationSpec(job_id, Path(lease.repository), Path(lease.repository), task.target_path, task.target_path, task.expected_behavior, task.failing_assertion, task.allowed_paths)
+        payload = CodexAdapter(self.schema, self.limits, self.executable).run(spec, spec.prompt())
+        return WorkerResult(None, tuple(payload["changed_files"]), tuple(task.test_command), payload.get("summary", ""))
+
+
+def run_deterministic_tests(task: TaskSpec, result: WorkerResult, lease: WorkerLease, limits: ResourceLimits | None = None) -> bool:
+    """Run only the task's explicit, shell-free validation command."""
+    if not task.test_command:
+        return False
+    if any(not item for item in task.test_command):
+        return False
+    completed = subprocess.run(list(task.test_command), cwd=lease.repository, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=False, timeout=(limits or ResourceLimits()).timeout_seconds)
+    return completed.returncode == 0
+
+
+class ExactReviewAdapter:
+    """Use the existing independent review runner and convert its evidence."""
+
+    def __init__(self, context: str, *, allow_external_review: bool = False):
+        self.context = context
+        self.allow_external_review = allow_external_review
+
+    def review(self, task: TaskSpec, commit: str, lease: WorkerLease) -> dict[str, ReviewResult]:
+        job_id = "phase2a-" + hashlib.sha256(task.task_id.encode("utf-8")).hexdigest()[:24]
+        result = run_review_cycle(Path(lease.repository), commit, job_id, self.context, allow_external_review=self.allow_external_review)
+        if result["state"] != "APPROVED":
+            raise RuntimeError("independent exact-commit review did not approve")
+        reviews: dict[str, ReviewResult] = {}
+        for item in result["reviews"]:
+            payload = item.get("result")
+            if item.get("state") != "APPROVED" or not isinstance(payload, dict):
+                raise RuntimeError("review evidence is incomplete")
+            role = str(item["provider"])
+            reviews[role] = ReviewResult(role, commit, tuple(str(value) for value in payload.get("blocking_findings", [])), str(payload["risk"]), "APPROVED", str(payload["reasoning_summary"]))
+        return reviews
+
+
+def commit_with_trusted_git(task: TaskSpec, result: WorkerResult, lease: WorkerLease) -> str:
+    return GitCheckpointController(Path(lease.repository)).commit_worker_changes(task, result)

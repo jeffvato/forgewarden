@@ -7,6 +7,7 @@ import time
 from pathlib import Path
 
 from swarm.autonomous_loop import AutonomousOrchestrator, GitCheckpointController, TaskSpec, WorkerLease, WorkerResult
+from swarm.autonomous_adapters import run_deterministic_tests
 from swarm.cli import main
 from swarm.review_handoff import ReviewResult
 from test_supervisor_state import _write_control_files
@@ -167,3 +168,10 @@ def test_loop_accepts_only_exact_commit_review_contract(tmp_path: Path):
     )
     assert state["completed_tasks"] == ["FWQ-0001"]
     assert state["reviewer_result"] == ["CLAUDE:APPROVED:LOW", "GEMINI:APPROVED:LOW"]
+
+
+def test_real_adapter_validation_requires_explicit_shell_free_test_command(tmp_path: Path):
+    task = TaskSpec("FWQ-0001", "Core test", "test", test_command=("python3", "-c", "print('ok')"))
+    lease = WorkerLease("lease", task.task_id, "session", str(tmp_path), (), "TEST", (), time.time() + 60)
+    assert run_deterministic_tests(task, WorkerResult(None, (), task.test_command), lease)
+    assert not run_deterministic_tests(TaskSpec("FWQ-0001", "Core test", "test"), WorkerResult(None, (), ()), lease)
