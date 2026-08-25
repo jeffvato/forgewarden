@@ -18,6 +18,7 @@ from typing import Any, Callable, Mapping
 
 from .work_checkpoint import WorkUnitCheckpoint, write_checkpoint
 from .policy_gate import validate_safety_evidence
+from .review_handoff import ReviewResult, complete_review_cycle, create_review_cycle, record_review
 
 _SHA = re.compile(r"^[0-9a-fA-F]{40}$")
 _TASK = re.compile(r"^FWQ-[0-9]{4}$")
@@ -218,9 +219,21 @@ class AutonomousOrchestrator:
                 candidate = commit(task, result)
                 if not _SHA.fullmatch(candidate) or (result.candidate_commit is not None and candidate.lower() != result.candidate_commit.lower()):
                     raise AutonomousLoopError("trusted commit did not match worker candidate")
-                reviews = tuple(review(task, candidate, lease))
-                if len(reviews) < 2:
-                    raise AutonomousLoopError("independent reviewer results are incomplete")
+                review_payload = review(task, candidate, lease)
+                if isinstance(review_payload, Mapping):
+                    cycle = create_review_cycle(candidate)
+                    for value in review_payload.values():
+                        if not isinstance(value, ReviewResult):
+                            raise AutonomousLoopError("reviewer returned invalid exact-commit evidence")
+                        cycle = record_review(cycle, value)
+                    complete_review_cycle(cycle)
+                    reviews = tuple(f"{role}:{value.disposition}:{value.severity}" for role, value in sorted(cycle.reviews.items()))
+                    reviews_approved = True
+                else:
+                    reviews = tuple(review_payload)
+                    if len(reviews) < 2:
+                        raise AutonomousLoopError("independent reviewer results are incomplete")
+                    reviews_approved = False
                 if repair and any(item.upper() not in {"APPROVED", "APPROVE", "LOW"} for item in reviews):
                     if attempts >= task.retry_budget:
                         raise AutonomousLoopError("review repair budget exhausted")
@@ -231,7 +244,7 @@ class AutonomousOrchestrator:
                     if not _SHA.fullmatch(candidate) or (result.candidate_commit is not None and candidate.lower() != result.candidate_commit.lower()):
                         raise AutonomousLoopError("repair commit did not match candidate")
                     reviews = tuple(review(task, candidate, lease))
-                if any(item.upper() not in {"APPROVED", "APPROVE", "LOW"} for item in reviews):
+                if not reviews_approved and any(item.upper() not in {"APPROVED", "APPROVE", "LOW"} for item in reviews):
                     raise AutonomousLoopError("review rejected candidate")
                 self._checkpoint(task, state, starting=state.get("repository_head_before") or candidate, candidate=candidate, accepted=candidate, validation=result.tests, reviews=reviews, next_action="select next eligible task")
                 record["state"] = "DONE"; state["completed_tasks"].append(task.task_id); state["repository_head_after"] = candidate; state["test_results"] = list(result.tests); state["reviewer_result"] = list(reviews); state["acceptance_result"] = "PASSED"

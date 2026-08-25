@@ -8,6 +8,7 @@ from pathlib import Path
 
 from swarm.autonomous_loop import AutonomousOrchestrator, GitCheckpointController, TaskSpec, WorkerLease, WorkerResult
 from swarm.cli import main
+from swarm.review_handoff import ReviewResult
 from test_supervisor_state import _write_control_files
 
 
@@ -147,3 +148,22 @@ def test_trusted_git_controller_commits_uncommitted_worker_evidence(tmp_path: Pa
     accepted = controller.commit_worker_changes(task, result)
     assert len(accepted) == 40
     assert controller.head() == accepted
+
+
+def test_loop_accepts_only_exact_commit_review_contract(tmp_path: Path):
+    runner = AutonomousOrchestrator(tmp_path / "run.json", tmp_path / "repo", (TaskSpec("FWQ-0001", "Core review", "review"),))
+
+    def reviews(task, commit, lease):
+        return {
+            "CLAUDE": ReviewResult("CLAUDE", commit, (), "LOW", "APPROVED", "exact review"),
+            "GEMINI": ReviewResult("GEMINI", commit, (), "LOW", "APPROVED", "exact review"),
+        }
+
+    state = runner.run(
+        dispatch=lambda task, lease: WorkerResult(SHA_A, ("swarm/review.py",), ("pytest",)),
+        validate=lambda task, result: True,
+        commit=lambda task, result: result.candidate_commit or SHA_A,
+        review=reviews,
+    )
+    assert state["completed_tasks"] == ["FWQ-0001"]
+    assert state["reviewer_result"] == ["CLAUDE:APPROVED:LOW", "GEMINI:APPROVED:LOW"]
