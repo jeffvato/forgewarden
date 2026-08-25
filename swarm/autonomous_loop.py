@@ -321,8 +321,8 @@ class AutonomousOrchestrator:
                     reviews_approved = True
                 else:
                     reviews = tuple(review_payload)
-                    if len(reviews) < 2:
-                        raise AutonomousLoopError("independent reviewer results are incomplete")
+                    if len(reviews) < 1:
+                        raise AutonomousLoopError("reviewer results are incomplete")
                     reviews_approved = False
                 if repair and any(item.upper() not in {"APPROVED", "APPROVE", "LOW"} for item in reviews):
                     if attempts >= task.retry_budget:

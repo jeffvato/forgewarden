@@ -95,7 +95,7 @@ def run_review_cycle(
     gemini_runner: Callable[..., dict[str, Any]] | None = None,
     reviewers: tuple[str, ...] = ("CLAUDE", "GEMINI"),
 ) -> dict[str, Any]:
-    """Run both independent reviewers without changing the repository.
+    """Run the configured independent reviewers without changing the repository.
 
     Provider failures are captured as ``UNAVAILABLE`` and never converted into
     approval. The overall cycle is approved only when both providers return a
