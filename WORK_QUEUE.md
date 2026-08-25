@@ -196,6 +196,22 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 - Expected validation: focused checkpoint-reconciliation tests, repository suite, schema validation, and `git diff --check`.
 - Security considerations: checkpoint state is untrusted evidence, not authority; reconciliation cannot authorize deployment, clear a kill switch, or expand agent scope.
 
+### FWQ-0012 — Deterministic Core queue-state reconciliation
+- Requirement: Core supervisor/roadmap
+- State: READY
+- Priority: P2
+- Dependencies: FWQ-0011
+- Approval: Explicitly authorized by the active Core queue-population plan.
+- Description: Reconcile the active Core queue against completed milestones and preserve one deterministic, eligible READY task without expanding execution authority.
+- Acceptance criteria:
+  - queue-state reconciliation is deterministic and bounded to `WORK_QUEUE.md`;
+  - completed, blocked, and dependency-incomplete tasks are not made eligible;
+  - the next Core task remains explicit, approved, and independently actionable;
+  - no execution, deployment, credential, Git, network, remote-host, or kill-switch authority is introduced;
+  - broader security families remain parked until their phase is explicitly activated.
+- Expected validation: queue/state inspection, task-selection validation, and `git diff --check`.
+- Security considerations: queue metadata is untrusted evidence, not authority; reconciliation cannot authorize deployment, clear a kill switch, or expand agent scope.
+
 ## Future queue population
 
 After the supervisor/control-plane work is validated, populate subsequent Core tasks from the active phase of `ROADMAP.md` and existing repository requirements. Broader FW-BME/FW-SOC/FW-SAAS/FW-SUPPLY/FW-NET/FW-ASM/FW-DSPM implementation remains parked until its phase is explicitly activated.
