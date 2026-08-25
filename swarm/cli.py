@@ -23,6 +23,8 @@ from .console import serve as serve_console
 from .review_runner import read_context, render_result, run_review_cycle
 from .autonomous_loop import AutonomousLoopError, AutonomousOrchestrator, GitCheckpointController, TaskSpec
 from .autonomous_adapters import CodexTaskAdapter, ExactReviewAdapter, run_deterministic_tests
+from .supervisor_state import load_supervisor_state
+from .task_selection import select_ready_task
 
 
 def main() -> int:
@@ -80,7 +82,6 @@ def main() -> int:
         if not args.repository:
             parser.error("autonomous-loop-status requires --repository")
         try:
-            from .supervisor_state import load_supervisor_state
             state = load_supervisor_state(args.repository)
             selection = __import__("swarm.task_selection", fromlist=["select_ready_task"]).select_ready_task(state)
             durable_path = args.state_dir / "autonomous-loop.json"
@@ -121,6 +122,12 @@ def main() -> int:
                     target_path=item.get("target_path"), expected_behavior=str(item.get("expected_behavior", "implement the approved task")),
                     failing_assertion=str(item.get("failing_assertion", "the approved regression assertion")), test_command=tuple(item.get("test_command", ())),
                 ))
+            control_files = (args.repository / "AGENTS.md", args.repository / "WORK_QUEUE.md", args.repository / "SWARM_STATUS.md")
+            if all(path.is_file() for path in control_files):
+                control_state = load_supervisor_state(args.repository)
+                selected = select_ready_task(control_state).selected
+                if selected is None or not tasks or tasks[0].task_id != selected.task_id:
+                    raise AutonomousLoopError("task manifest does not begin with the authoritative eligible queue task")
             git_controller = GitCheckpointController(args.repository)
             git_controller.ensure_clean()
             try:

@@ -190,3 +190,18 @@ def test_cli_autonomous_loop_run_persists_without_dispatch_when_step_bound_is_ze
     payload = json.loads(capsys.readouterr().out)
     assert payload["stop_reason"] == "STEP_BOUND_REACHED"
     assert (state_dir / "autonomous-loop.json").is_file()
+
+
+def test_cli_run_refuses_manifest_that_bypasses_authoritative_queue(tmp_path: Path, capsys, monkeypatch):
+    _write_control_files(tmp_path)
+    status = tmp_path / "SWARM_STATUS.md"
+    status.write_text(status.read_text(encoding="utf-8").replace("## Current state\n", "## Current state\n- Active phase: ForgeWarden Core\n"), encoding="utf-8")
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    (tmp_path / "allowed.py").write_text("value = 1\n", encoding="utf-8")
+    subprocess.run(["git", "-C", str(tmp_path), "add", "."], check=True)
+    subprocess.run(["git", "-C", str(tmp_path), "-c", "user.name=Test", "-c", "user.email=test@example.test", "commit", "-qm", "base"], check=True)
+    manifest = tmp_path.parent / f"{tmp_path.name}-bad-tasks.json"
+    manifest.write_text(json.dumps({"tasks": [{"task_id": "FWQ-0002", "requirement": "Core test", "description": "bypass", "target_path": "allowed.py", "allowed_paths": ["allowed.py"]}]}), encoding="utf-8")
+    monkeypatch.setattr(sys, "argv", ["swarm", "autonomous-loop-run", "--repository", str(tmp_path), "--task-manifest", str(manifest), "--state-dir", str(tmp_path.parent / f"{tmp_path.name}-state"), "--max-steps", "0"])
+    assert main() == 1
+    assert "authoritative eligible queue task" in capsys.readouterr().out
