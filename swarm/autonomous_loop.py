@@ -49,6 +49,8 @@ class TaskSpec:
     blocker_resolved: bool = False
     blocker_external: bool = False
     authorized: bool = True
+    review_commit: str | None = None
+    review_context: str = "ForgeWarden exact-commit review"
 
 
 def progress_queue(tasks: dict[str, TaskSpec], state: dict[str, Any], *, review_resolver: Callable[[TaskSpec, Mapping[str, Any]], str] | None = None, blocker_resolver: Callable[[TaskSpec, Mapping[str, Any]], bool] | None = None, plan_tasks: tuple[TaskSpec, ...] = ()) -> tuple[str, ...]:

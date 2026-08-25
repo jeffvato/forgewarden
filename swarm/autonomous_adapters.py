@@ -61,6 +61,15 @@ class ExactReviewAdapter:
             reviews[role] = ReviewResult(role, commit, tuple(str(value) for value in payload.get("blocking_findings", [])), str(payload["risk"]), "APPROVED", str(payload["reasoning_summary"]))
         return reviews
 
+    def resolve_review(self, task: TaskSpec, lease: WorkerLease) -> str:
+        if not task.review_commit:
+            return "UNRESOLVED"
+        try:
+            self.review(task, task.review_commit, lease)
+            return "PASSED"
+        except Exception as exc:
+            return "EXTERNAL" if "unavailable" in str(exc).lower() else "REPAIRABLE"
+
 
 def commit_with_trusted_git(task: TaskSpec, result: WorkerResult, lease: WorkerLease) -> str:
     return GitCheckpointController(Path(lease.repository)).commit_worker_changes(task, result)

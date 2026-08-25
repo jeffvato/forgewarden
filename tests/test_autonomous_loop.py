@@ -7,7 +7,7 @@ import time
 from pathlib import Path
 
 from swarm.autonomous_loop import AutonomousOrchestrator, GitCheckpointController, TaskSpec, WorkerLease, WorkerResult, progress_queue
-from swarm.autonomous_adapters import run_deterministic_tests
+from swarm.autonomous_adapters import ExactReviewAdapter, run_deterministic_tests
 from swarm.plan_derivation import derive_next_core_task
 from swarm.cli import main
 from swarm.review_handoff import ReviewResult
@@ -265,3 +265,9 @@ def test_plan_derivation_creates_only_bounded_core_queue_population_task(tmp_pat
     assert task.task_id == "FWQ-0010"
     assert task.requirement.startswith("Core ")
     assert task.allowed_paths == ("WORK_QUEUE.md",)
+
+
+def test_review_resolver_does_not_promote_without_exact_candidate_evidence(tmp_path: Path):
+    task = TaskSpec("FWQ-0009", "Core review", "review", initial_state="REVIEW")
+    lease = WorkerLease("review", task.task_id, "session", str(tmp_path), (), "REVIEW", (), time.time() + 60)
+    assert ExactReviewAdapter("review").resolve_review(task, lease) == "UNRESOLVED"

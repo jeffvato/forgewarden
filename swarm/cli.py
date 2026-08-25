@@ -124,6 +124,7 @@ def main() -> int:
                         failing_assertion=str(item.get("failing_assertion", "the approved regression assertion")), test_command=tuple(item.get("test_command", ())),
                         initial_state=str(item.get("initial_state", "READY")), review_disposition=item.get("review_disposition"),
                         blocker_resolved=bool(item.get("blocker_resolved", False)), blocker_external=bool(item.get("blocker_external", False)), authorized=bool(item.get("authorized", True)),
+                        review_commit=item.get("review_commit"), review_context=str(item.get("review_context", "ForgeWarden exact-commit review")),
                     ))
             plan_tasks = []
             for item in manifest.get("plan_tasks", []):
@@ -136,6 +137,7 @@ def main() -> int:
                     retry_budget=int(item.get("retry_budget", 1)), worker_type=str(item.get("worker_type", "CODEX")),
                     target_path=item.get("target_path"), expected_behavior=str(item.get("expected_behavior", "implement the approved task")),
                     failing_assertion=str(item.get("failing_assertion", "the approved regression assertion")), test_command=tuple(item.get("test_command", ())), authorized=bool(item.get("authorized", True)),
+                    review_commit=item.get("review_commit"), review_context=str(item.get("review_context", "ForgeWarden exact-commit review")),
                 ))
             if not plan_tasks:
                 plan_task = derive_next_core_task(args.repository, {task.task_id for task in tasks})
@@ -161,7 +163,7 @@ def main() -> int:
             codex = CodexTaskAdapter(Path(__file__).resolve().parents[1] / "schemas/codex-result.schema.json", args.codex_executable)
             reviewer = ExactReviewAdapter(str(manifest.get("review_context", "ForgeWarden exact-commit review")), allow_external_review=args.allow_external_review)
             orchestrator = AutonomousOrchestrator(args.state_dir / "autonomous-loop.json", args.repository, tuple(tasks), checkpoint_path=args.state_dir / "work-checkpoint.json", audit_path=args.state_dir / "execution-log.jsonl")
-            result = orchestrator.run(dispatch=codex.dispatch, validate=lambda task, value: run_deterministic_tests(task, value, args.repository), commit=lambda task, value: git_controller.commit_worker_changes(task, value), review=lambda task, commit, lease: reviewer.review(task, commit, lease), max_steps=args.max_steps, plan_tasks=tuple(plan_tasks))
+            result = orchestrator.run(dispatch=codex.dispatch, validate=lambda task, value: run_deterministic_tests(task, value, args.repository), commit=lambda task, value: git_controller.commit_worker_changes(task, value), review=lambda task, commit, lease: reviewer.review(task, commit, lease), review_resolver=lambda task, record: reviewer.resolve_review(task, WorkerLease("review", task.task_id, orchestrator.session_id, str(args.repository), task.allowed_paths, "REVIEW", (), 0)), max_steps=args.max_steps, plan_tasks=tuple(plan_tasks))
             print(json.dumps(result, indent=2, sort_keys=True))
             return 0
         except (OSError, ValueError, KeyError, TypeError, json.JSONDecodeError, AutonomousLoopError, SwarmError) as exc:
