@@ -291,6 +291,14 @@ def test_plan_derivation_creates_only_bounded_core_queue_population_task(tmp_pat
     assert task.allowed_paths == ("WORK_QUEUE.md",)
 
 
+def test_plan_derivation_reconciles_ids_already_persisted_in_queue(tmp_path: Path):
+    (tmp_path / "ROADMAP.md").write_text("# ForgeWarden Roadmap\n## Current implementation priority\nForgeWarden Core\n", encoding="utf-8")
+    (tmp_path / "WORK_QUEUE.md").write_text("# ForgeWarden Work Queue\n### FWQ-0010 — Existing queued task\n## Future queue population\n", encoding="utf-8")
+    task = derive_next_core_task(tmp_path, {"FWQ-0009"})
+    assert task is not None
+    assert task.task_id == "FWQ-0011"
+
+
 def test_review_resolver_does_not_promote_without_exact_candidate_evidence(tmp_path: Path):
     task = TaskSpec("FWQ-0009", "Core review", "review", initial_state="REVIEW")
     lease = WorkerLease("review", task.task_id, "session", str(tmp_path), (), "REVIEW", (), time.time() + 60)

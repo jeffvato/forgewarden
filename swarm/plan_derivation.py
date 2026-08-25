@@ -23,7 +23,12 @@ def derive_next_core_task(repository: Path, existing_ids: set[str]) -> TaskSpec 
         return None
     if "## Future queue population" not in queue_text or "ForgeWarden Core" not in roadmap_text:
         return None
-    numbers = [int(match.group(1)) for value in existing_ids if (match := re.fullmatch(r"FWQ-(\d{4})", value))]
+    queue_ids = set(re.findall(r"^###\s+(FWQ-\d{4})\s+—", queue_text, flags=re.MULTILINE))
+    numbers = [
+        int(match.group(1))
+        for value in existing_ids | queue_ids
+        if (match := re.fullmatch(r"FWQ-(\d{4})", value))
+    ]
     next_number = max(numbers or [0]) + 1
     task_id = f"FWQ-{next_number:04d}"
     return TaskSpec(
