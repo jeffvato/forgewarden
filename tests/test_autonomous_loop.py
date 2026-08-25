@@ -8,6 +8,7 @@ from pathlib import Path
 
 from swarm.autonomous_loop import AutonomousOrchestrator, GitCheckpointController, TaskSpec, WorkerLease, WorkerResult, progress_queue
 from swarm.autonomous_adapters import ExactReviewAdapter, run_deterministic_tests
+import swarm.autonomous_adapters as autonomous_adapters
 from swarm.plan_derivation import derive_next_core_task
 from swarm.cli import main
 from swarm.review_handoff import ReviewResult
@@ -271,6 +272,17 @@ def test_review_resolver_does_not_promote_without_exact_candidate_evidence(tmp_p
     task = TaskSpec("FWQ-0009", "Core review", "review", initial_state="REVIEW")
     lease = WorkerLease("review", task.task_id, "session", str(tmp_path), (), "REVIEW", (), time.time() + 60)
     assert ExactReviewAdapter("review").resolve_review(task, lease) == "UNRESOLVED"
+
+
+def test_review_resolver_preserves_provider_unavailability_as_external(tmp_path: Path, monkeypatch):
+    task = TaskSpec("FWQ-0009", "Core review", "review", initial_state="REVIEW", review_commit=SHA_A)
+    lease = WorkerLease("review", task.task_id, "session", str(tmp_path), (), "REVIEW", (), time.time() + 60)
+    monkeypatch.setattr(
+        autonomous_adapters,
+        "run_review_cycle",
+        lambda *args, **kwargs: {"state": "REVIEW_REQUIRED", "reviews": [{"state": "UNAVAILABLE"}]},
+    )
+    assert ExactReviewAdapter("review").resolve_review(task, lease) == "EXTERNAL"
 
 
 def test_runner_stops_only_for_explicit_external_review_resource_blocker(tmp_path: Path):

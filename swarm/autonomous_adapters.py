@@ -65,8 +65,19 @@ class ExactReviewAdapter:
         if not task.review_commit:
             return "UNRESOLVED"
         try:
-            self.review(task, task.review_commit, lease)
-            return "PASSED"
+            job_id = "phase2a-" + hashlib.sha256(task.task_id.encode("utf-8")).hexdigest()[:24]
+            result = run_review_cycle(
+                Path(lease.repository),
+                task.review_commit,
+                job_id,
+                self.context,
+                allow_external_review=self.allow_external_review,
+            )
+            if result["state"] == "APPROVED":
+                return "PASSED"
+            if any(item.get("state") == "UNAVAILABLE" for item in result.get("reviews", ())):
+                return "EXTERNAL"
+            return "REPAIRABLE"
         except Exception as exc:
             return "EXTERNAL" if "unavailable" in str(exc).lower() else "REPAIRABLE"
 
