@@ -150,7 +150,11 @@ def reconcile_checkpoint(checkpoint: WorkUnitCheckpoint, repository_head: str) -
     _validate(checkpoint)
     if not _SHA1.fullmatch(repository_head):
         raise CheckpointError("repository head must be a full Git SHA-1")
-    expected = checkpoint.candidate_commit or checkpoint.starting_commit
+    # A candidate is only evidence of an accepted state once it is recorded as
+    # accepted; candidate-only checkpoints are incomplete and fail closed.
+    if checkpoint.candidate_commit is not None and checkpoint.accepted_commit is None:
+        raise CheckpointError("checkpoint commit mismatch: candidate is not accepted")
+    expected = checkpoint.accepted_commit or checkpoint.starting_commit
     if repository_head.lower() != expected.lower():
         raise CheckpointError(f"checkpoint commit mismatch: expected {expected}, got {repository_head}")
     return MappingProxyType({"task_id": checkpoint.task_id, "repository_head": repository_head, "expected_commit": expected})
