@@ -114,7 +114,7 @@ def main() -> int:
                     raise AutonomousLoopError("task manifest exceeds the 1 MiB bound")
                 manifest = json.loads(args.task_manifest.read_text(encoding="utf-8"))
             elif control_state is not None:
-                manifest = {"tasks": [{"task_id": task.task_id, "requirement": task.requirement, "description": task.description, "dependencies": list(task.dependencies), "priority": task.priority, "initial_state": task.initial_state, "review_commit": task.review_commit, "blocker_external": task.blocker_external} for task in derive_control_transition_tasks(args.repository, control_state)]}
+                manifest = {"tasks": [{"task_id": task.task_id, "requirement": task.requirement, "description": task.description, "dependencies": list(task.dependencies), "priority": task.priority, "allowed_paths": list(task.allowed_paths), "test_command": list(task.test_command), "target_path": task.target_path, "expected_behavior": task.expected_behavior, "failing_assertion": task.failing_assertion, "initial_state": task.initial_state, "review_commit": task.review_commit, "blocker_external": task.blocker_external, "authorized": task.authorized} for task in derive_control_transition_tasks(args.repository, control_state)]}
             else:
                 raise AutonomousLoopError("autonomous-loop-run needs a task manifest when control state is absent")
             if not isinstance(manifest, dict) or not isinstance(manifest.get("tasks"), list) or len(manifest["tasks"]) > 100:
