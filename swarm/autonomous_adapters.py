@@ -52,7 +52,7 @@ class ExactReviewAdapter:
 
     def review(self, task: TaskSpec, commit: str, lease: WorkerLease) -> dict[str, ReviewResult]:
         job_id = "phase2a-" + hashlib.sha256(task.task_id.encode("utf-8")).hexdigest()[:24]
-        result = run_review_cycle(Path(lease.repository), commit, job_id, self.context, allow_external_review=self.allow_external_review, reviewers=self.reviewers)
+        result = run_review_cycle(Path(lease.repository), commit, job_id, self.context, allow_external_review=self.allow_external_review, reviewers=self.reviewers, adjudicate_disagreements=True)
         if result["state"] != "APPROVED":
             raise RuntimeError("independent exact-commit review did not approve")
         reviews: dict[str, ReviewResult] = {}
@@ -76,6 +76,7 @@ class ExactReviewAdapter:
                 self.context,
                 allow_external_review=self.allow_external_review,
                 reviewers=self.reviewers,
+                adjudicate_disagreements=True,
             )
             if result["state"] == "APPROVED":
                 return "PASSED"

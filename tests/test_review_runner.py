@@ -130,6 +130,32 @@ def test_review_cycle_supports_explicit_claude_only_mode(repo_fixture: Path):
     assert [item["provider"] for item in result["reviews"]] == ["CLAUDE"]
 
 
+def test_review_cycle_uses_claude_to_adjudicate_provider_disagreement(repo_fixture: Path):
+    sha = repo_fixture.joinpath(".candidate-sha").read_text().strip()
+    calls = {"claude": 0}
+
+    def report(snapshot, job_id, commit, context):
+        return {"job_id": job_id, "reviewed_commit": commit, "verdict": "APPROVE", "risk": "LOW", "blocking_findings": [], "non_blocking_notes": [], "tests_missing": [], "reasoning_summary": "approved", "proposed_rules": []}
+
+    def claude(snapshot, job_id, commit, context):
+        calls["claude"] += 1
+        if calls["claude"] == 1:
+            return report(snapshot, job_id, commit, context)
+        return report(snapshot, job_id, commit, context)
+
+    def rejected(snapshot, job_id, commit, context):
+        result = report(snapshot, job_id, commit, context)
+        result["verdict"] = "REJECT"
+        result["risk"] = "HIGH"
+        result["blocking_findings"] = ["provider disagreement"]
+        return result
+
+    result = run_review_cycle(repo_fixture, sha, "phase2a-" + "f" * 24, "review", claude_runner=claude, reviewers=("CLAUDE", "OPENROUTER", "NVIDIA"), openrouter_runner=rejected, nvidia_runner=report, adjudicate_disagreements=True)
+    assert result["state"] == "APPROVED"
+    assert result["adjudication"]["provider"] == "CLAUDE_ADJUDICATION"
+    assert calls["claude"] == 2
+
+
 @pytest.fixture
 def repo_fixture(tmp_path: Path) -> Path:
     import subprocess

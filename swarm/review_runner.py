@@ -94,7 +94,10 @@ def run_review_cycle(
     allow_external_review: bool = False,
     claude_runner: Callable[..., dict[str, Any]] | None = None,
     gemini_runner: Callable[..., dict[str, Any]] | None = None,
+    openrouter_runner: Callable[..., dict[str, Any]] | None = None,
+    nvidia_runner: Callable[..., dict[str, Any]] | None = None,
     reviewers: tuple[str, ...] = ("CLAUDE", "GEMINI"),
+    adjudicate_disagreements: bool = False,
 ) -> dict[str, Any]:
     """Run the configured independent reviewers without changing the repository.
 
@@ -128,8 +131,8 @@ def run_review_cycle(
                 allow_external_review=allow_external_review,
             )
             gemini = adapter.run
-        openrouter = openrouter_adapter().run if "OPENROUTER" in requested else None
-        nvidia = nvidia_adapter().run if "NVIDIA" in requested else None
+        openrouter = openrouter_runner or (openrouter_adapter().run if "OPENROUTER" in requested else None)
+        nvidia = nvidia_runner or (nvidia_adapter().run if "NVIDIA" in requested else None)
 
         provider_map = {"CLAUDE": claude, "GEMINI": gemini, "OPENROUTER": openrouter, "NVIDIA": nvidia}
         providers = tuple((provider, provider_map[provider]) for provider in requested)
@@ -150,7 +153,18 @@ def run_review_cycle(
             futures = [executor.submit(invoke_provider, provider, invoke) for provider, invoke in providers]
             records = [future.result() for future in futures]
 
-    approved = all(record["state"] == "APPROVED" for record in records)
+    adjudication = None
+    if adjudicate_disagreements and "CLAUDE" in requested and all(record["state"] != "UNAVAILABLE" for record in records):
+        non_claude = [record for record in records if record["provider"] != "CLAUDE"]
+        if any(record["state"] != "APPROVED" for record in non_claude):
+            try:
+                adjudication_prompt = review_context + "\n\nThe following read-only provider reports disagree. Adjudicate them against the exact commit and return the final Claude decision:\n" + json.dumps(non_claude, sort_keys=True)
+                final_result = claude(snapshots["CLAUDE"], job_id, commit, adjudication_prompt)
+                validate_contract(final_result, "claude", expected_job_id=job_id, expected_commit=commit)
+                adjudication = _review_record("CLAUDE_ADJUDICATION", result=final_result)
+            except Exception as exc:
+                adjudication = _review_record("CLAUDE_ADJUDICATION", error=redact(str(exc)))
+    approved = bool(adjudication and adjudication["state"] == "APPROVED") or all(record["state"] == "APPROVED" for record in records)
     return {
         "state": "APPROVED" if approved else "REVIEW_REQUIRED",
         "candidate_commit": commit,
@@ -159,6 +173,7 @@ def run_review_cycle(
         "deployment": "DISABLED",
         "kill_switch": "ENGAGED",
         "reviews": records,
+        "adjudication": adjudication,
     }
 
 
