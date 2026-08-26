@@ -29,6 +29,10 @@ class AutonomousLoopError(RuntimeError):
     """The durable loop cannot safely continue."""
 
 
+class ReviewUnavailable(AutonomousLoopError):
+    """The candidate is held for review because a required reviewer is unavailable."""
+
+
 @dataclass(frozen=True)
 class TaskSpec:
     task_id: str
@@ -309,7 +313,19 @@ class AutonomousOrchestrator:
                 candidate = commit(task, result)
                 if not _SHA.fullmatch(candidate) or (result.candidate_commit is not None and candidate.lower() != result.candidate_commit.lower()):
                     raise AutonomousLoopError("trusted commit did not match worker candidate")
-                review_payload = review(task, candidate, lease)
+                try:
+                    review_payload = review(task, candidate, lease)
+                except ReviewUnavailable:
+                    task = replace(task, review_commit=candidate)
+                    self.tasks[task.task_id] = task
+                    state.setdefault("task_specs", {})[task.task_id] = asdict(task)
+                    record["state"] = "REVIEW"
+                    record["review_commit"] = candidate
+                    record["blocker_external"] = True
+                    record["blocker"] = "required review resource unavailable"
+                    state["next_action"] = "restore review resource and resume queue evaluation"
+                    self._log("task_review_deferred", task_id=task.task_id, candidate_commit=candidate)
+                    continue
                 if isinstance(review_payload, Mapping):
                     cycle = create_review_cycle(candidate)
                     for value in review_payload.values():

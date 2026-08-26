@@ -7,7 +7,7 @@ import time
 from pathlib import Path
 import pytest
 
-from swarm.autonomous_loop import AutonomousOrchestrator, GitCheckpointController, TaskSpec, WorkerLease, WorkerResult, progress_queue
+from swarm.autonomous_loop import AutonomousOrchestrator, GitCheckpointController, ReviewUnavailable, TaskSpec, WorkerLease, WorkerResult, progress_queue
 from swarm.autonomous_adapters import CodexTaskAdapter, ExactReviewAdapter, run_deterministic_tests
 import swarm.autonomous_adapters as autonomous_adapters
 from swarm.plan_derivation import derive_next_core_task
@@ -358,3 +358,18 @@ def test_runner_stops_only_for_explicit_external_review_resource_blocker(tmp_pat
         review=lambda task, commit, lease: ("APPROVED", "LOW"),
     )
     assert state["stop_reason"] == "REQUIRED_RESOURCE_UNAVAILABLE"
+
+
+def test_runner_defers_candidate_when_review_resource_is_unavailable(tmp_path: Path):
+    task = TaskSpec("FWQ-0013", "Core implementation", "bounded change", initial_state="READY")
+    runner = AutonomousOrchestrator(tmp_path / "run.json", tmp_path, (task,))
+    state = runner.run(
+        dispatch=lambda task, lease: WorkerResult(None, (), (), "bounded"),
+        validate=lambda task, result: True,
+        commit=lambda task, result: SHA_A,
+        review=lambda task, commit, lease: (_ for _ in ()).throw(ReviewUnavailable("reviewer unavailable")),
+        max_steps=1,
+    )
+    assert state["queued_tasks"]["FWQ-0013"]["state"] == "REVIEW"
+    assert state["queued_tasks"]["FWQ-0013"]["review_commit"] == SHA_A
+    assert state["queued_tasks"]["FWQ-0013"]["blocker_external"] is True
