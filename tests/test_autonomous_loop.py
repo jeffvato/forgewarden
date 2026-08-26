@@ -266,6 +266,17 @@ def test_internal_blocker_resolution_and_plan_derivation_prevent_stall():
     assert transitions == ("PLAN->READY:FWQ-0011",)
 
 
+def test_external_review_wait_does_not_derive_unbounded_successors():
+    tasks = {"FWQ-0009": TaskSpec("FWQ-0009", "Core review", "review", initial_state="REVIEW")}
+    state = {"queued_tasks": {"FWQ-0009": {"state": "REVIEW", "attempts": 0, "blocker_external": True}}, "completed_tasks": [], "task_specs": {}}
+    plan = (TaskSpec("FWQ-0010", "Core follow-up", "next package"),)
+
+    transitions = progress_queue(tasks, state, plan_tasks=plan)
+
+    assert transitions == ()
+    assert "FWQ-0010" not in tasks
+
+
 def test_runner_advances_review_only_queue_and_executes_derived_plan_task(tmp_path: Path):
     review_task = TaskSpec("FWQ-0009", "Core review", "reviewed package", initial_state="REVIEW", review_disposition="PASSED")
     plan_task = TaskSpec("FWQ-0010", "Core follow-up", "next package", priority=1)

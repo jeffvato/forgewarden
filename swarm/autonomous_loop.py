@@ -104,6 +104,15 @@ def progress_queue(tasks: dict[str, TaskSpec], state: dict[str, Any], *, review_
             continue
         if any(record["state"] == "READY" for record in state["queued_tasks"].values()):
             break
+        # Do not manufacture successor work while the queue is waiting on an
+        # external review resource. A bounded run may resume this queue when
+        # the reviewer returns; deriving more work before then would create an
+        # unbounded stream of synthetic tasks without making progress.
+        if any(
+            record["state"] in {"REVIEW", "BLOCKED"} and record.get("blocker_external")
+            for record in state["queued_tasks"].values()
+        ):
+            break
         for candidate in sorted(plan_tasks, key=lambda item: (item.priority, item.task_id)):
             if candidate.authorized and candidate.task_id not in tasks and candidate.requirement.startswith("Core "):
                 tasks[candidate.task_id] = candidate

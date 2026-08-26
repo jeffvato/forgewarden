@@ -148,15 +148,12 @@ def main() -> int:
                     review_commit=item.get("review_commit"), review_context=str(item.get("review_context", "ForgeWarden exact-commit review")),
                 ))
             if not plan_tasks:
-                # Keep enough authorized Core work queued to continue past a
-                # review-deferred task, while retaining a hard planning bound.
+                # Derive at most one successor. The orchestrator will refuse
+                # to enqueue it when existing work is externally blocked.
                 planned_ids = {task.task_id for task in tasks}
-                for _ in range(8):
-                    plan_task = derive_next_core_task(args.repository, planned_ids)
-                    if plan_task is None:
-                        break
+                plan_task = derive_next_core_task(args.repository, planned_ids)
+                if plan_task is not None:
                     plan_tasks.append(plan_task)
-                    planned_ids.add(plan_task.task_id)
             if all(path.is_file() for path in control_files):
                 assert control_state is not None
                 selected = select_ready_task(control_state).selected
