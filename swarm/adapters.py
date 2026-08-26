@@ -511,6 +511,10 @@ class CodexAdapter:
             self.persist_evidence()
         finally:
             external_output.unlink(missing_ok=True)
+            output.unlink(missing_ok=True)
+            schema_copy.unlink(missing_ok=True)
+            if result_dir.is_dir() and not any(result_dir.iterdir()):
+                result_dir.rmdir()
             shutil.rmtree(cache_dir, ignore_errors=True)
         return payload
 
