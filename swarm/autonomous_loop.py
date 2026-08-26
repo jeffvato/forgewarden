@@ -253,6 +253,7 @@ class AutonomousOrchestrator:
             self.session_id = str(state["session_id"])
         self._recover_stale(state)
         self._recover_orphaned(state)
+        self._requeue_authoritative_failures(state)
         return state
 
     def status(self) -> dict[str, Any]:
@@ -298,6 +299,22 @@ class AutonomousOrchestrator:
             self._write(state)
             for task_id in recovered:
                 self._log("orphaned_claim_recovered", task_id=task_id)
+
+    def _requeue_authoritative_failures(self, state: dict[str, Any]) -> None:
+        """Reconcile one exhausted failure with a still-READY queue item."""
+        if state.get("active_task") is not None or state.get("worker_lease") is not None:
+            return
+        for task_id, task in self.tasks.items():
+            record = state["queued_tasks"][task_id]
+            if task.initial_state != "READY" or record.get("state") != "FAILED" or record.get("recovery_requeued"):
+                continue
+            record["state"] = "READY"
+            record["attempts"] = 0
+            record["recovery_requeued"] = True
+            state["next_action"] = "requeued authoritative READY task after prior failure"
+            state["timestamps"]["updated_at"] = _now()
+            self._write(state)
+            self._log("authoritative_failure_requeued", task_id=task_id)
 
     def _select(self, state: Mapping[str, Any]) -> TaskSpec | None:
         ready = []

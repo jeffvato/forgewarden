@@ -342,6 +342,19 @@ def test_recovery_preserves_latched_external_blocker_metadata(tmp_path):
     assert recovered["queued_tasks"][task.task_id]["blocker_external"] is True
 
 
+def test_authoritative_ready_task_is_requeued_once_after_failure(tmp_path):
+    task = TaskSpec("FWQ-0001", "Core retry", "retry", initial_state="READY")
+    runner = AutonomousOrchestrator(tmp_path / "run.json", tmp_path, (task,))
+    state = runner._initial()
+    state["queued_tasks"][task.task_id] = {"state": "FAILED", "attempts": 2}
+    runner._write(state)
+
+    recovered = runner.status()
+
+    assert recovered["queued_tasks"][task.task_id]["state"] == "READY"
+    assert recovered["queued_tasks"][task.task_id]["recovery_requeued"] is True
+
+
 def test_runner_advances_review_only_queue_and_executes_derived_plan_task(tmp_path: Path):
     review_task = TaskSpec("FWQ-0009", "Core review", "reviewed package", initial_state="REVIEW", review_disposition="PASSED")
     plan_task = TaskSpec("FWQ-0010", "Core follow-up", "next package", priority=1)
