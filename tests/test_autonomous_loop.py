@@ -99,6 +99,19 @@ def test_recover_restart_and_retry_then_continue(tmp_path: Path):
     assert any("stale_lease_recovered" in line for line in (tmp_path / "execution-log.jsonl").read_text().splitlines())
 
 
+def test_orphaned_in_progress_claim_is_recovered_without_a_lease(tmp_path: Path):
+    task = TaskSpec("FWQ-0001", "Core recovery", "recover orphan")
+    runner = AutonomousOrchestrator(tmp_path / "run.json", tmp_path / "repo", (task,))
+    state = runner._initial()
+    state["queued_tasks"][task.task_id] = {"state": "IN_PROGRESS", "attempts": 0}
+    runner._write(state)
+
+    recovered = runner.status()
+
+    assert recovered["queued_tasks"][task.task_id] == {"state": "READY", "attempts": 1}
+    assert any("orphaned_claim_recovered" in line for line in (tmp_path / "execution-log.jsonl").read_text().splitlines())
+
+
 def test_retry_exhaustion_records_blocker_but_independent_work_continues(tmp_path: Path):
     tasks = (TaskSpec("FWQ-0001", "Core blocked", "blocked", priority=0, retry_budget=0), TaskSpec("FWQ-0002", "Core independent", "independent", priority=1, retry_budget=0))
     runner = AutonomousOrchestrator(tmp_path / "run.json", tmp_path / "repo", tasks)

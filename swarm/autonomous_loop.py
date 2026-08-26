@@ -237,6 +237,7 @@ class AutonomousOrchestrator:
         if state.get("session_id") != self.session_id and self.session_id:
             self.session_id = str(state["session_id"])
         self._recover_stale(state)
+        self._recover_orphaned(state)
         return state
 
     def status(self) -> dict[str, Any]:
@@ -264,6 +265,24 @@ class AutonomousOrchestrator:
             state["timestamps"]["updated_at"] = _now()
             self._write(state)
             self._log("stale_lease_recovered", task_id=task_id)
+
+    def _recover_orphaned(self, state: dict[str, Any]) -> None:
+        """Return abandoned claims to READY when no active lease exists."""
+        if state.get("active_task") is not None or state.get("worker_lease") is not None:
+            return
+        recovered: list[str] = []
+        for task_id, record in state["queued_tasks"].items():
+            if record.get("state") != "IN_PROGRESS":
+                continue
+            record["state"] = "READY"
+            record["attempts"] = int(record.get("attempts", 0)) + 1
+            recovered.append(task_id)
+        if recovered:
+            state["next_action"] = "recovered orphaned worker claims"
+            state["timestamps"]["updated_at"] = _now()
+            self._write(state)
+            for task_id in recovered:
+                self._log("orphaned_claim_recovered", task_id=task_id)
 
     def _select(self, state: Mapping[str, Any]) -> TaskSpec | None:
         ready = []
