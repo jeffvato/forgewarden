@@ -165,6 +165,14 @@ def reconcile_checkpoint(checkpoint: WorkUnitCheckpoint, repository_head: str) -
     # accepted; candidate-only checkpoints are incomplete and fail closed.
     if checkpoint.candidate_commit is not None and checkpoint.accepted_commit is None:
         raise CheckpointError("checkpoint not accepted: candidate commit has not been accepted")
+    if checkpoint.accepted_commit is not None and (
+        checkpoint.accepted_commit.lower() == checkpoint.starting_commit.lower()
+        or not checkpoint.deterministic_validation
+        or checkpoint.claude_review == "PENDING"
+        or checkpoint.gemini_review == "PENDING"
+        or checkpoint.next_action == "dispatch"
+    ):
+        raise CheckpointError("checkpoint evidence is stale or mismatched")
     expected = checkpoint.accepted_commit or checkpoint.starting_commit
     if repository_head.lower() != expected.lower():
         raise CheckpointError(f"checkpoint commit mismatch: expected {expected}, got {repository_head}")
