@@ -34,7 +34,7 @@ class ClaudeTaskAdapter:
         prompt = (
             f"Work only in {lease.repository}. Edit only {task.target_path} and any files under the declared allowed paths: "
             f"{', '.join(task.allowed_paths)}. Expected behavior: {task.expected_behavior}. "
-            f"The failing assertion is: {task.failing_assertion}. Run only the deterministic test command after editing. "
+            f"The failing assertion is: {task.failing_assertion}. Do not run commands; the orchestrator will run the deterministic test command after editing. "
             "Do not edit tests, Git metadata, deployment settings, credentials, or remote systems. Return the required JSON result."
         )
         command = [self.executable, "--print", "--output-format", "json", "--no-session-persistence", "--permission-mode", "acceptEdits", "--allowed-tools", "Read,Edit,Write,Glob,Grep", "--disallowed-tools", "Bash", "--json-schema", json.dumps(schema), prompt]
