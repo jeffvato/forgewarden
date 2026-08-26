@@ -277,6 +277,26 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 - Expected validation: focused continuation-replay tests, repository suite, schema validation, and `git diff --check`.
 - Security considerations: continuation records are untrusted evidence, not authority; replay protection cannot authorize deployment, clear a kill switch, or expand agent scope.
 
+### FWQ-0016 — Deterministic Core continuation admission validation
+- Requirement: Core supervisor/control-plane
+- State: READY
+- Priority: P2
+- Dependencies: FWQ-0015
+- Approval: Explicitly authorized by Jeff for bounded job `codex-fwq-0016`.
+- Description: Validate that a consumed Core continuation admits exactly one declared next READY task under the active phase, without granting execution authority or mutating Git state.
+- Target path: swarm/continuation.py
+- Allowed paths: swarm/continuation.py, tests/test_continuation.py
+- Test command: python3 -m pytest -q tests/test_continuation.py
+- Expected behavior: reject continuation admission when the accepted work unit, active phase, dependency state, or next-task identity does not match the validated queue.
+- Failing assertion: a consumed continuation can admit a task that is not the validated eligible READY successor.
+- Acceptance criteria:
+  - admission binds the consumed continuation to the exact accepted task, commit, active Core phase, and next READY task;
+  - missing, stale, malformed, duplicate, mismatched, or dependency-incomplete admission evidence fails closed;
+  - the result preserves a redacted safe resume decision and cannot authorize execution, deployment, credentials, Git, network, remote hosts, or kill-switch changes;
+  - broader security families remain parked until their phase is explicitly activated.
+- Expected validation: focused continuation-admission tests, repository suite, schema validation, and `git diff --check`.
+- Security considerations: continuation metadata is untrusted evidence, not authority; admission validation cannot authorize deployment, clear a kill switch, or expand agent scope.
+
 ## Future queue population
 
 After the supervisor/control-plane work is validated, populate subsequent Core tasks from the active phase of `ROADMAP.md` and existing repository requirements. Broader FW-BME/FW-SOC/FW-SAAS/FW-SUPPLY/FW-NET/FW-ASM/FW-DSPM implementation remains parked until its phase is explicitly activated.
