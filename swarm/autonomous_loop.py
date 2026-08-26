@@ -232,6 +232,11 @@ class AutonomousOrchestrator:
                 for key in ("dependencies", "allowed_paths", "acceptance", "test_command"):
                     payload[key] = tuple(payload.get(key, ()))
                 self.tasks[task_id] = TaskSpec(**payload)
+            elif task_id in self.tasks and isinstance(payload, dict) and payload.get("blocker_external") is True:
+                # Preserve a previously latched external blocker across a
+                # control-manifest refresh; safety state may become stricter,
+                # never less restrictive, during recovery.
+                self.tasks[task_id] = replace(self.tasks[task_id], blocker_external=True)
         if set(state.get("queued_tasks", {})) != set(self.tasks) or not isinstance(state.get("completed_tasks"), list) or not isinstance(state.get("failed_tasks"), list):
             raise AutonomousLoopError("durable state task queue does not match the approved queue")
         for task_id, task in self.tasks.items():
