@@ -150,6 +150,17 @@ def reconcile_checkpoint(checkpoint: WorkUnitCheckpoint, repository_head: str) -
     _validate(checkpoint)
     if not _SHA1.fullmatch(repository_head):
         raise CheckpointError("repository head must be a full Git SHA-1")
+    if checkpoint.candidate_commit is None and checkpoint.accepted_commit is None:
+        if (
+            checkpoint.changed_files
+            or checkpoint.deterministic_validation
+            or checkpoint.claude_review != "PENDING"
+            or checkpoint.gemini_review != "PENDING"
+            or checkpoint.unresolved_findings
+            or checkpoint.blocker is not None
+            or checkpoint.next_action != "dispatch"
+        ):
+            raise CheckpointError("checkpoint evidence is stale or mismatched")
     # A candidate is only evidence of an accepted state once it is recorded as
     # accepted; candidate-only checkpoints are incomplete and fail closed.
     if checkpoint.candidate_commit is not None and checkpoint.accepted_commit is None:
