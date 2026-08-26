@@ -37,7 +37,7 @@ class ClaudeTaskAdapter:
             f"The failing assertion is: {task.failing_assertion}. Do not run commands; the orchestrator will run the deterministic test command after editing. "
             "Do not edit tests, Git metadata, deployment settings, credentials, or remote systems. Return the required JSON result."
         )
-        command = [self.executable, "--print", "--output-format", "json", "--no-session-persistence", "--permission-mode", "acceptEdits", "--allowed-tools", "Read,Edit,Write,Glob,Grep", "--disallowed-tools", "Bash", "--json-schema", json.dumps(schema), prompt]
+        command = [self.executable, "--print", "--output-format", "json", "--no-session-persistence", "--permission-mode", "acceptEdits", "--tools", "Read,Edit,Write,Glob,Grep", "--allowed-tools", "Read,Edit,Write,Glob,Grep", "--disallowed-tools", "Bash", "--effort", "low", "--json-schema", json.dumps(schema), prompt]
         completed = subprocess.run(command, cwd=lease.repository, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=False, timeout=self.limits.timeout_seconds)
         if completed.returncode:
             raise RuntimeError(f"Claude failed ({completed.returncode}): {completed.stderr[-2000:]}")

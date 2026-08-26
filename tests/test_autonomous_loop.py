@@ -333,6 +333,7 @@ def test_claude_task_adapter_pins_schema_and_denies_shell_tools(tmp_path: Path, 
     result = ClaudeTaskAdapter(Path(__file__).parents[1] / "schemas/codex-result.schema.json", "claude").dispatch(task, lease)
     assert result.changed_files == ("target.py",)
     command = captured["command"]
+    assert command[command.index("--tools") + 1] == "Read,Edit,Write,Glob,Grep"
     assert "Bash" not in command[command.index("--allowed-tools") + 1]
     assert command[command.index("--disallowed-tools") + 1] == "Bash"
     assert "Do not run commands" in command[-1]
