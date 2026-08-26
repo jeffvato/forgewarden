@@ -9,7 +9,7 @@ Deployment remains disabled and any configured kill switch remains engaged.
 
 1. Jeff / Customer Root is the ultimate authority. Only Jeff may expand authority, authorize deployment, clear a kill switch, or approve actions reserved to Customer Root.
 2. The trusted ForgeWarden Python orchestrator owns deterministic workflow control, policy enforcement, allowed paths, hashes, tests, Git operations, resource limits, audit, cleanup, rollback, and work sequencing.
-3. Codex is the sole application-code writer. Codex may inspect, implement, repair, refactor, and test within approved scope.
+3. Claude Code is the application-code writer for the active Core plan. It may inspect, implement, repair, refactor, and test only within an approved bounded lease.
 4. Claude is an architecture, requirements, threat-model, and adversarial-review agent. Claude returns findings and recommendations; it does not independently modify production source.
 5. The active Core plan uses Claude as the sole read-only exact-commit reviewer, per Jeff's authorization. Gemini remains optional and must never be treated as approval evidence unless explicitly enabled for a given task.
 6. Deterministic checks are authoritative. AI agents never gain authority merely by issuing instructions to one another.

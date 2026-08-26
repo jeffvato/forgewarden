@@ -22,7 +22,7 @@ from .codebase_index import CodebaseIndex
 from .console import serve as serve_console
 from .review_runner import read_context, render_result, run_review_cycle
 from .autonomous_loop import AutonomousLoopError, AutonomousOrchestrator, GitCheckpointController, TaskSpec, WorkerLease
-from .autonomous_adapters import CodexTaskAdapter, ExactReviewAdapter, run_deterministic_tests
+from .autonomous_adapters import ClaudeTaskAdapter, ExactReviewAdapter, run_deterministic_tests
 from .supervisor_state import load_supervisor_state
 from .task_selection import select_ready_task
 from .plan_derivation import derive_next_core_task
@@ -55,7 +55,7 @@ def main() -> int:
     parser.add_argument("--approval", type=Path)
     parser.add_argument("--index-path", type=Path)
     parser.add_argument("--task-manifest", type=Path)
-    parser.add_argument("--codex-executable", default="codex")
+    parser.add_argument("--codex-executable", default="/home/jeff/.local/bin/claude")
     parser.add_argument("--max-steps", type=int)
     parser.add_argument("--feed", type=Path, action="append", default=[])
     parser.add_argument("--feed-source", choices=["osv", "nvd", "cisa_kev"])
@@ -167,7 +167,7 @@ def main() -> int:
             else:
                 raise AutonomousLoopError("autonomous state directory must be outside the Git repository")
             args.state_dir.mkdir(parents=True, exist_ok=True)
-            codex = CodexTaskAdapter(Path(__file__).resolve().parents[1] / "schemas/codex-result.schema.json", args.codex_executable)
+            codex = ClaudeTaskAdapter(Path(__file__).resolve().parents[1] / "schemas/codex-result.schema.json", args.codex_executable or "/home/jeff/.local/bin/claude")
             reviewer = ExactReviewAdapter(str(manifest.get("review_context", "ForgeWarden exact-commit review")), allow_external_review=args.allow_external_review, reviewers=("CLAUDE",))
             orchestrator = AutonomousOrchestrator(args.state_dir / "autonomous-loop.json", args.repository, tuple(tasks), checkpoint_path=args.state_dir / "work-checkpoint.json", audit_path=args.state_dir / "execution-log.jsonl")
             result = orchestrator.run(dispatch=codex.dispatch, validate=lambda task, value: run_deterministic_tests(task, value, args.repository), commit=lambda task, value: git_controller.commit_worker_changes(task, value), review=lambda task, commit, lease: reviewer.review(task, commit, lease), review_resolver=lambda task, record: reviewer.resolve_review(task, WorkerLease("review", task.task_id, orchestrator.session_id, str(args.repository), task.allowed_paths, "REVIEW", (), 0)), max_steps=args.max_steps, plan_tasks=tuple(plan_tasks))
