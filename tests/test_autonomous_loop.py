@@ -303,6 +303,19 @@ def test_blocked_task_becomes_ready_when_dependencies_complete():
     assert state["queued_tasks"]["FWQ-0002"]["state"] == "READY"
 
 
+def test_external_blocker_remains_blocked_after_dependencies_complete():
+    tasks = {
+        "FWQ-0001": TaskSpec("FWQ-0001", "Core dependency", "dependency", initial_state="DONE"),
+        "FWQ-0002": TaskSpec("FWQ-0002", "Core review", "review", dependencies=("FWQ-0001",), initial_state="BLOCKED", blocker_external=True),
+    }
+    state = {"queued_tasks": {"FWQ-0001": {"state": "DONE", "attempts": 0}, "FWQ-0002": {"state": "BLOCKED", "attempts": 0}}, "completed_tasks": ["FWQ-0001"], "task_specs": {}}
+
+    transitions = progress_queue(tasks, state)
+
+    assert transitions == ()
+    assert state["queued_tasks"]["FWQ-0002"]["state"] == "BLOCKED"
+
+
 def test_runner_advances_review_only_queue_and_executes_derived_plan_task(tmp_path: Path):
     review_task = TaskSpec("FWQ-0009", "Core review", "reviewed package", initial_state="REVIEW", review_disposition="PASSED")
     plan_task = TaskSpec("FWQ-0010", "Core follow-up", "next package", priority=1)

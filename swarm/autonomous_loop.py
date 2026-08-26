@@ -95,7 +95,7 @@ def progress_queue(tasks: dict[str, TaskSpec], state: dict[str, Any], *, review_
                     transitions.append(f"{task.task_id}:REVIEW->EXTERNAL_BLOCKER")
             elif current == "BLOCKED":
                 dependencies_done = all(state["queued_tasks"].get(dep, {}).get("state") == "DONE" for dep in task.dependencies)
-                resolved = blocker_resolver(task, record) if blocker_resolver else (task.blocker_resolved or dependencies_done)
+                resolved = blocker_resolver(task, record) if blocker_resolver else (task.blocker_resolved or (dependencies_done and not task.blocker_external))
                 if dependencies_done and resolved:
                     record["state"] = "READY"
                     transitions.append(f"{task.task_id}:BLOCKED->READY")
@@ -234,6 +234,11 @@ class AutonomousOrchestrator:
                 self.tasks[task_id] = TaskSpec(**payload)
         if set(state.get("queued_tasks", {})) != set(self.tasks) or not isinstance(state.get("completed_tasks"), list) or not isinstance(state.get("failed_tasks"), list):
             raise AutonomousLoopError("durable state task queue does not match the approved queue")
+        for task_id, task in self.tasks.items():
+            record = state["queued_tasks"][task_id]
+            if record.get("state") == "BLOCKED" and task.blocker_external:
+                record["blocker_external"] = True
+                record.setdefault("blocker", "required external blocker")
         if state.get("session_id") != self.session_id and self.session_id:
             self.session_id = str(state["session_id"])
         self._recover_stale(state)
