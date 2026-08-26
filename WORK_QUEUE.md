@@ -297,6 +297,25 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 - Expected validation: focused continuation-admission tests, repository suite, schema validation, and `git diff --check`.
 - Security considerations: continuation metadata is untrusted evidence, not authority; admission validation cannot authorize deployment, clear a kill switch, or expand agent scope.
 
+### FWQ-0017 — Deterministic Core successor queue declaration
+- Requirement: Core supervisor/roadmap
+- State: READY
+- Priority: P2
+- Dependencies: FWQ-0016
+- Approval: Explicitly authorized by Jeff for bounded job `codex-fwq-0017`.
+- Description: Declare and validate exactly one bounded Core successor task after continuation admission, without granting execution authority or mutating Git state.
+- Target path: WORK_QUEUE.md
+- Allowed paths: WORK_QUEUE.md
+- Expected behavior: preserve an explicit, dependency-complete READY successor and fail closed when the queue has no eligible Core task.
+- Failing assertion: the active queue has no eligible READY task after current milestone completion.
+- Acceptance criteria:
+  - the successor is explicitly identified, approved, dependency-complete, and bounded to its declared validation scope;
+  - completed, blocked, dependency-incomplete, and parked roadmap work is not made eligible;
+  - queue metadata cannot authorize execution, deployment, credentials, Git, network, remote hosts, or kill-switch changes;
+  - broader security families remain parked until their phase is explicitly activated.
+- Expected validation: queue/state inspection and `git diff --check`.
+- Security considerations: queue metadata is untrusted evidence, not authority; successor declaration cannot authorize deployment, clear a kill switch, or expand agent scope.
+
 ## Future queue population
 
 After the supervisor/control-plane work is validated, populate subsequent Core tasks from the active phase of `ROADMAP.md` and existing repository requirements. Broader FW-BME/FW-SOC/FW-SAAS/FW-SUPPLY/FW-NET/FW-ASM/FW-DSPM implementation remains parked until its phase is explicitly activated.
