@@ -157,4 +157,12 @@ def reconcile_checkpoint(checkpoint: WorkUnitCheckpoint, repository_head: str) -
     expected = checkpoint.accepted_commit or checkpoint.starting_commit
     if repository_head.lower() != expected.lower():
         raise CheckpointError(f"checkpoint commit mismatch: expected {expected}, got {repository_head}")
-    return MappingProxyType({"task_id": checkpoint.task_id, "repository_head": repository_head, "expected_commit": expected})
+    return MappingProxyType(
+        {
+            "task_id": checkpoint.task_id,
+            "active_phase": checkpoint.active_phase,
+            "repository_head": repository_head,
+            "expected_commit": expected,
+            "next_action": checkpoint.next_action,
+        }
+    )
