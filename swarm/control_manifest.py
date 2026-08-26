@@ -36,7 +36,9 @@ def derive_control_transition_tasks(repository: Path, state: SupervisorState) ->
             priority=item.priority,
             initial_state=item.state,
             review_commit=candidate if item.state == "REVIEW" else None,
-            blocker_external=item.state == "BLOCKED",
+            # Queue BLOCKED is not proof of a human/external blocker. The
+            # orchestrator re-evaluates dependency completion before stopping.
+            blocker_external=False,
             blocker_resolved=False,
             authorized=True,
             target_path=item.target_path,

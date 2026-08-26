@@ -95,7 +95,7 @@ def progress_queue(tasks: dict[str, TaskSpec], state: dict[str, Any], *, review_
                     transitions.append(f"{task.task_id}:REVIEW->EXTERNAL_BLOCKER")
             elif current == "BLOCKED":
                 dependencies_done = all(state["queued_tasks"].get(dep, {}).get("state") == "DONE" for dep in task.dependencies)
-                resolved = blocker_resolver(task, record) if blocker_resolver else task.blocker_resolved
+                resolved = blocker_resolver(task, record) if blocker_resolver else (task.blocker_resolved or dependencies_done)
                 if dependencies_done and resolved:
                     record["state"] = "READY"
                     transitions.append(f"{task.task_id}:BLOCKED->READY")
