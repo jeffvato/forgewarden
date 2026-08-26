@@ -736,6 +736,24 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 - Expected validation: queue/state inspection and `git diff --check`.
 - Security considerations: queue metadata is untrusted input and cannot expand agent authority; broader roadmap families remain parked until their phase is explicitly activated.
 
+### FWQ-0041 — Populate the next bounded Core work item
+- Requirement: Core supervisor/roadmap
+- State: READY
+- Priority: P2
+- Dependencies: FWQ-0040
+- Approval: Explicitly authorized by Jeff for bounded job `codex-fwq-0042`.
+- Description: Populate the next bounded Core work item from the active ForgeWarden roadmap and preserve dependency, approval, and validation metadata.
+- Target path: WORK_QUEUE.md
+- Allowed paths: WORK_QUEUE.md
+- Expected behavior: add one explicitly authorized bounded Core work item to the future queue.
+- Failing assertion: the active queue has no eligible READY task after current milestone completion.
+- Acceptance criteria:
+  - the next Core task is explicit and bounded;
+  - future security families remain parked;
+  - no execution, deployment, credential, Git, network, remote-host, or kill-switch authority is introduced.
+- Expected validation: queue/state inspection and `git diff --check`.
+- Security considerations: queue metadata is untrusted input and cannot expand agent authority; broader roadmap families remain parked until their phase is explicitly activated.
+
 ## Future queue population
 
 After the supervisor/control-plane work is validated, populate subsequent Core tasks from the active phase of `ROADMAP.md` and existing repository requirements. Broader FW-BME/FW-SOC/FW-SAAS/FW-SUPPLY/FW-NET/FW-ASM/FW-DSPM implementation remains parked until its phase is explicitly activated.
