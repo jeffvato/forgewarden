@@ -290,6 +290,19 @@ def test_external_review_wait_does_not_derive_unbounded_successors():
     assert "FWQ-0010" not in tasks
 
 
+def test_progress_queue_limits_external_review_attempts_per_run():
+    tasks = {
+        "FWQ-0001": TaskSpec("FWQ-0001", "Core review one", "review", initial_state="REVIEW"),
+        "FWQ-0002": TaskSpec("FWQ-0002", "Core review two", "review", initial_state="REVIEW"),
+    }
+    state = {"queued_tasks": {task_id: {"state": "REVIEW", "attempts": 0} for task_id in tasks}, "completed_tasks": [], "task_specs": {}}
+    seen = []
+
+    progress_queue(tasks, state, review_resolver=lambda task, record: (seen.append(task.task_id) or "EXTERNAL"))
+
+    assert seen == ["FWQ-0001"]
+
+
 def test_blocked_task_becomes_ready_when_dependencies_complete():
     tasks = {
         "FWQ-0001": TaskSpec("FWQ-0001", "Core dependency", "dependency", initial_state="DONE"),

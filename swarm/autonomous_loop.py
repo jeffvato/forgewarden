@@ -57,9 +57,10 @@ class TaskSpec:
     review_context: str = "ForgeWarden exact-commit review"
 
 
-def progress_queue(tasks: dict[str, TaskSpec], state: dict[str, Any], *, review_resolver: Callable[[TaskSpec, Mapping[str, Any]], str] | None = None, blocker_resolver: Callable[[TaskSpec, Mapping[str, Any]], bool] | None = None, plan_tasks: tuple[TaskSpec, ...] = ()) -> tuple[str, ...]:
+def progress_queue(tasks: dict[str, TaskSpec], state: dict[str, Any], *, review_resolver: Callable[[TaskSpec, Mapping[str, Any]], str] | None = None, blocker_resolver: Callable[[TaskSpec, Mapping[str, Any]], bool] | None = None, plan_tasks: tuple[TaskSpec, ...] = (), review_budget: int = 1) -> tuple[str, ...]:
     """Advance review/blocker states and enqueue the next authorized Core task."""
     transitions: list[str] = []
+    reviews_attempted = 0
     for task in tasks.values():
         state["queued_tasks"].setdefault(task.task_id, {"state": task.initial_state, "attempts": 0})
     changed = True
@@ -72,6 +73,9 @@ def progress_queue(tasks: dict[str, TaskSpec], state: dict[str, Any], *, review_
                 # A deferred review is retried once per bounded run. The
                 # progression loop exits after recording an external blocker,
                 # preventing repeated attempts within the same run.
+                if reviews_attempted >= review_budget:
+                    continue
+                reviews_attempted += 1
                 disposition = review_resolver(task, record) if review_resolver else task.review_disposition
                 if disposition == "PASSED":
                     record["state"] = "DONE"
