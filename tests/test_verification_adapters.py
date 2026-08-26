@@ -1,0 +1,58 @@
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+import pytest
+
+from swarm.verification_adapters import VerificationAdapter, nvidia_adapter, openrouter_adapter
+
+
+JOB = "phase2a-0123456789abcdef01234567"
+COMMIT = "a" * 40
+
+
+def test_provider_defaults_pin_models_and_endpoints():
+    assert openrouter_adapter().model == "z-ai/glm-5.2:free"
+    assert openrouter_adapter().endpoint == "https://openrouter.ai/api/v1/chat/completions"
+    assert nvidia_adapter().model == "google/gemma-4-31b-it"
+    assert nvidia_adapter().endpoint == "https://integrate.api.nvidia.com/v1/chat/completions"
+
+
+def test_provider_requires_local_api_key(tmp_path: Path, monkeypatch):
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    with pytest.raises(RuntimeError, match="API key is unavailable"):
+        openrouter_adapter().run(tmp_path, JOB, COMMIT, "review")
+
+
+def test_provider_posts_schema_bound_review_and_validates_response(tmp_path: Path, monkeypatch):
+    captured = {}
+    result = {
+        "job_id": JOB,
+        "reviewed_commit": COMMIT,
+        "verdict": "APPROVE",
+        "risk": "LOW",
+        "blocking_findings": [],
+        "non_blocking_notes": [],
+        "tests_missing": [],
+        "reasoning_summary": "verified",
+        "proposed_rules": [],
+    }
+
+    class Response:
+        def __enter__(self): return self
+        def __exit__(self, *args): return False
+        def read(self, limit): return json.dumps({"choices": [{"message": {"content": json.dumps(result)}}]}).encode()
+
+    def fake_urlopen(request, timeout):
+        captured["request"] = request
+        captured["timeout"] = timeout
+        return Response()
+
+    monkeypatch.setenv("NVIDIA_API_KEY", "test-key")
+    monkeypatch.setattr("swarm.verification_adapters.urllib.request.urlopen", fake_urlopen)
+    assert nvidia_adapter().run(tmp_path, JOB, COMMIT, "review")["verdict"] == "APPROVE"
+    body = json.loads(captured["request"].data)
+    assert body["model"] == "google/gemma-4-31b-it"
+    assert body["response_format"]["type"] == "json_schema"
+    assert captured["request"].get_header("Authorization") == "Bearer test-key"

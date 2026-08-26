@@ -6,7 +6,8 @@ from types import MappingProxyType
 from typing import Mapping
 
 _SHA1 = re.compile(r"[0-9a-fA-F]{40}")
-_ROLES = frozenset({"CLAUDE", "GEMINI"})
+_ROLES = frozenset({"CLAUDE", "GEMINI", "OPENROUTER", "NVIDIA"})
+_DEFAULT_ROLES = frozenset({"CLAUDE", "GEMINI"})
 _SEVERITIES = frozenset({"LOW", "MEDIUM", "HIGH", "CRITICAL"})
 _DISPOSITIONS = frozenset({"APPROVED", "REJECTED", "FINDINGS"})
 class ReviewHandoffError(ValueError): pass
@@ -27,7 +28,7 @@ def record_review(cycle: ReviewCycle, result: ReviewResult) -> ReviewCycle:
     if result.disposition == "REJECTED" and not result.rationale.strip(): raise ReviewHandoffError("rejected review requires rationale")
     reviews = dict(cycle.reviews); reviews[result.role] = result
     return ReviewCycle(cycle.candidate_commit, MappingProxyType(reviews))
-def complete_review_cycle(cycle: ReviewCycle, required_roles: frozenset[str] | set[str] = _ROLES) -> ReviewCycle:
+def complete_review_cycle(cycle: ReviewCycle, required_roles: frozenset[str] | set[str] = _DEFAULT_ROLES) -> ReviewCycle:
     required = frozenset(required_roles)
     if not required or not required.issubset(_ROLES): raise ReviewHandoffError("review cycle contains an unsupported reviewer role")
     if set(cycle.reviews) != required: raise ReviewHandoffError("required reviewer evidence is incomplete")

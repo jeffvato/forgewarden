@@ -14,6 +14,7 @@ from typing import Any, Callable
 from . import claude_verifier
 from .adapters import GeminiAdapter, ResourceLimits
 from .core import SwarmError, read_restricted_bytes, redact, validate_contract, validate_snapshot_symlinks
+from .verification_adapters import nvidia_adapter, openrouter_adapter
 
 _FULL_SHA = re.compile(r"^[0-9a-fA-F]{40,64}$")
 _JOB_ID = re.compile(r"^phase2a-[a-z0-9]{24}$")
@@ -109,8 +110,9 @@ def run_review_cycle(
     if len(review_context.encode("utf-8")) > 24_000:
         raise ReviewRunnerError("review context plus exact candidate patch exceeds the 24000-byte bound")
     requested = tuple(dict.fromkeys(reviewers))
-    if not requested or any(provider not in {"CLAUDE", "GEMINI"} for provider in requested):
-        raise ReviewRunnerError("reviewers must contain CLAUDE and/or GEMINI")
+    supported = {"CLAUDE", "GEMINI", "OPENROUTER", "NVIDIA"}
+    if not requested or any(provider not in supported for provider in requested):
+        raise ReviewRunnerError("reviewers must contain supported read-only providers")
     with tempfile.TemporaryDirectory(prefix=f"forgewarden-review-{job_id}-") as temporary:
         snapshots = {provider: Path(temporary) / provider.lower() for provider in requested}
         for snapshot in snapshots.values():
@@ -126,14 +128,17 @@ def run_review_cycle(
                 allow_external_review=allow_external_review,
             )
             gemini = adapter.run
+        openrouter = openrouter_adapter().run if "OPENROUTER" in requested else None
+        nvidia = nvidia_adapter().run if "NVIDIA" in requested else None
 
-        provider_map = {"CLAUDE": claude, "GEMINI": gemini}
+        provider_map = {"CLAUDE": claude, "GEMINI": gemini, "OPENROUTER": openrouter, "NVIDIA": nvidia}
         providers = tuple((provider, provider_map[provider]) for provider in requested)
 
         def invoke_provider(provider: str, invoke: Callable[..., dict[str, Any]]) -> dict[str, Any]:
             try:
                 result = invoke(snapshots[provider], job_id, commit, review_context)
-                validate_contract(result, provider.lower(), expected_job_id=job_id, expected_commit=commit)
+                contract_provider = provider.lower() if provider in {"CLAUDE", "GEMINI"} else "claude"
+                validate_contract(result, contract_provider, expected_job_id=job_id, expected_commit=commit)
                 return _review_record(provider, result=result)
             except Exception as exc:  # provider boundaries must not hide the other review
                 return _review_record(provider, error=redact(str(exc)))
@@ -141,7 +146,7 @@ def run_review_cycle(
         # Providers are independent read-only reviewers. Run them concurrently so
         # a slow or unavailable provider cannot prevent the other review from
         # completing. Each adapter owns its bounded subprocess timeout.
-        with ThreadPoolExecutor(max_workers=2, thread_name_prefix="forgewarden-review") as executor:
+        with ThreadPoolExecutor(max_workers=len(providers), thread_name_prefix="forgewarden-review") as executor:
             futures = [executor.submit(invoke_provider, provider, invoke) for provider, invoke in providers]
             records = [future.result() for future in futures]
 
