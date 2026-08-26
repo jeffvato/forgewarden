@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from swarm.autonomous_loop import AutonomousOrchestrator, GitCheckpointController, TaskSpec, WorkerLease, WorkerResult, progress_queue
-from swarm.autonomous_adapters import ClaudeTaskAdapter, ExactReviewAdapter, run_deterministic_tests
+from swarm.autonomous_adapters import CodexTaskAdapter, ExactReviewAdapter, run_deterministic_tests
 import swarm.autonomous_adapters as autonomous_adapters
 from swarm.plan_derivation import derive_next_core_task
 from swarm.cli import main
@@ -317,39 +317,25 @@ def test_review_resolver_preserves_provider_unavailability_as_external(tmp_path:
     assert ExactReviewAdapter("review").resolve_review(task, lease) == "EXTERNAL"
 
 
-def test_claude_task_adapter_pins_schema_and_denies_shell_tools(tmp_path: Path, monkeypatch):
+def test_codex_task_adapter_dispatches_bounded_writer(tmp_path: Path, monkeypatch):
     target = tmp_path / "target.py"
     target.write_text("pass\n", encoding="utf-8")
     task = TaskSpec("FWQ-0011", "Core", "implement", allowed_paths=("target.py",), target_path="target.py")
     lease = WorkerLease("lease", task.task_id, "session", str(tmp_path), task.allowed_paths, "IMPLEMENT_AND_TEST", (), time.time() + 60)
     captured = {}
-    payload = {"job_id": "claude-fwq-0011", "status": "FIXED", "root_cause": "test", "summary": "ok", "changed_files": ["target.py"], "tests_added_or_changed": [], "commands_run": [], "remaining_risks": [], "requires_human_approval": False}
-
-    def fake_run(command, **kwargs):
-        captured["command"] = command
-        return subprocess.CompletedProcess(command, 0, json.dumps({"structured_output": payload}), "")
-
-    monkeypatch.setattr("swarm.autonomous_adapters.subprocess.run", fake_run)
-    result = ClaudeTaskAdapter(Path(__file__).parents[1] / "schemas/codex-result.schema.json", "claude").dispatch(task, lease)
+    payload = {"job_id": "codex-fwq-0011", "status": "FIXED", "root_cause": "test", "summary": "ok", "changed_files": ["target.py"], "tests_added_or_changed": [], "commands_run": [], "remaining_risks": [], "requires_human_approval": False}
+    monkeypatch.setattr("swarm.autonomous_adapters.CodexAdapter.run", lambda self, spec, prompt: payload)
+    result = CodexTaskAdapter(Path(__file__).parents[1] / "schemas/codex-result.schema.json", "codex").dispatch(task, lease)
     assert result.changed_files == ("target.py",)
-    command = captured["command"]
-    assert command[command.index("--tools") + 1] == "Read,Edit,Write,Glob,Grep"
-    assert "Bash" not in command[command.index("--allowed-tools") + 1]
-    assert command[command.index("--disallowed-tools") + 1] == "Bash"
-    assert "Do not run commands" in command[-1]
-    schema = json.loads(command[command.index("--json-schema") + 1])
-    assert "$schema" not in schema
-    assert schema["properties"]["job_id"]["const"] == "claude-fwq-0011"
 
 
-def test_claude_task_adapter_rejects_error_envelope(tmp_path: Path, monkeypatch):
+def test_codex_task_adapter_requires_target_path(tmp_path: Path):
     target = tmp_path / "target.py"
     target.write_text("pass\n", encoding="utf-8")
-    task = TaskSpec("FWQ-0011", "Core", "implement", allowed_paths=("target.py",), target_path="target.py")
+    task = TaskSpec("FWQ-0011", "Core", "implement")
     lease = WorkerLease("lease", task.task_id, "session", str(tmp_path), task.allowed_paths, "IMPLEMENT_AND_TEST", (), time.time() + 60)
-    monkeypatch.setattr("swarm.autonomous_adapters.subprocess.run", lambda command, **kwargs: subprocess.CompletedProcess(command, 0, json.dumps({"is_error": True, "result": "denied"}), ""))
-    with pytest.raises(RuntimeError, match="returned an error"):
-        ClaudeTaskAdapter(Path(__file__).parents[1] / "schemas/codex-result.schema.json", "claude").dispatch(task, lease)
+    with pytest.raises(ValueError, match="target path"):
+        CodexTaskAdapter(Path(__file__).parents[1] / "schemas/codex-result.schema.json", "codex").dispatch(task, lease)
 
 
 def test_runner_stops_only_for_explicit_external_review_resource_blocker(tmp_path: Path):
