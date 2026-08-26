@@ -334,7 +334,9 @@ def test_claude_task_adapter_pins_schema_and_denies_shell_tools(tmp_path: Path, 
     assert result.changed_files == ("target.py",)
     command = captured["command"]
     assert "Bash" not in command[command.index("--allowed-tools") + 1]
+    assert command[command.index("--disallowed-tools") + 1] == "Bash"
     schema = json.loads(command[command.index("--json-schema") + 1])
+    assert "$schema" not in schema
     assert schema["properties"]["job_id"]["const"] == "claude-fwq-0011"
 
 

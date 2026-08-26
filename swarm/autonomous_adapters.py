@@ -27,6 +27,9 @@ class ClaudeTaskAdapter:
             raise ValueError(f"{task.task_id} lacks an explicit Codex target path")
         job_id = "claude-" + task.task_id.lower()
         schema = json.loads(read_restricted_bytes(self.schema, "Claude result schema"))
+        # Claude's structured-output flag accepts the schema body but does not
+        # resolve a repository-local or remote draft declaration.
+        schema.pop("$schema", None)
         schema.setdefault("properties", {}).setdefault("job_id", {})["const"] = job_id
         prompt = (
             f"Work only in {lease.repository}. Edit only {task.target_path} and any files under the declared allowed paths: "
