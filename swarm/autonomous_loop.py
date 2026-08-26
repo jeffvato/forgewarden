@@ -239,6 +239,11 @@ class AutonomousOrchestrator:
             if record.get("state") == "BLOCKED" and task.blocker_external:
                 record["blocker_external"] = True
                 record.setdefault("blocker", "required external blocker")
+            if task.blocker_external and task.target_path is None and record.get("state") in {"READY", "IN_PROGRESS", "FAILED"}:
+                record["state"] = "BLOCKED"
+                record["blocker_external"] = True
+                record["blocker"] = "external review requires an explicit candidate target"
+                self._log("unsafe_external_task_parked", task_id=task_id)
         if state.get("session_id") != self.session_id and self.session_id:
             self.session_id = str(state["session_id"])
         self._recover_stale(state)
