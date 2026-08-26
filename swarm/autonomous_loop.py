@@ -69,6 +69,10 @@ def progress_queue(tasks: dict[str, TaskSpec], state: dict[str, Any], *, review_
             record = state["queued_tasks"][task.task_id]
             current = record["state"]
             if current == "REVIEW":
+                # An unavailable reviewer is retried on the next bounded run,
+                # not repeatedly within the same run.
+                if record.get("blocker_external"):
+                    continue
                 disposition = review_resolver(task, record) if review_resolver else task.review_disposition
                 if disposition == "PASSED":
                     record["state"] = "DONE"
@@ -268,6 +272,12 @@ class AutonomousOrchestrator:
     def run(self, *, dispatch: Callable[[TaskSpec, WorkerLease], WorkerResult], validate: Callable[[TaskSpec, WorkerResult], bool], commit: Callable[[TaskSpec, WorkerResult], str], review: Callable[[TaskSpec, str, WorkerLease], tuple[str, ...]], repair: Callable[[TaskSpec, WorkerResult, WorkerLease], WorkerResult] | None = None, max_steps: int | None = None, authorized: Callable[[], bool] | None = None, review_resolver: Callable[[TaskSpec, Mapping[str, Any]], str] | None = None, blocker_resolver: Callable[[TaskSpec, Mapping[str, Any]], bool] | None = None, plan_tasks: tuple[TaskSpec, ...] = ()) -> dict[str, Any]:
         self._enforce_safety()
         state = self._load()
+        # Permit periodic re-evaluation on a fresh invocation while preventing
+        # a single run from spinning on the same unavailable resource.
+        for record in state["queued_tasks"].values():
+            if record.get("state") == "REVIEW" and record.get("blocker_external"):
+                record.pop("blocker_external", None)
+                record.pop("blocker", None)
         steps = 0
         while max_steps is None or steps < max_steps:
             if authorized is not None and not authorized():
