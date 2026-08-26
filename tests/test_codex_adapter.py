@@ -42,7 +42,7 @@ class CodexAdapterProcessTests(unittest.TestCase):
             "#!/usr/bin/env python3\n"
             "import json, os, pathlib, sys\n"
             "args = sys.argv[1:]\n"
-            "assert args[:4] == ['--ask-for-approval', 'never', 'exec', '--ephemeral']\n"
+            "assert args[:4] == ['exec', '--ephemeral', '--approve-for-me', '--sandbox']\n"
             "assert args[args.index('--sandbox') + 1] == 'workspace-write'\n"
             "assert args[args.index('--cd') + 1] == os.getcwd()\n"
             "prompt = args[-1]\n"
@@ -67,7 +67,7 @@ class CodexAdapterProcessTests(unittest.TestCase):
         result = adapter.run(spec)
         self.assertEqual(result["status"], "FIXED")
         self.assertEqual(adapter.last_invocation["exit_code"], 0)
-        self.assertEqual(adapter.last_invocation["argv"][0:4], [str(self.fake), "--ask-for-approval", "never", "exec"])
+        self.assertEqual(adapter.last_invocation["argv"][0:4], [str(self.fake), "exec", "--ephemeral", "--approve-for-me"])
         self.assertEqual(adapter.last_invocation["working_directory"], str(self.repo))
         self.assertIn("final_response", adapter.last_invocation)
         self.assertEqual((self.repo / "value.py").read_text(), "def value():\n    return 2\n")
@@ -77,7 +77,7 @@ class CodexAdapterProcessTests(unittest.TestCase):
         self.assertEqual(capture["cwd"], str(self.repo))
         self.assertIn("RETURN JOB_ID EXACTLY AS SUPPLIED: codex-writer-test1234.", capture["prompt"])
         self.assertEqual(capture["schema"]["properties"]["job_id"]["const"], "codex-writer-test1234")
-        self.assertEqual(capture["args"][:4], ["--ask-for-approval", "never", "exec", "--ephemeral"])
+        self.assertEqual(capture["args"][:4], ["exec", "--ephemeral", "--approve-for-me", "--sandbox"])
         self.assertEqual(capture["args"][capture["args"].index("--sandbox") + 1], "workspace-write")
         self.assertNotIn("DATABASE_URL", capture["env_names"])
         self.assertNotIn("HTTP_PROXY", capture["env_names"])

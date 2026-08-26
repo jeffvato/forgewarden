@@ -446,7 +446,7 @@ class CodexAdapter:
             f"RETURN JOB_ID EXACTLY AS SUPPLIED: {canonical_job_id}. Do not shorten, rewrite, or derive it.\n\n"
             + (prompt or spec.prompt())
         )
-        command = [self.executable, "--ask-for-approval", "never", "exec", "--ephemeral", "--sandbox", "workspace-write", "--skip-git-repo-check", "--cd", str(spec.codex_cwd)]
+        command = [self.executable, "exec", "--ephemeral", "--approve-for-me", "--sandbox", "workspace-write", "--skip-git-repo-check", "--cd", str(spec.codex_cwd)]
         command.extend(["--output-schema", str(schema_copy), "--output-last-message", str(external_output), "--color", "never", "--json", canonical_prompt])
         evidence = CodexRunEvidence(
             job_id=canonical_job_id,
