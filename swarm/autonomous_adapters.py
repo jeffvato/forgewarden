@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import shutil
 import subprocess
 from pathlib import Path
 from typing import Any
@@ -35,7 +34,7 @@ class ClaudeTaskAdapter:
             f"The failing assertion is: {task.failing_assertion}. Run only the deterministic test command after editing. "
             "Do not edit tests, Git metadata, deployment settings, credentials, or remote systems. Return the required JSON result."
         )
-        command = [self.executable, "--print", "--output-format", "json", "--no-session-persistence", "--permission-mode", "acceptEdits", "--allowed-tools", "Read,Edit,Write,Glob,Grep,Bash(python3 -m pytest*)", "--disallowed-tools", "Bash(git *),Bash(curl *),Bash(wget *)", "--json-schema", json.dumps(schema), prompt]
+        command = [self.executable, "--print", "--output-format", "json", "--no-session-persistence", "--permission-mode", "acceptEdits", "--allowed-tools", "Read,Edit,Write,Glob,Grep", "--disallowed-tools", "Bash", "--json-schema", json.dumps(schema), prompt]
         completed = subprocess.run(command, cwd=lease.repository, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=False, timeout=self.limits.timeout_seconds)
         if completed.returncode:
             raise RuntimeError(f"Claude failed ({completed.returncode}): {completed.stderr[-2000:]}")
@@ -48,17 +47,6 @@ class ClaudeTaskAdapter:
         validate_contract(payload, "codex", expected_job_id=job_id)
         return WorkerResult(None, tuple(payload["changed_files"]), tuple(task.test_command), payload.get("summary", ""))
 
-    @staticmethod
-    def _remove_mailbox_artifacts(repository: Path, job_id: str) -> None:
-        """Keep the worker's declared Git scope free of adapter bookkeeping."""
-        mailbox = repository / ".swarm"
-        for name in (f"codex-result-{job_id}.json", f"codex-result-{job_id}.schema.json"):
-            (mailbox / name).unlink(missing_ok=True)
-        if mailbox.is_dir() and not any(mailbox.iterdir()):
-            mailbox.rmdir()
-
-
-CodexTaskAdapter = ClaudeTaskAdapter
 
 
 def run_deterministic_tests(task: TaskSpec, result: WorkerResult, repository: WorkerLease | Path | str, limits: ResourceLimits | None = None) -> bool:
