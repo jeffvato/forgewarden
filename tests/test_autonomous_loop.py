@@ -317,6 +317,16 @@ def test_review_resolver_preserves_provider_unavailability_as_external(tmp_path:
     assert ExactReviewAdapter("review").resolve_review(task, lease) == "EXTERNAL"
 
 
+def test_exact_review_adapter_uses_claude_adjudication_as_final_evidence(tmp_path: Path, monkeypatch):
+    task = TaskSpec("FWQ-0009", "Core review", "review", initial_state="REVIEW")
+    lease = WorkerLease("review", task.task_id, "session", str(tmp_path), (), "REVIEW", (), time.time() + 60)
+    payload = {"job_id": "phase2a-" + "0" * 24, "reviewed_commit": SHA_A, "verdict": "APPROVE", "risk": "LOW", "blocking_findings": [], "non_blocking_notes": [], "tests_missing": [], "reasoning_summary": "final", "proposed_rules": []}
+    monkeypatch.setattr(autonomous_adapters, "run_review_cycle", lambda *args, **kwargs: {"state": "APPROVED", "reviews": [{"provider": "OPENROUTER", "state": "REVIEW_RETURNED", "result": payload}], "adjudication": {"provider": "CLAUDE_ADJUDICATION", "state": "APPROVED", "result": payload}})
+    result = ExactReviewAdapter("review", reviewers=("CLAUDE", "OPENROUTER")).review(task, SHA_A, lease)
+    assert set(result) == {"CLAUDE"}
+    assert result["CLAUDE"].rationale == "final"
+
+
 def test_codex_task_adapter_dispatches_bounded_writer(tmp_path: Path, monkeypatch):
     target = tmp_path / "target.py"
     target.write_text("pass\n", encoding="utf-8")

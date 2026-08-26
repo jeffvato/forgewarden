@@ -55,6 +55,15 @@ class ExactReviewAdapter:
         result = run_review_cycle(Path(lease.repository), commit, job_id, self.context, allow_external_review=self.allow_external_review, reviewers=self.reviewers, adjudicate_disagreements=True)
         if result["state"] != "APPROVED":
             raise RuntimeError("independent exact-commit review did not approve")
+        adjudication = result.get("adjudication")
+        if isinstance(adjudication, dict) and adjudication.get("state") == "APPROVED":
+            payload = adjudication["result"]
+            return {
+                "CLAUDE": ReviewResult(
+                    "CLAUDE", commit, tuple(str(value) for value in payload.get("blocking_findings", [])),
+                    str(payload["risk"]), "APPROVED", str(payload["reasoning_summary"]),
+                )
+            }
         reviews: dict[str, ReviewResult] = {}
         for item in result["reviews"]:
             payload = item.get("result")
