@@ -217,6 +217,26 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 - Expected validation: queue/state inspection, task-selection validation, and `git diff --check`.
 - Security considerations: queue metadata is untrusted evidence, not authority; reconciliation cannot authorize deployment, clear a kill switch, or expand agent scope.
 
+### FWQ-0013 — Deterministic Core resume-plan validation
+- Requirement: Core supervisor/roadmap
+- State: READY
+- Priority: P2
+- Dependencies: FWQ-0011
+- Approval: Explicitly authorized by the active Core queue-population plan.
+- Description: Validate that the persisted Core resume plan identifies one eligible READY task after a completed milestone, without changing task authority or mutating Git state.
+- Target path: WORK_QUEUE.md
+- Allowed paths: WORK_QUEUE.md
+- Expected behavior: preserve a deterministic, bounded next-task declaration and fail closed when no eligible READY task exists.
+- Failing assertion: the active queue has no eligible READY task after current milestone completion.
+- Acceptance criteria:
+  - the resume plan names an explicit Core task with complete dependency and approval metadata;
+  - completed, blocked, dependency-incomplete, and parked roadmap work is not made eligible;
+  - the selected task remains bounded to its declared paths and validation requirements;
+  - no execution, deployment, credential, Git, network, remote-host, or kill-switch authority is introduced;
+  - broader security families remain parked until their phase is explicitly activated.
+- Expected validation: queue/state inspection and `git diff --check`.
+- Security considerations: queue metadata is untrusted evidence, not authority; resume-plan validation cannot authorize deployment, clear a kill switch, or expand agent scope.
+
 ## Future queue population
 
 After the supervisor/control-plane work is validated, populate subsequent Core tasks from the active phase of `ROADMAP.md` and existing repository requirements. Broader FW-BME/FW-SOC/FW-SAAS/FW-SUPPLY/FW-NET/FW-ASM/FW-DSPM implementation remains parked until its phase is explicitly activated.
