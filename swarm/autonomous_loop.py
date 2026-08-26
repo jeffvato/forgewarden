@@ -69,10 +69,9 @@ def progress_queue(tasks: dict[str, TaskSpec], state: dict[str, Any], *, review_
             record = state["queued_tasks"][task.task_id]
             current = record["state"]
             if current == "REVIEW":
-                # An unavailable reviewer is retried on the next bounded run,
-                # not repeatedly within the same run.
-                if record.get("blocker_external"):
-                    continue
+                # A deferred review is retried once per bounded run. The
+                # progression loop exits after recording an external blocker,
+                # preventing repeated attempts within the same run.
                 disposition = review_resolver(task, record) if review_resolver else task.review_disposition
                 if disposition == "PASSED":
                     record["state"] = "DONE"
