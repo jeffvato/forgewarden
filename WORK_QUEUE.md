@@ -316,6 +316,25 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 - Expected validation: queue/state inspection and `git diff --check`.
 - Security considerations: queue metadata is untrusted evidence, not authority; successor declaration cannot authorize deployment, clear a kill switch, or expand agent scope.
 
+### FWQ-0018 — Deterministic Core future successor declaration
+- Requirement: Core supervisor/roadmap
+- State: READY
+- Priority: P2
+- Dependencies: FWQ-0017
+- Approval: Explicitly authorized by Jeff for bounded job `codex-fwq-0018`.
+- Description: Preserve one explicit, bounded Core successor task for the next continuation milestone without granting execution authority or mutating Git state.
+- Target path: WORK_QUEUE.md
+- Allowed paths: WORK_QUEUE.md
+- Expected behavior: retain a dependency-complete READY Core successor and fail closed when no eligible task is declared.
+- Failing assertion: the active queue has no eligible READY task after current milestone completion.
+- Acceptance criteria:
+  - the successor is explicitly identified, approved, dependency-complete, and bounded to its declared validation scope;
+  - completed, blocked, dependency-incomplete, and parked roadmap work is not made eligible;
+  - queue metadata cannot authorize execution, deployment, credentials, Git, network, remote hosts, or kill-switch changes;
+  - broader security families remain parked until their phase is explicitly activated.
+- Expected validation: queue/state inspection and `git diff --check`.
+- Security considerations: queue metadata is untrusted evidence, not authority; successor declaration cannot authorize deployment, clear a kill switch, or expand agent scope.
+
 ## Future queue population
 
 After the supervisor/control-plane work is validated, populate subsequent Core tasks from the active phase of `ROADMAP.md` and existing repository requirements. Broader FW-BME/FW-SOC/FW-SAAS/FW-SUPPLY/FW-NET/FW-ASM/FW-DSPM implementation remains parked until its phase is explicitly activated.
