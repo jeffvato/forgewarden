@@ -98,6 +98,7 @@ def run_review_cycle(
     nvidia_runner: Callable[..., dict[str, Any]] | None = None,
     reviewers: tuple[str, ...] = ("CLAUDE", "GEMINI"),
     adjudicate_disagreements: bool = False,
+    required_reviewers: tuple[str, ...] | None = None,
 ) -> dict[str, Any]:
     """Run the configured independent reviewers without changing the repository.
 
@@ -116,6 +117,9 @@ def run_review_cycle(
     supported = {"CLAUDE", "GEMINI", "OPENROUTER", "NVIDIA"}
     if not requested or any(provider not in supported for provider in requested):
         raise ReviewRunnerError("reviewers must contain supported read-only providers")
+    required = requested if required_reviewers is None else tuple(dict.fromkeys(required_reviewers))
+    if not required or any(provider not in requested for provider in required):
+        raise ReviewRunnerError("required reviewers must be selected from reviewers")
     with tempfile.TemporaryDirectory(prefix=f"forgewarden-review-{job_id}-") as temporary:
         snapshots = {provider: Path(temporary) / provider.lower() for provider in requested}
         for snapshot in snapshots.values():
@@ -154,8 +158,8 @@ def run_review_cycle(
             records = [future.result() for future in futures]
 
     adjudication = None
-    if adjudicate_disagreements and "CLAUDE" in requested and all(record["state"] != "UNAVAILABLE" for record in records):
-        non_claude = [record for record in records if record["provider"] != "CLAUDE"]
+    if adjudicate_disagreements and "CLAUDE" in requested and next(record for record in records if record["provider"] == "CLAUDE")["state"] != "UNAVAILABLE":
+        non_claude = [record for record in records if record["provider"] != "CLAUDE" and record["state"] != "UNAVAILABLE"]
         if any(record["state"] != "APPROVED" for record in non_claude):
             try:
                 adjudication_prompt = review_context + "\n\nThe following read-only provider reports disagree. Adjudicate them against the exact commit and return the final Claude decision:\n" + json.dumps(non_claude, sort_keys=True)
@@ -164,7 +168,12 @@ def run_review_cycle(
                 adjudication = _review_record("CLAUDE_ADJUDICATION", result=final_result)
             except Exception as exc:
                 adjudication = _review_record("CLAUDE_ADJUDICATION", error=redact(str(exc)))
-    approved = bool(adjudication and adjudication["state"] == "APPROVED") or all(record["state"] == "APPROVED" for record in records)
+    required_records = [record for record in records if record["provider"] in required]
+    optional_records = [record for record in records if record["provider"] not in required]
+    approved = bool(adjudication and adjudication["state"] == "APPROVED") or (
+        all(record["state"] == "APPROVED" for record in required_records)
+        and all(record["state"] in {"APPROVED", "UNAVAILABLE"} for record in optional_records)
+    )
     return {
         "state": "APPROVED" if approved else "REVIEW_REQUIRED",
         "candidate_commit": commit,

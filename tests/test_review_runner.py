@@ -102,6 +102,28 @@ def test_review_cycle_uses_independent_provider_snapshots(repo_fixture: Path):
     assert snapshots[0] != snapshots[1]
 
 
+def test_review_cycle_does_not_stall_when_optional_reviewers_are_unavailable(repo_fixture: Path):
+    sha = repo_fixture.joinpath(".candidate-sha").read_text().strip()
+
+    def approved(snapshot, job_id, commit, context):
+        return {
+            "job_id": job_id, "reviewed_commit": commit, "verdict": "APPROVE", "risk": "LOW",
+            "blocking_findings": [], "non_blocking_notes": [], "tests_missing": [],
+            "reasoning_summary": "approved", "proposed_rules": [],
+        }
+
+    def unavailable(snapshot, job_id, commit, context):
+        raise RuntimeError("provider unavailable")
+
+    result = run_review_cycle(
+        repo_fixture, sha, "phase2a-" + "9" * 24, "review", claude_runner=approved,
+        gemini_runner=unavailable, reviewers=("CLAUDE", "GEMINI"),
+        required_reviewers=("CLAUDE",), adjudicate_disagreements=True,
+    )
+    assert result["state"] == "APPROVED"
+    assert result["reviews"][1]["state"] == "UNAVAILABLE"
+
+
 def test_review_cycle_supports_explicit_claude_only_mode(repo_fixture: Path):
     sha = repo_fixture.joinpath(".candidate-sha").read_text().strip()
 
