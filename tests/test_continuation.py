@@ -4,6 +4,7 @@ from swarm.continuation import WorkUnitResult, run_bounded_work_unit
 from swarm.review_handoff import ReviewResult
 from swarm.work_checkpoint import load_checkpoint
 SHA="a"*40
+CANDIDATE_SHA="b"*40
 from test_task_selection import _state, _task
 def test_plan_selects_one_ready_task_without_dispatching():
     plan=plan_continuation(_state(_task("FWQ-0001")),StopContext())
@@ -19,7 +20,7 @@ def test_blocked_ready_work_does_not_claim_completion():
     assert plan.stop.reason == "NO_EXECUTABLE_READY_TASKS"
 def test_full_loop_success_and_review_failures(tmp_path):
     state=_state(_task("FWQ-0001"))
-    result=WorkUnitResult(SHA,("x",),("ok",))
+    result=WorkUnitResult(CANDIDATE_SHA,("x",),("ok",))
     reviews=lambda sha:(ReviewResult("CLAUDE",sha,(),"LOW","APPROVED","ok"),ReviewResult("GEMINI",sha,(),"LOW","APPROVED","ok"))
     assert run_bounded_work_unit(state,StopContext(),tmp_path/"c.json",SHA,lambda _:result,lambda _:True,reviews).next_action == "accepted; advance queue"
     assert run_bounded_work_unit(state,StopContext(),tmp_path/"d.json",SHA,lambda _:object(),lambda _:True,reviews).stop.reason == "DISPATCH_RESULT_INVALID"
@@ -32,7 +33,7 @@ def test_repair_review_failure_is_auditable(tmp_path):
     bad=lambda sha:(ReviewResult("CLAUDE",sha,(),"LOW","REJECTED","no"),ReviewResult("GEMINI",sha,(),"LOW","APPROVED","ok"))
     assert run_bounded_work_unit(state,StopContext(),tmp_path/"c.json",SHA,lambda _:result,lambda _:True,bad,lambda value:value).stop.reason == "REPAIR_REVIEW_FAILED"
 def test_accepted_checkpoint_preserves_actual_review_evidence(tmp_path):
-    state=_state(_task("FWQ-0001")); result=WorkUnitResult(SHA,("x",),("ok",)); path=tmp_path/"c.json"
+    state=_state(_task("FWQ-0001")); result=WorkUnitResult(CANDIDATE_SHA,("x",),("ok",)); path=tmp_path/"c.json"
     reviews=lambda sha:(ReviewResult("CLAUDE",sha,("low-note",),"LOW","FINDINGS","ok"),ReviewResult("GEMINI",sha,("gemini-note",),"LOW","APPROVED","ok"))
     assert run_bounded_work_unit(state,StopContext(),path,SHA,lambda _:result,lambda _:True,reviews).next_action == "accepted; advance queue"
     checkpoint=load_checkpoint(path)
