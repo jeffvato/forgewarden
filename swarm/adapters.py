@@ -613,6 +613,7 @@ class GeminiAdapter:
             command = [
             self.executable, f"--print={current_prompt}", "--agent", "code-review-agent", "--sandbox",
                 "--disable-slash-commands", "--output-format", "json",
+                "--json-schema", str(schema_path),
                 "--print-timeout", f"{self.limits.timeout_seconds}s",
             ]
             result = limited_run(

@@ -67,6 +67,22 @@ class GeminiReviewContractTests(unittest.TestCase):
             adapter = GeminiAdapter(self.schema, ResourceLimits(), "fake-agy")
             self.assertEqual(adapter.run(self.snapshot, self.job, self.commit, "review evidence", formatting_retry=False), payload)
 
+    def test_passes_commit_bound_schema_to_agy(self):
+        payload = self.payload()
+        calls = []
+
+        def fake_run(command, cwd, prompt, limits, env, **kwargs):
+            calls.append(command)
+            return CompletedProcess(command, 0, json.dumps(payload), "")
+
+        with patch("swarm.adapters.limited_run", side_effect=fake_run):
+            adapter = GeminiAdapter(self.schema, ResourceLimits(), "fake-agy")
+            adapter.run(self.snapshot, self.job, self.commit, "review evidence", formatting_retry=False)
+
+        assert "--json-schema" in calls[0]
+        schema_index = calls[0].index("--json-schema") + 1
+        assert calls[0][schema_index].endswith(f"gemini-review-{self.job}.schema.json")
+
     def test_approve_with_blocking_findings_or_missing_tests_is_rejected(self):
         for key, value in (("blocking_findings", [{"finding": "block"}]), ("tests_missing", ["test"] )):
             payload = self.payload()
@@ -120,7 +136,8 @@ class GeminiReviewContractTests(unittest.TestCase):
         self.assertNotIn("--model", command)
         self.assertIn("--output-format", command)
         self.assertEqual(command[command.index("--output-format") + 1], "json")
-        self.assertNotIn("--json-schema", command)
+        self.assertIn("--json-schema", command)
+        self.assertTrue(command[command.index("--json-schema") + 1].endswith(f"gemini-review-{self.job}.schema.json"))
         self.assertTrue(kwargs["use_cgroup"])
         self.assertFalse(kwargs["network_isolated"])
 
