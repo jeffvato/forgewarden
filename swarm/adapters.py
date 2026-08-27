@@ -492,7 +492,7 @@ class CodexAdapter:
                 result = limited_run(command, spec.codex_cwd, "", self.limits, {"SWARM_ROLE": "CODEX_WRITER", "SWARM_DRY_RUN": "1"}, use_cgroup=True, environment_builder=lambda values: _codex_environment(values, cache_dir))
                 if result.returncode == 0 or attempts >= 2:
                     break
-                compatible = self._remove_unknown_option(command, result.stderr)
+                compatible = self._remove_unknown_option(command, result.stderr + result.stdout)
                 if compatible is None:
                     break
                 command = compatible
