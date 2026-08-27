@@ -517,7 +517,10 @@ class CodexAdapter:
                 evidence.schema_validation = "NOT_REACHED_PROCESS_EXIT"
                 evidence.target_post_hash = hashlib.sha256(read_restricted_bytes(target, "Codex target")).hexdigest()
                 self.persist_evidence()
-                raise SwarmError(f"Codex failed ({result.returncode}): {redact(result.stderr + result.stdout)}")
+                raise SwarmError(
+                    f"Codex failed ({result.returncode}): {redact(result.stderr + result.stdout)}; "
+                    f"invocation={redact(' '.join(command[:-1]))}"
+                )
             try:
                 external_bytes = read_restricted_bytes(external_output, "Codex final response")
             except SwarmError as exc:
