@@ -166,6 +166,8 @@ def reconcile_checkpoint(checkpoint: WorkUnitCheckpoint, repository_head: str) -
     if checkpoint.candidate_commit is not None and checkpoint.accepted_commit is None:
         raise CheckpointError("checkpoint not accepted: candidate commit has not been accepted")
     if checkpoint.accepted_commit is not None and (
+        checkpoint.accepted_commit.lower() == checkpoint.starting_commit.lower()
+        or
         not checkpoint.deterministic_validation
         or checkpoint.claude_review == "PENDING"
         or checkpoint.gemini_review == "PENDING"
