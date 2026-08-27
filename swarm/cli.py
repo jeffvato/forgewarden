@@ -173,7 +173,10 @@ def main() -> int:
             codex = CodexTaskAdapter(Path(__file__).resolve().parents[1] / "schemas/codex-result.schema.json", args.codex_executable or "/home/jeff/.local/bin/codex")
             # Claude is available again and remains read-only; Codex stays the
             # sole application-code writer.
-            reviewer = ExactReviewAdapter(str(manifest.get("review_context", "ForgeWarden exact-commit review")), allow_external_review=args.allow_external_review, reviewers=("CLAUDE", "GEMINI", "OPENROUTER", "NVIDIA"))
+            # The autonomous queue uses the authorized primary/fallback pair.
+            # Optional metered providers remain available to explicit review
+            # commands, but must not delay queue progress or consume quota.
+            reviewer = ExactReviewAdapter(str(manifest.get("review_context", "ForgeWarden exact-commit review")), allow_external_review=args.allow_external_review, reviewers=("CLAUDE", "GEMINI"))
             orchestrator = AutonomousOrchestrator(args.state_dir / "autonomous-loop.json", args.repository, tuple(tasks), checkpoint_path=args.state_dir / "work-checkpoint.json", audit_path=args.state_dir / "execution-log.jsonl")
             result = orchestrator.run(dispatch=codex.dispatch, validate=lambda task, value: run_deterministic_tests(task, value, args.repository), commit=lambda task, value: git_controller.commit_worker_changes(task, value), review=lambda task, commit, lease: reviewer.review(task, commit, lease), review_resolver=lambda task, record: reviewer.resolve_review(task, WorkerLease("review", task.task_id, orchestrator.session_id, str(args.repository), task.allowed_paths, "REVIEW", (), 0)), max_steps=args.max_steps, plan_tasks=tuple(plan_tasks))
             print(json.dumps(result, indent=2, sort_keys=True))
