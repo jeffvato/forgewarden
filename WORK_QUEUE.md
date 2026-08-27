@@ -836,7 +836,7 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 - State: READY
 - Priority: P2
 - Dependencies: FWQ-0045
-- Approval: Explicitly authorized by Jeff for bounded job `codex-fwq-0046`.
+- Approval: Explicitly authorized by Jeff for bounded job `codex-fwq-0047`.
 - Description: Populate the next bounded Core work item from the active ForgeWarden roadmap and preserve dependency, approval, and validation metadata.
 - Target path: WORK_QUEUE.md
 - Allowed paths: WORK_QUEUE.md
