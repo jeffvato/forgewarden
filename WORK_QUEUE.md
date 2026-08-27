@@ -869,4 +869,4 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 
 ## Future queue population
 
-After the supervisor/control-plane work is validated, populate subsequent Core tasks from the active phase of `ROADMAP.md` and existing repository requirements. Broader FW-BME/FW-SOC/FW-SAAS/FW-SUPPLY/FW-NET/FW-ASM/FW-DSPM implementation remains parked until its phase is explicitly activated.
+After the supervisor/control-plane work is validated, populate subsequent Core tasks from the active phase of `ROADMAP.md` and existing repository requirements. FW-ASOC is an approved cross-cutting requirement family: register/map it and add bounded primitives/tests incrementally after Core sequencing permits; do not duplicate existing subsystems or activate broad implementation from roadmap presence alone. Broader FW-BME/FW-SOC/FW-SAAS/FW-SUPPLY/FW-NET/FW-ASM/FW-DSPM implementation remains parked until its phase is explicitly activated.
