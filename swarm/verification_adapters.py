@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import json
 import os
+import socket
+import time
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -15,12 +17,15 @@ from .core import SwarmError, redact, validate_contract
 class VerificationAdapter:
     """Call an OpenAI-compatible reviewer without granting repository access."""
 
-    def __init__(self, provider: str, endpoint: str, model: str, api_key_name: str, timeout: int = 60):
+    def __init__(self, provider: str, endpoint: str, model: str, api_key_name: str, timeout: int = 60, max_attempts: int = 3, backoff_seconds: float = 1.0, retry_window_seconds: float = 90.0):
         self.provider = provider
         self.endpoint = endpoint
         self.model = model
         self.api_key_name = api_key_name
         self.timeout = timeout
+        self.max_attempts = max(1, max_attempts)
+        self.backoff_seconds = max(0.0, backoff_seconds)
+        self.retry_window_seconds = max(0.0, retry_window_seconds)
 
     def run(self, snapshot: Path, job_id: str, commit: str, prompt: str) -> dict[str, Any]:
         del snapshot  # The exact patch is already included in the bounded prompt.
@@ -39,11 +44,31 @@ class VerificationAdapter:
             headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json", "Accept": "application/json"},
             method="POST",
         )
-        try:
-            with urllib.request.urlopen(request, timeout=self.timeout) as response:
-                body = json.loads(response.read(2_000_000).decode("utf-8"))
-        except (OSError, urllib.error.URLError, json.JSONDecodeError) as exc:
-            raise SwarmError(f"{self.provider} request failed: {redact(str(exc))[:500]}") from exc
+        last_error: Exception | None = None
+        deadline = time.monotonic() + self.retry_window_seconds
+        for attempt in range(self.max_attempts):
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                break
+            try:
+                with urllib.request.urlopen(request, timeout=min(self.timeout, remaining)) as response:
+                    body = json.loads(response.read(2_000_000).decode("utf-8"))
+                last_error = None
+                break
+            except (OSError, urllib.error.URLError, json.JSONDecodeError) as exc:
+                last_error = exc
+                retryable = isinstance(exc, (TimeoutError, socket.timeout, urllib.error.URLError))
+                if isinstance(exc, urllib.error.HTTPError):
+                    retryable = exc.code == 429 or 500 <= exc.code < 600
+                elif isinstance(exc, urllib.error.URLError):
+                    retryable = isinstance(exc.reason, (TimeoutError, socket.timeout, ConnectionError))
+                if not retryable or attempt + 1 >= self.max_attempts:
+                    break
+                time.sleep(min(self.backoff_seconds * (2**attempt), max(0.0, deadline - time.monotonic())))
+        else:
+            last_error = RuntimeError("retry loop exhausted")
+        if last_error is not None:
+            raise SwarmError(f"{self.provider} request failed: {redact(str(last_error))[:500]}") from last_error
         try:
             content = body["choices"][0]["message"]["content"]
             result = json.loads(content) if isinstance(content, str) else content

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import urllib.error
 from pathlib import Path
 
 import pytest
@@ -56,3 +57,31 @@ def test_provider_posts_schema_bound_review_and_validates_response(tmp_path: Pat
     assert body["model"] == "google/gemma-4-31b-it"
     assert body["response_format"]["type"] == "json_schema"
     assert captured["request"].get_header("Authorization") == "Bearer test-key"
+
+
+@pytest.mark.parametrize("failure", [urllib.error.HTTPError("https://example.test", 429, "rate limited", {}, None), TimeoutError("timed out")])
+def test_provider_retries_bounded_transient_failures(tmp_path: Path, monkeypatch, failure):
+    result = {
+        "job_id": JOB, "reviewed_commit": COMMIT, "verdict": "APPROVE", "risk": "LOW",
+        "blocking_findings": [], "non_blocking_notes": [], "tests_missing": [],
+        "reasoning_summary": "verified", "proposed_rules": [],
+    }
+
+    class Response:
+        def __enter__(self): return self
+        def __exit__(self, *args): return False
+        def read(self, limit): return json.dumps({"choices": [{"message": {"content": json.dumps(result)}}]}).encode()
+
+    calls = 0
+    def fake_urlopen(request, timeout):
+        nonlocal calls
+        calls += 1
+        if calls < 3:
+            raise failure
+        return Response()
+
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
+    monkeypatch.setattr("swarm.verification_adapters.urllib.request.urlopen", fake_urlopen)
+    adapter = VerificationAdapter("OpenRouter", "https://example.test", "test-model", "OPENROUTER_API_KEY", max_attempts=3, backoff_seconds=0)
+    assert adapter.run(tmp_path, JOB, COMMIT, "review")["verdict"] == "APPROVE"
+    assert calls == 3
