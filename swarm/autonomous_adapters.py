@@ -45,7 +45,7 @@ def run_deterministic_tests(task: TaskSpec, result: WorkerResult, repository: Wo
 class ExactReviewAdapter:
     """Use the existing independent review runner and convert its evidence."""
 
-    def __init__(self, context: str, *, allow_external_review: bool = False, reviewers: tuple[str, ...] = ("CLAUDE", "OPENROUTER", "NVIDIA")):
+    def __init__(self, context: str, *, allow_external_review: bool = False, reviewers: tuple[str, ...] = ("CLAUDE", "GEMINI", "OPENROUTER", "NVIDIA")):
         self.context = context
         self.allow_external_review = allow_external_review
         self.reviewers = reviewers
