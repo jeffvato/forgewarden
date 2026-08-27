@@ -433,9 +433,13 @@ class CodexAdapter:
     def _remove_unknown_option(command: list[str], stderr: str) -> list[str] | None:
         """Drop one harmless compatibility flag rejected by an older Codex CLI."""
         match = re.search(r"(?:unknown option|unexpected argument|unrecognized option|invalid option)[^\n]*(--[A-Za-z0-9-]+)", stderr, re.IGNORECASE)
-        if not match:
-            return None
-        option = match.group(1)
+        if match is None:
+            known = ("--cd", "--output-schema", "--output-last-message", "--color", "--approve-for-me", "--skip-git-repo-check", "--json")
+            option = next((candidate for candidate in known if candidate in stderr and candidate in command), None)
+            if option is None:
+                return None
+        else:
+            option = match.group(1)
         # These flags only control CLI presentation or local safety routing;
         # removing one lets the bounded worker use an older installed CLI.
         value_options = {"--cd", "--output-schema", "--output-last-message", "--color"}
