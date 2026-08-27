@@ -10,6 +10,11 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
+try:
+    import fcntl
+except ImportError:  # pragma: no cover - Windows fallback
+    fcntl = None
+
 from .claude_verifier import schema
 from .core import SwarmError, redact, validate_contract
 
@@ -17,7 +22,7 @@ from .core import SwarmError, redact, validate_contract
 class VerificationAdapter:
     """Call an OpenAI-compatible reviewer without granting repository access."""
 
-    def __init__(self, provider: str, endpoint: str, model: str, api_key_name: str, timeout: int = 60, max_attempts: int = 3, backoff_seconds: float = 1.0, retry_window_seconds: float = 90.0):
+    def __init__(self, provider: str, endpoint: str, model: str, api_key_name: str, timeout: int = 60, max_attempts: int = 3, backoff_seconds: float = 1.0, retry_window_seconds: float = 90.0, daily_call_limit: int | None = None, rate_limit_state_path: Path | None = None):
         self.provider = provider
         self.endpoint = endpoint
         self.model = model
@@ -26,6 +31,35 @@ class VerificationAdapter:
         self.max_attempts = max(1, max_attempts)
         self.backoff_seconds = max(0.0, backoff_seconds)
         self.retry_window_seconds = max(0.0, retry_window_seconds)
+        self.daily_call_limit = daily_call_limit if daily_call_limit is None else max(0, daily_call_limit)
+        self.rate_limit_state_path = rate_limit_state_path or Path(os.environ.get("FORGEWARDEN_OPENROUTER_RATE_LIMIT_STATE", "~/.cache/forgewarden/openrouter-rate-limit.json")).expanduser()
+
+    def _reserve_daily_call(self) -> None:
+        if self.daily_call_limit is None:
+            return
+        path = self.rate_limit_state_path
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("a+", encoding="utf-8") as state_file:
+            if fcntl is not None:
+                fcntl.flock(state_file.fileno(), fcntl.LOCK_EX)
+            try:
+                state_file.seek(0)
+                raw = state_file.read().strip()
+                state = json.loads(raw) if raw else {}
+                today = time.strftime("%Y-%m-%d", time.gmtime())
+                if state.get("date") != today:
+                    state = {"date": today, "calls": 0}
+                calls = int(state.get("calls", 0))
+                if calls >= self.daily_call_limit:
+                    raise SwarmError(f"{self.provider} daily call limit reached ({self.daily_call_limit})")
+                state["calls"] = calls + 1
+                state_file.seek(0)
+                state_file.truncate()
+                json.dump(state, state_file)
+                state_file.flush()
+            finally:
+                if fcntl is not None:
+                    fcntl.flock(state_file.fileno(), fcntl.LOCK_UN)
 
     def run(self, snapshot: Path, job_id: str, commit: str, prompt: str) -> dict[str, Any]:
         del snapshot  # The exact patch is already included in the bounded prompt.
@@ -51,6 +85,7 @@ class VerificationAdapter:
             if remaining <= 0:
                 break
             try:
+                self._reserve_daily_call()
                 with urllib.request.urlopen(request, timeout=min(self.timeout, remaining)) as response:
                     body = json.loads(response.read(2_000_000).decode("utf-8"))
                 last_error = None
@@ -88,7 +123,7 @@ class VerificationAdapter:
 
 
 def openrouter_adapter() -> VerificationAdapter:
-    return VerificationAdapter("OpenRouter", "https://openrouter.ai/api/v1/chat/completions", "z-ai/glm-5.2:free", "OPENROUTER_API_KEY")
+    return VerificationAdapter("OpenRouter", "https://openrouter.ai/api/v1/chat/completions", "z-ai/glm-5.2:free", "OPENROUTER_API_KEY", daily_call_limit=1000)
 
 
 def nvidia_adapter() -> VerificationAdapter:

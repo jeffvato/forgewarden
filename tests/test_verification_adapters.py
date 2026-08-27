@@ -114,3 +114,32 @@ def test_provider_honors_retry_after_without_exceeding_window(tmp_path: Path, mo
     adapter = VerificationAdapter("OpenRouter", "https://example.test", "test-model", "OPENROUTER_API_KEY", max_attempts=2, backoff_seconds=1, retry_window_seconds=10)
     assert adapter.run(tmp_path, JOB, COMMIT, "review")["verdict"] == "APPROVE"
     assert delays == [7]
+
+
+def test_openrouter_daily_call_limit_counts_attempts_and_fails_closed(tmp_path: Path, monkeypatch):
+    result = {
+        "job_id": JOB, "reviewed_commit": COMMIT, "verdict": "APPROVE", "risk": "LOW",
+        "blocking_findings": [], "non_blocking_notes": [], "tests_missing": [],
+        "reasoning_summary": "verified", "proposed_rules": [],
+    }
+
+    class Response:
+        def __enter__(self): return self
+        def __exit__(self, *args): return False
+        def read(self, limit): return json.dumps({"choices": [{"message": {"content": json.dumps(result)}}]}).encode()
+
+    calls = 0
+    def fake_urlopen(request, timeout):
+        nonlocal calls
+        calls += 1
+        return Response()
+
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
+    monkeypatch.setattr("swarm.verification_adapters.urllib.request.urlopen", fake_urlopen)
+    adapter = VerificationAdapter("OpenRouter", "https://example.test", "test-model", "OPENROUTER_API_KEY", max_attempts=1, daily_call_limit=2, rate_limit_state_path=tmp_path / "rate.json")
+    assert adapter.run(tmp_path, JOB, COMMIT, "review")["verdict"] == "APPROVE"
+    assert adapter.run(tmp_path, JOB, COMMIT, "review")["verdict"] == "APPROVE"
+    with pytest.raises(RuntimeError, match="daily call limit reached"):
+        adapter.run(tmp_path, JOB, COMMIT, "review")
+    assert calls == 2
+    assert json.loads((tmp_path / "rate.json").read_text())["calls"] == 2
