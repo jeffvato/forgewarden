@@ -92,4 +92,4 @@ def openrouter_adapter() -> VerificationAdapter:
 
 
 def nvidia_adapter() -> VerificationAdapter:
-    return VerificationAdapter("NVIDIA", "https://integrate.api.nvidia.com/v1/chat/completions", "deepseek-ai/deepseek-v4-pro-0813", "NVIDIA_API_KEY")
+    return VerificationAdapter("NVIDIA", "https://integrate.api.nvidia.com/v1/chat/completions", "mistralai/mistral-nemotron", "NVIDIA_API_KEY")

@@ -16,7 +16,7 @@ COMMIT = "a" * 40
 def test_provider_defaults_pin_models_and_endpoints():
     assert openrouter_adapter().model == "z-ai/glm-5.2:free"
     assert openrouter_adapter().endpoint == "https://openrouter.ai/api/v1/chat/completions"
-    assert nvidia_adapter().model == "deepseek-ai/deepseek-v4-pro-0813"
+    assert nvidia_adapter().model == "mistralai/mistral-nemotron"
     assert nvidia_adapter().endpoint == "https://integrate.api.nvidia.com/v1/chat/completions"
 
 
@@ -54,7 +54,7 @@ def test_provider_posts_schema_bound_review_and_validates_response(tmp_path: Pat
     monkeypatch.setattr("swarm.verification_adapters.urllib.request.urlopen", fake_urlopen)
     assert nvidia_adapter().run(tmp_path, JOB, COMMIT, "review")["verdict"] == "APPROVE"
     body = json.loads(captured["request"].data)
-    assert body["model"] == "deepseek-ai/deepseek-v4-pro-0813"
+    assert body["model"] == "mistralai/mistral-nemotron"
     assert body["response_format"]["type"] == "json_schema"
     assert captured["request"].get_header("Authorization") == "Bearer test-key"
 
