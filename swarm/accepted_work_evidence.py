@@ -22,7 +22,7 @@ class AcceptedEvidenceError(SwarmError):
     """Raised when accepted-work evidence is malformed, unsafe, or stale."""
 
 
-_JOB_ID = re.compile(r"^phase2a-[a-z0-9]{24}$")
+_JOB_ID = re.compile(r"^(?:phase2a-[a-z0-9]{24}|codex-fwq-[0-9]{4})$")
 _SHA = re.compile(r"^[0-9a-f]{40}$")
 _HASH = re.compile(r"^[0-9a-f]{64}$")
 _SCHEMA_VERSION = "1"
