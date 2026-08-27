@@ -3,6 +3,7 @@ import hashlib
 import os
 import re
 import resource
+import signal
 import shutil
 import shlex
 import subprocess
@@ -305,6 +306,7 @@ def limited_run(command: list[str], cwd: Path, prompt: str, limits: ResourceLimi
             text=True,
             env=child_env,
             preexec_fn=_limited_preexec(limits),
+            start_new_session=True,
         )
         if cgroup_path is not None:
             try:
@@ -316,7 +318,13 @@ def limited_run(command: list[str], cwd: Path, prompt: str, limits: ResourceLimi
         try:
             stdout, stderr = process.communicate(prompt, timeout=limits.timeout_seconds)
         except subprocess.TimeoutExpired as exc:
-            process.kill()
+            # Kill the entire bounded invocation, including CLI children that
+            # a wrapper such as systemd-run may have spawned. Otherwise a
+            # timed-out reviewer can survive and consume the next queue cycle.
+            try:
+                os.killpg(process.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
             stdout, stderr = process.communicate()
             raise SwarmError(f"agent timed out after {limits.timeout_seconds}s: {command[0]}") from exc
         result = subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
