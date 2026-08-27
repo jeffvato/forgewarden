@@ -92,7 +92,9 @@ class ExactReviewAdapter:
             )
             if result["state"] == "APPROVED":
                 return "PASSED"
-            if any(item.get("state") == "UNAVAILABLE" for item in result.get("reviews", ())):
+            reviews = tuple(result.get("reviews", ()))
+            claude = next((item for item in reviews if item.get("provider") == "CLAUDE"), None)
+            if claude is None or claude.get("state") == "UNAVAILABLE":
                 return "EXTERNAL"
             return "REPAIRABLE"
         except Exception as exc:

@@ -420,6 +420,20 @@ def test_review_resolver_preserves_provider_unavailability_as_external(tmp_path:
     assert ExactReviewAdapter("review").resolve_review(task, lease) == "EXTERNAL"
 
 
+def test_review_resolver_ignores_optional_provider_outage_when_claude_is_available(tmp_path: Path, monkeypatch):
+    task = TaskSpec("FWQ-0009", "Core review", "review", initial_state="REVIEW", review_commit=SHA_A)
+    lease = WorkerLease("review", task.task_id, "session", str(tmp_path), (), "REVIEW", (), time.time() + 60)
+    monkeypatch.setattr(
+        autonomous_adapters,
+        "run_review_cycle",
+        lambda *args, **kwargs: {"state": "REVIEW_REQUIRED", "reviews": [
+            {"provider": "CLAUDE", "state": "APPROVED"},
+            {"provider": "OPENROUTER", "state": "UNAVAILABLE"},
+        ]},
+    )
+    assert ExactReviewAdapter("review").resolve_review(task, lease) == "REPAIRABLE"
+
+
 def test_exact_review_adapter_uses_claude_adjudication_as_final_evidence(tmp_path: Path, monkeypatch):
     task = TaskSpec("FWQ-0009", "Core review", "review", initial_state="REVIEW")
     lease = WorkerLease("review", task.task_id, "session", str(tmp_path), (), "REVIEW", (), time.time() + 60)
