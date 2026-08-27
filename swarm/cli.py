@@ -55,7 +55,7 @@ def main() -> int:
     parser.add_argument("--approval", type=Path)
     parser.add_argument("--index-path", type=Path)
     parser.add_argument("--task-manifest", type=Path)
-    parser.add_argument("--codex-executable", default="/home/jeff/.local/bin/claude")
+    parser.add_argument("--codex-executable", default="/home/jeff/.local/bin/codex")
     parser.add_argument("--max-steps", type=int)
     parser.add_argument("--feed", type=Path, action="append", default=[])
     parser.add_argument("--feed-source", choices=["osv", "nvd", "cisa_kev"])
