@@ -240,6 +240,14 @@ class AutonomousOrchestrator:
                 # control-manifest refresh; safety state may become stricter,
                 # never less restrictive, during recovery.
                 self.tasks[task_id] = replace(self.tasks[task_id], blocker_external=True)
+            if task_id in self.tasks and isinstance(payload, dict):
+                # A resumed review task must retain the exact candidate that
+                # was committed before the reviewer became unavailable. The
+                # control manifest describes queue state, while durable state
+                # is the source of truth for in-flight review evidence.
+                persisted_commit = payload.get("review_commit")
+                if isinstance(persisted_commit, str) and _SHA.fullmatch(persisted_commit):
+                    self.tasks[task_id] = replace(self.tasks[task_id], review_commit=persisted_commit)
         if set(state.get("queued_tasks", {})) != set(self.tasks) or not isinstance(state.get("completed_tasks"), list) or not isinstance(state.get("failed_tasks"), list):
             raise AutonomousLoopError("durable state task queue does not match the approved queue")
         for task_id, task in self.tasks.items():
