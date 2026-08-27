@@ -492,6 +492,47 @@ def test_runner_defers_candidate_when_review_resource_is_unavailable(tmp_path: P
     assert state["queued_tasks"]["FWQ-0013"]["blocker_external"] is True
 
 
+def test_external_review_blocker_is_not_retried_on_resume(tmp_path: Path):
+    state_path = tmp_path / "run.json"
+    state_path.write_text(json.dumps({
+        "version": 1,
+        "session_id": "session",
+        "phase": "ForgeWarden Core",
+        "milestone": None,
+        "current_work_package": "FWQ-0013",
+        "task_specs": {"FWQ-0013": asdict(TaskSpec("FWQ-0013", "Core review", "review", initial_state="REVIEW", blocker_external=True, review_commit=SHA_A))},
+        "queued_tasks": {"FWQ-0013": {"state": "REVIEW", "attempts": 1, "blocker_external": True, "review_commit": SHA_A}},
+        "active_task": None,
+        "completed_tasks": [],
+        "failed_tasks": [],
+        "retry_count": {},
+        "worker_assigned": None,
+        "worker_lease": None,
+        "repository_head_before": None,
+        "repository_head_after": None,
+        "test_results": [],
+        "reviewer_result": None,
+        "acceptance_result": None,
+        "unresolved_blockers": [],
+        "next_action": "restore review resource and resume queue evaluation",
+        "timestamps": {"created_at": 1, "updated_at": 1},
+        "stop_reason": "REQUIRED_RESOURCE_UNAVAILABLE",
+        "dry_run": True,
+        "deployment": "DISABLED",
+        "kill_switch": "ENGAGED",
+    }), encoding="utf-8")
+    runner = AutonomousOrchestrator(state_path, tmp_path / "repo", (TaskSpec("FWQ-0013", "Core review", "review", initial_state="REVIEW"),))
+    calls = []
+    state = runner.run(
+        dispatch=lambda task, lease: (_ for _ in ()).throw(AssertionError("parked review must not dispatch")),
+        validate=lambda task, result: True,
+        commit=lambda task, result: SHA_A,
+        review=lambda task, commit, lease: calls.append(task.task_id),
+    )
+    assert calls == []
+    assert state["stop_reason"] == "REQUIRED_RESOURCE_UNAVAILABLE"
+
+
 def test_resume_restores_exact_review_commit_from_durable_task_state(tmp_path: Path):
     state_path = tmp_path / "run.json"
     state_path.write_text(json.dumps({

@@ -70,6 +70,13 @@ def progress_queue(tasks: dict[str, TaskSpec], state: dict[str, Any], *, review_
             record = state["queued_tasks"][task.task_id]
             current = record["state"]
             if current == "REVIEW":
+                # A candidate already parked for an unavailable required
+                # reviewer is not eligible for another attempt in a later
+                # bounded cycle until the resource is explicitly restored.
+                # Keeping it in REVIEW preserves the exact candidate evidence
+                # while the durable blocker flag prevents a hot retry loop.
+                if record.get("blocker_external"):
+                    continue
                 # A deferred review is retried once per bounded run. The
                 # progression loop exits after recording an external blocker,
                 # preventing repeated attempts within the same run.
