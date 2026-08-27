@@ -458,6 +458,31 @@ def test_review_resolver_ignores_optional_provider_outage_when_claude_is_availab
     assert ExactReviewAdapter("review").resolve_review(task, lease) == "REPAIRABLE"
 
 
+def test_gemini_approves_when_claude_is_unavailable(tmp_path: Path, monkeypatch):
+    task = TaskSpec("FWQ-0009", "Core review", "review", initial_state="REVIEW", review_commit=SHA_A)
+    lease = WorkerLease("review", task.task_id, "session", str(tmp_path), (), "REVIEW", (), time.time() + 60)
+    payload = {"job_id": "phase2a-" + "0" * 24, "reviewed_commit": SHA_A, "verdict": "APPROVE", "risk": "LOW", "blocking_findings": [], "non_blocking_notes": [], "tests_missing": [], "reasoning_summary": "Gemini fallback approval", "proposed_rules": []}
+    monkeypatch.setattr(autonomous_adapters, "run_review_cycle", lambda *args, **kwargs: {"state": "REVIEW_REQUIRED", "reviews": [
+        {"provider": "CLAUDE", "state": "UNAVAILABLE", "error": "usage limit reached"},
+        {"provider": "GEMINI", "state": "APPROVED", "result": payload},
+    ]})
+    result = ExactReviewAdapter("review", reviewers=("CLAUDE", "GEMINI")).review(task, SHA_A, lease)
+    assert set(result) == {"GEMINI"}
+    assert result["GEMINI"].disposition == "APPROVED"
+
+
+def test_claude_rejection_does_not_fall_back_to_gemini(tmp_path: Path, monkeypatch):
+    task = TaskSpec("FWQ-0009", "Core review", "review", initial_state="REVIEW", review_commit=SHA_A)
+    lease = WorkerLease("review", task.task_id, "session", str(tmp_path), (), "REVIEW", (), time.time() + 60)
+    payload = {"job_id": "phase2a-" + "0" * 24, "reviewed_commit": SHA_A, "verdict": "APPROVE", "risk": "LOW", "blocking_findings": [], "non_blocking_notes": [], "tests_missing": [], "reasoning_summary": "Gemini fallback approval", "proposed_rules": []}
+    monkeypatch.setattr(autonomous_adapters, "run_review_cycle", lambda *args, **kwargs: {"state": "REVIEW_REQUIRED", "reviews": [
+        {"provider": "CLAUDE", "state": "REVIEW_RETURNED", "result": {"verdict": "REJECT", "risk": "HIGH"}},
+        {"provider": "GEMINI", "state": "APPROVED", "result": payload},
+    ]})
+    with pytest.raises(RuntimeError, match="did not approve"):
+        ExactReviewAdapter("review", reviewers=("CLAUDE", "GEMINI")).review(task, SHA_A, lease)
+
+
 def test_exact_review_adapter_uses_claude_adjudication_as_final_evidence(tmp_path: Path, monkeypatch):
     task = TaskSpec("FWQ-0009", "Core review", "review", initial_state="REVIEW")
     lease = WorkerLease("review", task.task_id, "session", str(tmp_path), (), "REVIEW", (), time.time() + 60)
