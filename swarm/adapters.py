@@ -438,7 +438,7 @@ class CodexAdapter:
         option = match.group(1)
         # These flags only control CLI presentation or local safety routing;
         # removing one lets the bounded worker use an older installed CLI.
-        value_options = {"--output-schema", "--output-last-message", "--color"}
+        value_options = {"--cd", "--output-schema", "--output-last-message", "--color"}
         removable = {"--approve-for-me", "--skip-git-repo-check", "--json"} | value_options
         if option not in removable or option not in command:
             return None
