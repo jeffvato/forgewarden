@@ -429,6 +429,25 @@ class CodexAdapter:
         self.last_evidence.actual_normalized_changed_paths = list(paths)
         self.persist_evidence()
 
+    @staticmethod
+    def _remove_unknown_option(command: list[str], stderr: str) -> list[str] | None:
+        """Drop one harmless compatibility flag rejected by an older Codex CLI."""
+        match = re.search(r"(?:unknown option|unexpected argument) ['\"](--[A-Za-z0-9-]+)['\"]", stderr)
+        if not match:
+            return None
+        option = match.group(1)
+        # These flags only control CLI presentation or local safety routing;
+        # removing one lets the bounded worker use an older installed CLI.
+        value_options = {"--output-schema", "--output-last-message", "--color"}
+        removable = {"--approve-for-me", "--skip-git-repo-check", "--json"} | value_options
+        if option not in removable or option not in command:
+            return None
+        index = command.index(option)
+        end = index + 2 if option in value_options else index + 1
+        if end > len(command) or (option in value_options and command[index + 1].startswith("--")):
+            return None
+        return command[:index] + command[end:]
+
     def run(self, spec: WriterInvocationSpec, prompt: str | None = None) -> dict[str, Any]:
         canonical_job_id = _job_id_filename(spec.job_id)
         target = spec.target()
@@ -464,7 +483,16 @@ class CodexAdapter:
         )
         self.last_evidence = evidence
         try:
-            result = limited_run(command, spec.codex_cwd, "", self.limits, {"SWARM_ROLE": "CODEX_WRITER", "SWARM_DRY_RUN": "1"}, use_cgroup=True, environment_builder=lambda values: _codex_environment(values, cache_dir))
+            attempts = 0
+            while True:
+                result = limited_run(command, spec.codex_cwd, "", self.limits, {"SWARM_ROLE": "CODEX_WRITER", "SWARM_DRY_RUN": "1"}, use_cgroup=True, environment_builder=lambda values: _codex_environment(values, cache_dir))
+                if result.returncode == 0 or attempts >= 2:
+                    break
+                compatible = self._remove_unknown_option(command, result.stderr)
+                if compatible is None:
+                    break
+                command = compatible
+                attempts += 1
             event_types, tool_commands, denials = _jsonl_telemetry(result.stdout)
             evidence.jsonl_event_types = event_types
             evidence.tool_commands = tool_commands

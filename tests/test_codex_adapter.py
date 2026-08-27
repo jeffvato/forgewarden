@@ -26,6 +26,21 @@ def _user_bus_available() -> bool:
     )
 
 
+class CodexCompatibilityTests(unittest.TestCase):
+    def test_removes_only_known_cli_compatibility_option_and_value(self):
+        command = ["codex", "exec", "--output-schema", "/tmp/schema", "--json", "prompt"]
+        reduced = CodexAdapter._remove_unknown_option(command, "error: unknown option '--output-schema'")
+        self.assertEqual(reduced, ["codex", "exec", "--json", "prompt"])
+
+    def test_does_not_remove_unknown_or_required_options(self):
+        command = ["codex", "exec", "--json", "prompt"]
+        self.assertIsNone(CodexAdapter._remove_unknown_option(command, "error: unknown option '--secret-flag'"))
+        self.assertEqual(
+            CodexAdapter._remove_unknown_option(command, "error: unknown option '--json'"),
+            ["codex", "exec", "prompt"],
+        )
+
+
 @unittest.skipUnless(_user_bus_available(), "user systemd bus is unavailable in this execution context")
 class CodexAdapterProcessTests(unittest.TestCase):
     def setUp(self):
