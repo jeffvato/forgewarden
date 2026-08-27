@@ -54,8 +54,10 @@ class ExactReviewAdapter:
         job_id = "phase2a-" + hashlib.sha256(task.task_id.encode("utf-8")).hexdigest()[:24]
         result = run_review_cycle(Path(lease.repository), commit, job_id, self.context, allow_external_review=self.allow_external_review, reviewers=self.reviewers, required_reviewers=("CLAUDE",), adjudicate_disagreements=True)
         if result["state"] != "APPROVED":
-            if any(item.get("state") == "UNAVAILABLE" for item in result.get("reviews", ())):
-                raise ReviewUnavailable("independent exact-commit review resource unavailable")
+            unavailable = [item for item in result.get("reviews", ()) if item.get("state") == "UNAVAILABLE"]
+            if unavailable:
+                detail = "; ".join(f"{item.get('provider', 'reviewer')}: {item.get('error', 'no diagnostic')}" for item in unavailable)
+                raise ReviewUnavailable(f"independent exact-commit review resource unavailable: {detail[:1000]}")
             raise RuntimeError("independent exact-commit review did not approve")
         adjudication = result.get("adjudication")
         if isinstance(adjudication, dict) and adjudication.get("state") == "APPROVED":
@@ -95,10 +97,11 @@ class ExactReviewAdapter:
             reviews = tuple(result.get("reviews", ()))
             claude = next((item for item in reviews if item.get("provider") == "CLAUDE"), None)
             if claude is None or claude.get("state") == "UNAVAILABLE":
-                return "EXTERNAL"
+                detail = claude.get("error", "Claude review record was not returned") if claude else "Claude review record was not returned"
+                return "EXTERNAL: " + str(detail)[:1000]
             return "REPAIRABLE"
         except Exception as exc:
-            return "EXTERNAL" if "unavailable" in str(exc).lower() else "REPAIRABLE"
+            return ("EXTERNAL: " + str(exc)[:1000]) if "unavailable" in str(exc).lower() else "REPAIRABLE"
 
 
 def commit_with_trusted_git(task: TaskSpec, result: WorkerResult, lease: WorkerLease) -> str:

@@ -417,7 +417,31 @@ def test_review_resolver_preserves_provider_unavailability_as_external(tmp_path:
         "run_review_cycle",
         lambda *args, **kwargs: {"state": "REVIEW_REQUIRED", "reviews": [{"state": "UNAVAILABLE"}]},
     )
-    assert ExactReviewAdapter("review").resolve_review(task, lease) == "EXTERNAL"
+    assert ExactReviewAdapter("review").resolve_review(task, lease) == "EXTERNAL: Claude review record was not returned"
+
+
+def test_review_unavailability_preserves_provider_diagnostic(tmp_path: Path, monkeypatch):
+    task = TaskSpec("FWQ-0009", "Core review", "review", initial_state="REVIEW", review_commit=SHA_A)
+    lease = WorkerLease("review", task.task_id, "session", str(tmp_path), (), "REVIEW", (), time.time() + 60)
+    monkeypatch.setattr(
+        autonomous_adapters,
+        "run_review_cycle",
+        lambda *args, **kwargs: {"state": "REVIEW_REQUIRED", "reviews": [{"provider": "CLAUDE", "state": "UNAVAILABLE", "error": "Claude verifier timed out"}]},
+    )
+    assert ExactReviewAdapter("review").resolve_review(task, lease) == "EXTERNAL: Claude verifier timed out"
+
+
+def test_external_review_diagnostic_is_persisted_and_bounded(tmp_path: Path):
+    task = TaskSpec("FWQ-0009", "Core review", "review", initial_state="REVIEW", review_disposition="EXTERNAL: Claude verifier failed with sk-secret-token")
+    runner = AutonomousOrchestrator(tmp_path / "run.json", tmp_path / "repo", (task,))
+    state = runner.run(
+        dispatch=lambda task, lease: (_ for _ in ()).throw(AssertionError("blocked review must not dispatch")),
+        validate=lambda task, result: True,
+        commit=lambda task, result: SHA_A,
+        review=lambda task, commit, lease: ("APPROVED", "LOW"),
+    )
+    assert "Claude verifier failed" in state["queued_tasks"]["FWQ-0009"]["blocker"]
+    assert "sk-secret-token" not in state["queued_tasks"]["FWQ-0009"]["blocker"]
 
 
 def test_review_resolver_ignores_optional_provider_outage_when_claude_is_available(tmp_path: Path, monkeypatch):

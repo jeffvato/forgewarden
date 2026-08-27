@@ -25,6 +25,13 @@ _TASK = re.compile(r"^FWQ-[0-9]{4}$")
 _TERMINAL = {"DONE", "FAILED"}
 
 
+def _review_blocker_detail(disposition: str) -> str:
+    """Return bounded, non-secret diagnostic text for a review hold."""
+    detail = disposition.partition(":")[2].strip() if ":" in disposition else "review provider did not return a diagnosis"
+    detail = re.sub(r"(?i)(sk-[A-Za-z0-9_-]{8,}|Bearer\s+[A-Za-z0-9._-]+)", "[REDACTED]", detail)
+    return detail[:1000]
+
+
 class AutonomousLoopError(RuntimeError):
     """The durable loop cannot safely continue."""
 
@@ -99,9 +106,9 @@ def progress_queue(tasks: dict[str, TaskSpec], state: dict[str, Any], *, review_
                     state["queued_tasks"][repair_id] = {"state": "READY", "attempts": 0}
                     transitions.append(f"{task.task_id}:REVIEW->REPAIR:{repair_id}")
                     changed = True
-                elif disposition == "EXTERNAL":
+                elif isinstance(disposition, str) and disposition.startswith("EXTERNAL"):
                     record["blocker_external"] = True
-                    record["blocker"] = "required review resource unavailable"
+                    record["blocker"] = "required review resource unavailable: " + _review_blocker_detail(disposition)
                     transitions.append(f"{task.task_id}:REVIEW->EXTERNAL_BLOCKER")
             elif current == "BLOCKED":
                 dependencies_done = all(state["queued_tasks"].get(dep, {}).get("state") == "DONE" for dep in task.dependencies)
@@ -397,16 +404,17 @@ class AutonomousOrchestrator:
                     raise AutonomousLoopError("trusted commit did not match worker candidate")
                 try:
                     review_payload = review(task, candidate, lease)
-                except ReviewUnavailable:
+                except ReviewUnavailable as exc:
                     task = replace(task, review_commit=candidate)
                     self.tasks[task.task_id] = task
                     state.setdefault("task_specs", {})[task.task_id] = asdict(task)
                     record["state"] = "REVIEW"
                     record["review_commit"] = candidate
                     record["blocker_external"] = True
-                    record["blocker"] = "required review resource unavailable"
+                    detail = _review_blocker_detail("EXTERNAL: " + str(exc))
+                    record["blocker"] = "required review resource unavailable: " + detail
                     state["next_action"] = "restore review resource and resume queue evaluation"
-                    self._log("task_review_deferred", task_id=task.task_id, candidate_commit=candidate)
+                    self._log("task_review_deferred", task_id=task.task_id, candidate_commit=candidate, error=detail)
                     continue
                 if isinstance(review_payload, Mapping):
                     cycle = create_review_cycle(candidate)
