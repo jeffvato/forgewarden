@@ -658,11 +658,28 @@ class GeminiAdapter:
 
     @staticmethod
     def _extract_json(output: str) -> dict[str, Any]:
+        required = {
+            "job_id", "reviewed_commit", "verdict", "risk", "blocking_findings",
+            "non_blocking_notes", "tests_missing", "reasoning_summary", "proposed_rules",
+        }
         try:
             value = json.loads(output)
             if isinstance(value, dict) and isinstance(value.get("structured_output"), dict):
                 return value["structured_output"]
-            if isinstance(value, dict) and all(key in value for key in ("job_id", "reviewed_commit", "verdict")):
+            # agy may include identifying fields in its outer envelope while
+            # placing the schema-constrained result in ``response``. Prefer a
+            # complete response payload over that partial envelope; otherwise
+            # local contract validation reports misleading missing fields.
+            if isinstance(value, dict) and isinstance(value.get("response"), str):
+                response = value["response"].strip()
+                if response:
+                    try:
+                        nested = json.loads(response)
+                    except json.JSONDecodeError:
+                        nested = None
+                    if isinstance(nested, dict) and required.issubset(nested):
+                        return nested
+            if isinstance(value, dict) and required.issubset(value):
                 return value
             if isinstance(value, dict) and isinstance(value.get("response"), str):
                 return json.loads(value["response"])

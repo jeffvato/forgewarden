@@ -147,6 +147,18 @@ class GeminiReviewContractTests(unittest.TestCase):
             adapter = GeminiAdapter(self.schema, ResourceLimits(), "fake-agy")
             self.assertEqual(adapter.run(self.snapshot, self.job, self.commit, "review evidence", formatting_retry=False), self.payload())
 
+    def test_partial_outer_envelope_prefers_complete_response_payload(self):
+        envelope = {
+            "status": "SUCCESS",
+            "job_id": self.job,
+            "reviewed_commit": self.commit,
+            "verdict": "APPROVE",
+            "response": json.dumps(self.payload()),
+        }
+        with patch("swarm.adapters.limited_run", return_value=CompletedProcess([], 0, json.dumps(envelope), "")):
+            adapter = GeminiAdapter(self.schema, ResourceLimits(), "fake-agy")
+            self.assertEqual(adapter.run(self.snapshot, self.job, self.commit, "review evidence", formatting_retry=False), self.payload())
+
     def test_provider_error_envelope_is_reported_without_fake_review(self):
         envelope = {"status": "ERROR", "response": "", "error": "provider unavailable"}
         with patch("swarm.adapters.limited_run", return_value=CompletedProcess([], 0, json.dumps(envelope), "")):
