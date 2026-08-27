@@ -432,7 +432,7 @@ class CodexAdapter:
     @staticmethod
     def _remove_unknown_option(command: list[str], stderr: str) -> list[str] | None:
         """Drop one harmless compatibility flag rejected by an older Codex CLI."""
-        match = re.search(r"(?:unknown option|unexpected argument) ['\"](--[A-Za-z0-9-]+)['\"]", stderr)
+        match = re.search(r"(?:unknown option|unexpected argument|unrecognized option|invalid option)[^\n]*(--[A-Za-z0-9-]+)", stderr, re.IGNORECASE)
         if not match:
             return None
         option = match.group(1)
