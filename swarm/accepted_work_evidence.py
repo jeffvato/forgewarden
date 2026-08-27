@@ -77,7 +77,12 @@ def _body(bundle: Mapping[str, Any]) -> dict[str, Any]:
     return {key: bundle[key] for key in bundle if key not in {"evidence_sha256", "event_sha256"}}
 
 
-def _validate(bundle: Mapping[str, Any]) -> dict[str, Any]:
+def _validate(
+    bundle: Mapping[str, Any],
+    *,
+    expected_job_id: str | None = None,
+    expected_candidate_commit: str | None = None,
+) -> dict[str, Any]:
     required = {
         "schema_version", "mode", "job_id", "candidate_commit", "accepted_commit",
         "changed_files", "deterministic_validation", "claude_review", "gemini_review",
@@ -94,6 +99,10 @@ def _validate(bundle: Mapping[str, Any]) -> dict[str, Any]:
     accepted = _commit(bundle["accepted_commit"], "accepted commit")
     if candidate != accepted:
         raise AcceptedEvidenceError("candidate and accepted commits must match")
+    if expected_job_id is not None and job_id != _string(expected_job_id, "expected job ID", max_length=32):
+        raise AcceptedEvidenceError("accepted evidence job ID mismatch")
+    if expected_candidate_commit is not None and candidate != _commit(expected_candidate_commit, "expected candidate commit"):
+        raise AcceptedEvidenceError("accepted evidence candidate commit mismatch")
     files = bundle["changed_files"]
     if not isinstance(files, list) or not files or len(set(files)) != len(files):
         raise AcceptedEvidenceError("changed files must be a unique non-empty list")
@@ -167,9 +176,19 @@ def build_accepted_evidence(
     return _validate({**body, "evidence_sha256": evidence_hash, "event_sha256": event_hash})
 
 
-def write_accepted_evidence(path: Path, bundle: Mapping[str, Any]) -> None:
+def write_accepted_evidence(
+    path: Path,
+    bundle: Mapping[str, Any],
+    *,
+    expected_job_id: str | None = None,
+    expected_candidate_commit: str | None = None,
+) -> None:
     """Create one private evidence record; an existing record is never replaced."""
-    validated = _validate(bundle)
+    validated = _validate(
+        bundle,
+        expected_job_id=expected_job_id,
+        expected_candidate_commit=expected_candidate_commit,
+    )
     path = Path(path)
     ensure_private_directory(path.parent, "accepted evidence directory")
     try:
@@ -178,9 +197,18 @@ def write_accepted_evidence(path: Path, bundle: Mapping[str, Any]) -> None:
         raise AcceptedEvidenceError(str(exc)) from exc
 
 
-def read_accepted_evidence(path: Path) -> dict[str, Any]:
+def read_accepted_evidence(
+    path: Path,
+    *,
+    expected_job_id: str | None = None,
+    expected_candidate_commit: str | None = None,
+) -> dict[str, Any]:
     """Read and revalidate one immutable accepted-work evidence record."""
     try:
-        return _validate(read_mailbox_json(Path(path), "accepted work evidence"))
+        return _validate(
+            read_mailbox_json(Path(path), "accepted work evidence"),
+            expected_job_id=expected_job_id,
+            expected_candidate_commit=expected_candidate_commit,
+        )
     except SwarmError as exc:
         raise AcceptedEvidenceError(str(exc)) from exc
