@@ -85,3 +85,32 @@ def test_provider_retries_bounded_transient_failures(tmp_path: Path, monkeypatch
     adapter = VerificationAdapter("OpenRouter", "https://example.test", "test-model", "OPENROUTER_API_KEY", max_attempts=3, backoff_seconds=0)
     assert adapter.run(tmp_path, JOB, COMMIT, "review")["verdict"] == "APPROVE"
     assert calls == 3
+
+
+def test_provider_honors_retry_after_without_exceeding_window(tmp_path: Path, monkeypatch):
+    result = {
+        "job_id": JOB, "reviewed_commit": COMMIT, "verdict": "APPROVE", "risk": "LOW",
+        "blocking_findings": [], "non_blocking_notes": [], "tests_missing": [],
+        "reasoning_summary": "verified", "proposed_rules": [],
+    }
+
+    class Response:
+        def __enter__(self): return self
+        def __exit__(self, *args): return False
+        def read(self, limit): return json.dumps({"choices": [{"message": {"content": json.dumps(result)}}]}).encode()
+
+    delays = []
+    monkeypatch.setattr("swarm.verification_adapters.time.sleep", delays.append)
+    calls = 0
+    def fake_urlopen(request, timeout):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise urllib.error.HTTPError("https://example.test", 429, "rate limited", {"Retry-After": "7"}, None)
+        return Response()
+
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
+    monkeypatch.setattr("swarm.verification_adapters.urllib.request.urlopen", fake_urlopen)
+    adapter = VerificationAdapter("OpenRouter", "https://example.test", "test-model", "OPENROUTER_API_KEY", max_attempts=2, backoff_seconds=1, retry_window_seconds=10)
+    assert adapter.run(tmp_path, JOB, COMMIT, "review")["verdict"] == "APPROVE"
+    assert delays == [7]

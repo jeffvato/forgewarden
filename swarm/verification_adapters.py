@@ -64,7 +64,14 @@ class VerificationAdapter:
                     retryable = isinstance(exc.reason, (TimeoutError, socket.timeout, ConnectionError))
                 if not retryable or attempt + 1 >= self.max_attempts:
                     break
-                time.sleep(min(self.backoff_seconds * (2**attempt), max(0.0, deadline - time.monotonic())))
+                delay = self.backoff_seconds * (2**attempt)
+                if isinstance(exc, urllib.error.HTTPError):
+                    retry_after = exc.headers.get("Retry-After") if exc.headers else None
+                    try:
+                        delay = max(delay, float(retry_after)) if retry_after is not None else delay
+                    except (TypeError, ValueError):
+                        pass
+                time.sleep(min(delay, max(0.0, deadline - time.monotonic())))
         else:
             last_error = RuntimeError("retry loop exhausted")
         if last_error is not None:
