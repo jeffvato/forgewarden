@@ -135,6 +135,11 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 - Priority: P1
 - Dependencies: FWQ-0003, FWQ-0005, FWQ-0007
 - Description: Define and implement a deterministic, redacted evidence bundle for an accepted dry-run work unit, binding its job ID, exact candidate and accepted commits, changed files, deterministic validation, Claude/Gemini review outcomes, policy state, and evidence hash without creating execution authority.
+- Target path: swarm/accepted_work_evidence.py
+- Allowed paths: swarm/accepted_work_evidence.py, tests/test_accepted_work_evidence.py
+- Test command: python3 -m pytest -q tests/test_accepted_work_evidence.py
+- Expected behavior: implement the approved immutable accepted-work evidence bundle
+- Failing assertion: accepted evidence must be bound to one exact job and candidate commit
 - Approval: Explicitly approved by Jeff on 2026-08-23 as the next Core roadmap work item.
 - Acceptance criteria:
   - the bundle has a strict schema and binds every record to one valid job ID and exact full commit;
