@@ -69,6 +69,7 @@ def progress_queue(tasks: dict[str, TaskSpec], state: dict[str, Any], *, review_
     """Advance review/blocker states and enqueue the next authorized Core task."""
     transitions: list[str] = []
     reviews_attempted = 0
+    repair_transitioned: set[str] = set()
     for task in tasks.values():
         state["queued_tasks"].setdefault(task.task_id, {"state": task.initial_state, "attempts": 0})
     changed = True
@@ -110,6 +111,7 @@ def progress_queue(tasks: dict[str, TaskSpec], state: dict[str, Any], *, review_
                     changed = True
                 elif isinstance(disposition, str) and disposition.startswith("REPAIRABLE"):
                     record["state"] = "REPAIR"
+                    repair_transitioned.add(task.task_id)
                     if ":" in disposition:
                         record["review_diagnostic"] = disposition.partition(":")[2].strip()[:1800]
                     repair_id = _next_repair_id(tasks)
@@ -124,6 +126,30 @@ def progress_queue(tasks: dict[str, TaskSpec], state: dict[str, Any], *, review_
                     record["blocker"] = "required review resource unavailable: " + _review_blocker_detail(disposition)
                     record["review_retry_after"] = _now() + _REVIEW_RETRY_COOLDOWN_SECONDS
                     transitions.append(f"{task.task_id}:REVIEW->EXTERNAL_BLOCKER")
+            elif current == "REPAIR":
+                # A rejected repair must produce one explicit READY repair
+                # unit. Without this transition the parent remains parked in
+                # REPAIR while no worker can ever be selected.
+                if task.task_id in repair_transitioned or record.get("repair_enqueued"):
+                    continue
+                repair_id = _next_repair_id(tasks)
+                repair = replace(
+                    task,
+                    task_id=repair_id,
+                    description=f"Follow-up repair findings for {task.task_id}: {task.description}",
+                    dependencies=(),
+                    initial_state="READY",
+                    review_disposition=None,
+                    blocker_resolved=False,
+                    blocker_external=False,
+                    review_commit=None,
+                )
+                tasks[repair_id] = repair
+                state.setdefault("task_specs", {})[repair_id] = asdict(repair)
+                state["queued_tasks"][repair_id] = {"state": "READY", "attempts": 0}
+                record["repair_enqueued"] = repair_id
+                transitions.append(f"{task.task_id}:REPAIR->READY:{repair_id}")
+                changed = True
             elif current == "BLOCKED":
                 dependencies_done = all(state["queued_tasks"].get(dep, {}).get("state") == "DONE" for dep in task.dependencies)
                 resolved = blocker_resolver(task, record) if blocker_resolver else (task.blocker_resolved or (dependencies_done and not task.blocker_external))

@@ -266,6 +266,16 @@ def test_repairable_review_creates_ready_repair_task():
     assert state["queued_tasks"]["FWQ-0010"]["state"] == "READY"
 
 
+def test_repair_state_creates_follow_up_ready_unit_once():
+    tasks = {"FWQ-0009": TaskSpec("FWQ-0009", "Core review", "audit", initial_state="REPAIR")}
+    state = {"queued_tasks": {"FWQ-0009": {"state": "REPAIR", "attempts": 0}}, "completed_tasks": [], "task_specs": {}}
+    transitions = progress_queue(tasks, state)
+    assert transitions == ("FWQ-0009:REPAIR->READY:FWQ-0010",)
+    assert state["queued_tasks"]["FWQ-0010"]["state"] == "READY"
+    assert state["queued_tasks"]["FWQ-0009"]["repair_enqueued"] == "FWQ-0010"
+    assert progress_queue(tasks, state) == ()
+
+
 def test_internal_blocker_resolution_and_plan_derivation_prevent_stall():
     tasks = {"FWQ-0001": TaskSpec("FWQ-0001", "Core blocked", "blocked", initial_state="BLOCKED", blocker_resolved=True)}
     plan = (TaskSpec("FWQ-0011", "Core planned", "next authorized work", priority=2),)
