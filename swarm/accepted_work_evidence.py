@@ -156,8 +156,13 @@ def build_accepted_evidence(
     previous_event_sha256: str | None = None,
 ) -> dict[str, Any]:
     """Build a strict evidence bundle without retaining provider prose or commands."""
+    job_id = _string(job_id, "job ID", max_length=32)
+    if not _JOB_ID.fullmatch(job_id):
+        raise AcceptedEvidenceError("invalid Phase 2A job ID")
     accepted = _commit(accepted_commit, "accepted commit")
     candidate = _commit(candidate_commit, "candidate commit")
+    if candidate != accepted:
+        raise AcceptedEvidenceError("candidate and accepted commits must match")
     body: dict[str, Any] = {
         "schema_version": _SCHEMA_VERSION,
         "mode": _MODE,
