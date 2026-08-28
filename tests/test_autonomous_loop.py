@@ -536,6 +536,7 @@ def test_completed_repair_successor_reconciles_parent_and_unlocks_one_next_task(
 
     assert state["queued_tasks"]["FWQ-0001"]["state"] == "DONE"
     assert state["queued_tasks"]["FWQ-0002"]["state"] == "READY"
+    assert state["completed_tasks"] == ["FWQ-0003", "FWQ-0001"]
     assert [task_id for task_id, record in state["queued_tasks"].items() if record["state"] == "READY"] == ["FWQ-0002"]
     assert "FWQ-0001:REPAIR->DONE:FWQ-0003" in transitions
 

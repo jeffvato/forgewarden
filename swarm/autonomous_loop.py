@@ -88,9 +88,12 @@ def progress_queue(tasks: dict[str, TaskSpec], state: dict[str, Any], *, review_
             None,
         )
         if completed_successor:
-            successor_record = state["queued_tasks"].get(str(completed_successor))
+            successor_id = str(completed_successor)
+            successor_record = state["queued_tasks"].get(successor_id)
             if successor_record is not None:
                 successor_record["state"] = "DONE"
+            if successor_id not in state["completed_tasks"]:
+                state["completed_tasks"].append(successor_id)
             record["state"] = "DONE"
             if task_id not in state["completed_tasks"]:
                 state["completed_tasks"].append(task_id)
