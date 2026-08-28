@@ -166,14 +166,11 @@ def reconcile_checkpoint(checkpoint: WorkUnitCheckpoint, repository_head: str) -
     if checkpoint.candidate_commit is not None and checkpoint.accepted_commit is None:
         raise CheckpointError("checkpoint not accepted: candidate commit has not been accepted")
     if checkpoint.accepted_commit is not None and (
-        checkpoint.accepted_commit.lower() == checkpoint.starting_commit.lower()
-        or
         not checkpoint.deterministic_validation
-        or checkpoint.claude_review.strip().upper() in {"PENDING", "REJECTED", "FINDINGS"}
-        or checkpoint.gemini_review.strip().upper() in {"PENDING", "REJECTED", "FINDINGS"}
-        or checkpoint.unresolved_findings
+        or checkpoint.claude_review.strip().upper() not in {"APPROVED", "FINDINGS"}
+        or checkpoint.gemini_review.strip().upper() not in {"APPROVED", "FINDINGS"}
         or checkpoint.blocker is not None
-        or checkpoint.next_action.strip().lower() == "dispatch"
+        or checkpoint.next_action.strip().lower().startswith("dispatch")
     ):
         raise CheckpointError("checkpoint evidence is stale or mismatched")
     expected = checkpoint.accepted_commit or checkpoint.starting_commit

@@ -13,7 +13,7 @@ SHA_B = "b" * 40
 
 
 def _checkpoint(**changes) -> WorkUnitCheckpoint:
-    values = dict(active_phase="ForgeWarden Core", task_id="FWQ-0003", starting_commit=SHA_A, candidate_commit=None, accepted_commit=None, changed_files=("swarm/work_checkpoint.py",), deterministic_validation=("pytest",), claude_review="not started", gemini_review="not started", unresolved_findings=(), blocker=None, next_action="continue safely")
+    values = dict(active_phase="ForgeWarden Core", task_id="FWQ-0003", starting_commit=SHA_A, candidate_commit=None, accepted_commit=None, changed_files=("swarm/work_checkpoint.py",), deterministic_validation=("pytest",), claude_review="APPROVED", gemini_review="APPROVED", unresolved_findings=(), blocker=None, next_action="continue safely")
     values.update(changes)
     return WorkUnitCheckpoint(**values)
 
@@ -55,6 +55,22 @@ def test_candidate_only_checkpoint_cannot_reconcile_as_accepted():
     checkpoint = _checkpoint(candidate_commit=SHA_B)
     with pytest.raises(CheckpointError, match="not accepted"):
         reconcile_checkpoint(checkpoint, SHA_B)
+
+
+def test_stale_review_labels_cannot_make_an_accepted_checkpoint_valid():
+    checkpoint = _checkpoint(candidate_commit=SHA_B, accepted_commit=SHA_B, claude_review="not started")
+    with pytest.raises(CheckpointError, match="stale or mismatched"):
+        reconcile_checkpoint(checkpoint, SHA_B)
+
+
+def test_no_change_accepted_checkpoint_reconciles_at_current_head():
+    checkpoint = _checkpoint(
+        candidate_commit=SHA_A,
+        accepted_commit=SHA_A,
+        changed_files=(),
+        deterministic_validation=("pytest",),
+    )
+    assert reconcile_checkpoint(checkpoint, SHA_A)["expected_commit"] == SHA_A
 
 
 def test_unsafe_checkpoint_path_and_schema_fail_closed(tmp_path):
