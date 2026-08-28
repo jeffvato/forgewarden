@@ -23,6 +23,12 @@ def derive_next_core_task(repository: Path, existing_ids: set[str]) -> TaskSpec 
         return None
     if "## Future queue population" not in queue_text or "ForgeWarden Core" not in roadmap_text:
         return None
+    # The population task is a one-time Core transition. Once an explicit
+    # population item is marked DONE, do not synthesize another copy of the
+    # same work forever from the static roadmap text.
+    for block in re.split(r"(?=^###\s+FWQ-\d{4}\s+—\s+)", queue_text, flags=re.MULTILINE):
+        if "Populate the next bounded Core work item" in block and re.search(r"^- State:\s+DONE\s*$", block, flags=re.MULTILINE):
+            return None
     queue_ids = set(re.findall(r"^###\s+(FWQ-\d{4})\s+—", queue_text, flags=re.MULTILINE))
     numbers = [
         int(match.group(1))
