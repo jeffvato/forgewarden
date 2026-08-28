@@ -195,12 +195,22 @@ def _next_repair_id(tasks: Mapping[str, TaskSpec]) -> str:
 
 
 def _dependency_satisfied(task_id: str, state: Mapping[str, Any]) -> bool:
-    """Treat a repair parent as complete once its explicit successor is done."""
+    """Treat a repair chain as complete once its final successor is done."""
+    return _dependency_satisfied_seen(task_id, state, set())
+
+
+def _dependency_satisfied_seen(task_id: str, state: Mapping[str, Any], seen: set[str]) -> bool:
+    if task_id in seen:
+        return False
+    seen.add(task_id)
     record = state.get("queued_tasks", {}).get(task_id, {})
     if record.get("state") == "DONE":
         return True
-    successor = record.get("repair_enqueued")
-    return bool(successor and state.get("queued_tasks", {}).get(successor, {}).get("state") == "DONE")
+    for key in ("repair_enqueued", "recovery_followup"):
+        successor = record.get(key)
+        if successor and _dependency_satisfied_seen(str(successor), state, seen):
+            return True
+    return False
 
 
 def _repair_allowed_paths(task: TaskSpec) -> tuple[str, ...]:
