@@ -141,7 +141,7 @@ def _validate(
     event_hash = hashlib.sha256(_canonical(event_payload)).hexdigest()
     if bundle["event_sha256"] != event_hash:
         raise AcceptedEvidenceError("accepted evidence event hash mismatch")
-    return dict(bundle)
+    return {**body, "evidence_sha256": evidence_hash, "event_sha256": event_hash}
 
 
 def build_accepted_evidence(
