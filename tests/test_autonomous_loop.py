@@ -497,6 +497,27 @@ def test_completed_repair_successor_history_unlocks_parent_without_successor_que
     assert transitions[:2] == ("FWQ-0001:REPAIR->DONE:FWQ-0003", "FWQ-0002:BLOCKED->READY")
 
 
+def test_completed_repair_successor_history_normalizes_stale_ready_record():
+    tasks = {
+        "FWQ-0001": TaskSpec("FWQ-0001", "Core repair", "repair", initial_state="REPAIR"),
+        "FWQ-0002": TaskSpec("FWQ-0002", "Core continuation", "continue", dependencies=("FWQ-0001",), initial_state="BLOCKED"),
+    }
+    state = {
+        "queued_tasks": {
+            "FWQ-0001": {"state": "REPAIR", "repair_enqueued": "FWQ-0003"},
+            "FWQ-0002": {"state": "BLOCKED"},
+            "FWQ-0003": {"state": "READY"},
+        },
+        "completed_tasks": ["FWQ-0003"], "task_specs": {},
+    }
+
+    transitions = progress_queue(tasks, state)
+
+    assert state["queued_tasks"]["FWQ-0003"]["state"] == "DONE"
+    assert state["queued_tasks"]["FWQ-0002"]["state"] == "READY"
+    assert transitions[:2] == ("FWQ-0001:REPAIR->DONE:FWQ-0003", "FWQ-0002:BLOCKED->READY")
+
+
 def test_completed_repair_successor_reconciles_parent_and_unlocks_one_next_task():
     tasks = {
         "FWQ-0001": TaskSpec("FWQ-0001", "Core repair", "repair", initial_state="REPAIR"),

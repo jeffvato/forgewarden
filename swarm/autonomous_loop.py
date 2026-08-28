@@ -88,6 +88,9 @@ def progress_queue(tasks: dict[str, TaskSpec], state: dict[str, Any], *, review_
             None,
         )
         if completed_successor:
+            successor_record = state["queued_tasks"].get(str(completed_successor))
+            if successor_record is not None:
+                successor_record["state"] = "DONE"
             record["state"] = "DONE"
             if task_id not in state["completed_tasks"]:
                 state["completed_tasks"].append(task_id)
@@ -377,7 +380,8 @@ class AutonomousOrchestrator:
             if task_id not in self.tasks and isinstance(payload, dict):
                 for key in ("dependencies", "allowed_paths", "acceptance", "test_command"):
                     payload[key] = tuple(payload.get(key, ()))
-                self.tasks[task_id] = TaskSpec(**payload)
+                task = TaskSpec(**payload)
+                self.tasks[task_id] = replace(task, test_command=_repair_test_command(task)) if not task.test_command else task
             elif task_id in self.tasks and isinstance(payload, dict) and payload.get("blocker_external") is True and not (
                 self.tasks[task_id].target_path and self.tasks[task_id].allowed_paths and self.tasks[task_id].test_command and not self.tasks[task_id].blocker_external
             ):
