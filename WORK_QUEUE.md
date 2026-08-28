@@ -187,7 +187,7 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 
 ### FWQ-0011 — Deterministic Core checkpoint reconciliation
 - Requirement: Core supervisor/recovery
-- State: READY
+- State: DONE
 - Priority: P2
 - Dependencies: FWQ-0010
 - Approval: Explicitly authorized by the active Core queue-population plan.
