@@ -124,6 +124,33 @@ def test_review_cycle_does_not_stall_when_optional_reviewers_are_unavailable(rep
     assert result["reviews"][1]["state"] == "UNAVAILABLE"
 
 
+def test_sequential_fallback_uses_gemini_only_after_claude_is_unavailable(repo_fixture: Path):
+    sha = repo_fixture.joinpath(".candidate-sha").read_text().strip()
+    calls = []
+
+    def unavailable(snapshot, job_id, commit, context):
+        calls.append("CLAUDE")
+        raise RuntimeError("Claude usage limit reached")
+
+    def approved(snapshot, job_id, commit, context):
+        calls.append("GEMINI")
+        return {
+            "job_id": job_id, "reviewed_commit": commit, "verdict": "APPROVE", "risk": "LOW",
+            "blocking_findings": [], "non_blocking_notes": [], "tests_missing": [],
+            "reasoning_summary": "fallback approval", "proposed_rules": [],
+        }
+
+    result = run_review_cycle(
+        repo_fixture, sha, "phase2a-" + "e" * 24, "review",
+        claude_runner=unavailable, gemini_runner=approved,
+        reviewers=("CLAUDE", "GEMINI"), required_reviewers=("CLAUDE",),
+        sequential_fallback=True,
+    )
+    assert calls == ["CLAUDE", "GEMINI"]
+    assert result["reviews"][0]["state"] == "UNAVAILABLE"
+    assert result["reviews"][1]["state"] == "APPROVED"
+
+
 def test_review_cycle_supports_explicit_claude_only_mode(repo_fixture: Path):
     sha = repo_fixture.joinpath(".candidate-sha").read_text().strip()
 

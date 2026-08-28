@@ -99,6 +99,7 @@ def run_review_cycle(
     reviewers: tuple[str, ...] = ("CLAUDE", "GEMINI"),
     adjudicate_disagreements: bool = False,
     required_reviewers: tuple[str, ...] | None = None,
+    sequential_fallback: bool = False,
 ) -> dict[str, Any]:
     """Run the configured independent reviewers without changing the repository.
 
@@ -150,12 +151,22 @@ def run_review_cycle(
             except Exception as exc:  # provider boundaries must not hide the other review
                 return _review_record(provider, error=redact(str(exc)))
 
-        # Providers are independent read-only reviewers. Run them concurrently so
-        # a slow or unavailable provider cannot prevent the other review from
-        # completing. Each adapter owns its bounded subprocess timeout.
-        with ThreadPoolExecutor(max_workers=len(providers), thread_name_prefix="forgewarden-review") as executor:
-            futures = [executor.submit(invoke_provider, provider, invoke) for provider, invoke in providers]
-            records = [future.result() for future in futures]
+        # The autonomous primary/fallback policy is deliberately sequential:
+        # do not spend fallback quota while Claude is healthy, and do not wait
+        # for Claude before using Gemini after a bounded Claude failure. The
+        # general review command retains concurrent independent reviewers.
+        if sequential_fallback and providers and providers[0][0] == "CLAUDE":
+            first = invoke_provider(*providers[0])
+            records = [first]
+            if first["state"] == "UNAVAILABLE":
+                records.extend(invoke_provider(*provider) for provider in providers[1:])
+        else:
+            # Providers are independent read-only reviewers. Run them
+            # concurrently so a slow provider cannot prevent other configured
+            # reviews from completing. Each adapter owns its bounded timeout.
+            with ThreadPoolExecutor(max_workers=len(providers), thread_name_prefix="forgewarden-review") as executor:
+                futures = [executor.submit(invoke_provider, provider, invoke) for provider, invoke in providers]
+                records = [future.result() for future in futures]
 
     adjudication = None
     if adjudicate_disagreements and "CLAUDE" in requested and next(record for record in records if record["provider"] == "CLAUDE")["state"] != "UNAVAILABLE":

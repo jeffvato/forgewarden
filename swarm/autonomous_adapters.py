@@ -52,7 +52,7 @@ class ExactReviewAdapter:
 
     def review(self, task: TaskSpec, commit: str, lease: WorkerLease) -> dict[str, ReviewResult]:
         job_id = "phase2a-" + hashlib.sha256(task.task_id.encode("utf-8")).hexdigest()[:24]
-        result = run_review_cycle(Path(lease.repository), commit, job_id, self.context, allow_external_review=self.allow_external_review, reviewers=self.reviewers, required_reviewers=("CLAUDE",), adjudicate_disagreements=True)
+        result = run_review_cycle(Path(lease.repository), commit, job_id, self.context, allow_external_review=self.allow_external_review, reviewers=self.reviewers, required_reviewers=("CLAUDE",), adjudicate_disagreements=True, sequential_fallback=True)
         if result["state"] != "APPROVED":
             claude = next((item for item in result.get("reviews", ()) if item.get("provider") == "CLAUDE"), None)
             gemini = next((item for item in result.get("reviews", ()) if item.get("provider") == "GEMINI"), None)
@@ -110,6 +110,7 @@ class ExactReviewAdapter:
                 reviewers=self.reviewers,
                 required_reviewers=("CLAUDE",),
                 adjudicate_disagreements=True,
+                sequential_fallback=True,
             )
             if result["state"] == "APPROVED":
                 return "PASSED"
