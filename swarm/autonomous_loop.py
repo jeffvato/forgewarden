@@ -108,8 +108,10 @@ def progress_queue(tasks: dict[str, TaskSpec], state: dict[str, Any], *, review_
                         state["completed_tasks"].append(task.task_id)
                     transitions.append(f"{task.task_id}:REVIEW->DONE")
                     changed = True
-                elif disposition == "REPAIRABLE":
+                elif isinstance(disposition, str) and disposition.startswith("REPAIRABLE"):
                     record["state"] = "REPAIR"
+                    if ":" in disposition:
+                        record["review_diagnostic"] = disposition.partition(":")[2].strip()[:1800]
                     repair_id = _next_repair_id(tasks)
                     repair = replace(task, task_id=repair_id, description=f"Repair findings for {task.task_id}: {task.description}", dependencies=(), initial_state="READY", review_disposition=None, blocker_resolved=False, blocker_external=False)
                     tasks[repair_id] = repair

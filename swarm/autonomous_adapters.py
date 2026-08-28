@@ -9,8 +9,25 @@ from typing import Any
 
 from .adapters import CodexAdapter, ResourceLimits, WriterInvocationSpec
 from .autonomous_loop import GitCheckpointController, ReviewUnavailable, TaskSpec, WorkerLease, WorkerResult
+from .core import redact
 from .review_handoff import ReviewResult
 from .review_runner import run_review_cycle
+
+
+def _review_failure_detail(result: dict[str, Any]) -> str:
+    """Keep the durable failure cause useful without persisting reviewer prose."""
+    details = []
+    for item in result.get("reviews", ()):
+        if not isinstance(item, dict):
+            continue
+        payload = item.get("result") if isinstance(item.get("result"), dict) else {}
+        details.append({
+            "provider": item.get("provider"), "state": item.get("state"),
+            "error": item.get("error"), "verdict": payload.get("verdict"),
+            "risk": payload.get("risk"), "blocking_findings": payload.get("blocking_findings"),
+            "tests_missing": payload.get("tests_missing"),
+        })
+    return redact(json.dumps(details, sort_keys=True))[:1800] or "no provider diagnostics returned"
 
 
 class CodexTaskAdapter:
@@ -77,7 +94,7 @@ class ExactReviewAdapter:
             if unavailable:
                 detail = "; ".join(f"{item.get('provider', 'reviewer')}: {item.get('error', 'no diagnostic')}" for item in unavailable)
                 raise ReviewUnavailable(f"independent exact-commit review resource unavailable: {detail[:1000]}")
-            raise RuntimeError("independent exact-commit review did not approve")
+            raise RuntimeError("independent exact-commit review did not approve: " + _review_failure_detail(result))
         adjudication = result.get("adjudication")
         if isinstance(adjudication, dict) and adjudication.get("state") == "APPROVED":
             payload = adjudication["result"]
@@ -122,9 +139,9 @@ class ExactReviewAdapter:
             if claude is None or claude.get("state") == "UNAVAILABLE":
                 detail = claude.get("error", "Claude review record was not returned") if claude else "Claude review record was not returned"
                 return "EXTERNAL: " + str(detail)[:1000]
-            return "REPAIRABLE"
+            return "REPAIRABLE: " + _review_failure_detail(result)
         except Exception as exc:
-            return ("EXTERNAL: " + str(exc)[:1000]) if "unavailable" in str(exc).lower() else "REPAIRABLE"
+            return ("EXTERNAL: " + str(exc)[:1000]) if "unavailable" in str(exc).lower() else "REPAIRABLE: " + str(exc)[:1000]
 
 
 def commit_with_trusted_git(task: TaskSpec, result: WorkerResult, lease: WorkerLease) -> str:

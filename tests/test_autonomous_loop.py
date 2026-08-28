@@ -480,7 +480,7 @@ def test_review_resolver_ignores_optional_provider_outage_when_claude_is_availab
             {"provider": "OPENROUTER", "state": "UNAVAILABLE"},
         ]},
     )
-    assert ExactReviewAdapter("review").resolve_review(task, lease) == "REPAIRABLE"
+    assert ExactReviewAdapter("review").resolve_review(task, lease).startswith("REPAIRABLE:")
 
 
 def test_gemini_approves_when_claude_is_unavailable(tmp_path: Path, monkeypatch):
