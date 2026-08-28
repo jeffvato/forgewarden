@@ -17,7 +17,7 @@ def _review():
 
 
 def _bundle(**changes):
-    values = dict(job_id=JOB, candidate_commit=SHA, accepted_commit=SHA, changed_files=["swarm/accepted_work_evidence.py"], deterministic_validation=["pytest focused: passed"], claude_review=_review(), gemini_review=_review())
+    values = dict(job_id=JOB, candidate_commit=SHA, accepted_commit=SHA, expected_job_id=JOB, expected_candidate_commit=SHA, changed_files=["swarm/accepted_work_evidence.py"], deterministic_validation=["pytest focused: passed"], claude_review=_review(), gemini_review=_review())
     values.update(changes)
     return build_accepted_evidence(**values)
 
@@ -38,6 +38,12 @@ def test_binding_mismatch_fails_closed(field, value):
     changes = {field: value}
     with pytest.raises(AcceptedEvidenceError):
         _bundle(**changes)
+
+
+@pytest.mark.parametrize("field,value", [("expected_job_id", "phase2a-other"), ("expected_candidate_commit", "b" * 40)])
+def test_explicit_expected_binding_mismatch_fails_closed(field, value):
+    with pytest.raises(AcceptedEvidenceError):
+        _bundle(**{field: value})
 
 
 def test_unapproved_or_missing_test_review_fails_closed():
