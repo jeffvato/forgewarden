@@ -115,7 +115,7 @@ def progress_queue(tasks: dict[str, TaskSpec], state: dict[str, Any], *, review_
                     if ":" in disposition:
                         record["review_diagnostic"] = disposition.partition(":")[2].strip()[:1800]
                     repair_id = _next_repair_id(tasks)
-                    repair = replace(task, task_id=repair_id, description=f"Repair findings for {task.task_id}: {task.description}", dependencies=(), initial_state="READY", review_disposition=None, blocker_resolved=False, blocker_external=False)
+                    repair = replace(task, task_id=repair_id, description=f"Repair findings for {task.task_id}: {task.description}", dependencies=(), allowed_paths=_repair_allowed_paths(task), initial_state="READY", review_disposition=None, blocker_resolved=False, blocker_external=False)
                     tasks[repair_id] = repair
                     state.setdefault("task_specs", {})[repair_id] = asdict(repair)
                     state["queued_tasks"][repair_id] = {"state": "READY", "attempts": 0}
@@ -138,6 +138,7 @@ def progress_queue(tasks: dict[str, TaskSpec], state: dict[str, Any], *, review_
                     task_id=repair_id,
                     description=f"Follow-up repair findings for {task.task_id}: {task.description}",
                     dependencies=(),
+                    allowed_paths=_repair_allowed_paths(task),
                     initial_state="READY",
                     review_disposition=None,
                     blocker_resolved=False,
@@ -185,6 +186,12 @@ def _next_repair_id(tasks: Mapping[str, TaskSpec]) -> str:
     used = {int(task_id.split("-")[1]) for task_id in tasks if task_id.startswith("FWQ-") and task_id[4:].isdigit()}
     value = max(used or {0}) + 1
     return f"FWQ-{value:04d}"
+
+
+def _repair_allowed_paths(task: TaskSpec) -> tuple[str, ...]:
+    """Scope a repair to its source plus explicitly named regression tests."""
+    test_paths = tuple(item for item in task.test_command if item.startswith("tests/") and item.endswith(".py"))
+    return tuple(dict.fromkeys((*task.allowed_paths, *test_paths)))
 
 
 @dataclass(frozen=True)

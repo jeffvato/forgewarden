@@ -64,13 +64,20 @@ class WriterInvocationSpec:
         return resolved_git
 
     def prompt(self) -> str:
+        writable = ", ".join(self.writable_git_paths)
+        test_rule = (
+            "Tests are explicitly in scope and may be updated only at the listed paths. "
+            if any(path.startswith("tests/") for path in self.writable_git_paths)
+            else "Do not modify or create tests. "
+        )
         return (
             f"Work only in Git root {self.git_root}. Your actual CWD is {self.codex_cwd}. "
-            f"The exact canonical job ID is {self.job_id}. The only writable source path is "
-            f"{self.codex_relative_target} relative to your CWD, corresponding to "
-            f"{self.git_relative_target} relative to Git root. Expected behavior: {self.expected_behavior}. "
-            f"The sanitized failing assertion is: {self.failing_assertion}. Make the smallest source correction. "
-            "Do not modify or create tests. Do not write Git metadata, stage files, create commits, remotes, or pushes."
+            f"The exact canonical job ID is {self.job_id}. Writable paths are only: {writable}. "
+            f"The primary source target is {self.codex_relative_target} relative to your CWD, "
+            f"corresponding to {self.git_relative_target} relative to Git root. "
+            f"Expected behavior: {self.expected_behavior}. "
+            f"The sanitized failing assertion is: {self.failing_assertion}. Make the smallest correction. "
+            f"{test_rule}Do not write Git metadata, stage files, create commits, remotes, or pushes."
         )
 
 
