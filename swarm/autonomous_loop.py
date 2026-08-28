@@ -187,6 +187,8 @@ def progress_queue(tasks: dict[str, TaskSpec], state: dict[str, Any], *, review_
                 transitions.append(f"{task.task_id}:REPAIR->READY:{repair_id}")
                 changed = True
             elif current == "BLOCKED":
+                if any(item.get("state") == "READY" for item in state["queued_tasks"].values()):
+                    continue
                 dependencies_done = all(_dependency_satisfied(dep, state) for dep in task.dependencies)
                 # A previously latched external hold may be cleared only when
                 # the refreshed approved task is concrete and bounded.
