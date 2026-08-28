@@ -173,7 +173,7 @@ def reconcile_checkpoint(checkpoint: WorkUnitCheckpoint, repository_head: str) -
         or checkpoint.gemini_review.strip().upper() in {"PENDING", "REJECTED", "FINDINGS"}
         or checkpoint.unresolved_findings
         or checkpoint.blocker is not None
-        or checkpoint.next_action == "dispatch"
+        or checkpoint.next_action.strip().lower() == "dispatch"
     ):
         raise CheckpointError("checkpoint evidence is stale or mismatched")
     expected = checkpoint.accepted_commit or checkpoint.starting_commit
