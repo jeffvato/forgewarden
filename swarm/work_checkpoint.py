@@ -171,6 +171,7 @@ def reconcile_checkpoint(checkpoint: WorkUnitCheckpoint, repository_head: str) -
         not checkpoint.deterministic_validation
         or checkpoint.claude_review == "PENDING"
         or checkpoint.gemini_review == "PENDING"
+        or checkpoint.blocker is not None
         or checkpoint.next_action == "dispatch"
     ):
         raise CheckpointError("checkpoint evidence is stale or mismatched")
