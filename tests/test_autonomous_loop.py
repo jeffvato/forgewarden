@@ -527,6 +527,14 @@ def test_plan_does_not_duplicate_task_already_in_persisted_queue():
     assert task.task_id not in tasks
 
 
+def test_plan_does_not_create_ready_task_with_incomplete_dependency():
+    task = TaskSpec("FWQ-0010", "Core follow-up", "next package", dependencies=("FWQ-0009",))
+    state = {"queued_tasks": {}, "completed_tasks": [], "task_specs": {}}
+
+    assert progress_queue({}, state, plan_tasks=(task,)) == ()
+    assert task.task_id not in state["queued_tasks"]
+
+
 def test_runner_advances_review_only_queue_and_executes_derived_plan_task(tmp_path: Path):
     review_task = TaskSpec("FWQ-0009", "Core review", "reviewed package", initial_state="REVIEW", review_disposition="PASSED")
     plan_task = TaskSpec("FWQ-0010", "Core follow-up", "next package", priority=1)

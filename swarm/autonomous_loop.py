@@ -195,7 +195,14 @@ def progress_queue(tasks: dict[str, TaskSpec], state: dict[str, Any], *, review_
         ):
             break
         for candidate in sorted(plan_tasks, key=lambda item: (item.priority, item.task_id)):
-            if candidate.authorized and candidate.task_id not in tasks and candidate.task_id not in state["queued_tasks"] and candidate.requirement.startswith("Core "):
+            if (
+                candidate.authorized
+                and candidate.initial_state == "READY"
+                and all(_dependency_satisfied(dep, state) for dep in candidate.dependencies)
+                and candidate.task_id not in tasks
+                and candidate.task_id not in state["queued_tasks"]
+                and candidate.requirement.startswith("Core ")
+            ):
                 tasks[candidate.task_id] = candidate
                 state.setdefault("task_specs", {})[candidate.task_id] = asdict(candidate)
                 state["queued_tasks"][candidate.task_id] = {"state": "READY", "attempts": 0}
