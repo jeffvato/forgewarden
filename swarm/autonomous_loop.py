@@ -70,10 +70,11 @@ def progress_queue(tasks: dict[str, TaskSpec], state: dict[str, Any], *, review_
     transitions: list[str] = []
     reviews_attempted = 0
     repair_transitioned: set[str] = set()
-    for task in tasks.values():
+    for task in sorted(tasks.values(), key=lambda item: item.task_id):
         state["queued_tasks"].setdefault(task.task_id, {"state": task.initial_state, "attempts": 0})
     changed = True
-    for task_id, record in state["queued_tasks"].items():
+    for task_id in sorted(state["queued_tasks"]):
+        record = state["queued_tasks"][task_id]
         if record.get("state") != "REPAIR":
             continue
         completed_successor = next(
@@ -92,7 +93,7 @@ def progress_queue(tasks: dict[str, TaskSpec], state: dict[str, Any], *, review_
             transitions.append(f"{task_id}:REPAIR->DONE:{completed_successor}")
     while changed:
         changed = False
-        for task in tuple(tasks.values()):
+        for task in tuple(sorted(tasks.values(), key=lambda item: item.task_id)):
             record = state["queued_tasks"][task.task_id]
             current = record["state"]
             if current == "REVIEW":
