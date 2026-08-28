@@ -446,7 +446,7 @@ class AutonomousOrchestrator:
             record = state["queued_tasks"][task.task_id]
             if record["state"] != "READY":
                 continue
-            if all(state["queued_tasks"][dep]["state"] == "DONE" for dep in task.dependencies):
+            if all(_dependency_satisfied(dep, state) for dep in task.dependencies):
                 ready.append(task)
         return min(ready, key=lambda item: (item.priority, item.task_id)) if ready else None
 
