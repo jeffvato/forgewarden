@@ -84,6 +84,26 @@ def _payload(checkpoint: WorkUnitCheckpoint) -> dict[str, object]:
     return {"version": _VERSION, "checkpoint": asdict(checkpoint)}
 
 
+def _review_findings_match(checkpoint: WorkUnitCheckpoint) -> bool:
+    reviews = {
+        "CLAUDE": checkpoint.claude_review.strip().upper(),
+        "GEMINI": checkpoint.gemini_review.strip().upper(),
+    }
+    has_findings = False
+    for item in checkpoint.unresolved_findings:
+        role, disposition, severity, _rationale, finding = (
+            item.split("|", 4) if "|" in item else ("", "", "", "", "")
+        )
+        if (
+            role not in reviews
+            or disposition.strip().upper() != reviews[role]
+            or severity.strip().upper() not in {"LOW", "MEDIUM", "HIGH", "CRITICAL"}
+        ):
+            return False
+        has_findings = has_findings or bool(finding.strip())
+    return has_findings == any(review == "FINDINGS" for review in reviews.values())
+
+
 def write_checkpoint(path: Path, checkpoint: WorkUnitCheckpoint) -> None:
     """Durably replace one checkpoint; incomplete writes are never valid JSON evidence."""
     if not hasattr(os, "O_NOFOLLOW"):
@@ -179,11 +199,7 @@ def reconcile_checkpoint(checkpoint: WorkUnitCheckpoint, repository_head: str) -
         not checkpoint.deterministic_validation
         or checkpoint.claude_review.strip().upper() not in {"APPROVED", "FINDINGS"}
         or checkpoint.gemini_review.strip().upper() not in {"APPROVED", "FINDINGS"}
-        or any(item.rsplit("|", 1)[-1] for item in checkpoint.unresolved_findings)
-            != (
-                checkpoint.claude_review.strip().upper() == "FINDINGS"
-                or checkpoint.gemini_review.strip().upper() == "FINDINGS"
-            )
+        or not _review_findings_match(checkpoint)
         or checkpoint.blocker is not None
         or checkpoint.next_action.strip().lower().startswith("dispatch")
     ):
