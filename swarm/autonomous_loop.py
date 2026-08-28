@@ -178,7 +178,7 @@ def progress_queue(tasks: dict[str, TaskSpec], state: dict[str, Any], *, review_
         ):
             break
         for candidate in sorted(plan_tasks, key=lambda item: (item.priority, item.task_id)):
-            if candidate.authorized and candidate.task_id not in tasks and candidate.requirement.startswith("Core "):
+            if candidate.authorized and candidate.task_id not in tasks and candidate.task_id not in state["queued_tasks"] and candidate.requirement.startswith("Core "):
                 tasks[candidate.task_id] = candidate
                 state.setdefault("task_specs", {})[candidate.task_id] = asdict(candidate)
                 state["queued_tasks"][candidate.task_id] = {"state": "READY", "attempts": 0}
@@ -204,7 +204,7 @@ def _dependency_satisfied_seen(task_id: str, state: Mapping[str, Any], seen: set
         return False
     seen.add(task_id)
     record = state.get("queued_tasks", {}).get(task_id, {})
-    if record.get("state") == "DONE":
+    if record.get("state") == "DONE" or task_id in state.get("completed_tasks", ()):
         return True
     for key in ("repair_enqueued", "recovery_followup"):
         successor = record.get(key)

@@ -440,6 +440,37 @@ def test_completed_repair_successor_satisfies_blocked_dependency(tmp_path):
     assert "FWQ-0002:BLOCKED->READY" in transitions
 
 
+def test_completed_repair_successor_in_completion_history_satisfies_dependency():
+    tasks = {
+        "FWQ-0001": TaskSpec("FWQ-0001", "Core repair", "repair", initial_state="REPAIR"),
+        "FWQ-0002": TaskSpec("FWQ-0002", "Core continuation", "continue", dependencies=("FWQ-0001",), initial_state="BLOCKED"),
+    }
+    state = {
+        "queued_tasks": {
+            "FWQ-0001": {"state": "REPAIR", "repair_enqueued": "FWQ-0003"},
+            "FWQ-0002": {"state": "BLOCKED"},
+            "FWQ-0003": {"state": "REPAIR"},
+        },
+        "completed_tasks": ["FWQ-0003"], "task_specs": {},
+    }
+
+    transitions = progress_queue(tasks, state)
+
+    assert "FWQ-0002:BLOCKED->READY" in transitions
+
+
+def test_plan_does_not_duplicate_task_already_in_persisted_queue():
+    task = TaskSpec("FWQ-0010", "Core follow-up", "next package")
+    tasks = {}
+    state = {
+        "queued_tasks": {task.task_id: {"state": "READY", "attempts": 0}},
+        "completed_tasks": [], "task_specs": {},
+    }
+
+    assert progress_queue(tasks, state, plan_tasks=(task,)) == ()
+    assert task.task_id not in tasks
+
+
 def test_runner_advances_review_only_queue_and_executes_derived_plan_task(tmp_path: Path):
     review_task = TaskSpec("FWQ-0009", "Core review", "reviewed package", initial_state="REVIEW", review_disposition="PASSED")
     plan_task = TaskSpec("FWQ-0010", "Core follow-up", "next package", priority=1)
