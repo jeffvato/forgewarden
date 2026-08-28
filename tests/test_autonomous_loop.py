@@ -542,6 +542,28 @@ def test_completed_repair_successor_reconciles_ready_parent_without_duplicate_re
     assert "FWQ-0001:READY->DONE:FWQ-0004" in transitions
 
 
+def test_completed_repair_successor_reconciles_validated_parent_and_unlocks_next_task():
+    tasks = {
+        "FWQ-0001": TaskSpec("FWQ-0001", "Core repair", "repair", initial_state="VALIDATED"),
+        "FWQ-0002": TaskSpec("FWQ-0002", "Core continuation", "continue", dependencies=("FWQ-0001",), initial_state="BLOCKED"),
+    }
+    state = {
+        "queued_tasks": {
+            "FWQ-0001": {"state": "VALIDATED", "repair_enqueued": "FWQ-0003"},
+            "FWQ-0002": {"state": "BLOCKED"},
+            "FWQ-0003": {"state": "DONE"},
+        },
+        "completed_tasks": [], "task_specs": {},
+    }
+
+    transitions = progress_queue(tasks, state)
+
+    assert state["queued_tasks"]["FWQ-0001"]["state"] == "DONE"
+    assert state["queued_tasks"]["FWQ-0002"]["state"] == "READY"
+    assert [task_id for task_id, record in state["queued_tasks"].items() if record["state"] == "READY"] == ["FWQ-0002"]
+    assert "FWQ-0001:VALIDATED->DONE:FWQ-0003" in transitions
+
+
 def test_completed_repair_successor_reconciles_review_parent_and_unlocks_one_next_task():
     tasks = {
         "FWQ-0001": TaskSpec("FWQ-0001", "Core repair", "repair", initial_state="REVIEW"),

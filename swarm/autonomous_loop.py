@@ -75,7 +75,7 @@ def progress_queue(tasks: dict[str, TaskSpec], state: dict[str, Any], *, review_
     changed = True
     for task_id in sorted(state["queued_tasks"]):
         record = state["queued_tasks"][task_id]
-        if record.get("state") not in {"READY", "IN_PROGRESS", "BLOCKED", "REPAIR", "FAILED", "REVIEW"}:
+        if record.get("state") not in {"READY", "IN_PROGRESS", "BLOCKED", "REPAIR", "FAILED", "REVIEW", "VALIDATED"}:
             continue
         parent_state = record["state"]
         completed_successor = next(
@@ -134,7 +134,7 @@ def progress_queue(tasks: dict[str, TaskSpec], state: dict[str, Any], *, review_
                     if ":" in disposition:
                         record["review_diagnostic"] = disposition.partition(":")[2].strip()[:1800]
                     repair_id = _next_repair_id(tasks, state["queued_tasks"])
-                    repair = replace(task, task_id=repair_id, description=f"Repair findings for {task.task_id}: {task.description}", dependencies=(), allowed_paths=_repair_allowed_paths(task), initial_state="READY", review_disposition=None, blocker_resolved=False, blocker_external=False)
+                    repair = replace(task, task_id=repair_id, description=f"Repair findings for {task.task_id}: {task.description}", dependencies=(), allowed_paths=_repair_allowed_paths(task), test_command=_repair_test_command(task), initial_state="READY", review_disposition=None, blocker_resolved=False, blocker_external=False)
                     tasks[repair_id] = repair
                     state.setdefault("task_specs", {})[repair_id] = asdict(repair)
                     state["queued_tasks"][repair_id] = {"state": "READY", "attempts": 0}
@@ -175,6 +175,7 @@ def progress_queue(tasks: dict[str, TaskSpec], state: dict[str, Any], *, review_
                     description=f"Follow-up repair findings for {task.task_id}: {task.description}",
                     dependencies=(),
                     allowed_paths=_repair_allowed_paths(task),
+                    test_command=_repair_test_command(task),
                     initial_state="READY",
                     review_disposition=None,
                     blocker_resolved=False,
@@ -263,6 +264,16 @@ def _repair_allowed_paths(task: TaskSpec) -> tuple[str, ...]:
     """Scope a repair to its source plus explicitly named regression tests."""
     test_paths = tuple(item for item in task.test_command if item.startswith("tests/") and item.endswith(".py"))
     return tuple(dict.fromkeys((*task.allowed_paths, *test_paths)))
+
+
+def _repair_test_command(task: TaskSpec) -> tuple[str, ...]:
+    """Give a repair successor deterministic validation when metadata omitted it."""
+    if task.test_command:
+        return task.test_command
+    test_paths = tuple(path for path in task.allowed_paths if path.startswith("tests/") and path.endswith(".py"))
+    if len(test_paths) == 1:
+        return ("python3", "-m", "pytest", "-q", test_paths[0])
+    return ()
 
 
 @dataclass(frozen=True)
