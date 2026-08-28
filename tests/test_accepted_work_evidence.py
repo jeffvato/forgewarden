@@ -79,3 +79,12 @@ def test_tamper_replay_and_symlink_fail_closed(tmp_path):
     link = tmp_path / "link.json"; link.symlink_to(outside)
     with pytest.raises(AcceptedEvidenceError):
         write_accepted_evidence(link, bundle, expected_job_id=JOB, expected_candidate_commit=SHA)
+
+
+@pytest.mark.parametrize("expected", [("phase2a-other00000000000000000000", SHA), (JOB, "b" * 40)])
+def test_immutable_boundaries_reject_mismatched_job_or_candidate(tmp_path, expected):
+    path = tmp_path / "accepted.json"
+    bundle = _bundle()
+    write_accepted_evidence(path, bundle, expected_job_id=JOB, expected_candidate_commit=SHA)
+    with pytest.raises(AcceptedEvidenceError):
+        read_accepted_evidence(path, expected_job_id=expected[0], expected_candidate_commit=expected[1])

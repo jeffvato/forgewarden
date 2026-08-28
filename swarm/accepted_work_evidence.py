@@ -77,6 +77,17 @@ def _body(bundle: Mapping[str, Any]) -> dict[str, Any]:
     return {key: bundle[key] for key in bundle if key not in {"evidence_sha256", "event_sha256"}}
 
 
+def _require_binding(job_id: str, candidate_commit: str, expected_job_id: object, expected_candidate_commit: object) -> None:
+    expected_job = _string(expected_job_id, "expected job ID", max_length=32)
+    if not _JOB_ID.fullmatch(expected_job):
+        raise AcceptedEvidenceError("invalid expected Phase 2A job ID")
+    if job_id != expected_job:
+        raise AcceptedEvidenceError("accepted evidence job ID mismatch")
+    expected_commit = _commit(expected_candidate_commit, "expected candidate commit")
+    if candidate_commit != expected_commit:
+        raise AcceptedEvidenceError("accepted evidence candidate commit mismatch")
+
+
 def _validate(
     bundle: Mapping[str, Any],
     *,
@@ -99,14 +110,7 @@ def _validate(
     accepted = _commit(bundle["accepted_commit"], "accepted commit")
     if candidate != accepted:
         raise AcceptedEvidenceError("candidate and accepted commits must match")
-    expected_job = _string(expected_job_id, "expected job ID", max_length=32)
-    if not _JOB_ID.fullmatch(expected_job):
-        raise AcceptedEvidenceError("invalid expected Phase 2A job ID")
-    if job_id != expected_job:
-        raise AcceptedEvidenceError("accepted evidence job ID mismatch")
-    expected_commit = _commit(expected_candidate_commit, "expected candidate commit")
-    if candidate != expected_commit:
-        raise AcceptedEvidenceError("accepted evidence candidate commit mismatch")
+    _require_binding(job_id, candidate, expected_job_id, expected_candidate_commit)
     files = bundle["changed_files"]
     if not isinstance(files, list) or not files or len(set(files)) != len(files):
         raise AcceptedEvidenceError("changed files must be a unique non-empty list")
@@ -169,6 +173,7 @@ def build_accepted_evidence(
     candidate = _commit(candidate_commit, "candidate commit")
     if candidate != accepted:
         raise AcceptedEvidenceError("candidate and accepted commits must match")
+    _require_binding(job_id, candidate, expected_job_id, expected_candidate_commit)
     body: dict[str, Any] = {
         "schema_version": _SCHEMA_VERSION,
         "mode": _MODE,
