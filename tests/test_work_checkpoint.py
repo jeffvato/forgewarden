@@ -86,6 +86,16 @@ def test_commit_references_must_match_changed_files(changes):
         reconcile_checkpoint(checkpoint, changes["accepted_commit"])
 
 
+def test_duplicate_changed_file_evidence_fails_closed():
+    checkpoint = _checkpoint(
+        candidate_commit=SHA_B,
+        accepted_commit=SHA_B,
+        changed_files=("swarm/work_checkpoint.py", "swarm/work_checkpoint.py"),
+    )
+    with pytest.raises(CheckpointError, match="changed files"):
+        reconcile_checkpoint(checkpoint, SHA_B)
+
+
 def test_unsafe_checkpoint_path_and_schema_fail_closed(tmp_path):
     target = tmp_path / "target.json"
     target.write_text("x", encoding="utf-8")

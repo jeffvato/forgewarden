@@ -45,18 +45,28 @@ def _canonical(payload: object) -> bytes:
 
 
 def _validate(checkpoint: WorkUnitCheckpoint) -> None:
-    if not checkpoint.active_phase or not _TASK_ID.fullmatch(checkpoint.task_id):
+    if (
+        not isinstance(checkpoint.active_phase, str)
+        or not checkpoint.active_phase.strip()
+        or not isinstance(checkpoint.task_id, str)
+        or not _TASK_ID.fullmatch(checkpoint.task_id)
+    ):
         raise CheckpointError("checkpoint requires an active phase and FWQ task ID")
     for field, value in (("starting", checkpoint.starting_commit), ("candidate", checkpoint.candidate_commit), ("accepted", checkpoint.accepted_commit)):
-        if value is not None and not _SHA1.fullmatch(value):
+        if value is not None and (not isinstance(value, str) or not _SHA1.fullmatch(value)):
             raise CheckpointError(f"{field} commit must be a full Git SHA-1 or null")
-    if checkpoint.accepted_commit is not None and checkpoint.candidate_commit != checkpoint.accepted_commit:
+    if checkpoint.accepted_commit is not None and (
+        checkpoint.candidate_commit is None
+        or checkpoint.candidate_commit.lower() != checkpoint.accepted_commit.lower()
+    ):
         raise CheckpointError("accepted commit must equal candidate commit")
-    if any(not item or Path(item).is_absolute() or ".." in Path(item).parts for item in checkpoint.changed_files):
+    if any(not isinstance(item, str) or not item or Path(item).is_absolute() or ".." in Path(item).parts for item in checkpoint.changed_files) or len(set(checkpoint.changed_files)) != len(checkpoint.changed_files):
         raise CheckpointError("changed files must be non-empty relative paths without traversal")
-    if any(not item.strip() for item in checkpoint.deterministic_validation) or not checkpoint.claude_review.strip() or not checkpoint.gemini_review.strip() or not checkpoint.next_action.strip():
+    if any(not isinstance(item, str) or not item.strip() for item in checkpoint.deterministic_validation) or any(not isinstance(item, str) or not item.strip() for item in (checkpoint.claude_review, checkpoint.gemini_review, checkpoint.next_action)):
         raise CheckpointError("checkpoint evidence fields must be non-empty")
-    if any(not item for item in checkpoint.unresolved_findings):
+    if checkpoint.blocker is not None and not isinstance(checkpoint.blocker, str):
+        raise CheckpointError("blocker must be a string or null")
+    if any(not isinstance(item, str) or not item for item in checkpoint.unresolved_findings):
         raise CheckpointError("unresolved findings must be non-empty strings")
 
 
