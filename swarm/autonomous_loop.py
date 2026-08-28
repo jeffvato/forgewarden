@@ -373,13 +373,38 @@ class AutonomousOrchestrator:
                 self._log("orphaned_claim_recovered", task_id=task_id)
 
     def _requeue_authoritative_failures(self, state: dict[str, Any]) -> None:
-        """Reconcile one exhausted failure with a still-READY queue item."""
+        """Reconcile one exhausted failure with one bounded READY successor."""
         if state.get("active_task") is not None or state.get("worker_lease") is not None:
             return
         for task_id, task in self.tasks.items():
             record = state["queued_tasks"][task_id]
-            if task.initial_state != "READY" or record.get("state") != "FAILED" or record.get("recovery_requeued"):
+            if task.initial_state != "READY" or record.get("state") != "FAILED":
                 continue
+            if record.get("recovery_requeued"):
+                if record.get("recovery_followup"):
+                    continue
+                followup_id = _next_repair_id(self.tasks)
+                followup = replace(
+                    task,
+                    task_id=followup_id,
+                    description=f"Recovery follow-up for failed task {task.task_id}: {task.description}",
+                    dependencies=(),
+                    allowed_paths=_repair_allowed_paths(task),
+                    initial_state="READY",
+                    review_disposition=None,
+                    blocker_resolved=False,
+                    blocker_external=False,
+                    review_commit=None,
+                )
+                self.tasks[followup_id] = followup
+                state.setdefault("task_specs", {})[followup_id] = asdict(followup)
+                state["queued_tasks"][followup_id] = {"state": "READY", "attempts": 0}
+                record["recovery_followup"] = followup_id
+                state["next_action"] = "created one bounded recovery successor after failed repair"
+                state["timestamps"]["updated_at"] = _now()
+                self._write(state)
+                self._log("failed_repair_successor_created", task_id=task_id, successor_id=followup_id)
+                return
             record["state"] = "READY"
             record["attempts"] = 0
             record["recovery_requeued"] = True
