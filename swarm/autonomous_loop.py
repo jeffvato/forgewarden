@@ -73,6 +73,23 @@ def progress_queue(tasks: dict[str, TaskSpec], state: dict[str, Any], *, review_
     for task in tasks.values():
         state["queued_tasks"].setdefault(task.task_id, {"state": task.initial_state, "attempts": 0})
     changed = True
+    for task_id, record in state["queued_tasks"].items():
+        if record.get("state") != "REPAIR":
+            continue
+        completed_successor = next(
+            (
+                successor
+                for key in ("repair_enqueued", "recovery_followup")
+                if (successor := record.get(key))
+                and _dependency_satisfied(str(successor), state)
+            ),
+            None,
+        )
+        if completed_successor:
+            record["state"] = "DONE"
+            if task_id not in state["completed_tasks"]:
+                state["completed_tasks"].append(task_id)
+            transitions.append(f"{task_id}:REPAIR->DONE:{completed_successor}")
     while changed:
         changed = False
         for task in tuple(tasks.values()):
@@ -127,22 +144,6 @@ def progress_queue(tasks: dict[str, TaskSpec], state: dict[str, Any], *, review_
                     record["review_retry_after"] = _now() + _REVIEW_RETRY_COOLDOWN_SECONDS
                     transitions.append(f"{task.task_id}:REVIEW->EXTERNAL_BLOCKER")
             elif current == "REPAIR":
-                completed_successor = next(
-                    (
-                        successor
-                        for key in ("repair_enqueued", "recovery_followup")
-                        if (successor := record.get(key))
-                        and _dependency_satisfied(str(successor), state)
-                    ),
-                    None,
-                )
-                if completed_successor:
-                    record["state"] = "DONE"
-                    if task.task_id not in state["completed_tasks"]:
-                        state["completed_tasks"].append(task.task_id)
-                    transitions.append(f"{task.task_id}:REPAIR->DONE:{completed_successor}")
-                    changed = True
-                    continue
                 # A rejected repair must produce one explicit READY repair
                 # unit. Without this transition the parent remains parked in
                 # REPAIR while no worker can ever be selected.
