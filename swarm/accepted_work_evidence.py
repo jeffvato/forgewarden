@@ -80,8 +80,8 @@ def _body(bundle: Mapping[str, Any]) -> dict[str, Any]:
 def _validate(
     bundle: Mapping[str, Any],
     *,
-    expected_job_id: str | None = None,
-    expected_candidate_commit: str | None = None,
+    expected_job_id: str,
+    expected_candidate_commit: str,
 ) -> dict[str, Any]:
     required = {
         "schema_version", "mode", "job_id", "candidate_commit", "accepted_commit",
@@ -99,9 +99,9 @@ def _validate(
     accepted = _commit(bundle["accepted_commit"], "accepted commit")
     if candidate != accepted:
         raise AcceptedEvidenceError("candidate and accepted commits must match")
-    if expected_job_id is not None and job_id != _string(expected_job_id, "expected job ID", max_length=32):
+    if job_id != _string(expected_job_id, "expected job ID", max_length=32):
         raise AcceptedEvidenceError("accepted evidence job ID mismatch")
-    if expected_candidate_commit is not None and candidate != _commit(expected_candidate_commit, "expected candidate commit"):
+    if candidate != _commit(expected_candidate_commit, "expected candidate commit"):
         raise AcceptedEvidenceError("accepted evidence candidate commit mismatch")
     files = bundle["changed_files"]
     if not isinstance(files, list) or not files or len(set(files)) != len(files):
