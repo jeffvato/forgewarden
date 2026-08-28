@@ -138,6 +138,7 @@ def progress_queue(tasks: dict[str, TaskSpec], state: dict[str, Any], *, review_
                     tasks[repair_id] = repair
                     state.setdefault("task_specs", {})[repair_id] = asdict(repair)
                     state["queued_tasks"][repair_id] = {"state": "READY", "attempts": 0}
+                    record["repair_enqueued"] = repair_id
                     transitions.append(f"{task.task_id}:REVIEW->REPAIR:{repair_id}")
                     changed = True
                 elif isinstance(disposition, str) and disposition.startswith("EXTERNAL"):

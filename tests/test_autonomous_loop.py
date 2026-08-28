@@ -264,6 +264,24 @@ def test_repairable_review_creates_ready_repair_task():
     transitions = progress_queue(tasks, state)
     assert transitions == ("FWQ-0009:REVIEW->REPAIR:FWQ-0010",)
     assert state["queued_tasks"]["FWQ-0010"]["state"] == "READY"
+    assert state["queued_tasks"]["FWQ-0009"]["repair_enqueued"] == "FWQ-0010"
+
+
+def test_completed_repair_from_review_unblocks_one_next_task():
+    tasks = {
+        "FWQ-0001": TaskSpec("FWQ-0001", "Core review", "review", initial_state="REVIEW", review_disposition="REPAIRABLE"),
+        "FWQ-0002": TaskSpec("FWQ-0002", "Core continuation", "continue", dependencies=("FWQ-0001",), initial_state="BLOCKED"),
+    }
+    state = {"queued_tasks": {"FWQ-0001": {"state": "REVIEW", "attempts": 0}, "FWQ-0002": {"state": "BLOCKED", "attempts": 0}}, "completed_tasks": [], "task_specs": {}}
+
+    assert progress_queue(tasks, state) == ("FWQ-0001:REVIEW->REPAIR:FWQ-0003",)
+    state["queued_tasks"]["FWQ-0003"]["state"] = "DONE"
+
+    transitions = progress_queue(tasks, state)
+
+    assert state["queued_tasks"]["FWQ-0001"]["state"] == "DONE"
+    assert state["queued_tasks"]["FWQ-0002"]["state"] == "READY"
+    assert transitions[:2] == ("FWQ-0001:REPAIR->DONE:FWQ-0003", "FWQ-0002:BLOCKED->READY")
 
 
 def test_repair_state_creates_follow_up_ready_unit_once():
