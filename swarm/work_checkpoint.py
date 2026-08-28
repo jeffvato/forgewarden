@@ -173,6 +173,11 @@ def reconcile_checkpoint(checkpoint: WorkUnitCheckpoint, repository_head: str) -
         or checkpoint.next_action.strip().lower().startswith("dispatch")
     ):
         raise CheckpointError("checkpoint evidence is stale or mismatched")
+    if checkpoint.accepted_commit is not None:
+        has_commit_transition = checkpoint.accepted_commit.lower() != checkpoint.starting_commit.lower()
+        has_file_changes = bool(checkpoint.changed_files)
+        if has_commit_transition != has_file_changes:
+            raise CheckpointError("checkpoint commit references do not match changed files")
     expected = checkpoint.accepted_commit or checkpoint.starting_commit
     if repository_head.lower() != expected.lower():
         raise CheckpointError(f"checkpoint commit mismatch: expected {expected}, got {repository_head}")

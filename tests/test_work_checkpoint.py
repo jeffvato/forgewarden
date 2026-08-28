@@ -73,6 +73,19 @@ def test_no_change_accepted_checkpoint_reconciles_at_current_head():
     assert reconcile_checkpoint(checkpoint, SHA_A)["expected_commit"] == SHA_A
 
 
+@pytest.mark.parametrize(
+    "changes",
+    (
+        {"starting_commit": SHA_A, "accepted_commit": SHA_A, "changed_files": ("swarm/work_checkpoint.py",)},
+        {"starting_commit": SHA_A, "accepted_commit": SHA_B, "changed_files": ()},
+    ),
+)
+def test_commit_references_must_match_changed_files(changes):
+    checkpoint = _checkpoint(candidate_commit=changes["accepted_commit"], **changes)
+    with pytest.raises(CheckpointError, match="commit references do not match changed files"):
+        reconcile_checkpoint(checkpoint, changes["accepted_commit"])
+
+
 def test_unsafe_checkpoint_path_and_schema_fail_closed(tmp_path):
     target = tmp_path / "target.json"
     target.write_text("x", encoding="utf-8")
