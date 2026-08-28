@@ -23,6 +23,7 @@ from .review_handoff import ReviewResult, complete_review_cycle, create_review_c
 _SHA = re.compile(r"^[0-9a-fA-F]{40}$")
 _TASK = re.compile(r"^FWQ-[0-9]{4}$")
 _TERMINAL = {"DONE", "FAILED"}
+_REVIEW_RETRY_COOLDOWN_SECONDS = 900
 
 
 def _review_blocker_detail(disposition: str) -> str:
@@ -83,7 +84,17 @@ def progress_queue(tasks: dict[str, TaskSpec], state: dict[str, Any], *, review_
                 # Keeping it in REVIEW preserves the exact candidate evidence
                 # while the durable blocker flag prevents a hot retry loop.
                 if record.get("blocker_external"):
-                    continue
+                    # A provider outage is a temporary queue condition, not
+                    # permanent task metadata. Recheck it when a resolver is
+                    # available, but persist a cooldown after another outage
+                    # so heartbeats cannot hot-loop against a rate limit.
+                    retry_after = record.get("review_retry_after")
+                    if review_resolver is None or (retry_after is not None and float(retry_after) > _now()):
+                        continue
+                    record.pop("blocker_external", None)
+                    record.pop("blocker", None)
+                    record.pop("review_retry_after", None)
+                    transitions.append(f"{task.task_id}:EXTERNAL_BLOCKER->RECHECK")
                 # A deferred review is retried once per bounded run. The
                 # progression loop exits after recording an external blocker,
                 # preventing repeated attempts within the same run.
@@ -109,6 +120,7 @@ def progress_queue(tasks: dict[str, TaskSpec], state: dict[str, Any], *, review_
                 elif isinstance(disposition, str) and disposition.startswith("EXTERNAL"):
                     record["blocker_external"] = True
                     record["blocker"] = "required review resource unavailable: " + _review_blocker_detail(disposition)
+                    record["review_retry_after"] = _now() + _REVIEW_RETRY_COOLDOWN_SECONDS
                     transitions.append(f"{task.task_id}:REVIEW->EXTERNAL_BLOCKER")
             elif current == "BLOCKED":
                 dependencies_done = all(state["queued_tasks"].get(dep, {}).get("state") == "DONE" for dep in task.dependencies)

@@ -291,6 +291,31 @@ def test_external_review_wait_does_not_derive_unbounded_successors():
     assert "FWQ-0010" not in tasks
 
 
+def test_external_review_marker_is_rechecked_when_resolver_is_available():
+    task = TaskSpec("FWQ-0009", "Core review", "review", initial_state="REVIEW")
+    tasks = {task.task_id: task}
+    state = {"queued_tasks": {task.task_id: {"state": "REVIEW", "attempts": 0, "blocker_external": True}}, "completed_tasks": [], "task_specs": {}}
+    seen = []
+
+    transitions = progress_queue(tasks, state, review_resolver=lambda current, record: (seen.append(current.task_id) or "PASSED"))
+
+    assert seen == [task.task_id]
+    assert state["queued_tasks"][task.task_id]["state"] == "DONE"
+    assert f"{task.task_id}:EXTERNAL_BLOCKER->RECHECK" in transitions
+
+
+def test_external_review_cooldown_prevents_hot_retry():
+    task = TaskSpec("FWQ-0009", "Core review", "review", initial_state="REVIEW")
+    tasks = {task.task_id: task}
+    state = {"queued_tasks": {task.task_id: {"state": "REVIEW", "attempts": 0, "blocker_external": True, "review_retry_after": 9_999_999_999}}, "completed_tasks": [], "task_specs": {}}
+    seen = []
+
+    progress_queue(tasks, state, review_resolver=lambda current, record: (seen.append(current.task_id) or "PASSED"))
+
+    assert seen == []
+    assert state["queued_tasks"][task.task_id]["state"] == "REVIEW"
+
+
 def test_progress_queue_limits_external_review_attempts_per_run():
     tasks = {
         "FWQ-0001": TaskSpec("FWQ-0001", "Core review one", "review", initial_state="REVIEW"),
