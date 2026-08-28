@@ -80,8 +80,8 @@ def _body(bundle: Mapping[str, Any]) -> dict[str, Any]:
 def _validate(
     bundle: Mapping[str, Any],
     *,
-    expected_job_id: str | None = None,
-    expected_candidate_commit: str | None = None,
+    expected_job_id: str,
+    expected_candidate_commit: str,
 ) -> dict[str, Any]:
     required = {
         "schema_version", "mode", "job_id", "candidate_commit", "accepted_commit",
