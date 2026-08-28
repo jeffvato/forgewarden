@@ -173,15 +173,19 @@ def build_accepted_evidence(
     }
     evidence_hash = hashlib.sha256(_canonical(body)).hexdigest()
     event_hash = hashlib.sha256(_canonical({**body, "evidence_sha256": evidence_hash})).hexdigest()
-    return _validate({**body, "evidence_sha256": evidence_hash, "event_sha256": event_hash})
+    return _validate(
+        {**body, "evidence_sha256": evidence_hash, "event_sha256": event_hash},
+        expected_job_id=job_id,
+        expected_candidate_commit=candidate,
+    )
 
 
 def write_accepted_evidence(
     path: Path,
     bundle: Mapping[str, Any],
     *,
-    expected_job_id: str | None = None,
-    expected_candidate_commit: str | None = None,
+    expected_job_id: str,
+    expected_candidate_commit: str,
 ) -> None:
     """Create one private evidence record; an existing record is never replaced."""
     validated = _validate(
@@ -200,8 +204,8 @@ def write_accepted_evidence(
 def read_accepted_evidence(
     path: Path,
     *,
-    expected_job_id: str | None = None,
-    expected_candidate_commit: str | None = None,
+    expected_job_id: str,
+    expected_candidate_commit: str,
 ) -> dict[str, Any]:
     """Read and revalidate one immutable accepted-work evidence record."""
     try:

@@ -27,8 +27,8 @@ def test_build_round_trip_is_redacted_and_hash_bound(tmp_path):
     assert bundle["policy"] == {"mode": "DRY_RUN", "deployment": "DISABLED", "kill_switch": "ENGAGED", "mutation_allowed": False}
     assert "reasoning_summary" not in json.dumps(bundle)
     path = tmp_path / "evidence" / "accepted.json"
-    write_accepted_evidence(path, bundle)
-    assert read_accepted_evidence(path) == bundle
+    write_accepted_evidence(path, bundle, expected_job_id=JOB, expected_candidate_commit=SHA)
+    assert read_accepted_evidence(path, expected_job_id=JOB, expected_candidate_commit=SHA) == bundle
     assert oct(path.stat().st_mode & 0o777) == "0o600"
     assert oct(path.parent.stat().st_mode & 0o777) == "0o700"
 
@@ -55,21 +55,21 @@ def test_unsafe_policy_and_secret_like_metadata_fail_closed():
     bundle = _bundle()
     bundle["policy"]["kill_switch"] = "CLEARED"
     with pytest.raises(AcceptedEvidenceError):
-        write_accepted_evidence(Path("/tmp/unused"), bundle)
+        write_accepted_evidence(Path("/tmp/unused"), bundle, expected_job_id=JOB, expected_candidate_commit=SHA)
 
 
 def test_tamper_replay_and_symlink_fail_closed(tmp_path):
     path = tmp_path / "accepted.json"
     bundle = _bundle(previous_event_sha256="c" * 64)
-    write_accepted_evidence(path, bundle)
+    write_accepted_evidence(path, bundle, expected_job_id=JOB, expected_candidate_commit=SHA)
     with pytest.raises(AcceptedEvidenceError):
-        write_accepted_evidence(path, bundle)
+        write_accepted_evidence(path, bundle, expected_job_id=JOB, expected_candidate_commit=SHA)
     data = json.loads(path.read_text())
     data["changed_files"] = ["swarm/other.py"]
     path.write_text(json.dumps(data))
     with pytest.raises(AcceptedEvidenceError):
-        read_accepted_evidence(path)
+        read_accepted_evidence(path, expected_job_id=JOB, expected_candidate_commit=SHA)
     outside = tmp_path / "outside.json"; outside.write_text("{}")
     link = tmp_path / "link.json"; link.symlink_to(outside)
     with pytest.raises(AcceptedEvidenceError):
-        write_accepted_evidence(link, bundle)
+        write_accepted_evidence(link, bundle, expected_job_id=JOB, expected_candidate_commit=SHA)
