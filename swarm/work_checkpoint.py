@@ -169,8 +169,8 @@ def reconcile_checkpoint(checkpoint: WorkUnitCheckpoint, repository_head: str) -
         checkpoint.accepted_commit.lower() == checkpoint.starting_commit.lower()
         or
         not checkpoint.deterministic_validation
-        or checkpoint.claude_review == "PENDING"
-        or checkpoint.gemini_review == "PENDING"
+        or checkpoint.claude_review in {"PENDING", "REJECTED"}
+        or checkpoint.gemini_review in {"PENDING", "REJECTED"}
         or checkpoint.unresolved_findings
         or checkpoint.blocker is not None
         or checkpoint.next_action == "dispatch"
