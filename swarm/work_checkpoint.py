@@ -179,6 +179,11 @@ def reconcile_checkpoint(checkpoint: WorkUnitCheckpoint, repository_head: str) -
         not checkpoint.deterministic_validation
         or checkpoint.claude_review.strip().upper() not in {"APPROVED", "FINDINGS"}
         or checkpoint.gemini_review.strip().upper() not in {"APPROVED", "FINDINGS"}
+        or (
+            any(item.rsplit("|", 1)[-1] for item in checkpoint.unresolved_findings)
+                and checkpoint.claude_review.strip().upper() == "APPROVED"
+                and checkpoint.gemini_review.strip().upper() == "APPROVED"
+        )
         or checkpoint.blocker is not None
         or checkpoint.next_action.strip().lower().startswith("dispatch")
     ):

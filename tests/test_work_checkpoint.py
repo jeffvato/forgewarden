@@ -63,6 +63,12 @@ def test_stale_review_labels_cannot_make_an_accepted_checkpoint_valid():
         reconcile_checkpoint(checkpoint, SHA_B)
 
 
+def test_unresolved_findings_cannot_make_an_accepted_checkpoint_valid():
+    checkpoint = _checkpoint(candidate_commit=SHA_B, accepted_commit=SHA_B, unresolved_findings=("finding",))
+    with pytest.raises(CheckpointError, match="stale or mismatched"):
+        reconcile_checkpoint(checkpoint, SHA_B)
+
+
 def test_no_change_accepted_checkpoint_reconciles_at_current_head():
     checkpoint = _checkpoint(
         candidate_commit=SHA_A,
