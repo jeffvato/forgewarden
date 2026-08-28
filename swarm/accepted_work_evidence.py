@@ -99,9 +99,13 @@ def _validate(
     accepted = _commit(bundle["accepted_commit"], "accepted commit")
     if candidate != accepted:
         raise AcceptedEvidenceError("candidate and accepted commits must match")
-    if job_id != _string(expected_job_id, "expected job ID", max_length=32):
+    expected_job = _string(expected_job_id, "expected job ID", max_length=32)
+    if not _JOB_ID.fullmatch(expected_job):
+        raise AcceptedEvidenceError("invalid expected Phase 2A job ID")
+    if job_id != expected_job:
         raise AcceptedEvidenceError("accepted evidence job ID mismatch")
-    if candidate != _commit(expected_candidate_commit, "expected candidate commit"):
+    expected_commit = _commit(expected_candidate_commit, "expected candidate commit")
+    if candidate != expected_commit:
         raise AcceptedEvidenceError("accepted evidence candidate commit mismatch")
     files = bundle["changed_files"]
     if not isinstance(files, list) or not files or len(set(files)) != len(files):
