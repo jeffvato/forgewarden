@@ -392,6 +392,12 @@ class AutonomousOrchestrator:
                 # control-manifest refresh; safety state may become stricter,
                 # never less restrictive, during recovery.
                 self.tasks[task_id] = replace(self.tasks[task_id], blocker_external=True)
+            if task_id in self.tasks and not self.tasks[task_id].test_command:
+                repaired_command = _repair_test_command(self.tasks[task_id])
+                if repaired_command:
+                    self.tasks[task_id] = replace(self.tasks[task_id], test_command=repaired_command)
+                    if isinstance(payload, dict):
+                        payload["test_command"] = repaired_command
             if task_id in self.tasks and isinstance(payload, dict):
                 # A resumed review task must retain the exact candidate that
                 # was committed before the reviewer became unavailable. The
