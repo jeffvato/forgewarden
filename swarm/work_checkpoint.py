@@ -54,7 +54,7 @@ def _validate(checkpoint: WorkUnitCheckpoint) -> None:
         raise CheckpointError("accepted commit must equal candidate commit")
     if any(not item or Path(item).is_absolute() or ".." in Path(item).parts for item in checkpoint.changed_files):
         raise CheckpointError("changed files must be non-empty relative paths without traversal")
-    if any(not item for item in checkpoint.deterministic_validation) or not checkpoint.claude_review.strip() or not checkpoint.gemini_review.strip() or not checkpoint.next_action.strip():
+    if any(not item.strip() for item in checkpoint.deterministic_validation) or not checkpoint.claude_review.strip() or not checkpoint.gemini_review.strip() or not checkpoint.next_action.strip():
         raise CheckpointError("checkpoint evidence fields must be non-empty")
     if any(not item for item in checkpoint.unresolved_findings):
         raise CheckpointError("unresolved findings must be non-empty strings")
