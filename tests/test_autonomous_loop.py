@@ -519,6 +519,24 @@ def test_queue_only_completed_repair_successor_reconciles_parent_and_unlocks_dep
     assert transitions[:2] == ("FWQ-0001:REPAIR->DONE:FWQ-0003", "FWQ-0002:BLOCKED->READY")
 
 
+def test_completed_recovery_successor_reconciles_failed_parent_and_unlocks_dependency():
+    task = TaskSpec("FWQ-0002", "Core continuation", "continue", dependencies=("FWQ-0001",), initial_state="BLOCKED")
+    state = {
+        "queued_tasks": {
+            "FWQ-0001": {"state": "FAILED", "recovery_followup": "FWQ-0003"},
+            "FWQ-0002": {"state": "BLOCKED"},
+            "FWQ-0003": {"state": "DONE"},
+        },
+        "completed_tasks": [], "task_specs": {},
+    }
+
+    transitions = progress_queue({task.task_id: task}, state)
+
+    assert state["queued_tasks"]["FWQ-0001"]["state"] == "DONE"
+    assert state["queued_tasks"]["FWQ-0002"]["state"] == "READY"
+    assert transitions[:2] == ("FWQ-0001:FAILED->DONE:FWQ-0003", "FWQ-0002:BLOCKED->READY")
+
+
 def test_repair_successor_id_skips_persisted_queue_ids():
     task = TaskSpec("FWQ-0001", "Core repair", "repair", initial_state="REPAIR")
     state = {

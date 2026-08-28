@@ -75,8 +75,9 @@ def progress_queue(tasks: dict[str, TaskSpec], state: dict[str, Any], *, review_
     changed = True
     for task_id in sorted(state["queued_tasks"]):
         record = state["queued_tasks"][task_id]
-        if record.get("state") != "REPAIR":
+        if record.get("state") not in {"REPAIR", "FAILED"}:
             continue
+        parent_state = record["state"]
         completed_successor = next(
             (
                 successor
@@ -90,7 +91,7 @@ def progress_queue(tasks: dict[str, TaskSpec], state: dict[str, Any], *, review_
             record["state"] = "DONE"
             if task_id not in state["completed_tasks"]:
                 state["completed_tasks"].append(task_id)
-            transitions.append(f"{task_id}:REPAIR->DONE:{completed_successor}")
+            transitions.append(f"{task_id}:{parent_state}->DONE:{completed_successor}")
     while changed:
         changed = False
         for task in tuple(sorted(tasks.values(), key=lambda item: item.task_id)):
