@@ -53,7 +53,7 @@ def _validate(checkpoint: WorkUnitCheckpoint) -> None:
     ):
         raise CheckpointError("checkpoint requires an active phase and FWQ task ID")
     for field, value in (("starting", checkpoint.starting_commit), ("candidate", checkpoint.candidate_commit), ("accepted", checkpoint.accepted_commit)):
-        if value is not None and (not isinstance(value, str) or not _SHA1.fullmatch(value)):
+        if (field == "starting" and value is None) or (value is not None and (not isinstance(value, str) or not _SHA1.fullmatch(value))):
             raise CheckpointError(f"{field} commit must be a full Git SHA-1 or null")
     if checkpoint.accepted_commit is not None and (
         checkpoint.candidate_commit is None

@@ -57,6 +57,12 @@ def test_candidate_only_checkpoint_cannot_reconcile_as_accepted():
         reconcile_checkpoint(checkpoint, SHA_B)
 
 
+def test_starting_commit_is_required_for_reconciliation():
+    checkpoint = _checkpoint(starting_commit=None, candidate_commit=None, accepted_commit=None, changed_files=(), deterministic_validation=(), claude_review="PENDING", gemini_review="PENDING", next_action="dispatch")
+    with pytest.raises(CheckpointError, match="starting commit"):
+        reconcile_checkpoint(checkpoint, SHA_A)
+
+
 def test_stale_review_labels_cannot_make_an_accepted_checkpoint_valid():
     checkpoint = _checkpoint(candidate_commit=SHA_B, accepted_commit=SHA_B, claude_review="not started")
     with pytest.raises(CheckpointError, match="stale or mismatched"):
