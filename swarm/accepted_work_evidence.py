@@ -158,6 +158,8 @@ def build_accepted_evidence(
     claude_review: Mapping[str, Any],
     gemini_review: Mapping[str, Any],
     previous_event_sha256: str | None = None,
+    expected_job_id: str | None = None,
+    expected_candidate_commit: str | None = None,
 ) -> dict[str, Any]:
     """Build a strict evidence bundle without retaining provider prose or commands."""
     job_id = _string(job_id, "job ID", max_length=32)
@@ -184,8 +186,8 @@ def build_accepted_evidence(
     event_hash = hashlib.sha256(_canonical({**body, "evidence_sha256": evidence_hash})).hexdigest()
     return _validate(
         {**body, "evidence_sha256": evidence_hash, "event_sha256": event_hash},
-        expected_job_id=job_id,
-        expected_candidate_commit=candidate,
+        expected_job_id=job_id if expected_job_id is None else expected_job_id,
+        expected_candidate_commit=candidate if expected_candidate_commit is None else expected_candidate_commit,
     )
 
 
