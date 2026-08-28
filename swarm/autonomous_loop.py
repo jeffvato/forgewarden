@@ -75,7 +75,7 @@ def progress_queue(tasks: dict[str, TaskSpec], state: dict[str, Any], *, review_
     changed = True
     for task_id in sorted(state["queued_tasks"]):
         record = state["queued_tasks"][task_id]
-        if record.get("state") not in {"BLOCKED", "REPAIR", "FAILED", "REVIEW"}:
+        if record.get("state") not in {"READY", "IN_PROGRESS", "BLOCKED", "REPAIR", "FAILED", "REVIEW"}:
             continue
         parent_state = record["state"]
         completed_successor = next(
