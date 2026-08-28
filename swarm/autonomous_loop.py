@@ -114,7 +114,7 @@ def progress_queue(tasks: dict[str, TaskSpec], state: dict[str, Any], *, review_
                     repair_transitioned.add(task.task_id)
                     if ":" in disposition:
                         record["review_diagnostic"] = disposition.partition(":")[2].strip()[:1800]
-                    repair_id = _next_repair_id(tasks)
+                    repair_id = _next_repair_id(tasks, state["queued_tasks"])
                     repair = replace(task, task_id=repair_id, description=f"Repair findings for {task.task_id}: {task.description}", dependencies=(), allowed_paths=_repair_allowed_paths(task), initial_state="READY", review_disposition=None, blocker_resolved=False, blocker_external=False)
                     tasks[repair_id] = repair
                     state.setdefault("task_specs", {})[repair_id] = asdict(repair)
@@ -148,7 +148,7 @@ def progress_queue(tasks: dict[str, TaskSpec], state: dict[str, Any], *, review_
                 # REPAIR while no worker can ever be selected.
                 if task.task_id in repair_transitioned or record.get("repair_enqueued"):
                     continue
-                repair_id = _next_repair_id(tasks)
+                repair_id = _next_repair_id(tasks, state["queued_tasks"])
                 repair = replace(
                     task,
                     task_id=repair_id,
@@ -204,8 +204,9 @@ def progress_queue(tasks: dict[str, TaskSpec], state: dict[str, Any], *, review_
     return tuple(transitions)
 
 
-def _next_repair_id(tasks: Mapping[str, TaskSpec]) -> str:
-    used = {int(task_id.split("-")[1]) for task_id in tasks if task_id.startswith("FWQ-") and task_id[4:].isdigit()}
+def _next_repair_id(tasks: Mapping[str, TaskSpec], queued_tasks: Mapping[str, Any] = ()) -> str:
+    task_ids = set(tasks) | set(queued_tasks)
+    used = {int(task_id.split("-")[1]) for task_id in task_ids if task_id.startswith("FWQ-") and task_id[4:].isdigit()}
     value = max(used or {0}) + 1
     return f"FWQ-{value:04d}"
 
@@ -426,7 +427,7 @@ class AutonomousOrchestrator:
             if record.get("recovery_requeued"):
                 if record.get("recovery_followup"):
                     continue
-                followup_id = _next_repair_id(self.tasks)
+                followup_id = _next_repair_id(self.tasks, state["queued_tasks"])
                 followup = replace(
                     task,
                     task_id=followup_id,

@@ -481,6 +481,22 @@ def test_completed_repair_successor_reconciles_parent_and_unlocks_one_next_task(
     assert "FWQ-0001:REPAIR->DONE:FWQ-0003" in transitions
 
 
+def test_repair_successor_id_skips_persisted_queue_ids():
+    task = TaskSpec("FWQ-0001", "Core repair", "repair", initial_state="REPAIR")
+    state = {
+        "queued_tasks": {
+            "FWQ-0001": {"state": "REPAIR"},
+            "FWQ-0002": {"state": "BLOCKED"},
+        },
+        "completed_tasks": [], "task_specs": {},
+    }
+
+    progress_queue({task.task_id: task}, state)
+
+    assert "FWQ-0003" in state["queued_tasks"]
+    assert state["queued_tasks"]["FWQ-0002"]["state"] == "BLOCKED"
+
+
 def test_plan_does_not_duplicate_task_already_in_persisted_queue():
     task = TaskSpec("FWQ-0010", "Core follow-up", "next package")
     tasks = {}
