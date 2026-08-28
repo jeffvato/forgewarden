@@ -321,7 +321,9 @@ class AutonomousOrchestrator:
                 for key in ("dependencies", "allowed_paths", "acceptance", "test_command"):
                     payload[key] = tuple(payload.get(key, ()))
                 self.tasks[task_id] = TaskSpec(**payload)
-            elif task_id in self.tasks and isinstance(payload, dict) and payload.get("blocker_external") is True:
+            elif task_id in self.tasks and isinstance(payload, dict) and payload.get("blocker_external") is True and not (
+                self.tasks[task_id].target_path and self.tasks[task_id].allowed_paths and self.tasks[task_id].test_command and not self.tasks[task_id].blocker_external
+            ):
                 # Preserve a previously latched external blocker across a
                 # control-manifest refresh; safety state may become stricter,
                 # never less restrictive, during recovery.
