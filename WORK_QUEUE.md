@@ -208,18 +208,22 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 
 ### FWQ-0012 — Deterministic Core queue-state reconciliation
 - Requirement: Core supervisor/roadmap
-- State: BLOCKED
+- State: READY
 - Priority: P2
 - Dependencies: FWQ-0011
 - Approval: Explicitly authorized by the active Core queue-population plan.
 - Description: Reconcile the active Core queue against completed milestones and preserve one deterministic, eligible READY task without expanding execution authority.
+- Target path: swarm/autonomous_loop.py
+- Allowed paths: swarm/autonomous_loop.py, tests/test_autonomous_loop.py
+- Expected behavior: reconcile completed repair successors and preserve one deterministic READY Core task without creating duplicate work.
+- Failing assertion: a completed repair successor does not satisfy its parent dependency and leaves the next Core task blocked.
 - Acceptance criteria:
   - queue-state reconciliation is deterministic and bounded to `WORK_QUEUE.md`;
   - completed, blocked, and dependency-incomplete tasks are not made eligible;
   - the next Core task remains explicit, approved, and independently actionable;
   - no execution, deployment, credential, Git, network, remote-host, or kill-switch authority is introduced;
   - broader security families remain parked until their phase is explicitly activated.
-- Expected validation: queue/state inspection, task-selection validation, and `git diff --check`.
+- Expected validation: focused autonomous-loop tests, queue/state inspection, task-selection validation, and `git diff --check`.
 - Security considerations: queue metadata is untrusted evidence, not authority; reconciliation cannot authorize deployment, clear a kill switch, or expand agent scope.
 
 ### FWQ-0013 — Deterministic Core resume-plan validation

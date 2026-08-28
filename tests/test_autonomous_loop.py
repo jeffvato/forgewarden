@@ -418,6 +418,28 @@ def test_failed_recovery_task_gets_one_bounded_successor(tmp_path):
     assert recovered["queued_tasks"][successor_id]["state"] == "READY"
 
 
+def test_completed_repair_successor_satisfies_blocked_dependency(tmp_path):
+    parent = TaskSpec("FWQ-0001", "Core repair", "repair", initial_state="REPAIR")
+    blocked = TaskSpec(
+        "FWQ-0002", "Core continuation", "continue", dependencies=("FWQ-0001",),
+        initial_state="BLOCKED", target_path="source.py", allowed_paths=("source.py",),
+        test_command=("pytest", "tests/test_source.py"), blocker_external=False,
+    )
+    state = {
+        "queued_tasks": {
+            "FWQ-0001": {"state": "REPAIR", "repair_enqueued": "FWQ-0003"},
+            "FWQ-0002": {"state": "BLOCKED", "blocker_external": True},
+            "FWQ-0003": {"state": "DONE"},
+        },
+        "completed_tasks": [], "task_specs": {},
+    }
+
+    transitions = progress_queue({"FWQ-0001": parent, "FWQ-0002": blocked}, state)
+
+    assert "FWQ-0002:EXTERNAL_BLOCKER->CONCRETE" in transitions
+    assert "FWQ-0002:BLOCKED->READY" in transitions
+
+
 def test_runner_advances_review_only_queue_and_executes_derived_plan_task(tmp_path: Path):
     review_task = TaskSpec("FWQ-0009", "Core review", "reviewed package", initial_state="REVIEW", review_disposition="PASSED")
     plan_task = TaskSpec("FWQ-0010", "Core follow-up", "next package", priority=1)

@@ -152,7 +152,13 @@ def progress_queue(tasks: dict[str, TaskSpec], state: dict[str, Any], *, review_
                 transitions.append(f"{task.task_id}:REPAIR->READY:{repair_id}")
                 changed = True
             elif current == "BLOCKED":
-                dependencies_done = all(state["queued_tasks"].get(dep, {}).get("state") == "DONE" for dep in task.dependencies)
+                dependencies_done = all(_dependency_satisfied(dep, state) for dep in task.dependencies)
+                # A previously latched external hold may be cleared only when
+                # the refreshed approved task is concrete and bounded.
+                if record.get("blocker_external") and not task.blocker_external and task.target_path and task.allowed_paths and task.test_command:
+                    record.pop("blocker_external", None)
+                    record.pop("blocker", None)
+                    transitions.append(f"{task.task_id}:EXTERNAL_BLOCKER->CONCRETE")
                 resolved = blocker_resolver(task, record) if blocker_resolver else (task.blocker_resolved or (dependencies_done and not task.blocker_external))
                 if dependencies_done and resolved:
                     record["state"] = "READY"
@@ -186,6 +192,15 @@ def _next_repair_id(tasks: Mapping[str, TaskSpec]) -> str:
     used = {int(task_id.split("-")[1]) for task_id in tasks if task_id.startswith("FWQ-") and task_id[4:].isdigit()}
     value = max(used or {0}) + 1
     return f"FWQ-{value:04d}"
+
+
+def _dependency_satisfied(task_id: str, state: Mapping[str, Any]) -> bool:
+    """Treat a repair parent as complete once its explicit successor is done."""
+    record = state.get("queued_tasks", {}).get(task_id, {})
+    if record.get("state") == "DONE":
+        return True
+    successor = record.get("repair_enqueued")
+    return bool(successor and state.get("queued_tasks", {}).get(successor, {}).get("state") == "DONE")
 
 
 def _repair_allowed_paths(task: TaskSpec) -> tuple[str, ...]:
