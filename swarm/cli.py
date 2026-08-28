@@ -151,6 +151,15 @@ def main() -> int:
                 # Derive at most one successor. The orchestrator will refuse
                 # to enqueue it when existing work is externally blocked.
                 planned_ids = {task.task_id for task in tasks}
+                durable_path = args.state_dir / "autonomous-loop.json"
+                if durable_path.is_file():
+                    try:
+                        durable = json.loads(durable_path.read_text(encoding="utf-8"))
+                    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+                        raise AutonomousLoopError("durable state is unreadable while deriving Core successor") from exc
+                    if not isinstance(durable, dict) or not isinstance(durable.get("queued_tasks"), dict):
+                        raise AutonomousLoopError("durable state has invalid queue history")
+                    planned_ids.update(str(task_id) for task_id in durable["queued_tasks"])
                 plan_task = derive_next_core_task(args.repository, planned_ids)
                 if plan_task is not None:
                     plan_tasks.append(plan_task)
