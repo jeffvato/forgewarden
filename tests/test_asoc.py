@@ -40,7 +40,11 @@ def make_plane():
         "FW-ASOC-01-v1", "approval-1", "ticket-1", "bounded triage", "fw-keys/asoc-test",
     )
     lease = leases.issue(lease)
-    authorizer = CapabilityAuthorizer(agents, leases, switch, audit, policy=lambda _agent, _lease, _request: True)
+    authorizer = CapabilityAuthorizer(
+        agents, leases, switch, audit,
+        policy=lambda _agent, _lease, _request: True,
+        action_ticket_validator=lambda _agent, _lease, request: request.action_ticket_valid,
+    )
     return events, switch, agents, leases, authorizer, model, agent, lease
 
 
@@ -133,7 +137,7 @@ def test_mutating_capability_requires_ticket_and_is_disabled_by_kill_switch():
     mutation = lease.__class__(
         "lease-mutation", agent.agent_id, lease.issuer_identity, lease.tenant_id,
         ("endpoint.isolate.request",), lease.allowed_tools, lease.allowed_resources,
-        lease.allowed_data_classifications, ("ISOLATE_ENDPOINT",), 1, False, 0, 100, 200,
+        lease.allowed_data_classifications, ("ISOLATE_ENDPOINT",), 1, False, 0, 101, 200,
         lease.policy_version, "approval-mutation", "ticket-mutation", "bounded containment", lease.key_reference,
     )
     mutation = leases.issue(mutation)
@@ -190,3 +194,21 @@ def test_policy_failure_and_invalid_result_fail_closed():
     invalid = CapabilityAuthorizer(agents, leases, KillSwitch(False), policy=lambda *_args: "allow")
     with pytest.raises(AuthorizationDenied, match="POLICY_RESULT_INVALID"):
         invalid.authorize(agent.agent_id, request(model_identity=model), now=150)
+
+
+def test_action_ticket_boolean_alone_cannot_authorize_mutation():
+    _, switch, agents, leases, _, model, agent, lease = make_plane()
+    switch.clear_for_dry_run()
+    mutation = CapabilityLease(
+        "lease-ticket-bound", agent.agent_id, lease.issuer_identity, lease.tenant_id,
+        ("endpoint.isolate.request",), lease.allowed_tools, lease.allowed_resources,
+        lease.allowed_data_classifications, ("ISOLATE_ENDPOINT",), 1, False, 0, 101, 200,
+        lease.policy_version, "approval-ticket", "ticket-ticket", "bounded containment", lease.key_reference,
+    )
+    leases.issue(mutation)
+    auth = CapabilityAuthorizer(agents, leases, switch, policy=lambda *_args: True)
+    with pytest.raises(AuthorizationDenied, match="ACTION_TICKET_REQUIRED"):
+        auth.authorize(agent.agent_id, request(
+            capability="endpoint.isolate.request", action_class="ISOLATE_ENDPOINT",
+            action_ticket_valid=True, model_identity=model,
+        ), now=150)

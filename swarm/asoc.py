@@ -345,12 +345,15 @@ class AuthorizationRequest:
 
 
 class CapabilityAuthorizer:
-    def __init__(self, agents: AgentRegistry, leases: LeaseRegistry, kill_switch: KillSwitch, audit: AuditSink | None = None, policy: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None):
+    def __init__(self, agents: AgentRegistry, leases: LeaseRegistry, kill_switch: KillSwitch, audit: AuditSink | None = None, policy: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, action_ticket_validator: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None):
         self._agents, self._leases, self._kill_switch = agents, leases, kill_switch
         self._audit = audit or (lambda _event, _data: None)
         # An absent policy must never become implicit authority at this
         # security boundary. The canonical policy engine must be supplied.
         self._policy = policy or (lambda _agent, _lease, _request: False)
+        # A caller-provided boolean is not proof of an Action Ticket. The
+        # canonical ticket service must validate the request and its binding.
+        self._action_ticket_validator = action_ticket_validator or (lambda _agent, _lease, _request: False)
 
     def authorize(self, agent_id: str, request: AuthorizationRequest, now: int | None = None) -> dict[str, Any]:
         current = int(time.time()) if now is None else now
@@ -377,8 +380,14 @@ class CapabilityAuthorizer:
                 if not agent.model_identity.approved or request.model_identity != agent.model_identity: raise AuthorizationDenied("MODEL_BINDING_MISMATCH")
             if request.action_class in MUTATING_ACTIONS:
                 if self._kill_switch.engaged: raise AuthorizationDenied("KILL_SWITCH_MUTATION_BLOCKED")
-                if not request.action_ticket_valid: raise AuthorizationDenied("ACTION_TICKET_REQUIRED")
-            if not self._kill_switch.engaged and not request.action_ticket_valid and request.action_class not in READ_ONLY_ACTIONS: raise AuthorizationDenied("ACTION_TICKET_REQUIRED")
+                try:
+                    ticket_valid = self._action_ticket_validator(agent, lease, request)
+                except Exception as exc:
+                    self._audit("action_ticket_validation_failed", {"agent_id": agent_id, "lease_id": lease.lease_id, "reason": type(exc).__name__})
+                    raise AuthorizationDenied("ACTION_TICKET_UNAVAILABLE") from exc
+                if ticket_valid is not True: raise AuthorizationDenied("ACTION_TICKET_REQUIRED")
+            if not self._kill_switch.engaged and request.action_class not in READ_ONLY_ACTIONS and request.action_class not in MUTATING_ACTIONS:
+                raise AuthorizationDenied("ACTION_TICKET_REQUIRED")
             validate_safety_evidence({"mode": "DRY_RUN", "deployment": "DISABLED", "kill_switch": "ENGAGED" if self._kill_switch.engaged else "CLEARED_FOR_DRY_RUN"}, require_kill_switch=False)
             try:
                 policy_allows = self._policy(agent, lease, request)
