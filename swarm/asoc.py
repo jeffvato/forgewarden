@@ -348,7 +348,9 @@ class CapabilityAuthorizer:
     def __init__(self, agents: AgentRegistry, leases: LeaseRegistry, kill_switch: KillSwitch, audit: AuditSink | None = None, policy: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None):
         self._agents, self._leases, self._kill_switch = agents, leases, kill_switch
         self._audit = audit or (lambda _event, _data: None)
-        self._policy = policy or (lambda _agent, _lease, _request: True)
+        # An absent policy must never become implicit authority at this
+        # security boundary. The canonical policy engine must be supplied.
+        self._policy = policy or (lambda _agent, _lease, _request: False)
 
     def authorize(self, agent_id: str, request: AuthorizationRequest, now: int | None = None) -> dict[str, Any]:
         current = int(time.time()) if now is None else now

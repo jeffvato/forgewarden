@@ -40,7 +40,7 @@ def make_plane():
         "FW-ASOC-01-v1", "approval-1", "ticket-1", "bounded triage", "fw-keys/asoc-test",
     )
     lease = leases.issue(lease)
-    authorizer = CapabilityAuthorizer(agents, leases, switch, audit)
+    authorizer = CapabilityAuthorizer(agents, leases, switch, audit, policy=lambda _agent, _lease, _request: True)
     return events, switch, agents, leases, authorizer, model, agent, lease
 
 
