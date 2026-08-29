@@ -234,3 +234,40 @@ def test_model_binding_requires_broker_validation():
     auth = CapabilityAuthorizer(agents, leases, KillSwitch(False), policy=lambda *_args: True)
     with pytest.raises(AuthorizationDenied, match="MODEL_BROKER_DENIED"):
         auth.authorize(agent.agent_id, request(model_identity=model), now=150)
+
+
+def test_asoc_golden_path_investigate_then_deny_mutation():
+    events, switch, _, leases, auth, model, agent, lease = make_plane()
+
+    result = auth.authorize(
+        agent.agent_id,
+        request(tool="mcp.telemetry.status", model_identity=model),
+        now=150,
+    )
+    assert result["authorized"] is True
+    assert result["lease_id"] == lease.lease_id
+    assert events[-1][0] == "authorization_success"
+    assert events[-1][1]["tool"] == "mcp.telemetry.status"
+
+    mutation = lease.__class__(
+        "lease-golden-mutation", agent.agent_id, lease.issuer_identity, lease.tenant_id,
+        ("endpoint.isolate.request",), lease.allowed_tools, lease.allowed_resources,
+        lease.allowed_data_classifications, ("ISOLATE_ENDPOINT",), 1, False, 0, 150, 250,
+        lease.policy_version, "approval-golden", "ticket-golden", "bounded containment", lease.key_reference,
+    )
+    leases.issue(mutation)
+    switch.engage()
+    with pytest.raises(AuthorizationDenied, match="KILL_SWITCH_MUTATION_BLOCKED"):
+        auth.authorize(
+            agent.agent_id,
+            request(
+                capability="endpoint.isolate.request",
+                action_class="ISOLATE_ENDPOINT",
+                action_ticket_valid=True,
+                model_identity=model,
+            ),
+            now=150,
+        )
+    assert events[-1][0] == "authorization_denied"
+    assert events[-1][1]["reason"] == "KILL_SWITCH_MUTATION_BLOCKED"
+    assert events[-1][1]["resource"] == "endpoint-123"
