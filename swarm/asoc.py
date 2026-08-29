@@ -345,7 +345,7 @@ class AuthorizationRequest:
 
 
 class CapabilityAuthorizer:
-    def __init__(self, agents: AgentRegistry, leases: LeaseRegistry, kill_switch: KillSwitch, audit: AuditSink | None = None, policy: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, action_ticket_validator: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, mcp_tool_validator: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None):
+    def __init__(self, agents: AgentRegistry, leases: LeaseRegistry, kill_switch: KillSwitch, audit: AuditSink | None = None, policy: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, action_ticket_validator: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, mcp_tool_validator: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, model_binding_validator: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None):
         self._agents, self._leases, self._kill_switch = agents, leases, kill_switch
         self._audit = audit or (lambda _event, _data: None)
         # An absent policy must never become implicit authority at this
@@ -357,6 +357,9 @@ class CapabilityAuthorizer:
         # Local tool names are not sufficient authority; the canonical MCP
         # Gateway must validate tenant, capability, and tool binding.
         self._mcp_tool_validator = mcp_tool_validator or (lambda _agent, _lease, _request: False)
+        # Exact metadata equality is necessary but not sufficient; the
+        # canonical Model Broker must approve the model/deployment binding.
+        self._model_binding_validator = model_binding_validator or (lambda _agent, _lease, _request: False)
 
     def authorize(self, agent_id: str, request: AuthorizationRequest, now: int | None = None) -> dict[str, Any]:
         current = int(time.time()) if now is None else now
@@ -388,6 +391,12 @@ class CapabilityAuthorizer:
             if request.policy_version != lease.policy_version or request.policy_version != agent.policy_version: raise AuthorizationDenied("STALE_POLICY_VERSION")
             if agent.model_identity is not None:
                 if not agent.model_identity.approved or request.model_identity != agent.model_identity: raise AuthorizationDenied("MODEL_BINDING_MISMATCH")
+                try:
+                    model_allowed = self._model_binding_validator(agent, lease, request)
+                except Exception as exc:
+                    self._audit("model_binding_validation_failed", {"agent_id": agent_id, "lease_id": lease.lease_id, "reason": type(exc).__name__})
+                    raise AuthorizationDenied("MODEL_BROKER_UNAVAILABLE") from exc
+                if model_allowed is not True: raise AuthorizationDenied("MODEL_BROKER_DENIED")
             if request.action_class in MUTATING_ACTIONS:
                 if self._kill_switch.engaged: raise AuthorizationDenied("KILL_SWITCH_MUTATION_BLOCKED")
                 try:

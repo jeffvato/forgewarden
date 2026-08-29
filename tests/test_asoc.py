@@ -45,6 +45,7 @@ def make_plane():
         policy=lambda _agent, _lease, _request: True,
         action_ticket_validator=lambda _agent, _lease, request: request.action_ticket_valid,
         mcp_tool_validator=lambda _agent, _lease, request: request.tool == "mcp.telemetry.status",
+        model_binding_validator=lambda _agent, _lease, request: request.model_identity is not None and request.model_identity.approved,
     )
     return events, switch, agents, leases, authorizer, model, agent, lease
 
@@ -186,13 +187,13 @@ def test_policy_failure_and_invalid_result_fail_closed():
     def unavailable(_agent, _lease, _request):
         raise RuntimeError("policy service unavailable")
 
-    auth = CapabilityAuthorizer(agents, leases, KillSwitch(False), lambda event, data: events.append((event, dict(data))), policy=unavailable)
+    auth = CapabilityAuthorizer(agents, leases, KillSwitch(False), lambda event, data: events.append((event, dict(data))), policy=unavailable, model_binding_validator=lambda *_args: True)
     with pytest.raises(AuthorizationDenied, match="POLICY_UNAVAILABLE"):
         auth.authorize(agent.agent_id, request(model_identity=model), now=150)
     assert events[-2][0] == "policy_evaluation_failed"
     assert events[-1][0] == "authorization_denied"
 
-    invalid = CapabilityAuthorizer(agents, leases, KillSwitch(False), policy=lambda *_args: "allow")
+    invalid = CapabilityAuthorizer(agents, leases, KillSwitch(False), policy=lambda *_args: "allow", model_binding_validator=lambda *_args: True)
     with pytest.raises(AuthorizationDenied, match="POLICY_RESULT_INVALID"):
         invalid.authorize(agent.agent_id, request(model_identity=model), now=150)
 
@@ -207,7 +208,7 @@ def test_action_ticket_boolean_alone_cannot_authorize_mutation():
         lease.policy_version, "approval-ticket", "ticket-ticket", "bounded containment", lease.key_reference,
     )
     leases.issue(mutation)
-    auth = CapabilityAuthorizer(agents, leases, switch, policy=lambda *_args: True)
+    auth = CapabilityAuthorizer(agents, leases, switch, policy=lambda *_args: True, model_binding_validator=lambda *_args: True)
     with pytest.raises(AuthorizationDenied, match="ACTION_TICKET_REQUIRED"):
         auth.authorize(agent.agent_id, request(
             capability="endpoint.isolate.request", action_class="ISOLATE_ENDPOINT",
@@ -217,6 +218,13 @@ def test_action_ticket_boolean_alone_cannot_authorize_mutation():
 
 def test_mcp_tool_requires_gateway_validation():
     _, _, agents, leases, _, model, agent, _ = make_plane()
-    auth = CapabilityAuthorizer(agents, leases, KillSwitch(False), policy=lambda *_args: True)
+    auth = CapabilityAuthorizer(agents, leases, KillSwitch(False), policy=lambda *_args: True, model_binding_validator=lambda *_args: True)
     with pytest.raises(AuthorizationDenied, match="MCP_GATEWAY_DENIED"):
         auth.authorize(agent.agent_id, request(tool="mcp.telemetry.status", model_identity=model), now=150)
+
+
+def test_model_binding_requires_broker_validation():
+    _, _, agents, leases, _, model, agent, _ = make_plane()
+    auth = CapabilityAuthorizer(agents, leases, KillSwitch(False), policy=lambda *_args: True)
+    with pytest.raises(AuthorizationDenied, match="MODEL_BROKER_DENIED"):
+        auth.authorize(agent.agent_id, request(model_identity=model), now=150)
