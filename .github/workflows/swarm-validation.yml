@@ -25,7 +25,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install test dependencies
-        run: python -m pip install --disable-pip-version-check pytest jsonschema PyYAML
+        run: python -m pip install --disable-pip-version-check -r requirements-test.txt
       - name: Validate shell launchers
         run: |
           bash -n packaging/hermes-swarm
@@ -61,7 +61,7 @@ jobs:
         with:
           python-version: '3.12'
       - name: Install review dependencies
-        run: python -m pip install --disable-pip-version-check pytest jsonschema PyYAML
+        run: python -m pip install --disable-pip-version-check -r requirements-test.txt
       - name: Build read-only quality report
         run: |
           mkdir -p artifacts

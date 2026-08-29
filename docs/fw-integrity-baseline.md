@@ -17,6 +17,9 @@ Known-good checkpoint assessed: `45daee019fb3c8ad15bbb9142d4613a5d9816266`.
 - `pip check` reports missing `tzdata` for installed Oslo packages. This is a
   dependency-environment warning and remains an integrity risk until the
   environment is reproducibly declared.
+- `requirements-test.txt` now pins the deterministic test dependencies and both
+  CI workflows install from it; the local environment itself is not mutated by
+  the repository change.
 - The roadmap and decisions name FW-ID, FW-ROOT/Z3, FW-EVID, FW-SOC, FW-COMP,
   Model Broker, MCP Gateway, and Action Tickets, but several have no concrete
   module in this checkout. They are recorded as Defined or Integration Pending,

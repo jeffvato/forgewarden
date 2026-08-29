@@ -31,6 +31,12 @@ def test_standing_gate_documents_ownership_graph_and_product_map():
     assert (ROOT / "docs/fw-integrity-functionality-map.md").is_file()
 
 
+def test_test_dependencies_are_declared_and_pinned():
+    requirements = (ROOT / "requirements-test.txt").read_text(encoding="utf-8")
+    for package in ("jsonschema==", "psutil==", "pytest==", "PyYAML==", "tzdata=="):
+        assert package in requirements
+
+
 def test_gate_reports_current_repository_health_and_dependency_risk():
     report = run_product_integrity_gate(
         ROOT,

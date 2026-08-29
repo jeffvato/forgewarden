@@ -39,7 +39,7 @@ steps:
     displayName: Prepare ForgeWarden baseline fixture
 
   - script: |
-      python -m pip install pytest jsonschema PyYAML psutil
+      python -m pip install -r requirements-test.txt
     displayName: Install CI test dependencies
 
   - script: |
