@@ -380,7 +380,14 @@ class CapabilityAuthorizer:
                 if not request.action_ticket_valid: raise AuthorizationDenied("ACTION_TICKET_REQUIRED")
             if not self._kill_switch.engaged and not request.action_ticket_valid and request.action_class not in READ_ONLY_ACTIONS: raise AuthorizationDenied("ACTION_TICKET_REQUIRED")
             validate_safety_evidence({"mode": "DRY_RUN", "deployment": "DISABLED", "kill_switch": "ENGAGED" if self._kill_switch.engaged else "CLEARED_FOR_DRY_RUN"}, require_kill_switch=False)
-            if not self._policy(agent, lease, request): raise AuthorizationDenied("POLICY_DENIED")
+            try:
+                policy_allows = self._policy(agent, lease, request)
+            except Exception as exc:
+                self._audit("policy_evaluation_failed", {"agent_id": agent_id, "lease_id": lease.lease_id, "reason": type(exc).__name__})
+                raise AuthorizationDenied("POLICY_UNAVAILABLE") from exc
+            if not isinstance(policy_allows, bool):
+                raise AuthorizationDenied("POLICY_RESULT_INVALID")
+            if not policy_allows: raise AuthorizationDenied("POLICY_DENIED")
         except (AuthorizationDenied, LeaseIntegrityError, ValueError) as exc:
             if isinstance(exc, AuthorizationDenied):
                 reason = exc.reason

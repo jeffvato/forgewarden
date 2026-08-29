@@ -173,3 +173,20 @@ def test_revocation_by_tenant_is_immediate():
     assert control.revoke_tenant("tenant-a") == 1
     with pytest.raises(AuthorizationDenied):
         auth.authorize(agent.agent_id, request(), now=150)
+
+
+def test_policy_failure_and_invalid_result_fail_closed():
+    events, _, agents, leases, _, model, agent, _ = make_plane()
+
+    def unavailable(_agent, _lease, _request):
+        raise RuntimeError("policy service unavailable")
+
+    auth = CapabilityAuthorizer(agents, leases, KillSwitch(False), lambda event, data: events.append((event, dict(data))), policy=unavailable)
+    with pytest.raises(AuthorizationDenied, match="POLICY_UNAVAILABLE"):
+        auth.authorize(agent.agent_id, request(model_identity=model), now=150)
+    assert events[-2][0] == "policy_evaluation_failed"
+    assert events[-1][0] == "authorization_denied"
+
+    invalid = CapabilityAuthorizer(agents, leases, KillSwitch(False), policy=lambda *_args: "allow")
+    with pytest.raises(AuthorizationDenied, match="POLICY_RESULT_INVALID"):
+        invalid.authorize(agent.agent_id, request(model_identity=model), now=150)
