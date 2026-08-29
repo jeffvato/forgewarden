@@ -27,11 +27,12 @@ from .supervisor_state import load_supervisor_state
 from .task_selection import select_ready_task
 from .plan_derivation import derive_next_core_task
 from .control_manifest import derive_control_transition_tasks
+from .integrity import run_product_integrity_gate, write_gate_report
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Local Hermes coding swarm (dry-run only)")
-    parser.add_argument("command", choices=["start", "stop", "status", "workflow-status", "kill-switch", "dry-run", "controlled-baseline", "gemini-review-recovery", "quality-review", "quality-apply-safe", "quality-audit", "release-inventory", "review-evidence", "claude-review", "review-cycle", "approval-create", "approval-verify", "approval-reconcile", "codebase-index-build", "codebase-index-query", "codebase-index-delete", "index-evidence", "vulnerability-evidence", "vulnerability-update", "phase2a-worker", "phase2a-recover-terminal", "console", "run", "autonomous-loop-status", "autonomous-loop-run", "autonomous-dry-run-status", "autonomous-dry-run-enable", "autonomous-dry-run-disable"], nargs="?", default="status")
+    parser.add_argument("command", choices=["start", "stop", "status", "workflow-status", "kill-switch", "dry-run", "controlled-baseline", "gemini-review-recovery", "quality-review", "quality-apply-safe", "quality-audit", "release-inventory", "review-evidence", "claude-review", "review-cycle", "approval-create", "approval-verify", "approval-reconcile", "codebase-index-build", "codebase-index-query", "codebase-index-delete", "index-evidence", "vulnerability-evidence", "vulnerability-update", "integrity-gate", "phase2a-worker", "phase2a-recover-terminal", "console", "run", "autonomous-loop-status", "autonomous-loop-run", "autonomous-dry-run-status", "autonomous-dry-run-enable", "autonomous-dry-run-disable"], nargs="?", default="status")
     parser.add_argument("--state-dir", type=Path, default=Path(".swarm-state"))
     parser.add_argument("--runtime-root", type=Path)
     parser.add_argument("--audit-dir", type=Path)
@@ -45,6 +46,7 @@ def main() -> int:
     parser.add_argument("--model", default="sonnet")
     parser.add_argument("--finding-id", action="append", default=[])
     parser.add_argument("--check-command", help="shell-free command string used for deterministic verification")
+    parser.add_argument("--golden-command", help="shell-free command string used for the representative Golden Path")
     parser.add_argument("--audit", type=Path)
     parser.add_argument("--quality-report", type=Path)
     parser.add_argument("--application-plan", type=Path)
@@ -99,6 +101,22 @@ def main() -> int:
             print(json.dumps({"active_phase": selection.active_phase, "selected_task": selection.selected.task_id if selection.selected else None, "selection_reason": selection.reason, "durable_state": durable}, sort_keys=True))
             return 0
         except (OSError, ValueError, SwarmError, AutonomousLoopError, json.JSONDecodeError) as exc:
+            print(f"FAILED: {exc}")
+            return 1
+    if args.command == "integrity-gate":
+        if not args.repository:
+            parser.error("integrity-gate requires --repository")
+        try:
+            test_command = shlex.split(args.check_command) if args.check_command else None
+            golden_command = shlex.split(args.golden_command) if args.golden_command else None
+            report = run_product_integrity_gate(args.repository, test_command=test_command, golden_command=golden_command)
+            rendered = json.dumps(report, indent=2, sort_keys=True) + "\n"
+            if args.output:
+                write_gate_report(report, args.output)
+            else:
+                print(rendered, end="")
+            return 0 if report["decision"] != "RED" else 1
+        except (OSError, ValueError, TypeError, json.JSONDecodeError) as exc:
             print(f"FAILED: {exc}")
             return 1
     if args.command == "autonomous-loop-run":

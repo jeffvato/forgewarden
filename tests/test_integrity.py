@@ -37,6 +37,12 @@ def test_test_dependencies_are_declared_and_pinned():
         assert package in requirements
 
 
+def test_integrity_gate_cli_is_documented_by_help():
+    result = subprocess.run([sys.executable, "-m", "swarm.cli", "--help"], cwd=ROOT, text=True, capture_output=True, check=False)
+    assert result.returncode == 0
+    assert "integrity-gate" in result.stdout
+
+
 def test_gate_reports_current_repository_health_and_dependency_risk():
     report = run_product_integrity_gate(
         ROOT,

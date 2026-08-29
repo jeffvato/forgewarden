@@ -35,6 +35,10 @@ dependency health, and missing canonical ownership implementations. The gate
 returns GREEN/YELLOW/RED evidence and includes the exact commit in the
 functionality map.
 
+Operators can run it directly with `PYTHONPATH=. python3 -m swarm.cli
+integrity-gate --repository . --golden-command "python3 -m pytest -q
+tests/test_swarm.py"`. Use `--output` to save the structured report.
+
 `swarm.integrity.CANONICAL_OWNERSHIP` is the ownership registry. The
 Defined/Implemented/Integrated/Proven map is exposed as `FUNCTIONALITY_MAP` and
 updated at each meaningful checkpoint.
