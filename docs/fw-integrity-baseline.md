@@ -6,9 +6,11 @@ Known-good checkpoint assessed: `45daee019fb3c8ad15bbb9142d4613a5d9816266`.
 
 - The checkout builds as Python source and imports its Core, console, ASOC, and
   integrity modules.
-- The full suite currently collects 532 tests. The latest full run was **531
-  passed, 1 skipped**. The skip is the explicit real Hermes lifecycle test;
-  that diagnostic was separately run and passed with **3 tests passed**.
+- The full suite currently collects 544 tests. The latest full run was **543
+  passed, 1 skipped**. The skipped test is the host-dependent Codex process
+  adapter check, which requires a user systemd bus unavailable in the current
+  execution context. The explicit real Hermes MCP lifecycle diagnostic was
+  separately enabled and passed with **3 tests passed**.
 - The first current-product Golden Path is the existing Core dry-run/review
   chain represented by `tests/test_swarm.py`, `tests/test_phase2a.py`,
   `tests/test_phase2b_profiles.py`, and `tests/test_console.py`: **70 passed**.
