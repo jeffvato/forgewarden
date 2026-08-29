@@ -22,6 +22,15 @@ def test_canonical_ownership_exposes_missing_roadmap_primitives_honestly():
     assert CANONICAL_OWNERSHIP["normalized_events"]["status"] == "DEFINED"
 
 
+def test_standing_gate_documents_ownership_graph_and_product_map():
+    roadmap = (ROOT / "ROADMAP.md").read_text(encoding="utf-8")
+    decisions = (ROOT / "DECISIONS.md").read_text(encoding="utf-8")
+    assert "FW-INTEGRITY" in roadmap
+    assert "standing product gate" in decisions
+    assert (ROOT / "docs/fw-integrity-dependency-graph.md").is_file()
+    assert (ROOT / "docs/fw-integrity-functionality-map.md").is_file()
+
+
 def test_gate_reports_current_repository_health_and_dependency_risk():
     report = run_product_integrity_gate(
         ROOT,

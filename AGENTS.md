@@ -37,12 +37,13 @@ For each bounded work unit:
 2. Inspect relevant implementation, tests, interfaces, requirements, and decisions before changing code.
 3. Implement the smallest correct change and add/update tests, including failure-path tests for security behavior.
 4. Run applicable formatter, lint, type/static checks, unit/integration/security/invariant tests, secret/dependency checks, and repository-specific validation.
-5. Produce one coherent candidate commit using the approved Git workflow and record its exact hash.
-6. Obtain Claude architecture/adversarial review of that exact candidate.
-7. Obtain Claude read-only review of that exact candidate. Gemini may be run as supplemental review when explicitly enabled, but is not required for the active Core plan.
-8. Codex repairs legitimate findings, strengthens regression tests, reruns validation, and presents a new exact candidate when needed.
-9. Accept a work unit only when acceptance criteria and deterministic validation pass and no unresolved critical/high-confidence finding remains.
-10. Update `WORK_QUEUE.md` and `SWARM_STATUS.md`, then immediately claim the next READY task.
+5. Run the FW-INTEGRITY Product Integrity Gate and applicable Golden Paths; distinguish not-yet-proven from broken and record any RED/YELLOW findings.
+6. Produce one coherent candidate commit using the approved Git workflow and record its exact hash.
+7. Obtain Claude architecture/adversarial review of that exact candidate.
+8. Obtain Claude read-only review of that exact candidate. Gemini may be run as supplemental review when explicitly enabled, but is not required for the active Core plan.
+9. Codex repairs legitimate findings, strengthens regression tests, reruns validation, and presents a new exact candidate when needed.
+10. Accept a work unit only when acceptance criteria and deterministic validation pass and no unresolved critical/high-confidence finding remains.
+11. Update `WORK_QUEUE.md` and `SWARM_STATUS.md`, then immediately claim the next READY task.
 
 A successful work unit means continue to the next one; do not end with "done", "ready for next steps", or similar while executable approved work remains.
 

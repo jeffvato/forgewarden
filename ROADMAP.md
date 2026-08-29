@@ -35,6 +35,17 @@ Verified recovery metadata, protected snapshots, bounded rollback, integrity che
 ### FW-TEST — Continuous validation and invariants
 Unit/integration/security tests; deterministic simulation; policy/rule tests; formal models where practical; AV/RansomGuard/identity/Z3/NAC/DLP/Recovery/Evidence/AI/MCP/HA/rollback coverage; exact-commit validation.
 
+### FW-INTEGRITY — Architecture, Integration & Product Coherence
+Standing gate across all development. Every significant capability progresses
+through Defined → Implemented → Integrated → Proven. The Product Integrity Gate,
+Golden Paths, clean-build checks, canonical ownership registry, dependency
+graph, functionality map, compatibility checks, failure injection, restart and
+recovery checks, performance baselines, and honest GREEN/YELLOW/RED health
+reporting prevent isolated tests or roadmap prose from being mistaken for a
+working product. FW-INTEGRITY detects duplication and requires canonical
+identity, policy, Evidence, recovery, Model Broker, MCP Gateway, Action Ticket,
+tenant, and event ownership to remain clear.
+
 ### FW-ASOC — Agentic Security Operations
 FW-ASOC is the cross-cutting orchestration and governance family for machine-speed security operations; it reuses and unifies FW-SOC, FW-ROOT, FW-ID, FW-MCP, FW-EVID, FW-TEST, FW-OPS, FW-ENDPOINT, FW-BME, FW-SAAS, the Model Broker, Action Tickets, and the Monitor → Repair → Review loop. It is not a duplicate SOC, identity, policy, evidence, MCP, or orchestration subsystem.
 
