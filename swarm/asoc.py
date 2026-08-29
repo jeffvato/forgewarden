@@ -345,7 +345,7 @@ class AuthorizationRequest:
 
 
 class CapabilityAuthorizer:
-    def __init__(self, agents: AgentRegistry, leases: LeaseRegistry, kill_switch: KillSwitch, audit: AuditSink | None = None, policy: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, action_ticket_validator: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None):
+    def __init__(self, agents: AgentRegistry, leases: LeaseRegistry, kill_switch: KillSwitch, audit: AuditSink | None = None, policy: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, action_ticket_validator: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, mcp_tool_validator: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None):
         self._agents, self._leases, self._kill_switch = agents, leases, kill_switch
         self._audit = audit or (lambda _event, _data: None)
         # An absent policy must never become implicit authority at this
@@ -354,6 +354,9 @@ class CapabilityAuthorizer:
         # A caller-provided boolean is not proof of an Action Ticket. The
         # canonical ticket service must validate the request and its binding.
         self._action_ticket_validator = action_ticket_validator or (lambda _agent, _lease, _request: False)
+        # Local tool names are not sufficient authority; the canonical MCP
+        # Gateway must validate tenant, capability, and tool binding.
+        self._mcp_tool_validator = mcp_tool_validator or (lambda _agent, _lease, _request: False)
 
     def authorize(self, agent_id: str, request: AuthorizationRequest, now: int | None = None) -> dict[str, Any]:
         current = int(time.time()) if now is None else now
@@ -374,7 +377,14 @@ class CapabilityAuthorizer:
             if request.data_classification not in lease.allowed_data_classifications or request.data_classification not in agent.allowed_data_classifications: raise AuthorizationDenied("DATA_CLASSIFICATION_DENIED")
             if request.action_class not in lease.allowed_action_classes: raise AuthorizationDenied("ACTION_CLASS_DENIED")
             if request.blast_radius > lease.max_blast_radius: raise AuthorizationDenied("BLAST_RADIUS_EXCEEDED")
-            if request.tool is not None and request.tool not in lease.allowed_tools: raise AuthorizationDenied("MCP_TOOL_NOT_ALLOWED")
+            if request.tool is not None:
+                if request.tool not in lease.allowed_tools: raise AuthorizationDenied("MCP_TOOL_NOT_ALLOWED")
+                try:
+                    tool_allowed = self._mcp_tool_validator(agent, lease, request)
+                except Exception as exc:
+                    self._audit("mcp_tool_validation_failed", {"agent_id": agent_id, "lease_id": lease.lease_id, "tool": request.tool, "reason": type(exc).__name__})
+                    raise AuthorizationDenied("MCP_GATEWAY_UNAVAILABLE") from exc
+                if tool_allowed is not True: raise AuthorizationDenied("MCP_GATEWAY_DENIED")
             if request.policy_version != lease.policy_version or request.policy_version != agent.policy_version: raise AuthorizationDenied("STALE_POLICY_VERSION")
             if agent.model_identity is not None:
                 if not agent.model_identity.approved or request.model_identity != agent.model_identity: raise AuthorizationDenied("MODEL_BINDING_MISMATCH")

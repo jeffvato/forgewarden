@@ -44,6 +44,7 @@ def make_plane():
         agents, leases, switch, audit,
         policy=lambda _agent, _lease, _request: True,
         action_ticket_validator=lambda _agent, _lease, request: request.action_ticket_valid,
+        mcp_tool_validator=lambda _agent, _lease, request: request.tool == "mcp.telemetry.status",
     )
     return events, switch, agents, leases, authorizer, model, agent, lease
 
@@ -212,3 +213,10 @@ def test_action_ticket_boolean_alone_cannot_authorize_mutation():
             capability="endpoint.isolate.request", action_class="ISOLATE_ENDPOINT",
             action_ticket_valid=True, model_identity=model,
         ), now=150)
+
+
+def test_mcp_tool_requires_gateway_validation():
+    _, _, agents, leases, _, model, agent, _ = make_plane()
+    auth = CapabilityAuthorizer(agents, leases, KillSwitch(False), policy=lambda *_args: True)
+    with pytest.raises(AuthorizationDenied, match="MCP_GATEWAY_DENIED"):
+        auth.authorize(agent.agent_id, request(tool="mcp.telemetry.status", model_identity=model), now=150)
