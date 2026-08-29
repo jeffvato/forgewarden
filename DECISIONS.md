@@ -56,3 +56,6 @@ FW-ASOC is an approved first-class requirement family for Agentic Security Opera
 
 ## D-018 — FW-INTEGRITY is a standing product gate
 ForgeWarden capabilities are not Proven merely because code and unit tests exist. At meaningful checkpoints the Product Integrity Gate must assess repository/build/dependency/configuration/startup health, representative Golden Paths, security-boundary integration, evidence and recovery visibility, compatibility, documentation, and architectural duplication. Health reporting must distinguish broken from not-yet-proven and must record the exact known-good commit. FW-INTEGRITY applies continuously and does not authorize a parallel replacement architecture.
+
+## D-019 — Use Azure credits for bounded independent review
+When Azure credits are available, ForgeWarden should use them before they expire for read-only security review, test-failure analysis, and targeted rework recommendations. Codex remains the sole application-code writer; Azure-hosted models must not receive secrets, authorize actions, deploy, or bypass FW-ROOT, FW-ID, FW-EVID, Model Broker, MCP Gateway, or the kill switch. The first use is planned after FW-ASOC-01 reaches its next integrated tested endpoint, with model identity and data scope recorded through the existing review/evidence path.
