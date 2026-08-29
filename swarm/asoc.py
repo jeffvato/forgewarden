@@ -423,11 +423,22 @@ class CapabilityAuthorizer:
                 reason = "LEASE_INTEGRITY_ERROR"
             else:
                 reason = type(exc).__name__.removesuffix("Error").upper() + "_ERROR"
-            self._audit("authorization_denied", {"agent_id": agent_id, "capability": request.capability, "reason": reason})
+            self._audit("authorization_denied", {
+                "agent_id": agent_id, "tenant_id": request.tenant_id, "capability": request.capability,
+                "resource": request.resource, "data_classification": request.data_classification,
+                "action_class": request.action_class, "tool": request.tool,
+                "policy_version": request.policy_version, "reason": reason, "timestamp": current,
+            })
             if isinstance(exc, AuthorizationDenied):
                 raise
             raise AuthorizationDenied(reason) from exc
-        result = {"authorized": True, "agent_id": agent_id, "lease_id": lease.lease_id, "tenant_id": request.tenant_id, "capability": request.capability, "action_class": request.action_class}
+        result = {
+            "authorized": True, "agent_id": agent_id, "lease_id": lease.lease_id,
+            "tenant_id": request.tenant_id, "capability": request.capability,
+            "resource": request.resource, "data_classification": request.data_classification,
+            "action_class": request.action_class, "tool": request.tool,
+            "policy_version": request.policy_version, "timestamp": current,
+        }
         self._audit("authorization_success", result)
         return result
 

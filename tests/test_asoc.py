@@ -62,6 +62,8 @@ def test_active_lease_authorizes_and_audits():
     assert result["authorized"] is True
     assert result["lease_id"] == lease.lease_id
     assert events[-1][0] == "authorization_success"
+    assert events[-1][1]["resource"] == "endpoint-123"
+    assert events[-1][1]["data_classification"] == "INTERNAL"
 
 
 @pytest.mark.parametrize(
@@ -78,10 +80,14 @@ def test_active_lease_authorizes_and_audits():
     ],
 )
 def test_scope_and_policy_denials_are_explicit(overrides, reason):
-    _, _, _, _, auth, model, agent, _ = make_plane()
+    events, _, _, _, auth, model, agent, _ = make_plane()
     overrides = {**overrides, "model_identity": model}
     with pytest.raises(AuthorizationDenied, match=reason):
         auth.authorize(agent.agent_id, request(**overrides), now=150)
+    denial = events[-1][1]
+    assert denial["tenant_id"] == overrides.get("tenant_id", "tenant-a")
+    assert denial["resource"] == overrides.get("resource", "endpoint-123")
+    assert denial["timestamp"] == 150
 
 
 def test_missing_expired_and_revoked_leases_fail_closed():
