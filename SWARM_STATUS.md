@@ -44,6 +44,7 @@ On every restart or continuation:
 
 - 2026-08-30: Re-evaluated the FW-ASOC-01 canonical-integration gap. `ROADMAP.md`, `DECISIONS.md`, `swarm/integrity.py`, and the functionality map consistently identify Action Tickets, Model Broker, MCP Gateway, and full Z3 as canonical owners, but no concrete adapters are present in this checkout. No replacement subsystem was added: absent canonical validation continues to deny authorization. Next safe work remains bounded hardening and proof at the existing fail-closed boundary.
 - 2026-08-30: Corrected AI kill-switch scope. It now revokes only model-bound AI identities and their leases, preserving unbound human deterministic-administration identities as required. Focused ASOC security tests passed (31 passed).
+- 2026-08-30: Reviewer recovery check: the installed Claude CLI completed a bounded read-only invocation successfully. The prior exact-review attempt returned no validated payload and was therefore correctly rejected as evidence; no approval was inferred from the recovery check.
 
 ## Stop conditions
 
