@@ -12,12 +12,14 @@ ROOT = Path(__file__).resolve().parents[1]
 def test_functionality_map_distinguishes_proven_from_not_yet_proven():
     states = {item["requirement_id"]: item["state"] for item in FUNCTIONALITY_MAP}
     assert states["FW-CORE"] == "Proven"
-    assert states["FW-ASOC-01"] == "Implemented"
+    assert states["FW-ASOC-01"] == "Integrated"
     assert states["FW-INTEGRITY"] == "Implemented"
 
 
 def test_canonical_ownership_exposes_missing_roadmap_primitives_honestly():
     assert CANONICAL_OWNERSHIP["agent_authority"]["implementation"] == "swarm.asoc.CapabilityAuthorizer"
+    assert CANONICAL_OWNERSHIP["model_selection"]["implementation"] == "swarm.model_broker.ModelBroker"
+    assert CANONICAL_OWNERSHIP["mcp_access"]["implementation"] == "swarm.mcp_gateway.MCPGateway"
     assert CANONICAL_OWNERSHIP["identity"]["status"] == "DEFINED"
     assert CANONICAL_OWNERSHIP["normalized_events"]["status"] == "DEFINED"
 

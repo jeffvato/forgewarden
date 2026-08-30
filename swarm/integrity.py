@@ -16,10 +16,10 @@ from typing import Any, Iterable
 CANONICAL_OWNERSHIP: dict[str, dict[str, Any]] = {
     "identity": {"owner": "FW-ID", "implementation": "not_yet_present_in_checkout", "status": "DEFINED"},
     "cryptographic_authority": {"owner": "FW-KEYS / FW-ROOT", "implementation": "swarm.asoc.HMACLeaseSigner", "status": "IMPLEMENTED_PARTIAL"},
-    "policy_decisions": {"owner": "FW-ROOT/Z3", "implementation": "swarm.policy_gate plus deterministic policy hook", "status": "IMPLEMENTED_PARTIAL"},
+    "policy_decisions": {"owner": "FW-ROOT/Z3", "implementation": "swarm.policy_gate.DeterministicPolicy", "status": "IMPLEMENTED_PARTIAL"},
     "agent_authority": {"owner": "FW-ASOC", "implementation": "swarm.asoc.CapabilityAuthorizer", "status": "IMPLEMENTED"},
-    "model_selection": {"owner": "Model Broker", "implementation": "swarm.asoc.ModelBinding boundary", "status": "INTEGRATION_PENDING"},
-    "mcp_access": {"owner": "MCP Gateway", "implementation": "swarm.asoc allowed_tools boundary", "status": "INTEGRATION_PENDING"},
+    "model_selection": {"owner": "Model Broker", "implementation": "swarm.model_broker.ModelBroker", "status": "IMPLEMENTED"},
+    "mcp_access": {"owner": "MCP Gateway", "implementation": "swarm.mcp_gateway.MCPGateway", "status": "IMPLEMENTED"},
     "evidence": {"owner": "FW-EVID", "implementation": "swarm.core.AuditLog / evidence modules", "status": "IMPLEMENTED_PARTIAL"},
     "recovery": {"owner": "FW-REC", "implementation": "swarm.autonomous_loop recovery sequencing", "status": "IMPLEMENTED_PARTIAL"},
     "normalized_events": {"owner": "canonical ForgeWarden Event Schema", "implementation": "not_yet_present_in_checkout", "status": "DEFINED"},
@@ -30,7 +30,7 @@ CANONICAL_OWNERSHIP: dict[str, dict[str, Any]] = {
 
 FUNCTIONALITY_MAP: tuple[dict[str, Any], ...] = (
     {"requirement_id": "FW-CORE", "state": "Proven", "component": "swarm.core / swarm.autonomous_loop", "dependencies": ["policy_gate", "AuditLog", "Git"], "user_surface": "local runner and console", "unit_tests": "PASS", "integration_tests": "PASS", "golden_path": "A partial monitor/review dry-run path", "limitations": "no production deployment; live mutation disabled"},
-    {"requirement_id": "FW-ASOC-01", "state": "Implemented", "component": "swarm.asoc", "dependencies": ["FW-ID reference", "FW-ROOT policy boundary", "Model Broker boundary", "MCP Gateway boundary", "Audit sink"], "user_surface": "internal authorization interface", "unit_tests": "PASS", "integration_tests": "PARTIAL", "golden_path": "PASS_PARTIAL: repository ASOC authorization runner", "limitations": "in-memory registry; live Action Ticket, Model Broker, MCP Gateway, and Z3 adapters still require wiring"},
+    {"requirement_id": "FW-ASOC-01", "state": "Integrated", "component": "swarm.asoc", "dependencies": ["FW-ID reference", "FW-ROOT deterministic policy", "Action Tickets", "Model Broker", "MCP Gateway", "Audit sink"], "user_surface": "internal authorization interface", "unit_tests": "PASS", "integration_tests": "PASS", "golden_path": "PASS: canonical repository authorization path", "limitations": "in-memory single-process registries; full Z3-backed policy and external service adapters remain future work"},
     {"requirement_id": "FW-INTEGRITY", "state": "Implemented", "component": "swarm.integrity", "dependencies": ["Git", "Python", "pytest", "documentation registry"], "user_surface": "integrity gate report", "unit_tests": "PASS", "integration_tests": "IN_PROGRESS", "golden_path": "first baseline path established", "limitations": "database migration checks are not applicable to this repository yet"},
 )
 
