@@ -407,7 +407,7 @@ def test_action_ticket_boolean_alone_cannot_authorize_mutation():
 
 
 def test_signed_action_ticket_is_bound_and_single_use():
-    _, switch, agents, leases, _, model, agent, lease = make_plane()
+    events, switch, agents, leases, _, model, agent, lease = make_plane()
     switch.clear_for_dry_run()
     mutation = CapabilityLease(
         "lease-ticket-canonical", agent.agent_id, lease.issuer_identity, lease.tenant_id,
@@ -424,7 +424,7 @@ def test_signed_action_ticket_is_bound_and_single_use():
         "approval-ticket", mutation.policy_version, 101, 200, mutation.key_reference,
     ))
     auth = CapabilityAuthorizer(
-        agents, leases, switch, policy=lambda *_args: True,
+        agents, leases, switch, lambda event, data: events.append((event, dict(data))), policy=lambda *_args: True,
         model_binding_validator=lambda *_args: True, action_tickets=tickets,
     )
     mutation_request = request(
@@ -434,6 +434,7 @@ def test_signed_action_ticket_is_bound_and_single_use():
     assert auth.authorize(agent.agent_id, mutation_request, now=150)["authorized"] is True
     with pytest.raises(AuthorizationDenied, match="ACTION_TICKET_INVALID"):
         auth.authorize(agent.agent_id, mutation_request, now=151)
+    assert events[-1][1]["action_ticket_id"] == "ticket-canonical"
 
 
 def test_policy_denial_does_not_consume_a_canonical_action_ticket():

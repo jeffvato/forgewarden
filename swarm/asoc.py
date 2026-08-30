@@ -540,7 +540,8 @@ class CapabilityAuthorizer:
                     "agent_id": agent_id, "tenant_id": request.tenant_id, "capability": request.capability,
                     "resource": request.resource, "data_classification": request.data_classification,
                     "action_class": request.action_class, "tool": request.tool,
-                    "policy_version": request.policy_version, "reason": reason, "timestamp": current,
+                    "policy_version": request.policy_version, "action_ticket_id": request.action_ticket_id,
+                    "reason": reason, "timestamp": current,
                 })
             except Exception:
                 # A failing sink must never turn a bounded denial into a raw
