@@ -14,6 +14,7 @@ import uuid
 from dataclasses import dataclass, field, replace
 from typing import Any, Callable, Iterable, Mapping, Protocol
 
+from .core import AuditLog, Job
 from .policy_gate import validate_safety_evidence
 
 
@@ -50,6 +51,17 @@ class LeaseIntegrityError(ValueError):
 
 class AuditSink(Protocol):
     def __call__(self, event: str, data: Mapping[str, Any]) -> None: ...
+
+
+def audit_log_sink(audit_log: AuditLog, job: Job) -> AuditSink:
+    """Bind ASOC evidence to ForgeWarden's canonical durable audit record."""
+    if not isinstance(audit_log, AuditLog) or not isinstance(job, Job):
+        raise TypeError("audit_log_sink requires ForgeWarden AuditLog and Job")
+
+    def write(event: str, data: Mapping[str, Any]) -> None:
+        audit_log.record(job, event, **dict(data))
+
+    return write
 
 
 def _text(value: Any, field_name: str) -> str:

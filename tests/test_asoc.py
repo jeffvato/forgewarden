@@ -1,4 +1,6 @@
+import json
 import time
+from pathlib import Path
 
 import pytest
 
@@ -15,7 +17,9 @@ from swarm.asoc import (
     LeaseIntegrityError,
     LeaseRegistry,
     ModelBinding,
+    audit_log_sink,
 )
+from swarm.core import AuditLog, Job
 
 
 def make_plane():
@@ -232,6 +236,23 @@ def test_authorizer_reuses_canonical_safety_invariant_provider_and_fails_closed(
     )
     with pytest.raises(AuthorizationDenied, match="SAFETY_INVARIANT_INVALID"):
         invalid.authorize(agent.agent_id, request(model_identity=model), now=150)
+
+
+def test_asoc_events_can_use_canonical_durable_audit_log(tmp_path: Path):
+    audit_path = tmp_path / "audit.jsonl"
+    job = Job("asoc-audit-1", "asoc", tmp_path, "bounded ASOC authorization")
+    sink = audit_log_sink(AuditLog(audit_path), job)
+    events, switch, agents, leases, _, model, agent, _ = make_plane()
+    authorizer = CapabilityAuthorizer(
+        agents, leases, switch, sink,
+        policy=lambda *_args: True,
+        model_binding_validator=lambda *_args: True,
+    )
+    authorizer.authorize(agent.agent_id, request(model_identity=model), now=150)
+    record = json.loads(audit_path.read_text(encoding="utf-8"))
+    assert record["job_id"] == job.job_id
+    assert record["event"] == "authorization_success"
+    assert record["lease_id"] == "lease-1"
 
 
 def test_mcp_tool_requires_gateway_validation():
