@@ -255,6 +255,30 @@ def test_role_and_model_deployment_revocation_revoke_bound_leases():
     assert leases.for_agent(agent.agent_id).revoked_at is not None
 
 
+def test_tenant_revocation_does_not_cross_tenant_boundaries():
+    _, switch, agents, leases, _, model, agent, lease = make_plane()
+    other = AgentIdentity(
+        "agent-tenant-b", "tenant-b", "soc", "SOC Triage Agent", "human-controller-2", model,
+        agent.provider_deployment, "bounded triage", "medium", ("INTERNAL",),
+        cryptographic_identity_ref="fw-id/agent-tenant-b",
+    )
+    agents.register(other)
+    agents.activate(other.agent_id, now=100)
+    other_lease = leases.issue(CapabilityLease(
+        "lease-tenant-b", other.agent_id, "human-controller-2", "tenant-b",
+        ("telemetry.read",), ("mcp.telemetry.status",), ("endpoint-456",), ("INTERNAL",),
+        ("READ",), 0, False, 0, 100, 200, lease.policy_version, "approval-tenant-b",
+        "ticket-tenant-b", "bounded triage", lease.key_reference,
+    ))
+    control = ASOCControlPlane(agents, leases, switch)
+
+    assert control.revoke_tenant("tenant-a") == 1
+    assert agents.get(agent.agent_id).lifecycle_state == "REVOKED"
+    assert leases.for_agent(agent.agent_id).revoked_at is not None
+    assert agents.get(other.agent_id).lifecycle_state == "ACTIVE"
+    assert leases.get(other_lease.lease_id).revoked_at is None
+
+
 def test_mutating_capability_requires_ticket_and_is_disabled_by_kill_switch():
     _, switch, agents, leases, auth, model, agent, lease = make_plane()
     mutation = lease.__class__(
