@@ -180,6 +180,18 @@ def test_lease_rejects_unknown_action_classes():
         )
 
 
+def test_non_delegable_lease_rejects_positive_delegation_depth():
+    _, _, _, _, _, _, _, lease = make_plane()
+    with pytest.raises(ValueError, match="non-delegable leases must have zero delegation depth"):
+        CapabilityLease(
+            "lease-invalid-delegation", lease.subject_agent_id, lease.issuer_identity, lease.tenant_id,
+            lease.granted_capabilities, lease.allowed_tools, lease.allowed_resources,
+            lease.allowed_data_classifications, lease.allowed_action_classes, lease.max_blast_radius,
+            False, 1, lease.valid_from, lease.expires_at, lease.policy_version,
+            "approval-invalid-delegation", "ticket-invalid-delegation", "regression coverage", lease.key_reference,
+        )
+
+
 def test_inactive_and_revoked_agents_fail_closed():
     _, _, agents, _, auth, _, agent, _ = make_plane()
     agents.revoke(agent.agent_id, "controller revoked", now=151)

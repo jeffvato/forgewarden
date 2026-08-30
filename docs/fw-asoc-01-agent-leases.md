@@ -68,7 +68,8 @@ an unrelated key reference.
 The current endpoint does not implement multi-agent delegation, persistent
 lease storage, asymmetric signatures, or a full external Z3 solver adapter.
 `delegation_allowed` and `delegation_depth` are present for safe future
-extension, but no child lease issuance path exists yet. A caller must connect
+extension, but no child lease issuance path exists yet. Non-delegable leases
+must carry a depth of zero. A caller must connect
 the existing signed Action Ticket and Model Broker records before using a
 mutating capability.
 

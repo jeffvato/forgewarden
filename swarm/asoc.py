@@ -201,6 +201,8 @@ class CapabilityLease:
             raise ValueError("invalid lease bounds")
         if not isinstance(self.delegation_allowed, bool):
             raise ValueError("delegation_allowed must be boolean")
+        if not self.delegation_allowed and self.delegation_depth != 0:
+            raise ValueError("non-delegable leases must have zero delegation depth")
 
     def unsigned_dict(self) -> dict[str, Any]:
         return {name: getattr(self, name) for name in (
