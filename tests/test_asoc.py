@@ -110,6 +110,19 @@ def test_agent_cannot_claim_a_model_approval_version_different_from_its_model():
         )
 
 
+def test_agent_without_a_model_binding_can_use_a_valid_read_only_lease():
+    _, switch, agents, leases, _, _, agent, _ = make_plane()
+    unbound = AgentIdentity(
+        agent.agent_id, agent.tenant_id, agent.agent_type, agent.role, agent.owner_controller_id,
+        None, "human-operated", agent.approved_purpose, agent.trust_level,
+        agent.allowed_data_classifications, lifecycle_state="ACTIVE", created_at=100, activated_at=100,
+        cryptographic_identity_ref=agent.cryptographic_identity_ref,
+    )
+    agents._agents[agent.agent_id] = unbound
+    authorizer = CapabilityAuthorizer(agents, leases, switch, policy=lambda *_args: True)
+    assert authorizer.authorize(agent.agent_id, request(model_identity=None), now=150)["authorized"] is True
+
+
 @pytest.mark.parametrize(
     ("overrides", "reason"),
     [
@@ -182,6 +195,20 @@ def test_kill_switch_blocks_new_leases_and_mutation_but_keeps_read_path():
         auth.authorize(agent.agent_id, request(capability="action.request", action_class="ISOLATE_ENDPOINT", action_ticket_valid=True, model_identity=model), now=150)
     control = ASOCControlPlane(agents, leases, switch)
     assert control.engage_ai_kill_switch() == 1
+
+
+def test_role_and_model_deployment_revocation_revoke_bound_leases():
+    _, switch, agents, leases, _, model, agent, _ = make_plane()
+    control = ASOCControlPlane(agents, leases, switch)
+    assert control.revoke_role(agent.role) == 1
+    assert agents.get(agent.agent_id).lifecycle_state == "REVOKED"
+    assert leases.for_agent(agent.agent_id).revoked_at is not None
+
+    _, switch, agents, leases, _, model, agent, _ = make_plane()
+    control = ASOCControlPlane(agents, leases, switch)
+    assert control.revoke_model_deployment(f"{model.provider}/{model.deployment}") == 1
+    assert agents.get(agent.agent_id).lifecycle_state == "REVOKED"
+    assert leases.for_agent(agent.agent_id).revoked_at is not None
 
 
 def test_mutating_capability_requires_ticket_and_is_disabled_by_kill_switch():

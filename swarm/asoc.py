@@ -327,6 +327,9 @@ class LeaseRegistry:
             raise AuthorizationDenied("LEASE_NOT_FOUND")
         return max(candidates, key=lambda lease: lease.valid_from)
 
+    def verify(self, lease: CapabilityLease) -> None:
+        self._signer.verify(lease)
+
     def revoke_agent_ids(self, agent_ids: set[str], reason: str = "policy response") -> int:
         targets = [lease.lease_id for lease in self._leases.values() if lease.subject_agent_id in agent_ids]
         for lease_id in targets:
@@ -338,10 +341,10 @@ class LeaseRegistry:
         self._leases[lease_id] = replace(lease, revoked_at=now or int(time.time()), revocation_reason=_text(reason, "revocation_reason"))
         self._audit("lease_revoked", {"lease_id": lease_id, "agent_id": lease.subject_agent_id, "reason": reason})
 
-    def revoke_matching(self, *, agent_id: str | None = None, tenant_id: str | None = None, role_agent_ids: set[str] | None = None, model_deployment: str | None = None, all_leases: bool = False, reason: str = "policy response") -> int:
+    def revoke_matching(self, *, agent_id: str | None = None, tenant_id: str | None = None, role_agent_ids: set[str] | None = None, all_leases: bool = False, reason: str = "policy response") -> int:
         targets = []
         for lease in self._leases.values():
-            if all_leases or (agent_id and lease.subject_agent_id == agent_id) or (tenant_id and lease.tenant_id == tenant_id) or (role_agent_ids and lease.subject_agent_id in role_agent_ids) or (model_deployment and lease.key_reference == model_deployment):
+            if all_leases or (agent_id and lease.subject_agent_id == agent_id) or (tenant_id and lease.tenant_id == tenant_id) or (role_agent_ids and lease.subject_agent_id in role_agent_ids):
                 targets.append(lease.lease_id)
         for lease_id in targets:
             self.revoke(lease_id, reason)
@@ -400,7 +403,7 @@ class CapabilityAuthorizer:
                 raise AuthorizationDenied("SAFETY_INVARIANT_UNAVAILABLE" if isinstance(exc, (OSError, RuntimeError)) else "SAFETY_INVARIANT_INVALID") from exc
             agent = self._agents.get(agent_id)
             lease = self._leases.for_agent(agent_id)
-            self._leases._signer.verify(lease)
+            self._leases.verify(lease)
             if agent.lifecycle_state != "ACTIVE": raise AuthorizationDenied("AGENT_NOT_ACTIVE")
             if agent.revoked_at is not None: raise AuthorizationDenied("AGENT_REVOKED")
             if agent.expires_at is not None and current >= agent.expires_at:

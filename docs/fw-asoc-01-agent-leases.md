@@ -57,6 +57,9 @@ writer error.
 The kill switch blocks new lease issuance and mutating authorization while
 allowing already-valid analytical reads according to policy. The control plane
 can revoke one agent, a role, model deployment, tenant, or all AI leases.
+Model-deployment revocation resolves the deployment through the canonical agent
+identity binding before revoking its leases; it never compares a deployment to
+an unrelated key reference.
 
 ## Deliberate limits
 
