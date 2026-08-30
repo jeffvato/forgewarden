@@ -61,6 +61,13 @@ def test_gate_reports_current_repository_health_and_dependency_risk():
     assert any(item["area"] == "architecture" for item in report["findings"])
 
 
+def test_gate_runs_the_canonical_golden_path_by_default():
+    report = run_product_integrity_gate(
+        ROOT, test_command=[sys.executable, "-c", "pass"], check_dependencies=False,
+    )
+    assert report["checks"]["golden_path"]
+
+
 def test_gate_fails_repository_check_when_worktree_is_dirty(tmp_path):
     subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
     (tmp_path / "README").write_text("x", encoding="utf-8")

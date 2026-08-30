@@ -70,7 +70,9 @@ def run_product_integrity_gate(root: Path, *, test_command: Iterable[str] | None
     startup = _run([sys.executable, "-c", "import swarm.core, swarm.console, swarm.asoc, swarm.integrity"], root)
     config = _config_check(root)
     tests = _run(list(test_command or [sys.executable, "-m", "pytest", "-q"]), root, 300)
-    golden = _run(list(golden_command), root, 180) if golden_command else {"passed": False, "not_run": True, "reason": "no golden command supplied"}
+    golden = _run(
+        list(golden_command or ["bash", "scripts/run-asoc-golden-path.sh"]), root, 180,
+    )
     dependencies = _run([sys.executable, "-m", "pip", "check"], root, 30) if check_dependencies else {"passed": True, "not_run": True}
     missing_owners = [key for key, value in CANONICAL_OWNERSHIP.items() if value["status"] == "DEFINED"]
     findings: list[dict[str, str]] = []
