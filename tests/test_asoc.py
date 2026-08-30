@@ -637,6 +637,7 @@ def test_asoc_canonical_golden_path_uses_policy_broker_gateway_ticket_and_eviden
     assert [event for event, _data in events if event == "authorization_success"] == [
         "authorization_success", "authorization_success",
     ]
+    assert events[-1][1]["action_ticket_id"] == "ticket-canonical-golden"
 
 
 def test_asoc_golden_path_investigate_then_deny_mutation():

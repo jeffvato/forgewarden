@@ -420,6 +420,7 @@ class CapabilityAuthorizer:
 
     def authorize(self, agent_id: str, request: AuthorizationRequest, now: int | None = None) -> dict[str, Any]:
         current = int(time.time()) if now is None else now
+        consumed_ticket_id: str | None = None
         try:
             try:
                 validate_safety_evidence(self._safety_evidence_provider(), require_kill_switch=False)
@@ -511,6 +512,7 @@ class CapabilityAuthorizer:
                             policy_version=request.policy_version,
                             now=current,
                         )
+                        consumed_ticket_id = request.action_ticket_id
                     except ActionTicketError as exc:
                         raise AuthorizationDenied("ACTION_TICKET_INVALID") from exc
                     except Exception as exc:
@@ -549,7 +551,8 @@ class CapabilityAuthorizer:
             "tenant_id": request.tenant_id, "capability": request.capability,
             "resource": request.resource, "data_classification": request.data_classification,
             "action_class": request.action_class, "tool": request.tool,
-            "policy_version": request.policy_version, "timestamp": current,
+            "policy_version": request.policy_version, "action_ticket_id": consumed_ticket_id,
+            "timestamp": current,
         }
         try:
             self._audit("authorization_success", result)
