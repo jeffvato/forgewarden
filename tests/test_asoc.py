@@ -142,7 +142,9 @@ def test_scope_and_policy_denials_are_explicit(overrides, reason):
     overrides = {**overrides, "model_identity": model}
     with pytest.raises(AuthorizationDenied, match=reason):
         auth.authorize(agent.agent_id, request(**overrides), now=150)
+    assert events[-1][0] == "authorization_denied"
     denial = events[-1][1]
+    assert denial["reason"] == reason
     assert denial["tenant_id"] == overrides.get("tenant_id", "tenant-a")
     assert denial["resource"] == overrides.get("resource", "endpoint-123")
     assert denial["timestamp"] == 150
