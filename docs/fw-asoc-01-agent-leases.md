@@ -48,6 +48,9 @@ decision.
 An authorization success is returned only after its canonical Evidence/audit
 write succeeds. If that write fails, the request receives the bounded
 `EVIDENCE_WRITE_FAILED` denial and no authority result is returned.
+If a best-effort diagnostic audit write fails while the request is already being
+denied, ForgeWarden still returns the original bounded denial rather than a raw
+writer error.
 
 The kill switch blocks new lease issuance and mutating authorization while
 allowing already-valid analytical reads according to policy. The control plane

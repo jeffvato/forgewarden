@@ -15,7 +15,7 @@ from .core import SwarmError, validate_contract
 MODEL = MODEL_ALIASES["sonnet"]
 TIMEOUT_SECONDS = 180
 MAX_OUTPUT_BYTES = 131072
-MAX_TURNS = 24
+MAX_TURNS = 4
 
 
 def _write_diagnostic(path: Path | None, payload: dict[str, Any]) -> None:

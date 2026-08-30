@@ -285,6 +285,17 @@ def test_authorization_fails_closed_when_required_evidence_write_fails():
         authorizer.authorize(agent.agent_id, request(model_identity=model), now=150)
 
 
+def test_intermediate_audit_failure_cannot_mask_a_policy_denial():
+    _, switch, agents, leases, _, model, agent, _ = make_plane()
+    authorizer = CapabilityAuthorizer(
+        agents, leases, switch, lambda *_args: (_ for _ in ()).throw(OSError("audit unavailable")),
+        policy=lambda *_args: (_ for _ in ()).throw(RuntimeError("policy unavailable")),
+        model_binding_validator=lambda *_args: True,
+    )
+    with pytest.raises(AuthorizationDenied, match="POLICY_UNAVAILABLE"):
+        authorizer.authorize(agent.agent_id, request(model_identity=model), now=150)
+
+
 def test_mcp_tool_requires_gateway_validation():
     _, _, agents, leases, _, model, agent, _ = make_plane()
     auth = CapabilityAuthorizer(agents, leases, KillSwitch(False), policy=lambda *_args: True, model_binding_validator=lambda *_args: True)

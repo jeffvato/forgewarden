@@ -377,13 +377,20 @@ class CapabilityAuthorizer:
             lambda: {"mode": "DRY_RUN", "deployment": "DISABLED", "kill_switch": "ENGAGED" if self._kill_switch.engaged else "CLEARED_FOR_DRY_RUN"}
         )
 
+    def _best_effort_audit(self, event: str, data: Mapping[str, Any]) -> None:
+        """Keep a failed diagnostic write from masking a fail-closed denial."""
+        try:
+            self._audit(event, data)
+        except Exception:
+            pass
+
     def authorize(self, agent_id: str, request: AuthorizationRequest, now: int | None = None) -> dict[str, Any]:
         current = int(time.time()) if now is None else now
         try:
             try:
                 validate_safety_evidence(self._safety_evidence_provider(), require_kill_switch=False)
             except Exception as exc:
-                self._audit("safety_invariant_validation_failed", {"agent_id": agent_id, "reason": type(exc).__name__, "timestamp": current})
+                self._best_effort_audit("safety_invariant_validation_failed", {"agent_id": agent_id, "reason": type(exc).__name__, "timestamp": current})
                 raise AuthorizationDenied("SAFETY_INVARIANT_UNAVAILABLE" if isinstance(exc, (OSError, RuntimeError)) else "SAFETY_INVARIANT_INVALID") from exc
             agent = self._agents.get(agent_id)
             lease = self._leases.for_agent(agent_id)
@@ -396,7 +403,7 @@ class CapabilityAuthorizer:
             if lease.revoked_at is not None: raise AuthorizationDenied("LEASE_REVOKED")
             if current < lease.valid_from: raise AuthorizationDenied("LEASE_NOT_YET_VALID")
             if current >= lease.expires_at:
-                self._audit("lease_expired", {"lease_id": lease.lease_id, "agent_id": agent_id})
+                self._best_effort_audit("lease_expired", {"lease_id": lease.lease_id, "agent_id": agent_id})
                 raise AuthorizationDenied("LEASE_EXPIRED")
             if request.capability not in lease.granted_capabilities: raise AuthorizationDenied("CAPABILITY_NOT_GRANTED")
             if request.resource not in lease.allowed_resources: raise AuthorizationDenied("RESOURCE_OUT_OF_SCOPE")
@@ -408,7 +415,7 @@ class CapabilityAuthorizer:
                 try:
                     tool_allowed = self._mcp_tool_validator(agent, lease, request)
                 except Exception as exc:
-                    self._audit("mcp_tool_validation_failed", {"agent_id": agent_id, "lease_id": lease.lease_id, "tool": request.tool, "reason": type(exc).__name__})
+                    self._best_effort_audit("mcp_tool_validation_failed", {"agent_id": agent_id, "lease_id": lease.lease_id, "tool": request.tool, "reason": type(exc).__name__})
                     raise AuthorizationDenied("MCP_GATEWAY_UNAVAILABLE") from exc
                 if tool_allowed is not True: raise AuthorizationDenied("MCP_GATEWAY_DENIED")
             if request.policy_version != lease.policy_version or request.policy_version != agent.policy_version: raise AuthorizationDenied("STALE_POLICY_VERSION")
@@ -417,7 +424,7 @@ class CapabilityAuthorizer:
                 try:
                     model_allowed = self._model_binding_validator(agent, lease, request)
                 except Exception as exc:
-                    self._audit("model_binding_validation_failed", {"agent_id": agent_id, "lease_id": lease.lease_id, "reason": type(exc).__name__})
+                    self._best_effort_audit("model_binding_validation_failed", {"agent_id": agent_id, "lease_id": lease.lease_id, "reason": type(exc).__name__})
                     raise AuthorizationDenied("MODEL_BROKER_UNAVAILABLE") from exc
                 if model_allowed is not True: raise AuthorizationDenied("MODEL_BROKER_DENIED")
             if request.action_class in MUTATING_ACTIONS:
@@ -425,7 +432,7 @@ class CapabilityAuthorizer:
                 try:
                     ticket_valid = self._action_ticket_validator(agent, lease, request)
                 except Exception as exc:
-                    self._audit("action_ticket_validation_failed", {"agent_id": agent_id, "lease_id": lease.lease_id, "reason": type(exc).__name__})
+                    self._best_effort_audit("action_ticket_validation_failed", {"agent_id": agent_id, "lease_id": lease.lease_id, "reason": type(exc).__name__})
                     raise AuthorizationDenied("ACTION_TICKET_UNAVAILABLE") from exc
                 if ticket_valid is not True: raise AuthorizationDenied("ACTION_TICKET_REQUIRED")
             if not self._kill_switch.engaged and request.action_class not in READ_ONLY_ACTIONS and request.action_class not in MUTATING_ACTIONS:
@@ -433,7 +440,7 @@ class CapabilityAuthorizer:
             try:
                 policy_allows = self._policy(agent, lease, request)
             except Exception as exc:
-                self._audit("policy_evaluation_failed", {"agent_id": agent_id, "lease_id": lease.lease_id, "reason": type(exc).__name__})
+                self._best_effort_audit("policy_evaluation_failed", {"agent_id": agent_id, "lease_id": lease.lease_id, "reason": type(exc).__name__})
                 raise AuthorizationDenied("POLICY_UNAVAILABLE") from exc
             if not isinstance(policy_allows, bool):
                 raise AuthorizationDenied("POLICY_RESULT_INVALID")

@@ -28,7 +28,7 @@ only Claude's read-only file tool so it can inspect the candidate files it was
 given. Shell, Git, edit, MCP, network, and Chrome access remain disabled. The
 general advisory adapter runs from a fresh temporary directory with no tools.
 
-The exact-commit verifier is bounded to twenty-four turns and 180 seconds, while
+The exact-commit verifier is bounded to four turns and 180 seconds, while
 the general advisory adapter remains bounded to three turns. Both use plan mode,
 disables tools, disables session persistence, and requires strict structured
 JSON bound to the job ID and selected model. The general advisory adapter keeps
