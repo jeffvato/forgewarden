@@ -168,6 +168,15 @@ def test_scope_and_policy_denials_are_explicit(overrides, reason):
     assert denial["timestamp"] == 150
 
 
+def test_asoc_golden_path_rejects_cross_tenant_request():
+    events, _, _, _, auth, model, agent, _ = make_plane()
+    with pytest.raises(AuthorizationDenied, match="TENANT_MISMATCH"):
+        auth.authorize(agent.agent_id, request(tenant_id="tenant-b", model_identity=model), now=150)
+    assert events[-1][0] == "authorization_denied"
+    assert events[-1][1]["reason"] == "TENANT_MISMATCH"
+    assert events[-1][1]["tenant_id"] == "tenant-b"
+
+
 def test_missing_expired_and_revoked_leases_fail_closed():
     _, switch, agents, leases, auth, model, agent, lease = make_plane()
     with pytest.raises(AuthorizationDenied, match="AGENT_NOT_FOUND"):
