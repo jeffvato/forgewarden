@@ -421,6 +421,7 @@ class CapabilityAuthorizer:
     def authorize(self, agent_id: str, request: AuthorizationRequest, now: int | None = None) -> dict[str, Any]:
         current = int(time.time()) if now is None else now
         consumed_ticket_id: str | None = None
+        policy_decision_reason: str | None = None
         try:
             try:
                 validate_safety_evidence(self._safety_evidence_provider(), require_kill_switch=False)
@@ -484,10 +485,12 @@ class CapabilityAuthorizer:
                 raise AuthorizationDenied("ACTION_TICKET_REQUIRED")
             try:
                 if self._policy_engine is not None:
-                    policy_allows = self._policy_engine.evaluate(PolicyContext(
+                    decision = self._policy_engine.evaluate(PolicyContext(
                         request.tenant_id, agent.agent_id, request.capability, request.resource,
                         request.action_class, request.policy_version,
-                    )).allowed
+                    ))
+                    policy_allows = decision.allowed
+                    policy_decision_reason = decision.reason
                 else:
                     policy_allows = self._policy(agent, lease, request)
             except Exception as exc:
@@ -552,6 +555,7 @@ class CapabilityAuthorizer:
             "resource": request.resource, "data_classification": request.data_classification,
             "action_class": request.action_class, "tool": request.tool,
             "policy_version": request.policy_version, "action_ticket_id": consumed_ticket_id,
+            "policy_decision_reason": policy_decision_reason,
             "timestamp": current,
         }
         try:
