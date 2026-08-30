@@ -552,6 +552,54 @@ def test_canonical_model_broker_uses_exact_tenant_agent_model_approval():
         denied.authorize(agent.agent_id, request(model_identity=model), now=150)
 
 
+def test_asoc_canonical_golden_path_uses_policy_broker_gateway_ticket_and_evidence():
+    events, switch, agents, leases, _, model, agent, lease = make_plane()
+    switch.clear_for_dry_run()
+    policy = DeterministicPolicy([
+        PolicyRule("tenant-a", "telemetry.read", "endpoint-123", "READ", "FW-ASOC-01-v1"),
+        PolicyRule("tenant-a", "endpoint.isolate.request", "endpoint-123", "ISOLATE_ENDPOINT", "FW-ASOC-01-v1"),
+    ])
+    broker = ModelBroker()
+    broker.register(ApprovedModel(
+        agent.tenant_id, agent.agent_id, model.model, model.provider, model.deployment,
+        model.version, model.approval_version,
+    ))
+    gateway = MCPGateway()
+    gateway.register(MCPToolGrant(
+        agent.tenant_id, agent.agent_id, "telemetry.read", "endpoint-123",
+        "mcp.telemetry.status", lease.policy_version,
+    ))
+    tickets = ActionTicketRegistry(HMACLeaseSigner({lease.key_reference: b"test-only-key-material"}))
+    auth = CapabilityAuthorizer(
+        agents, leases, switch, lambda event, data: events.append((event, dict(data))),
+        policy_engine=policy, model_broker=broker, mcp_gateway=gateway, action_tickets=tickets,
+    )
+    assert auth.authorize(
+        agent.agent_id, request(tool="mcp.telemetry.status", model_identity=model), now=150,
+    )["authorized"] is True
+
+    mutation = leases.issue(CapabilityLease(
+        "lease-canonical-golden", agent.agent_id, lease.issuer_identity, lease.tenant_id,
+        ("endpoint.isolate.request",), lease.allowed_tools, lease.allowed_resources,
+        lease.allowed_data_classifications, ("ISOLATE_ENDPOINT",), 1, False, 0, 151, 200,
+        lease.policy_version, "approval-canonical-golden", "ticket-canonical-golden",
+        "bounded containment", lease.key_reference,
+    ))
+    del leases._leases[lease.lease_id]
+    tickets.issue(ActionTicket(
+        "ticket-canonical-golden", agent.tenant_id, agent.agent_id, mutation.lease_id,
+        "endpoint.isolate.request", "endpoint-123", "ISOLATE_ENDPOINT", "human-controller-1",
+        "approval-canonical-golden", mutation.policy_version, 151, 200, mutation.key_reference,
+    ))
+    assert auth.authorize(agent.agent_id, request(
+        capability="endpoint.isolate.request", action_class="ISOLATE_ENDPOINT",
+        action_ticket_id="ticket-canonical-golden", model_identity=model,
+    ), now=160)["authorized"] is True
+    assert [event for event, _data in events if event == "authorization_success"] == [
+        "authorization_success", "authorization_success",
+    ]
+
+
 def test_asoc_golden_path_investigate_then_deny_mutation():
     events, switch, _, leases, auth, model, agent, lease = make_plane()
 
