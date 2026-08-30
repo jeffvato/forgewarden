@@ -222,6 +222,18 @@ def test_action_ticket_boolean_alone_cannot_authorize_mutation():
         ), now=150)
 
 
+def test_authorizer_reuses_canonical_safety_invariant_provider_and_fails_closed():
+    events, switch, agents, leases, _, model, agent, _ = make_plane()
+    invalid = CapabilityAuthorizer(
+        agents, leases, switch, lambda event, data: events.append((event, dict(data))),
+        policy=lambda *_args: True,
+        model_binding_validator=lambda *_args: True,
+        safety_evidence_provider=lambda: {"mode": "LIVE", "deployment": "DISABLED", "kill_switch": "ENGAGED"},
+    )
+    with pytest.raises(AuthorizationDenied, match="SAFETY_INVARIANT_INVALID"):
+        invalid.authorize(agent.agent_id, request(model_identity=model), now=150)
+
+
 def test_mcp_tool_requires_gateway_validation():
     _, _, agents, leases, _, model, agent, _ = make_plane()
     auth = CapabilityAuthorizer(agents, leases, KillSwitch(False), policy=lambda *_args: True, model_binding_validator=lambda *_args: True)

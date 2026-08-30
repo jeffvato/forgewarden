@@ -345,7 +345,7 @@ class AuthorizationRequest:
 
 
 class CapabilityAuthorizer:
-    def __init__(self, agents: AgentRegistry, leases: LeaseRegistry, kill_switch: KillSwitch, audit: AuditSink | None = None, policy: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, action_ticket_validator: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, mcp_tool_validator: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, model_binding_validator: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None):
+    def __init__(self, agents: AgentRegistry, leases: LeaseRegistry, kill_switch: KillSwitch, audit: AuditSink | None = None, policy: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, action_ticket_validator: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, mcp_tool_validator: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, model_binding_validator: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, safety_evidence_provider: Callable[[], Mapping[str, Any]] | None = None):
         self._agents, self._leases, self._kill_switch = agents, leases, kill_switch
         self._audit = audit or (lambda _event, _data: None)
         # An absent policy must never become implicit authority at this
@@ -360,10 +360,19 @@ class CapabilityAuthorizer:
         # Exact metadata equality is necessary but not sufficient; the
         # canonical Model Broker must approve the model/deployment binding.
         self._model_binding_validator = model_binding_validator or (lambda _agent, _lease, _request: False)
+        # Reuse FW-ROOT's canonical safety contract rather than duplicating it.
+        self._safety_evidence_provider = safety_evidence_provider or (
+            lambda: {"mode": "DRY_RUN", "deployment": "DISABLED", "kill_switch": "ENGAGED" if self._kill_switch.engaged else "CLEARED_FOR_DRY_RUN"}
+        )
 
     def authorize(self, agent_id: str, request: AuthorizationRequest, now: int | None = None) -> dict[str, Any]:
         current = int(time.time()) if now is None else now
         try:
+            try:
+                validate_safety_evidence(self._safety_evidence_provider(), require_kill_switch=False)
+            except Exception as exc:
+                self._audit("safety_invariant_validation_failed", {"agent_id": agent_id, "reason": type(exc).__name__, "timestamp": current})
+                raise AuthorizationDenied("SAFETY_INVARIANT_UNAVAILABLE" if isinstance(exc, (OSError, RuntimeError)) else "SAFETY_INVARIANT_INVALID") from exc
             agent = self._agents.get(agent_id)
             lease = self._leases.for_agent(agent_id)
             self._leases._signer.verify(lease)
@@ -407,7 +416,6 @@ class CapabilityAuthorizer:
                 if ticket_valid is not True: raise AuthorizationDenied("ACTION_TICKET_REQUIRED")
             if not self._kill_switch.engaged and request.action_class not in READ_ONLY_ACTIONS and request.action_class not in MUTATING_ACTIONS:
                 raise AuthorizationDenied("ACTION_TICKET_REQUIRED")
-            validate_safety_evidence({"mode": "DRY_RUN", "deployment": "DISABLED", "kill_switch": "ENGAGED" if self._kill_switch.engaged else "CLEARED_FOR_DRY_RUN"}, require_kill_switch=False)
             try:
                 policy_allows = self._policy(agent, lease, request)
             except Exception as exc:

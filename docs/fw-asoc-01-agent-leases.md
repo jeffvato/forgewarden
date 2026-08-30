@@ -7,6 +7,9 @@ It does not create a second identity or authorization service.
 
 - `swarm.policy_gate.validate_safety_evidence` remains the safety invariant
   validator for dry-run, disabled deployment, and kill-switch state.
+- `CapabilityAuthorizer` now accepts a safety-evidence provider and routes every
+  decision through that canonical validator before checking agent authority;
+  the default provider derives only the current local safety state.
 - Existing `AuditLog` conventions can be used through the module's audit sink;
   authorization results are durable evidence when connected to that sink.
 - Existing FW-ID/FW-ROOT/FW-KEYS concepts are represented by the explicit
