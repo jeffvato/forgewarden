@@ -394,6 +394,40 @@ def test_signed_action_ticket_is_bound_and_single_use():
         auth.authorize(agent.agent_id, mutation_request, now=151)
 
 
+def test_policy_denial_does_not_consume_a_canonical_action_ticket():
+    _, switch, agents, leases, _, model, agent, lease = make_plane()
+    switch.clear_for_dry_run()
+    mutation = CapabilityLease(
+        "lease-ticket-policy-denied", agent.agent_id, lease.issuer_identity, lease.tenant_id,
+        ("endpoint.isolate.request",), lease.allowed_tools, lease.allowed_resources,
+        lease.allowed_data_classifications, ("ISOLATE_ENDPOINT",), 1, False, 0, 101, 200,
+        lease.policy_version, "approval-ticket", "ticket-policy-denied", "bounded containment", lease.key_reference,
+    )
+    mutation = leases.issue(mutation)
+    del leases._leases[lease.lease_id]
+    tickets = ActionTicketRegistry(HMACLeaseSigner({lease.key_reference: b"test-only-key-material"}))
+    tickets.issue(ActionTicket(
+        "ticket-policy-denied", agent.tenant_id, agent.agent_id, mutation.lease_id,
+        "endpoint.isolate.request", "endpoint-123", "ISOLATE_ENDPOINT", "human-controller-1",
+        "approval-ticket", mutation.policy_version, 101, 200, mutation.key_reference,
+    ))
+    auth = CapabilityAuthorizer(
+        agents, leases, switch, policy=lambda *_args: False,
+        model_binding_validator=lambda *_args: True, action_tickets=tickets,
+    )
+    mutation_request = request(
+        capability="endpoint.isolate.request", action_class="ISOLATE_ENDPOINT",
+        action_ticket_id="ticket-policy-denied", model_identity=model,
+    )
+    with pytest.raises(AuthorizationDenied, match="POLICY_DENIED"):
+        auth.authorize(agent.agent_id, mutation_request, now=150)
+    assert tickets.validate_and_consume(
+        "ticket-policy-denied", tenant_id=agent.tenant_id, subject_agent_id=agent.agent_id,
+        lease_id=mutation.lease_id, capability="endpoint.isolate.request", resource="endpoint-123",
+        action_class="ISOLATE_ENDPOINT", policy_version=mutation.policy_version, now=150,
+    ).consumed_at == 150
+
+
 def test_authorizer_reuses_canonical_safety_invariant_provider_and_fails_closed():
     events, switch, agents, leases, _, model, agent, _ = make_plane()
     invalid = CapabilityAuthorizer(
