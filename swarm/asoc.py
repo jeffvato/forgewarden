@@ -16,6 +16,7 @@ from typing import Any, Callable, Iterable, Mapping, Protocol
 
 from .action_ticket import ActionTicketError, ActionTicketRegistry
 from .core import AuditLog, Job
+from .model_broker import ModelBroker
 from .policy_gate import DeterministicPolicy, PolicyContext, validate_safety_evidence
 
 
@@ -385,7 +386,7 @@ class AuthorizationRequest:
 
 
 class CapabilityAuthorizer:
-    def __init__(self, agents: AgentRegistry, leases: LeaseRegistry, kill_switch: KillSwitch, audit: AuditSink | None = None, policy: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, action_ticket_validator: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, action_tickets: ActionTicketRegistry | None = None, policy_engine: DeterministicPolicy | None = None, mcp_tool_validator: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, model_binding_validator: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, safety_evidence_provider: Callable[[], Mapping[str, Any]] | None = None):
+    def __init__(self, agents: AgentRegistry, leases: LeaseRegistry, kill_switch: KillSwitch, audit: AuditSink | None = None, policy: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, action_ticket_validator: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, action_tickets: ActionTicketRegistry | None = None, policy_engine: DeterministicPolicy | None = None, mcp_tool_validator: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, model_binding_validator: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, model_broker: ModelBroker | None = None, safety_evidence_provider: Callable[[], Mapping[str, Any]] | None = None):
         self._agents, self._leases, self._kill_switch = agents, leases, kill_switch
         self._audit = audit or (lambda _event, _data: None)
         # An absent policy must never become implicit authority at this
@@ -402,6 +403,7 @@ class CapabilityAuthorizer:
         # Exact metadata equality is necessary but not sufficient; the
         # canonical Model Broker must approve the model/deployment binding.
         self._model_binding_validator = model_binding_validator or (lambda _agent, _lease, _request: False)
+        self._model_broker = model_broker
         # Reuse FW-ROOT's canonical safety contract rather than duplicating it.
         self._safety_evidence_provider = safety_evidence_provider or (
             lambda: {"mode": "DRY_RUN", "deployment": "DISABLED", "kill_switch": "ENGAGED" if self._kill_switch.engaged else "CLEARED_FOR_DRY_RUN"}
@@ -453,7 +455,15 @@ class CapabilityAuthorizer:
             if agent.model_identity is not None:
                 if not agent.model_identity.approved or request.model_identity != agent.model_identity: raise AuthorizationDenied("MODEL_BINDING_MISMATCH")
                 try:
-                    model_allowed = self._model_binding_validator(agent, lease, request)
+                    if self._model_broker is not None:
+                        model_allowed = self._model_broker.allows(
+                            tenant_id=agent.tenant_id, subject_agent_id=agent.agent_id,
+                            model=agent.model_identity.model, provider=agent.model_identity.provider,
+                            deployment=agent.model_identity.deployment, version=agent.model_identity.version,
+                            approval_version=agent.model_identity.approval_version,
+                        )
+                    else:
+                        model_allowed = self._model_binding_validator(agent, lease, request)
                 except Exception as exc:
                     self._best_effort_audit("model_binding_validation_failed", {"agent_id": agent_id, "lease_id": lease.lease_id, "reason": type(exc).__name__})
                     raise AuthorizationDenied("MODEL_BROKER_UNAVAILABLE") from exc

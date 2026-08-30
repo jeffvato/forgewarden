@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from swarm.action_ticket import ActionTicket, ActionTicketRegistry
+from swarm.model_broker import ApprovedModel, ModelBroker
 from swarm.policy_gate import DeterministicPolicy, PolicyRule
 from swarm.asoc import (
     ASOCControlPlane,
@@ -506,6 +507,25 @@ def test_model_binding_requires_broker_validation():
     auth = CapabilityAuthorizer(agents, leases, KillSwitch(False), policy=lambda *_args: True)
     with pytest.raises(AuthorizationDenied, match="MODEL_BROKER_DENIED"):
         auth.authorize(agent.agent_id, request(model_identity=model), now=150)
+
+
+def test_canonical_model_broker_uses_exact_tenant_agent_model_approval():
+    _, _, agents, leases, _, model, agent, _ = make_plane()
+    broker = ModelBroker()
+    broker.register(ApprovedModel(
+        agent.tenant_id, agent.agent_id, model.model, model.provider, model.deployment,
+        model.version, model.approval_version,
+    ))
+    auth = CapabilityAuthorizer(
+        agents, leases, KillSwitch(False), policy=lambda *_args: True, model_broker=broker,
+    )
+    assert auth.authorize(agent.agent_id, request(model_identity=model), now=150)["authorized"] is True
+
+    denied = CapabilityAuthorizer(
+        agents, leases, KillSwitch(False), policy=lambda *_args: True, model_broker=ModelBroker(),
+    )
+    with pytest.raises(AuthorizationDenied, match="MODEL_BROKER_DENIED"):
+        denied.authorize(agent.agent_id, request(model_identity=model), now=150)
 
 
 def test_asoc_golden_path_investigate_then_deny_mutation():
