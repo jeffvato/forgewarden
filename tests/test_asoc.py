@@ -218,6 +218,8 @@ def test_kill_switch_blocks_new_leases_and_mutation_but_keeps_read_path():
         ))
     assert auth.authorize(agent.agent_id, request(model_identity=model), now=150)["authorized"]
     with pytest.raises(AuthorizationDenied, match="ACTION_CLASS_DENIED"):
+        auth.authorize(agent.agent_id, request(action_class="UNKNOWN_ACTION", model_identity=model), now=150)
+    with pytest.raises(AuthorizationDenied, match="ACTION_CLASS_DENIED"):
         auth.authorize(agent.agent_id, request(capability="action.request", action_class="ISOLATE_ENDPOINT", action_ticket_valid=True, model_identity=model), now=150)
     control = ASOCControlPlane(agents, leases, switch)
     assert control.engage_ai_kill_switch() == 1
