@@ -40,6 +40,10 @@ On every restart or continuation:
 - Blocker: none; independent safe ASOC hardening and proof work remains available
 - Next action: checkpoint the registry-boundary hardening, then continue bounded integration and negative-path proof without beginning FW-ASOC-02
 
+## Execution log
+
+- 2026-08-30: Re-evaluated the FW-ASOC-01 canonical-integration gap. `ROADMAP.md`, `DECISIONS.md`, `swarm/integrity.py`, and the functionality map consistently identify Action Tickets, Model Broker, MCP Gateway, and full Z3 as canonical owners, but no concrete adapters are present in this checkout. No replacement subsystem was added: absent canonical validation continues to deny authorization. Next safe work remains bounded hardening and proof at the existing fail-closed boundary.
+
 ## Stop conditions
 
 Do not stop merely because a task or review cycle finished. Stop only under the explicit conditions in `AGENTS.md`, and record the exact reason and first resume action here.
