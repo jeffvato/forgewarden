@@ -4,7 +4,7 @@
 
 - Active phase: ForgeWarden Core
 - Current focus: FW-ASOC-01 — Agent Identity, Roles & Bounded Capability Leasing integration and proof
-- Current task: Canonical FW-ROOT safety, FW-EVID audit integration, model binding, and revocation hardening checkpointed at `cc822f7882200bc7c50a51f3df5eb814036c3be4`; Action Ticket, Model Broker, MCP Gateway, and Z3 adapters remain pending
+- Current task: Canonical FW-ROOT safety, FW-EVID audit integration, model binding, and revocation hardening. The kill-switch path now uses the public agent-registry interface; Action Ticket, Model Broker, MCP Gateway, and Z3 adapters remain pending
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -29,16 +29,16 @@ On every restart or continuation:
 
 - Task ID: FW-ASOC-01
 - Starting commit: `a10b53a88ccf83a6573591446766ba400d1dc59a`
-- Candidate commit: `cc822f7882200bc7c50a51f3df5eb814036c3be4`
-- Candidate context: canonical FW-ROOT safety validation, FW-EVID durable-audit binding, model binding, and role/model revocation hardening
-- Accepted commit: `cc822f7882200bc7c50a51f3df5eb814036c3be4`
+- Candidate commit: working tree after `8e9e35078f3f7c02a5c18b1650f413a1a129078b`
+- Candidate context: public registry boundary hardening for AI kill-switch lease revocation
+- Accepted commit: `cc822f7882200bc7c50a51f3df5eb814036c3be4` (new hardening candidate pending checkpoint)
 - Files changed: `swarm/asoc.py`, `tests/test_asoc.py`, `docs/fw-asoc-01-agent-leases.md`
-- Deterministic validation: full Integrity Gate 552 passed/1 skipped; ASOC Golden Path 31 passed
+- Deterministic validation: full Integrity Gate at accepted commit 552 passed/1 skipped; new hardening candidate ASOC tests 31 passed
 - Claude review: exact commit `cc822f7` returned APPROVE/LOW with no blocking findings
 - Gemini review: unavailable; no Gemini result was fabricated or substituted
 - Unresolved findings: real canonical Action Ticket, Model Broker, MCP Gateway, and Z3 adapters are not present in this checkout
 - Blocker: none; independent safe ASOC hardening and proof work remains available
-- Next action: continue bounded integration and negative-path proof without beginning FW-ASOC-02
+- Next action: checkpoint the registry-boundary hardening, then continue bounded integration and negative-path proof without beginning FW-ASOC-02
 
 ## Stop conditions
 

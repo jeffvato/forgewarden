@@ -195,6 +195,7 @@ def test_kill_switch_blocks_new_leases_and_mutation_but_keeps_read_path():
         auth.authorize(agent.agent_id, request(capability="action.request", action_class="ISOLATE_ENDPOINT", action_ticket_valid=True, model_identity=model), now=150)
     control = ASOCControlPlane(agents, leases, switch)
     assert control.engage_ai_kill_switch() == 1
+    assert leases.for_agent(agent.agent_id).revoked_at is not None
 
 
 def test_role_and_model_deployment_revocation_revoke_bound_leases():
