@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from swarm.action_ticket import ActionTicket, ActionTicketRegistry
+from swarm.mcp_gateway import MCPGateway, MCPToolGrant
 from swarm.model_broker import ApprovedModel, ModelBroker
 from swarm.policy_gate import DeterministicPolicy, PolicyRule
 from swarm.asoc import (
@@ -500,6 +501,29 @@ def test_mcp_tool_requires_gateway_validation():
     auth = CapabilityAuthorizer(agents, leases, KillSwitch(False), policy=lambda *_args: True, model_binding_validator=lambda *_args: True)
     with pytest.raises(AuthorizationDenied, match="MCP_GATEWAY_DENIED"):
         auth.authorize(agent.agent_id, request(tool="mcp.telemetry.status", model_identity=model), now=150)
+
+
+def test_canonical_mcp_gateway_requires_exact_tenant_agent_tool_grant():
+    _, _, agents, leases, _, model, agent, _ = make_plane()
+    gateway = MCPGateway()
+    gateway.register(MCPToolGrant(
+        agent.tenant_id, agent.agent_id, "telemetry.read", "endpoint-123",
+        "mcp.telemetry.status", "FW-ASOC-01-v1",
+    ))
+    auth = CapabilityAuthorizer(
+        agents, leases, KillSwitch(False), policy=lambda *_args: True,
+        model_binding_validator=lambda *_args: True, mcp_gateway=gateway,
+    )
+    assert auth.authorize(
+        agent.agent_id, request(tool="mcp.telemetry.status", model_identity=model), now=150,
+    )["authorized"] is True
+
+    denied = CapabilityAuthorizer(
+        agents, leases, KillSwitch(False), policy=lambda *_args: True,
+        model_binding_validator=lambda *_args: True, mcp_gateway=MCPGateway(),
+    )
+    with pytest.raises(AuthorizationDenied, match="MCP_GATEWAY_DENIED"):
+        denied.authorize(agent.agent_id, request(tool="mcp.telemetry.status", model_identity=model), now=150)
 
 
 def test_model_binding_requires_broker_validation():

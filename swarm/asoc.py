@@ -16,6 +16,7 @@ from typing import Any, Callable, Iterable, Mapping, Protocol
 
 from .action_ticket import ActionTicketError, ActionTicketRegistry
 from .core import AuditLog, Job
+from .mcp_gateway import MCPGateway
 from .model_broker import ModelBroker
 from .policy_gate import DeterministicPolicy, PolicyContext, validate_safety_evidence
 
@@ -386,7 +387,7 @@ class AuthorizationRequest:
 
 
 class CapabilityAuthorizer:
-    def __init__(self, agents: AgentRegistry, leases: LeaseRegistry, kill_switch: KillSwitch, audit: AuditSink | None = None, policy: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, action_ticket_validator: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, action_tickets: ActionTicketRegistry | None = None, policy_engine: DeterministicPolicy | None = None, mcp_tool_validator: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, model_binding_validator: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, model_broker: ModelBroker | None = None, safety_evidence_provider: Callable[[], Mapping[str, Any]] | None = None):
+    def __init__(self, agents: AgentRegistry, leases: LeaseRegistry, kill_switch: KillSwitch, audit: AuditSink | None = None, policy: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, action_ticket_validator: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, action_tickets: ActionTicketRegistry | None = None, policy_engine: DeterministicPolicy | None = None, mcp_tool_validator: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, mcp_gateway: MCPGateway | None = None, model_binding_validator: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, model_broker: ModelBroker | None = None, safety_evidence_provider: Callable[[], Mapping[str, Any]] | None = None):
         self._agents, self._leases, self._kill_switch = agents, leases, kill_switch
         self._audit = audit or (lambda _event, _data: None)
         # An absent policy must never become implicit authority at this
@@ -400,6 +401,7 @@ class CapabilityAuthorizer:
         # Local tool names are not sufficient authority; the canonical MCP
         # Gateway must validate tenant, capability, and tool binding.
         self._mcp_tool_validator = mcp_tool_validator or (lambda _agent, _lease, _request: False)
+        self._mcp_gateway = mcp_gateway
         # Exact metadata equality is necessary but not sufficient; the
         # canonical Model Broker must approve the model/deployment binding.
         self._model_binding_validator = model_binding_validator or (lambda _agent, _lease, _request: False)
@@ -446,7 +448,14 @@ class CapabilityAuthorizer:
             if request.tool is not None:
                 if request.tool not in lease.allowed_tools: raise AuthorizationDenied("MCP_TOOL_NOT_ALLOWED")
                 try:
-                    tool_allowed = self._mcp_tool_validator(agent, lease, request)
+                    if self._mcp_gateway is not None:
+                        tool_allowed = self._mcp_gateway.allows(
+                            tenant_id=request.tenant_id, subject_agent_id=agent.agent_id,
+                            capability=request.capability, resource=request.resource,
+                            tool=request.tool, policy_version=request.policy_version,
+                        )
+                    else:
+                        tool_allowed = self._mcp_tool_validator(agent, lease, request)
                 except Exception as exc:
                     self._best_effort_audit("mcp_tool_validation_failed", {"agent_id": agent_id, "lease_id": lease.lease_id, "tool": request.tool, "reason": type(exc).__name__})
                     raise AuthorizationDenied("MCP_GATEWAY_UNAVAILABLE") from exc
