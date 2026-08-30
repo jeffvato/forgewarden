@@ -300,6 +300,14 @@ class AgentRegistry:
         """Return registered agent IDs without exposing registry storage."""
         return set(self._agents)
 
+    def ai_ids(self) -> set[str]:
+        """Return only identities bound to an approved AI model deployment."""
+        return {
+            agent.agent_id
+            for agent in self._agents.values()
+            if agent.model_identity is not None
+        }
+
 
 class LeaseRegistry:
     def __init__(self, signer: HMACLeaseSigner, kill_switch: KillSwitch, audit: AuditSink | None = None):
@@ -522,8 +530,10 @@ class ASOCControlPlane:
 
     def engage_ai_kill_switch(self, reason: str = "AI kill switch") -> int:
         self.kill_switch.engage()
-        self.agents.revoke_matching(all_agents=True, reason=reason)
-        return self.leases.revoke_agent_ids(self.agents.all_ids(), reason)
+        ai_ids = self.agents.ai_ids()
+        for agent_id in ai_ids:
+            self.agents.revoke(agent_id, reason)
+        return self.leases.revoke_agent_ids(ai_ids, reason)
 
 
 def new_id(prefix: str) -> str:

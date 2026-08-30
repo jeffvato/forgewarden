@@ -183,6 +183,19 @@ def test_model_deployment_binding_is_exact():
 
 def test_kill_switch_blocks_new_leases_and_mutation_but_keeps_read_path():
     _, switch, agents, leases, auth, model, agent, lease = make_plane()
+    human = AgentIdentity(
+        "human-admin-1", "tenant-a", "human", "Security Advisor", "human-controller-1",
+        None, "human-operated", "deterministic administration", "high", ("INTERNAL",),
+        cryptographic_identity_ref="fw-id/human-admin-1",
+    )
+    agents.register(human)
+    agents.activate(human.agent_id, now=100)
+    human_lease = leases.issue(CapabilityLease(
+        "lease-human-admin-1", human.agent_id, "human-controller-1", "tenant-a",
+        ("telemetry.read",), ("mcp.telemetry.status",), ("endpoint-123",), ("INTERNAL",),
+        ("READ",), 0, False, 0, 100, 200, "FW-ASOC-01-v1", "approval-human-1",
+        "ticket-human-1", "deterministic administration", lease.key_reference,
+    ))
     switch.engage()
     with pytest.raises(AuthorizationDenied, match="KILL_SWITCH_ENGAGED"):
         leases.issue(CapabilityLease(
@@ -195,7 +208,10 @@ def test_kill_switch_blocks_new_leases_and_mutation_but_keeps_read_path():
         auth.authorize(agent.agent_id, request(capability="action.request", action_class="ISOLATE_ENDPOINT", action_ticket_valid=True, model_identity=model), now=150)
     control = ASOCControlPlane(agents, leases, switch)
     assert control.engage_ai_kill_switch() == 1
+    assert agents.get(agent.agent_id).lifecycle_state == "REVOKED"
     assert leases.for_agent(agent.agent_id).revoked_at is not None
+    assert agents.get(human.agent_id).lifecycle_state == "ACTIVE"
+    assert leases.get(human_lease.lease_id).revoked_at is None
 
 
 def test_role_and_model_deployment_revocation_revoke_bound_leases():
