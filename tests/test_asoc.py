@@ -131,6 +131,7 @@ def test_agent_without_a_model_binding_can_use_a_valid_read_only_lease():
         ({"resource": "endpoint-999"}, "RESOURCE_OUT_OF_SCOPE"),
         ({"data_classification": "RESTRICTED"}, "DATA_CLASSIFICATION_DENIED"),
         ({"action_class": "ISOLATE_ENDPOINT"}, "ACTION_CLASS_DENIED"),
+        ({"action_class": "UNKNOWN_ACTION"}, "ACTION_CLASS_DENIED"),
         ({"tool": "mcp.arbitrary"}, "MCP_TOOL_NOT_ALLOWED"),
         ({"blast_radius": 2}, "BLAST_RADIUS_EXCEEDED"),
         ({"policy_version": "old-policy"}, "STALE_POLICY_VERSION"),
@@ -165,6 +166,18 @@ def test_missing_expired_and_revoked_leases_fail_closed():
     with pytest.raises(AuthorizationDenied, match="LEASE_REVOKED"):
         auth.authorize(agent.agent_id, request(model_identity=model), now=151)
     assert switch.engaged is False
+
+
+def test_lease_rejects_unknown_action_classes():
+    _, _, _, _, _, _, _, lease = make_plane()
+    with pytest.raises(ValueError, match="unsupported action class"):
+        CapabilityLease(
+            "lease-unknown-action", lease.subject_agent_id, lease.issuer_identity, lease.tenant_id,
+            lease.granted_capabilities, lease.allowed_tools, lease.allowed_resources,
+            lease.allowed_data_classifications, ("UNKNOWN_ACTION",), lease.max_blast_radius,
+            False, 0, lease.valid_from, lease.expires_at, lease.policy_version,
+            "approval-unknown-action", "ticket-unknown-action", "regression coverage", lease.key_reference,
+        )
 
 
 def test_inactive_and_revoked_agents_fail_closed():

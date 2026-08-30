@@ -193,7 +193,10 @@ class CapabilityLease:
         if any(value not in CLASSIFICATION_ORDER for value in classes):
             raise ValueError("unsupported lease data classification")
         object.__setattr__(self, "allowed_data_classifications", classes)
-        object.__setattr__(self, "allowed_action_classes", _tuple_text(self.allowed_action_classes, "allowed_action_classes"))
+        action_classes = _tuple_text(self.allowed_action_classes, "allowed_action_classes")
+        if any(value not in READ_ONLY_ACTIONS | MUTATING_ACTIONS for value in action_classes):
+            raise ValueError("unsupported action class")
+        object.__setattr__(self, "allowed_action_classes", action_classes)
         if self.max_blast_radius < 0 or self.delegation_depth < 0 or self.valid_from >= self.expires_at:
             raise ValueError("invalid lease bounds")
         if not isinstance(self.delegation_allowed, bool):
@@ -301,7 +304,7 @@ class AgentRegistry:
         return set(self._agents)
 
     def ai_ids(self) -> set[str]:
-        """Return only identities bound to an approved AI model deployment."""
+        """Return only identities bound to an AI model deployment."""
         return {
             agent.agent_id
             for agent in self._agents.values()
@@ -430,6 +433,7 @@ class CapabilityAuthorizer:
             if request.resource not in lease.allowed_resources: raise AuthorizationDenied("RESOURCE_OUT_OF_SCOPE")
             if request.data_classification not in lease.allowed_data_classifications or request.data_classification not in agent.allowed_data_classifications: raise AuthorizationDenied("DATA_CLASSIFICATION_DENIED")
             if request.action_class not in lease.allowed_action_classes: raise AuthorizationDenied("ACTION_CLASS_DENIED")
+            if request.action_class not in READ_ONLY_ACTIONS | MUTATING_ACTIONS: raise AuthorizationDenied("ACTION_CLASS_UNKNOWN")
             if request.blast_radius > lease.max_blast_radius: raise AuthorizationDenied("BLAST_RADIUS_EXCEEDED")
             if request.tool is not None:
                 if request.tool not in lease.allowed_tools: raise AuthorizationDenied("MCP_TOOL_NOT_ALLOWED")
@@ -456,7 +460,7 @@ class CapabilityAuthorizer:
                     self._best_effort_audit("action_ticket_validation_failed", {"agent_id": agent_id, "lease_id": lease.lease_id, "reason": type(exc).__name__})
                     raise AuthorizationDenied("ACTION_TICKET_UNAVAILABLE") from exc
                 if ticket_valid is not True: raise AuthorizationDenied("ACTION_TICKET_REQUIRED")
-            if not self._kill_switch.engaged and request.action_class not in READ_ONLY_ACTIONS and request.action_class not in MUTATING_ACTIONS:
+            if request.action_class not in READ_ONLY_ACTIONS and request.action_class not in MUTATING_ACTIONS:
                 raise AuthorizationDenied("ACTION_TICKET_REQUIRED")
             try:
                 policy_allows = self._policy(agent, lease, request)
