@@ -14,6 +14,7 @@ import uuid
 from dataclasses import dataclass, field, replace
 from typing import Any, Callable, Iterable, Mapping, Protocol
 
+from .action_ticket import ActionTicketError, ActionTicketRegistry
 from .core import AuditLog, Job
 from .policy_gate import validate_safety_evidence
 
@@ -380,10 +381,11 @@ class AuthorizationRequest:
     model_identity: ModelBinding | None = None
     policy_version: str = "FW-ASOC-01-v1"
     action_ticket_valid: bool = False
+    action_ticket_id: str | None = None
 
 
 class CapabilityAuthorizer:
-    def __init__(self, agents: AgentRegistry, leases: LeaseRegistry, kill_switch: KillSwitch, audit: AuditSink | None = None, policy: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, action_ticket_validator: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, mcp_tool_validator: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, model_binding_validator: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, safety_evidence_provider: Callable[[], Mapping[str, Any]] | None = None):
+    def __init__(self, agents: AgentRegistry, leases: LeaseRegistry, kill_switch: KillSwitch, audit: AuditSink | None = None, policy: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, action_ticket_validator: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, action_tickets: ActionTicketRegistry | None = None, mcp_tool_validator: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, model_binding_validator: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, safety_evidence_provider: Callable[[], Mapping[str, Any]] | None = None):
         self._agents, self._leases, self._kill_switch = agents, leases, kill_switch
         self._audit = audit or (lambda _event, _data: None)
         # An absent policy must never become implicit authority at this
@@ -392,6 +394,7 @@ class CapabilityAuthorizer:
         # A caller-provided boolean is not proof of an Action Ticket. The
         # canonical ticket service must validate the request and its binding.
         self._action_ticket_validator = action_ticket_validator or (lambda _agent, _lease, _request: False)
+        self._action_tickets = action_tickets
         # Local tool names are not sufficient authority; the canonical MCP
         # Gateway must validate tenant, capability, and tool binding.
         self._mcp_tool_validator = mcp_tool_validator or (lambda _agent, _lease, _request: False)
@@ -456,12 +459,6 @@ class CapabilityAuthorizer:
                 if model_allowed is not True: raise AuthorizationDenied("MODEL_BROKER_DENIED")
             if request.action_class in MUTATING_ACTIONS:
                 if self._kill_switch.engaged: raise AuthorizationDenied("KILL_SWITCH_MUTATION_BLOCKED")
-                try:
-                    ticket_valid = self._action_ticket_validator(agent, lease, request)
-                except Exception as exc:
-                    self._best_effort_audit("action_ticket_validation_failed", {"agent_id": agent_id, "lease_id": lease.lease_id, "reason": type(exc).__name__})
-                    raise AuthorizationDenied("ACTION_TICKET_UNAVAILABLE") from exc
-                if ticket_valid is not True: raise AuthorizationDenied("ACTION_TICKET_REQUIRED")
             if request.action_class not in READ_ONLY_ACTIONS and request.action_class not in MUTATING_ACTIONS:
                 raise AuthorizationDenied("ACTION_TICKET_REQUIRED")
             try:
@@ -472,6 +469,34 @@ class CapabilityAuthorizer:
             if not isinstance(policy_allows, bool):
                 raise AuthorizationDenied("POLICY_RESULT_INVALID")
             if not policy_allows: raise AuthorizationDenied("POLICY_DENIED")
+            if request.action_class in MUTATING_ACTIONS:
+                if self._action_tickets is not None:
+                    if request.action_ticket_id != lease.action_ticket_reference:
+                        raise AuthorizationDenied("ACTION_TICKET_INVALID")
+                    try:
+                        self._action_tickets.validate_and_consume(
+                            request.action_ticket_id,
+                            tenant_id=request.tenant_id,
+                            subject_agent_id=agent.agent_id,
+                            lease_id=lease.lease_id,
+                            capability=request.capability,
+                            resource=request.resource,
+                            action_class=request.action_class,
+                            policy_version=request.policy_version,
+                            now=current,
+                        )
+                    except ActionTicketError as exc:
+                        raise AuthorizationDenied("ACTION_TICKET_INVALID") from exc
+                    except Exception as exc:
+                        self._best_effort_audit("action_ticket_validation_failed", {"agent_id": agent_id, "lease_id": lease.lease_id, "reason": type(exc).__name__})
+                        raise AuthorizationDenied("ACTION_TICKET_UNAVAILABLE") from exc
+                else:
+                    try:
+                        ticket_valid = self._action_ticket_validator(agent, lease, request)
+                    except Exception as exc:
+                        self._best_effort_audit("action_ticket_validation_failed", {"agent_id": agent_id, "lease_id": lease.lease_id, "reason": type(exc).__name__})
+                        raise AuthorizationDenied("ACTION_TICKET_UNAVAILABLE") from exc
+                    if ticket_valid is not True: raise AuthorizationDenied("ACTION_TICKET_REQUIRED")
         except (AuthorizationDenied, LeaseIntegrityError, ValueError) as exc:
             if isinstance(exc, AuthorizationDenied):
                 reason = exc.reason

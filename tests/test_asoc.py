@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from swarm.action_ticket import ActionTicket, ActionTicketRegistry
 from swarm.asoc import (
     ASOCControlPlane,
     AgentIdentity,
@@ -361,6 +362,36 @@ def test_action_ticket_boolean_alone_cannot_authorize_mutation():
             capability="endpoint.isolate.request", action_class="ISOLATE_ENDPOINT",
             action_ticket_valid=True, model_identity=model,
         ), now=150)
+
+
+def test_signed_action_ticket_is_bound_and_single_use():
+    _, switch, agents, leases, _, model, agent, lease = make_plane()
+    switch.clear_for_dry_run()
+    mutation = CapabilityLease(
+        "lease-ticket-canonical", agent.agent_id, lease.issuer_identity, lease.tenant_id,
+        ("endpoint.isolate.request",), lease.allowed_tools, lease.allowed_resources,
+        lease.allowed_data_classifications, ("ISOLATE_ENDPOINT",), 1, False, 0, 101, 200,
+        lease.policy_version, "approval-ticket", "ticket-canonical", "bounded containment", lease.key_reference,
+    )
+    mutation = leases.issue(mutation)
+    del leases._leases[lease.lease_id]
+    tickets = ActionTicketRegistry(HMACLeaseSigner({lease.key_reference: b"test-only-key-material"}))
+    tickets.issue(ActionTicket(
+        "ticket-canonical", agent.tenant_id, agent.agent_id, mutation.lease_id,
+        "endpoint.isolate.request", "endpoint-123", "ISOLATE_ENDPOINT", "human-controller-1",
+        "approval-ticket", mutation.policy_version, 101, 200, mutation.key_reference,
+    ))
+    auth = CapabilityAuthorizer(
+        agents, leases, switch, policy=lambda *_args: True,
+        model_binding_validator=lambda *_args: True, action_tickets=tickets,
+    )
+    mutation_request = request(
+        capability="endpoint.isolate.request", action_class="ISOLATE_ENDPOINT",
+        action_ticket_id="ticket-canonical", model_identity=model,
+    )
+    assert auth.authorize(agent.agent_id, mutation_request, now=150)["authorized"] is True
+    with pytest.raises(AuthorizationDenied, match="ACTION_TICKET_INVALID"):
+        auth.authorize(agent.agent_id, mutation_request, now=151)
 
 
 def test_authorizer_reuses_canonical_safety_invariant_provider_and_fails_closed():

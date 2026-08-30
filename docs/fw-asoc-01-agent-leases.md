@@ -18,15 +18,18 @@ It does not create a second identity or authorization service.
   is supplied to `HMACLeaseSigner` and is never stored in an identity or lease.
 - Existing Model Broker and MCP Gateway integrations can pass exact model
   bindings and MCP tool names into the canonical `CapabilityAuthorizer`.
-- Action Tickets remain an upstream approval artifact. The authorizer requires
-  a validated ticket result for mutating action classes; it does not mint or
-  replace Action Tickets.
+- `swarm.action_ticket` is the canonical signed, tenant-bound, short-lived,
+  single-use Action Ticket implementation. For mutating actions,
+  `CapabilityAuthorizer` can consume a ticket only when it exactly matches the
+  agent, lease, tenant, capability, resource, action class, and policy version.
+  A caller-provided boolean remains insufficient authority.
 
 ## New interfaces
 
 `swarm.asoc` provides `AgentIdentity`, `ModelBinding`, `CapabilityLease`,
 `AgentRegistry`, `LeaseRegistry`, `CapabilityAuthorizer`, `ASOCControlPlane`,
-and `AuthorizationRequest`.
+and `AuthorizationRequest`. `swarm.action_ticket` provides `ActionTicket` and
+`ActionTicketRegistry`.
 
 There is no database migration. The first endpoint is an in-memory, explicitly
 constructed boundary so callers can attach the existing durable registries and
@@ -69,9 +72,8 @@ The current endpoint does not implement multi-agent delegation, persistent
 lease storage, asymmetric signatures, or a full external Z3 solver adapter.
 `delegation_allowed` and `delegation_depth` are present for safe future
 extension, but no child lease issuance path exists yet. Non-delegable leases
-must carry a depth of zero. A caller must connect
-the existing signed Action Ticket and Model Broker records before using a
-mutating capability.
+must carry a depth of zero. Model Broker and full Z3 policy adapters remain
+pending before the endpoint can be called fully integrated.
 
 Next approved target after a meaningful review is FW-ASOC-02 — Action Risk
 Classes & Blast-Radius Accounting.

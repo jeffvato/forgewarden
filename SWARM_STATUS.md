@@ -49,6 +49,7 @@ On every restart or continuation:
 - 2026-08-30: Clean-build recovery validation: a new isolated Python environment installed the pinned `requirements-test.txt` dependencies, passed `pip check`, and completed the full suite with 552 passed and 1 host-dependent skip. The OS-managed interpreter warning is no longer a reproducibility concern; roadmap ownership gaps remain the YELLOW integrity finding.
 - 2026-08-30: Exact read-only Claude review of `5970dc9` returned CHANGES_REQUESTED/MEDIUM and identified a fail-closed gap for unknown action classes. Repaired by restricting leases to supported action classes and retaining the authorization fallback regardless of kill-switch state. Added negative-path regression coverage; focused ASOC validation passed (33 passed).
 - 2026-08-30: Delegation groundwork hardening: non-delegable leases now require zero delegation depth, preventing contradictory future-delegation state. Added regression coverage; focused ASOC validation passed (34 passed).
+- 2026-08-30: Canonical Action Ticket integration: added signed, tenant/agent/lease/action/policy-bound, short-lived, single-use tickets and connected them to mutating ASOC authorization. Direct and integrated negative-path validation passed (39 passed).
 
 ## Stop conditions
 
