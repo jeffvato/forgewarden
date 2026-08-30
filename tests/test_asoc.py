@@ -645,15 +645,21 @@ def test_asoc_canonical_golden_path_uses_policy_broker_gateway_ticket_and_eviden
         "endpoint.isolate.request", "endpoint-123", "ISOLATE_ENDPOINT", "human-controller-1",
         "approval-canonical-golden", mutation.policy_version, 151, 200, mutation.key_reference,
     ))
-    assert auth.authorize(agent.agent_id, request(
+    mutation_request = request(
         capability="endpoint.isolate.request", action_class="ISOLATE_ENDPOINT",
         action_ticket_id="ticket-canonical-golden", model_identity=model,
-    ), now=160)["authorized"] is True
+    )
+    assert auth.authorize(agent.agent_id, mutation_request, now=160)["authorized"] is True
     assert [event for event, _data in events if event == "authorization_success"] == [
         "authorization_success", "authorization_success",
     ]
     assert events[-1][1]["action_ticket_id"] == "ticket-canonical-golden"
     assert events[-1][1]["policy_decision_reason"] == "RULE_MATCH"
+    with pytest.raises(AuthorizationDenied, match="ACTION_TICKET_INVALID"):
+        auth.authorize(agent.agent_id, mutation_request, now=161)
+    assert events[-1][0] == "authorization_denied"
+    assert events[-1][1]["reason"] == "ACTION_TICKET_INVALID"
+    assert events[-1][1]["action_ticket_id"] == "ticket-canonical-golden"
 
 
 def test_asoc_golden_path_investigate_then_deny_mutation():
