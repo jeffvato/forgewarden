@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from swarm.action_ticket import ActionTicket, ActionTicketRegistry
+from swarm.policy_gate import DeterministicPolicy, PolicyRule
 from swarm.asoc import (
     ASOCControlPlane,
     AgentIdentity,
@@ -426,6 +427,20 @@ def test_policy_denial_does_not_consume_a_canonical_action_ticket():
         lease_id=mutation.lease_id, capability="endpoint.isolate.request", resource="endpoint-123",
         action_class="ISOLATE_ENDPOINT", policy_version=mutation.policy_version, now=150,
     ).consumed_at == 150
+
+
+def test_canonical_deterministic_policy_is_exact_and_fail_closed():
+    _, _, agents, leases, _, model, agent, _ = make_plane()
+    policy = DeterministicPolicy([PolicyRule(
+        "tenant-a", "telemetry.read", "endpoint-123", "READ", "FW-ASOC-01-v1",
+    )])
+    auth = CapabilityAuthorizer(
+        agents, leases, KillSwitch(False), policy_engine=policy,
+        model_binding_validator=lambda *_args: True,
+    )
+    assert auth.authorize(agent.agent_id, request(model_identity=model), now=150)["authorized"] is True
+    with pytest.raises(AuthorizationDenied, match="POLICY_DENIED"):
+        auth.authorize(agent.agent_id, request(action_class="REQUEST", model_identity=model), now=150)
 
 
 def test_authorizer_reuses_canonical_safety_invariant_provider_and_fails_closed():

@@ -16,7 +16,7 @@ from typing import Any, Callable, Iterable, Mapping, Protocol
 
 from .action_ticket import ActionTicketError, ActionTicketRegistry
 from .core import AuditLog, Job
-from .policy_gate import validate_safety_evidence
+from .policy_gate import DeterministicPolicy, PolicyContext, validate_safety_evidence
 
 
 ROLES = frozenset({
@@ -385,12 +385,13 @@ class AuthorizationRequest:
 
 
 class CapabilityAuthorizer:
-    def __init__(self, agents: AgentRegistry, leases: LeaseRegistry, kill_switch: KillSwitch, audit: AuditSink | None = None, policy: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, action_ticket_validator: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, action_tickets: ActionTicketRegistry | None = None, mcp_tool_validator: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, model_binding_validator: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, safety_evidence_provider: Callable[[], Mapping[str, Any]] | None = None):
+    def __init__(self, agents: AgentRegistry, leases: LeaseRegistry, kill_switch: KillSwitch, audit: AuditSink | None = None, policy: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, action_ticket_validator: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, action_tickets: ActionTicketRegistry | None = None, policy_engine: DeterministicPolicy | None = None, mcp_tool_validator: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, model_binding_validator: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, safety_evidence_provider: Callable[[], Mapping[str, Any]] | None = None):
         self._agents, self._leases, self._kill_switch = agents, leases, kill_switch
         self._audit = audit or (lambda _event, _data: None)
         # An absent policy must never become implicit authority at this
         # security boundary. The canonical policy engine must be supplied.
         self._policy = policy or (lambda _agent, _lease, _request: False)
+        self._policy_engine = policy_engine
         # A caller-provided boolean is not proof of an Action Ticket. The
         # canonical ticket service must validate the request and its binding.
         self._action_ticket_validator = action_ticket_validator or (lambda _agent, _lease, _request: False)
@@ -462,7 +463,13 @@ class CapabilityAuthorizer:
             if request.action_class not in READ_ONLY_ACTIONS and request.action_class not in MUTATING_ACTIONS:
                 raise AuthorizationDenied("ACTION_TICKET_REQUIRED")
             try:
-                policy_allows = self._policy(agent, lease, request)
+                if self._policy_engine is not None:
+                    policy_allows = self._policy_engine.evaluate(PolicyContext(
+                        request.tenant_id, agent.agent_id, request.capability, request.resource,
+                        request.action_class, request.policy_version,
+                    )).allowed
+                else:
+                    policy_allows = self._policy(agent, lease, request)
             except Exception as exc:
                 self._best_effort_audit("policy_evaluation_failed", {"agent_id": agent_id, "lease_id": lease.lease_id, "reason": type(exc).__name__})
                 raise AuthorizationDenied("POLICY_UNAVAILABLE") from exc
