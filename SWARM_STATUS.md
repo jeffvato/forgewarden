@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: FWQ-0009 audit-event integrity reader
-- Current task: FWQ-0009 — candidate ready for Linux validation and exact-commit review; FWQ-0008 remains blocked on Gemini capacity
+- Current focus: FW-ASOC-01 — Agent Identity, Roles & Bounded Capability Leasing integration and proof
+- Current task: Canonical FW-ROOT safety and FW-EVID audit integration checkpointed at `4068489ea319a53e7d3e0db374552b18e6bc8e0a`; Action Ticket, Model Broker, MCP Gateway, and Z3 adapters remain pending
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -27,18 +27,18 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FWQ-0009
-- Starting commit: `d20a6062fc564ed18bd17e3922ff468e42754d7b`
-- Candidate commit: `4d40a16639fce0a99dbd81caad5ba8fd8869dc92`
-- Candidate context: bounded read-only audit-event integrity reader
-- Accepted commit: none
-- Files changed: `swarm/audit_integrity.py`, `tests/test_audit_integrity.py`
-- Deterministic validation: audit tests 7 passed; Claude/review-runner tests 13 passed; full Linux suite 422 passed/1 skipped; compile and `git diff --check` passed
-- Claude review: APPROVE/LOW for exact commit `4d40a16`; no blocking findings
-- Gemini review: pending candidate; FWQ-0008 provider blocker remains recorded separately.
-- Unresolved findings: none for FWQ-0009; FWQ-0008 remains blocked by B-002.
-- Blocker: none for FWQ-0009.
-- Next action: obtain exact-commit review for `4d40a16639fce0a99dbd81caad5ba8fd8869dc92`; Gemini is retired per Jeff's direction.
+- Task ID: FW-ASOC-01
+- Starting commit: `a10b53a88ccf83a6573591446766ba400d1dc59a`
+- Candidate commit: `4068489ea319a53e7d3e0db374552b18e6bc8e0a`
+- Candidate context: canonical FW-ROOT safety validation and FW-EVID durable-audit binding for ASOC authorization
+- Accepted commit: `4068489ea319a53e7d3e0db374552b18e6bc8e0a`
+- Files changed: `swarm/asoc.py`, `tests/test_asoc.py`, `docs/fw-asoc-01-agent-leases.md`
+- Deterministic validation: ASOC tests 25 passed; full Integrity Gate 546 passed/1 skipped; ASOC Golden Path 25 passed
+- Claude review: attempted for exact commit `4068489`; read-only verifier timed out after its 180-second bound, so no review result was accepted
+- Gemini review: unavailable; no Gemini result was fabricated or substituted
+- Unresolved findings: real canonical Action Ticket, Model Broker, MCP Gateway, and Z3 adapters are not present in this checkout
+- Blocker: none; independent safe ASOC hardening and proof work remains available
+- Next action: continue bounded integration and negative-path proof without beginning FW-ASOC-02
 
 ## Stop conditions
 
