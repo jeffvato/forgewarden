@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: FW-ASOC-01 — Agent Identity, Roles & Bounded Capability Leasing integration and proof
-- Current task: FW-ASOC-01 Golden Path proof and integrity validation. Action Tickets, deterministic policy, Model Broker, MCP Gateway, evidence, tenant isolation, and recovery revocation are integrated; a full Z3 solver adapter remains future work.
+- Current focus: FW-ASOC-01 — Agent Identity, Roles & Bounded Capability Leasing proof complete
+- Current task: FW-ASOC-01 is Proven by the full repository suite (578 passed, 1 skipped), the runnable authorization Golden Path, and exact-commit read-only review. External adapters and a full Z3 solver remain future work; derive the next authorized FW-ASOC-02 task before implementation.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -38,7 +38,7 @@ On every restart or continuation:
 - Gemini review: unavailable; no Gemini result was fabricated or substituted
 - Unresolved findings: full Z3 solver, normalized events, SOC incidents, and compliance remain future requirements; ASOC's in-repository canonical Action Ticket, Model Broker, and MCP Gateway are present.
 - Blocker: none; independent safe ASOC hardening and proof work remains available
-- Next action: complete remaining FW-ASOC-01 proof and independent review work without beginning FW-ASOC-02
+- Next action: run the default FW-INTEGRITY gate for this proof checkpoint, then derive the next authorized FW-ASOC-02 task without implementing it yet.
 
 ## Execution log
 
@@ -51,6 +51,7 @@ On every restart or continuation:
 - 2026-08-30: Delegation groundwork hardening: non-delegable leases now require zero delegation depth, preventing contradictory future-delegation state. Added regression coverage; focused ASOC validation passed (34 passed).
 - 2026-08-30: Canonical Action Ticket integration: added signed, tenant/agent/lease/action/policy-bound, short-lived, single-use tickets and connected them to mutating ASOC authorization. Direct and integrated negative-path validation passed (39 passed).
 - 2026-08-30: FW-ASOC-01 canonical integration now includes deterministic policy, Action Tickets, Model Broker, MCP Gateway, durable evidence, atomic ticket consumption, and tenant/agent/role/deployment/kill-switch recovery revocation. The runnable Golden Path proves authorized operation plus replay, kill-switch, recovery, and cross-tenant denials.
+- 2026-08-30: FW-ASOC-01 proof checkpoint: the exact commit `b4880fb` passed the full repository suite (578 passed, 1 skipped) and its read-only exact-snapshot quality review. The ASOC-specific audit-sink findings were verified as intentional fail-closed handling; no ASOC repair was required. The functionality map now records FW-ASOC-01 as Proven, while external adapters and full Z3 remain future roadmap work.
 
 ## Stop conditions
 
