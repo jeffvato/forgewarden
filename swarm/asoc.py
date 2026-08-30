@@ -134,8 +134,12 @@ class AgentIdentity:
             raise ValueError("invalid agent lifecycle state")
         if self.expires_at is not None and self.expires_at <= self.created_at:
             raise ValueError("agent expiration must be after creation")
-        if self.model_identity and not self.model_approval_version:
-            object.__setattr__(self, "model_approval_version", self.model_identity.approval_version)
+        if self.model_identity:
+            expected_deployment = f"{self.model_identity.provider}/{self.model_identity.deployment}"
+            if self.provider_deployment != expected_deployment:
+                raise ValueError("provider_deployment must match model identity")
+            if not self.model_approval_version:
+                object.__setattr__(self, "model_approval_version", self.model_identity.approval_version)
 
     def as_dict(self) -> dict[str, Any]:
         return {"agent_id": self.agent_id, "tenant_id": self.tenant_id, "agent_type": self.agent_type,

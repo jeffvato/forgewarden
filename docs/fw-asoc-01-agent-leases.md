@@ -34,7 +34,9 @@ Evidence/AuditLog implementation without duplicating persistence.
 
 Roles are policy inputs only. Capabilities are an allow-list of narrow names;
 wildcards and broad privilege names are rejected. Resources and MCP tools are
-exactly scoped. Model/provider/deployment/version and policy version must match.
+exactly scoped. Model/provider/deployment/version and policy version must match;
+the identity's provider/deployment reference must also match its exact approved
+model binding.
 
 ## Security invariants
 

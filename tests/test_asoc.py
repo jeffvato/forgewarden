@@ -89,6 +89,16 @@ def test_expired_agent_is_denied_even_when_its_lease_is_still_valid():
         authorizer.authorize(agent.agent_id, request(model_identity=model), now=150)
 
 
+def test_agent_cannot_claim_a_provider_deployment_different_from_its_model():
+    _, _, _, _, _, model, agent, _ = make_plane()
+    with pytest.raises(ValueError, match="provider_deployment must match model identity"):
+        AgentIdentity(
+            "agent-model-mismatch", agent.tenant_id, agent.agent_type, agent.role, agent.owner_controller_id,
+            model, "other-provider/other-deployment", agent.approved_purpose, agent.trust_level,
+            agent.allowed_data_classifications, cryptographic_identity_ref="fw-id/agent-model-mismatch",
+        )
+
+
 @pytest.mark.parametrize(
     ("overrides", "reason"),
     [
