@@ -7,4 +7,5 @@ export PYTHONPATH="$repo_root${PYTHONPATH:+:$PYTHONPATH}"
 export DRY_RUN=true
 exec python3 -m pytest -q \
   tests/test_asoc.py::test_asoc_canonical_golden_path_uses_policy_broker_gateway_ticket_and_evidence \
-  tests/test_asoc.py::test_asoc_golden_path_investigate_then_deny_mutation
+  tests/test_asoc.py::test_asoc_golden_path_investigate_then_deny_mutation \
+  tests/test_asoc.py::test_tenant_recovery_revokes_pending_action_tickets
