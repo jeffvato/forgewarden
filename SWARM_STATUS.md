@@ -4,7 +4,7 @@
 
 - Active phase: ForgeWarden Core
 - Current focus: FW-ASOC-01 — Agent Identity, Roles & Bounded Capability Leasing integration and proof
-- Current task: Canonical FW-ROOT safety and FW-EVID audit integration checkpointed at `4068489ea319a53e7d3e0db374552b18e6bc8e0a`; Action Ticket, Model Broker, MCP Gateway, and Z3 adapters remain pending
+- Current task: Canonical FW-ROOT safety, FW-EVID audit integration, and bounded read-only review checkpointed at `00748fc257849a5d4844e7390814e95e61454dc3`; Action Ticket, Model Broker, MCP Gateway, and Z3 adapters remain pending
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -29,12 +29,12 @@ On every restart or continuation:
 
 - Task ID: FW-ASOC-01
 - Starting commit: `a10b53a88ccf83a6573591446766ba400d1dc59a`
-- Candidate commit: `4068489ea319a53e7d3e0db374552b18e6bc8e0a`
-- Candidate context: canonical FW-ROOT safety validation and FW-EVID durable-audit binding for ASOC authorization
-- Accepted commit: `4068489ea319a53e7d3e0db374552b18e6bc8e0a`
-- Files changed: `swarm/asoc.py`, `tests/test_asoc.py`, `docs/fw-asoc-01-agent-leases.md`
-- Deterministic validation: ASOC tests 25 passed; full Integrity Gate 546 passed/1 skipped; ASOC Golden Path 25 passed
-- Claude review: attempted for exact commit `4068489`; read-only verifier timed out after its 180-second bound, so no review result was accepted
+- Candidate commit: `00748fc257849a5d4844e7390814e95e61454dc3`
+- Candidate context: canonical FW-ROOT safety validation, FW-EVID durable-audit binding, and fail-closed diagnostic-audit behavior for ASOC authorization
+- Accepted commit: `00748fc257849a5d4844e7390814e95e61454dc3`
+- Files changed: `swarm/asoc.py`, `swarm/claude_verifier.py`, `tests/test_asoc.py`, `docs/fw-asoc-01-agent-leases.md`, `docs/claude-read-only-adapter.md`
+- Deterministic validation: ASOC and Claude-verifier tests 31 passed
+- Claude review: exact commit `00748fc` returned APPROVE/LOW with no blocking findings after the verifier turn budget was reduced to four
 - Gemini review: unavailable; no Gemini result was fabricated or substituted
 - Unresolved findings: real canonical Action Ticket, Model Broker, MCP Gateway, and Z3 adapters are not present in this checkout
 - Blocker: none; independent safe ASOC hardening and proof work remains available
