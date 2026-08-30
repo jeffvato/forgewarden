@@ -390,6 +390,8 @@ class CapabilityAuthorizer:
             self._leases._signer.verify(lease)
             if agent.lifecycle_state != "ACTIVE": raise AuthorizationDenied("AGENT_NOT_ACTIVE")
             if agent.revoked_at is not None: raise AuthorizationDenied("AGENT_REVOKED")
+            if agent.expires_at is not None and current >= agent.expires_at:
+                raise AuthorizationDenied("AGENT_EXPIRED")
             if agent.tenant_id != request.tenant_id or lease.tenant_id != request.tenant_id: raise AuthorizationDenied("TENANT_MISMATCH")
             if lease.revoked_at is not None: raise AuthorizationDenied("LEASE_REVOKED")
             if current < lease.valid_from: raise AuthorizationDenied("LEASE_NOT_YET_VALID")

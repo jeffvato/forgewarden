@@ -70,6 +70,25 @@ def test_active_lease_authorizes_and_audits():
     assert events[-1][1]["data_classification"] == "INTERNAL"
 
 
+def test_expired_agent_is_denied_even_when_its_lease_is_still_valid():
+    events, switch, agents, leases, _, model, agent, _ = make_plane()
+    expired = AgentIdentity(
+        agent.agent_id, agent.tenant_id, agent.agent_type, agent.role, agent.owner_controller_id,
+        agent.model_identity, agent.provider_deployment, agent.approved_purpose, agent.trust_level,
+        agent.allowed_data_classifications, lifecycle_state="ACTIVE", created_at=100, activated_at=100,
+        expires_at=149, policy_version=agent.policy_version,
+        cryptographic_identity_ref=agent.cryptographic_identity_ref,
+    )
+    agents._agents[agent.agent_id] = expired
+    authorizer = CapabilityAuthorizer(
+        agents, leases, switch, lambda event, data: events.append((event, dict(data))),
+        policy=lambda *_args: True,
+        model_binding_validator=lambda *_args: True,
+    )
+    with pytest.raises(AuthorizationDenied, match="AGENT_EXPIRED"):
+        authorizer.authorize(agent.agent_id, request(model_identity=model), now=150)
+
+
 @pytest.mark.parametrize(
     ("overrides", "reason"),
     [

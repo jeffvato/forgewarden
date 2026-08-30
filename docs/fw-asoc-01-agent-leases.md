@@ -41,8 +41,9 @@ exactly scoped. Model/provider/deployment/version and policy version must match.
 Every decision checks active agent state, tenant, signature, lease validity,
 revocation, capability, resource, data classification, action class, blast
 radius, tool, policy version, model binding, Action Ticket requirement, and
-current kill-switch state. Expiry is checked from the current clock, so cleanup
-jobs are not required. Revocation is checked on the next decision.
+current kill-switch state. Agent and lease expiry are checked from the current
+clock, so cleanup jobs are not required. Revocation is checked on the next
+decision.
 
 An authorization success is returned only after its canonical Evidence/audit
 write succeeds. If that write fails, the request receives the bounded
