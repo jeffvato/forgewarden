@@ -1,4 +1,5 @@
 from dataclasses import replace
+from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 
@@ -32,6 +33,21 @@ def test_ticket_is_signed_bound_and_consumed_once():
     assert validate(registry, "ticket-1").consumed_at == 150
     with pytest.raises(ActionTicketError, match="replay"):
         validate(registry, "ticket-1", now=151)
+
+
+def test_ticket_concurrent_consumption_allows_exactly_one_request():
+    registry = make_registry()
+    registry.issue(make_ticket())
+
+    def consume() -> bool:
+        try:
+            validate(registry, "ticket-1")
+            return True
+        except ActionTicketError:
+            return False
+
+    with ThreadPoolExecutor(max_workers=2) as workers:
+        assert sum(workers.map(lambda _value: consume(), range(2))) == 1
 
 
 def test_ticket_rejects_binding_mismatch_and_expiry():
