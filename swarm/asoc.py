@@ -140,6 +140,8 @@ class AgentIdentity:
                 raise ValueError("provider_deployment must match model identity")
             if not self.model_approval_version:
                 object.__setattr__(self, "model_approval_version", self.model_identity.approval_version)
+            elif self.model_approval_version != self.model_identity.approval_version:
+                raise ValueError("model_approval_version must match model identity")
 
     def as_dict(self) -> dict[str, Any]:
         return {"agent_id": self.agent_id, "tenant_id": self.tenant_id, "agent_type": self.agent_type,

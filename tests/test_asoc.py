@@ -99,6 +99,17 @@ def test_agent_cannot_claim_a_provider_deployment_different_from_its_model():
         )
 
 
+def test_agent_cannot_claim_a_model_approval_version_different_from_its_model():
+    _, _, _, _, _, model, agent, _ = make_plane()
+    with pytest.raises(ValueError, match="model_approval_version must match model identity"):
+        AgentIdentity(
+            "agent-approval-mismatch", agent.tenant_id, agent.agent_type, agent.role, agent.owner_controller_id,
+            model, agent.provider_deployment, agent.approved_purpose, agent.trust_level,
+            agent.allowed_data_classifications, model_approval_version="different-approval",
+            cryptographic_identity_ref="fw-id/agent-approval-mismatch",
+        )
+
+
 @pytest.mark.parametrize(
     ("overrides", "reason"),
     [
