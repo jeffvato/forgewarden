@@ -47,6 +47,24 @@ def test_ticket_rejects_binding_mismatch_and_expiry():
         validate(registry, "ticket-1", now=200)
 
 
+def test_ticket_revocation_is_tenant_scoped_and_fail_closed():
+    registry = make_registry()
+    registry.issue(make_ticket("ticket-tenant-a"))
+    registry.issue(ActionTicket(
+        "ticket-tenant-b", "tenant-b", "agent-b", "lease-b", "endpoint.isolate.request",
+        "endpoint-456", "ISOLATE_ENDPOINT", "human-controller", "approval-b",
+        "FW-ASOC-01-v1", 100, 200, "fw-keys/test",
+    ))
+    assert registry.revoke_matching(tenant_id="tenant-a") == 1
+    with pytest.raises(ActionTicketError, match="revoked"):
+        validate(registry, "ticket-tenant-a")
+    assert registry.validate_and_consume(
+        "ticket-tenant-b", tenant_id="tenant-b", subject_agent_id="agent-b", lease_id="lease-b",
+        capability="endpoint.isolate.request", resource="endpoint-456",
+        action_class="ISOLATE_ENDPOINT", policy_version="FW-ASOC-01-v1", now=150,
+    ).consumed_at == 150
+
+
 def test_ticket_signature_tampering_is_rejected():
     registry = make_registry()
     signed = registry.issue(make_ticket())

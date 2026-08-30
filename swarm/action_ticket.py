@@ -82,6 +82,7 @@ class ActionTicketRegistry:
     def __init__(self, signer: TicketSigner):
         self._signer = signer
         self._tickets: dict[str, ActionTicket] = {}
+        self._revoked_ticket_ids: set[str] = set()
 
     def issue(self, ticket: ActionTicket) -> ActionTicket:
         if ticket.ticket_id in self._tickets:
@@ -89,6 +90,26 @@ class ActionTicketRegistry:
         signed = self._signer.sign(ticket)
         self._tickets[signed.ticket_id] = signed
         return signed
+
+    def revoke_matching(
+        self, *, tenant_id: str | None = None, subject_agent_id: str | None = None,
+    ) -> int:
+        """Invalidate unconsumed tickets during tenant or agent recovery actions."""
+        if tenant_id is not None:
+            tenant_id = _bounded_text(tenant_id, "tenant_id")
+        if subject_agent_id is not None:
+            subject_agent_id = _bounded_text(subject_agent_id, "subject_agent_id")
+        revoked = 0
+        for ticket in self._tickets.values():
+            if ticket.consumed_at is not None or ticket.ticket_id in self._revoked_ticket_ids:
+                continue
+            if tenant_id is not None and ticket.tenant_id != tenant_id:
+                continue
+            if subject_agent_id is not None and ticket.subject_agent_id != subject_agent_id:
+                continue
+            self._revoked_ticket_ids.add(ticket.ticket_id)
+            revoked += 1
+        return revoked
 
     def validate_and_consume(
         self,
@@ -108,6 +129,8 @@ class ActionTicketRegistry:
             raise ActionTicketError("ticket not found")
         self._signer.verify(ticket)
         current = int(time.time()) if now is None else now
+        if ticket_id in self._revoked_ticket_ids:
+            raise ActionTicketError("ticket revoked")
         if ticket.consumed_at is not None:
             raise ActionTicketError("ticket replay detected")
         if current < ticket.issued_at or current >= ticket.expires_at:

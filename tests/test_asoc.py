@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from swarm.action_ticket import ActionTicket, ActionTicketRegistry
+from swarm.action_ticket import ActionTicket, ActionTicketError, ActionTicketRegistry
 from swarm.mcp_gateway import MCPGateway, MCPToolGrant
 from swarm.model_broker import ApprovedModel, ModelBroker
 from swarm.policy_gate import DeterministicPolicy, PolicyRule
@@ -283,6 +283,24 @@ def test_tenant_revocation_does_not_cross_tenant_boundaries():
     assert leases.for_agent(agent.agent_id).revoked_at is not None
     assert agents.get(other.agent_id).lifecycle_state == "ACTIVE"
     assert leases.get(other_lease.lease_id).revoked_at is None
+
+
+def test_tenant_recovery_revokes_pending_action_tickets():
+    _, switch, agents, leases, _, _, agent, lease = make_plane()
+    tickets = ActionTicketRegistry(HMACLeaseSigner({lease.key_reference: b"test-only-key-material"}))
+    tickets.issue(ActionTicket(
+        "ticket-recovery", agent.tenant_id, agent.agent_id, lease.lease_id,
+        "endpoint.isolate.request", "endpoint-123", "ISOLATE_ENDPOINT", "human-controller-1",
+        "approval-recovery", lease.policy_version, 101, 200, lease.key_reference,
+    ))
+    control = ASOCControlPlane(agents, leases, switch, tickets)
+    assert control.revoke_tenant(agent.tenant_id) == 1
+    with pytest.raises(ActionTicketError, match="revoked"):
+        tickets.validate_and_consume(
+            "ticket-recovery", tenant_id=agent.tenant_id, subject_agent_id=agent.agent_id,
+            lease_id=lease.lease_id, capability="endpoint.isolate.request", resource="endpoint-123",
+            action_class="ISOLATE_ENDPOINT", policy_version=lease.policy_version, now=150,
+        )
 
 
 def test_mutating_capability_requires_ticket_and_is_disabled_by_kill_switch():
