@@ -443,12 +443,17 @@ class CapabilityAuthorizer:
                 reason = "LEASE_INTEGRITY_ERROR"
             else:
                 reason = type(exc).__name__.removesuffix("Error").upper() + "_ERROR"
-            self._audit("authorization_denied", {
-                "agent_id": agent_id, "tenant_id": request.tenant_id, "capability": request.capability,
-                "resource": request.resource, "data_classification": request.data_classification,
-                "action_class": request.action_class, "tool": request.tool,
-                "policy_version": request.policy_version, "reason": reason, "timestamp": current,
-            })
+            try:
+                self._audit("authorization_denied", {
+                    "agent_id": agent_id, "tenant_id": request.tenant_id, "capability": request.capability,
+                    "resource": request.resource, "data_classification": request.data_classification,
+                    "action_class": request.action_class, "tool": request.tool,
+                    "policy_version": request.policy_version, "reason": reason, "timestamp": current,
+                })
+            except Exception:
+                # A failing sink must never turn a bounded denial into a raw
+                # exception or implicit authority.
+                pass
             if isinstance(exc, AuthorizationDenied):
                 raise
             raise AuthorizationDenied(reason) from exc
@@ -459,7 +464,12 @@ class CapabilityAuthorizer:
             "action_class": request.action_class, "tool": request.tool,
             "policy_version": request.policy_version, "timestamp": current,
         }
-        self._audit("authorization_success", result)
+        try:
+            self._audit("authorization_success", result)
+        except Exception as exc:
+            # Do not return an authorization result unless its required
+            # Evidence record was accepted by the canonical audit boundary.
+            raise AuthorizationDenied("EVIDENCE_WRITE_FAILED") from exc
         return result
 
 

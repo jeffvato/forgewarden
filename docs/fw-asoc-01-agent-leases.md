@@ -44,6 +44,10 @@ radius, tool, policy version, model binding, Action Ticket requirement, and
 current kill-switch state. Expiry is checked from the current clock, so cleanup
 jobs are not required. Revocation is checked on the next decision.
 
+An authorization success is returned only after its canonical Evidence/audit
+write succeeds. If that write fails, the request receives the bounded
+`EVIDENCE_WRITE_FAILED` denial and no authority result is returned.
+
 The kill switch blocks new lease issuance and mutating authorization while
 allowing already-valid analytical reads according to policy. The control plane
 can revoke one agent, a role, model deployment, tenant, or all AI leases.
