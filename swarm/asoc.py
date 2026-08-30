@@ -385,6 +385,20 @@ class AuthorizationRequest:
     action_ticket_valid: bool = False
     action_ticket_id: str | None = None
 
+    def __post_init__(self) -> None:
+        for field in ("capability", "tenant_id", "resource", "data_classification", "action_class", "policy_version"):
+            object.__setattr__(self, field, _text(getattr(self, field), field))
+        if self.tool is not None:
+            object.__setattr__(self, "tool", _text(self.tool, "tool"))
+        if self.action_ticket_id is not None:
+            object.__setattr__(self, "action_ticket_id", _text(self.action_ticket_id, "action_ticket_id"))
+        if not isinstance(self.blast_radius, int) or isinstance(self.blast_radius, bool) or self.blast_radius < 0:
+            raise ValueError("blast_radius must be a non-negative integer")
+        if not isinstance(self.action_ticket_valid, bool):
+            raise ValueError("action_ticket_valid must be boolean")
+        if self.model_identity is not None and not isinstance(self.model_identity, ModelBinding):
+            raise ValueError("model_identity must be a ModelBinding")
+
 
 class CapabilityAuthorizer:
     def __init__(self, agents: AgentRegistry, leases: LeaseRegistry, kill_switch: KillSwitch, audit: AuditSink | None = None, policy: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, action_ticket_validator: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, action_tickets: ActionTicketRegistry | None = None, policy_engine: DeterministicPolicy | None = None, mcp_tool_validator: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, mcp_gateway: MCPGateway | None = None, model_binding_validator: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, model_broker: ModelBroker | None = None, safety_evidence_provider: Callable[[], Mapping[str, Any]] | None = None):

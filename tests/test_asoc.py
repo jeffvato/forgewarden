@@ -74,6 +74,20 @@ def test_active_lease_authorizes_and_audits():
     assert events[-1][1]["data_classification"] == "INTERNAL"
 
 
+@pytest.mark.parametrize(
+    ("overrides", "reason"),
+    [
+        ({"action_ticket_id": " "}, "action_ticket_id"),
+        ({"tool": " "}, "tool"),
+        ({"blast_radius": -1}, "blast_radius"),
+        ({"action_ticket_valid": "true"}, "action_ticket_valid"),
+    ],
+)
+def test_authorization_request_rejects_malformed_boundary_input(overrides, reason):
+    with pytest.raises(ValueError, match=reason):
+        request(**overrides)
+
+
 def test_expired_agent_is_denied_even_when_its_lease_is_still_valid():
     events, switch, agents, leases, _, model, agent, _ = make_plane()
     expired = AgentIdentity(
