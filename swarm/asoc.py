@@ -563,10 +563,11 @@ class CapabilityAuthorizer:
 class ASOCControlPlane:
     """Small coordination boundary for immediate revocation operations."""
 
-    def __init__(self, agents: AgentRegistry, leases: LeaseRegistry, kill_switch: KillSwitch, action_tickets: ActionTicketRegistry | None = None, model_broker: ModelBroker | None = None):
+    def __init__(self, agents: AgentRegistry, leases: LeaseRegistry, kill_switch: KillSwitch, action_tickets: ActionTicketRegistry | None = None, model_broker: ModelBroker | None = None, mcp_gateway: MCPGateway | None = None):
         self.agents, self.leases, self.kill_switch = agents, leases, kill_switch
         self.action_tickets = action_tickets
         self.model_broker = model_broker
+        self.mcp_gateway = mcp_gateway
 
     def revoke_agent(self, agent_id: str, reason: str = "agent revoked") -> None:
         self.agents.revoke(agent_id, reason)
@@ -575,6 +576,8 @@ class ASOCControlPlane:
             self.action_tickets.revoke_matching(subject_agent_id=agent_id)
         if self.model_broker is not None:
             self.model_broker.revoke_matching(subject_agent_id=agent_id)
+        if self.mcp_gateway is not None:
+            self.mcp_gateway.revoke_matching(subject_agent_id=agent_id)
 
     def revoke_role(self, role: str, reason: str = "role revoked") -> int:
         ids = self.agents.ids_matching(role=role)
@@ -586,6 +589,9 @@ class ASOCControlPlane:
         if self.model_broker is not None:
             for agent_id in ids:
                 self.model_broker.revoke_matching(subject_agent_id=agent_id)
+        if self.mcp_gateway is not None:
+            for agent_id in ids:
+                self.mcp_gateway.revoke_matching(subject_agent_id=agent_id)
         return revoked
 
     def revoke_model_deployment(self, model_deployment: str, reason: str = "model deployment revoked") -> int:
@@ -597,6 +603,9 @@ class ASOCControlPlane:
                 self.action_tickets.revoke_matching(subject_agent_id=agent_id)
         if self.model_broker is not None:
             self.model_broker.revoke_matching(deployment=model_deployment)
+        if self.mcp_gateway is not None:
+            for agent_id in ids:
+                self.mcp_gateway.revoke_matching(subject_agent_id=agent_id)
         return revoked
 
     def revoke_tenant(self, tenant_id: str, reason: str = "tenant revoked") -> int:
@@ -607,6 +616,8 @@ class ASOCControlPlane:
             self.action_tickets.revoke_matching(tenant_id=tenant_id)
         if self.model_broker is not None:
             self.model_broker.revoke_matching(tenant_id=tenant_id)
+        if self.mcp_gateway is not None:
+            self.mcp_gateway.revoke_matching(tenant_id=tenant_id)
         return revoked
 
     def engage_ai_kill_switch(self, reason: str = "AI kill switch") -> int:
@@ -621,6 +632,9 @@ class ASOCControlPlane:
         if self.model_broker is not None:
             for agent_id in ai_ids:
                 self.model_broker.revoke_matching(subject_agent_id=agent_id)
+        if self.mcp_gateway is not None:
+            for agent_id in ai_ids:
+                self.mcp_gateway.revoke_matching(subject_agent_id=agent_id)
         return revoked
 
 

@@ -295,12 +295,17 @@ def test_tenant_recovery_revokes_pending_action_tickets():
         agent.tenant_id, agent.agent_id, model.model, model.provider, model.deployment,
         model.version, model.approval_version,
     ))
+    gateway = MCPGateway()
+    gateway.register(MCPToolGrant(
+        agent.tenant_id, agent.agent_id, "telemetry.read", "endpoint-123",
+        "mcp.telemetry.status", lease.policy_version,
+    ))
     tickets.issue(ActionTicket(
         "ticket-recovery", agent.tenant_id, agent.agent_id, lease.lease_id,
         "endpoint.isolate.request", "endpoint-123", "ISOLATE_ENDPOINT", "human-controller-1",
         "approval-recovery", lease.policy_version, 101, 200, lease.key_reference,
     ))
-    control = ASOCControlPlane(agents, leases, switch, tickets, broker)
+    control = ASOCControlPlane(agents, leases, switch, tickets, broker, gateway)
     assert control.revoke_tenant(agent.tenant_id) == 1
     with pytest.raises(ActionTicketError, match="revoked"):
         tickets.validate_and_consume(
@@ -312,6 +317,10 @@ def test_tenant_recovery_revokes_pending_action_tickets():
         tenant_id=agent.tenant_id, subject_agent_id=agent.agent_id, model=model.model,
         provider=model.provider, deployment=model.deployment, version=model.version,
         approval_version=model.approval_version,
+    )
+    assert not gateway.allows(
+        tenant_id=agent.tenant_id, subject_agent_id=agent.agent_id, capability="telemetry.read",
+        resource="endpoint-123", tool="mcp.telemetry.status", policy_version=lease.policy_version,
     )
 
 
