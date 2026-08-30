@@ -288,12 +288,19 @@ def test_tenant_revocation_does_not_cross_tenant_boundaries():
 def test_tenant_recovery_revokes_pending_action_tickets():
     _, switch, agents, leases, _, _, agent, lease = make_plane()
     tickets = ActionTicketRegistry(HMACLeaseSigner({lease.key_reference: b"test-only-key-material"}))
+    broker = ModelBroker()
+    model = agent.model_identity
+    assert model is not None
+    broker.register(ApprovedModel(
+        agent.tenant_id, agent.agent_id, model.model, model.provider, model.deployment,
+        model.version, model.approval_version,
+    ))
     tickets.issue(ActionTicket(
         "ticket-recovery", agent.tenant_id, agent.agent_id, lease.lease_id,
         "endpoint.isolate.request", "endpoint-123", "ISOLATE_ENDPOINT", "human-controller-1",
         "approval-recovery", lease.policy_version, 101, 200, lease.key_reference,
     ))
-    control = ASOCControlPlane(agents, leases, switch, tickets)
+    control = ASOCControlPlane(agents, leases, switch, tickets, broker)
     assert control.revoke_tenant(agent.tenant_id) == 1
     with pytest.raises(ActionTicketError, match="revoked"):
         tickets.validate_and_consume(
@@ -301,6 +308,11 @@ def test_tenant_recovery_revokes_pending_action_tickets():
             lease_id=lease.lease_id, capability="endpoint.isolate.request", resource="endpoint-123",
             action_class="ISOLATE_ENDPOINT", policy_version=lease.policy_version, now=150,
         )
+    assert not broker.allows(
+        tenant_id=agent.tenant_id, subject_agent_id=agent.agent_id, model=model.model,
+        provider=model.provider, deployment=model.deployment, version=model.version,
+        approval_version=model.approval_version,
+    )
 
 
 def test_mutating_capability_requires_ticket_and_is_disabled_by_kill_switch():

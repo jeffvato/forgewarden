@@ -39,6 +39,7 @@ class ModelBroker:
 
     def __init__(self) -> None:
         self._approvals: dict[tuple[str, str], ApprovedModel] = {}
+        self._revoked: set[tuple[str, str]] = set()
 
     def register(self, approval: ApprovedModel) -> ApprovedModel:
         if not isinstance(approval, ApprovedModel):
@@ -49,12 +50,39 @@ class ModelBroker:
         self._approvals[key] = approval
         return approval
 
+    def revoke_matching(
+        self, *, tenant_id: str | None = None, subject_agent_id: str | None = None,
+        deployment: str | None = None,
+    ) -> int:
+        """Invalidate approvals during tenant, agent, or deployment recovery."""
+        if tenant_id is None and subject_agent_id is None and deployment is None:
+            raise ModelBrokerError("revocation selector is required")
+        if tenant_id is not None:
+            tenant_id = _text(tenant_id, "tenant_id")
+        if subject_agent_id is not None:
+            subject_agent_id = _text(subject_agent_id, "subject_agent_id")
+        if deployment is not None:
+            deployment = _text(deployment, "deployment")
+        revoked = 0
+        for key, approval in self._approvals.items():
+            if key in self._revoked:
+                continue
+            if tenant_id is not None and approval.tenant_id != tenant_id:
+                continue
+            if subject_agent_id is not None and approval.subject_agent_id != subject_agent_id:
+                continue
+            if deployment is not None and approval.deployment != deployment:
+                continue
+            self._revoked.add(key)
+            revoked += 1
+        return revoked
+
     def allows(
         self, *, tenant_id: str, subject_agent_id: str, model: str, provider: str,
         deployment: str, version: str, approval_version: str,
     ) -> bool:
         approval = self._approvals.get((tenant_id, subject_agent_id))
-        if approval is None:
+        if approval is None or (tenant_id, subject_agent_id) in self._revoked:
             return False
         return (
             approval.model == model and approval.provider == provider
