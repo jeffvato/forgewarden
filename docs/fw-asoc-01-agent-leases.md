@@ -16,8 +16,10 @@ It does not create a second identity or authorization service.
 - Existing FW-ID/FW-ROOT/FW-KEYS concepts are represented by the explicit
   `cryptographic_identity_ref` and `key_reference` handles. Secret key material
   is supplied to `HMACLeaseSigner` and is never stored in an identity or lease.
-- Existing Model Broker and MCP Gateway integrations can pass exact model
-  bindings and MCP tool names into the canonical `CapabilityAuthorizer`.
+- `swarm.model_broker.ModelBroker` and `swarm.mcp_gateway.MCPGateway` are the
+  canonical exact-match approval and tool-grant boundaries consumed by
+  `CapabilityAuthorizer`; their grants are tenant- and agent-bound and are
+  revoked with ASOC recovery actions.
 - `swarm.action_ticket` is the canonical signed, tenant-bound, short-lived,
   single-use Action Ticket implementation. For mutating actions,
   `CapabilityAuthorizer` can consume a ticket only when it exactly matches the
@@ -29,7 +31,8 @@ It does not create a second identity or authorization service.
 `swarm.asoc` provides `AgentIdentity`, `ModelBinding`, `CapabilityLease`,
 `AgentRegistry`, `LeaseRegistry`, `CapabilityAuthorizer`, `ASOCControlPlane`,
 and `AuthorizationRequest`. `swarm.action_ticket` provides `ActionTicket` and
-`ActionTicketRegistry`.
+`ActionTicketRegistry`; `swarm.model_broker` provides `ApprovedModel` and
+`ModelBroker`; and `swarm.mcp_gateway` provides `MCPToolGrant` and `MCPGateway`.
 
 There is no database migration. The first endpoint is an in-memory, explicitly
 constructed boundary so callers can attach the existing durable registries and
@@ -72,8 +75,8 @@ The current endpoint does not implement multi-agent delegation, persistent
 lease storage, asymmetric signatures, or a full external Z3 solver adapter.
 `delegation_allowed` and `delegation_depth` are present for safe future
 extension, but no child lease issuance path exists yet. Non-delegable leases
-must carry a depth of zero. Model Broker and full Z3 policy adapters remain
-pending before the endpoint can be called fully integrated.
+must carry a depth of zero. The Model Broker and MCP Gateway are integrated;
+the remaining policy limit is a full external Z3 solver adapter.
 
 Next approved target after a meaningful review is FW-ASOC-02 — Action Risk
 Classes & Blast-Radius Accounting.

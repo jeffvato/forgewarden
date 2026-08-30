@@ -571,6 +571,8 @@ class CapabilityAuthorizer:
             "action_class": request.action_class, "tool": request.tool,
             "policy_version": request.policy_version, "action_ticket_id": consumed_ticket_id,
             "policy_decision_reason": policy_decision_reason,
+            "model_binding": request.model_identity.as_dict() if request.model_identity is not None else None,
+            "approved_purpose": agent.approved_purpose,
             "timestamp": current,
         }
         try:

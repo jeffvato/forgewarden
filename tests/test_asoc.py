@@ -664,6 +664,8 @@ def test_asoc_canonical_golden_path_uses_policy_broker_gateway_ticket_and_eviden
     ]
     assert events[-1][1]["action_ticket_id"] == "ticket-canonical-golden"
     assert events[-1][1]["policy_decision_reason"] == "RULE_MATCH"
+    assert events[-1][1]["model_binding"]["approval_version"] == "model-approval-1"
+    assert events[-1][1]["approved_purpose"] == "bounded triage"
     with pytest.raises(AuthorizationDenied, match="ACTION_TICKET_INVALID"):
         auth.authorize(agent.agent_id, mutation_request, now=161)
     assert events[-1][0] == "authorization_denied"
