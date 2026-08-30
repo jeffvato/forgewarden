@@ -46,6 +46,7 @@ On every restart or continuation:
 - 2026-08-30: Corrected AI kill-switch scope. It now revokes only model-bound AI identities and their leases, preserving unbound human deterministic-administration identities as required. Focused ASOC security tests passed (31 passed).
 - 2026-08-30: Reviewer recovery check: the installed Claude CLI completed a bounded read-only invocation successfully. The prior exact-review attempt returned no validated payload and was therefore correctly rejected as evidence; no approval was inferred from the recovery check.
 - 2026-08-30: Full Product Integrity Gate completed for `85eac87525b3691817c35bbdb074f585c3813ea9`: build, configuration, startup, repository, tests, and ASOC Golden Path passed; 552 tests passed with 1 host-dependent skip, and the Golden Path passed 31 tests. Health remains YELLOW only for the pre-existing local `tzdata` dependency warning and roadmap owners not yet implemented in this checkout.
+- 2026-08-30: Clean-build recovery validation: a new isolated Python environment installed the pinned `requirements-test.txt` dependencies, passed `pip check`, and completed the full suite with 552 passed and 1 host-dependent skip. The OS-managed interpreter warning is no longer a reproducibility concern; roadmap ownership gaps remain the YELLOW integrity finding.
 
 ## Stop conditions
 
