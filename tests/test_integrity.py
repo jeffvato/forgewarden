@@ -13,6 +13,7 @@ def test_functionality_map_distinguishes_proven_from_not_yet_proven():
     states = {item["requirement_id"]: item["state"] for item in FUNCTIONALITY_MAP}
     assert states["FW-CORE"] == "Proven"
     assert states["FW-ASOC-01"] == "Proven"
+    assert states["FW-ASOC-02"] == "Proven"
     assert states["FW-INTEGRITY"] == "Implemented"
 
 
