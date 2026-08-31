@@ -437,6 +437,19 @@ class AggregateBlastRadiusLedger:
                     self._reservations.pop(scope, None)
         return removed
 
+    def release_latest(self, request: AuthorizationRequest, lease: CapabilityLease, *, now: int) -> None:
+        scope = (request.tenant_id, request.capability, request.resource, request.action_class, request.policy_version)
+        with self._lock:
+            active = [item for item in self._reservations.get(scope, []) if item[3] > now]
+            for index in range(len(active) - 1, -1, -1):
+                if active[index][0] == lease.subject_agent_id and active[index][1] == lease.lease_id and active[index][2] == request.blast_radius:
+                    active.pop(index)
+                    break
+            if active:
+                self._reservations[scope] = active
+            else:
+                self._reservations.pop(scope, None)
+
 
 class CapabilityAuthorizer:
     def __init__(self, agents: AgentRegistry, leases: LeaseRegistry, kill_switch: KillSwitch, audit: AuditSink | None = None, policy: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, action_ticket_validator: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, action_tickets: ActionTicketRegistry | None = None, policy_engine: DeterministicPolicy | None = None, mcp_tool_validator: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, mcp_gateway: MCPGateway | None = None, model_binding_validator: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, model_broker: ModelBroker | None = None, safety_evidence_provider: Callable[[], Mapping[str, Any]] | None = None, blast_radius_ledger: AggregateBlastRadiusLedger | None = None):
@@ -477,6 +490,7 @@ class CapabilityAuthorizer:
         policy_decision_reason: str | None = None
         aggregate_blast_radius_limit: int | None = None
         aggregate_blast_radius_remaining: int | None = None
+        aggregate_reservation_made = False
         try:
             try:
                 validate_safety_evidence(self._safety_evidence_provider(), require_kill_switch=False)
@@ -579,6 +593,7 @@ class CapabilityAuthorizer:
                     aggregate_blast_radius_remaining = self.blast_radius_ledger.reserve(
                         request, lease, limit=aggregate_blast_radius_limit, now=current,
                     )
+                    aggregate_reservation_made = True
             if request.action_class in MUTATING_ACTIONS:
                 if self._action_tickets is not None:
                     if request.action_ticket_id != lease.action_ticket_reference:
@@ -597,8 +612,12 @@ class CapabilityAuthorizer:
                         )
                         consumed_ticket_id = request.action_ticket_id
                     except ActionTicketError as exc:
+                        if aggregate_reservation_made:
+                            self.blast_radius_ledger.release_latest(request, lease, now=current)
                         raise AuthorizationDenied("ACTION_TICKET_INVALID") from exc
                     except Exception as exc:
+                        if aggregate_reservation_made:
+                            self.blast_radius_ledger.release_latest(request, lease, now=current)
                         self._best_effort_audit("action_ticket_validation_failed", {"agent_id": agent_id, "lease_id": lease.lease_id, "reason": type(exc).__name__})
                         raise AuthorizationDenied("ACTION_TICKET_UNAVAILABLE") from exc
                 else:
