@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: FW-ASOC-02 — model-deployment recovery token release
-- Current task: prove canonical model-deployment revocation releases its reserved tenant model-token capacity.
+- Current focus: FW-ASOC-02 — closure
+- Current task: complete; no further bounded ASOC-02 control remains in the active Core scope.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -27,19 +27,17 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-ASOC-02 — model-deployment recovery token release
-- Starting commit: `fd78487`
-- Canonical owner: existing `ASOCControlPlane.revoke_model_deployment` coordinates canonical agent/lease recovery with the existing shared `WorkBudgetLedger`. No parallel recovery, model, or accounting subsystem is introduced.
-- Acceptance criteria: revoking a model deployment revokes its bound AI authority and releases only that deployment's outstanding model-token capacity, allowing recovery without a tenant-budget leak.
-- Negative paths: model deployment mismatch; tenant/agent isolation; pre-admission Model Broker denial; unavailable completion Evidence; and existing recovery, expiry, tenant-cap, and concurrency controls remain intact.
-- Proof plan: focused ASOC/policy tests admit a bounded model-token work item, revoke its canonical deployment, and prove the tenant reservation is released. When this focused slice is committed and read-only reviewed, run the full suite and default integrity gate once.
-- Exact first change: add a regression proving existing model-deployment recovery calls the canonical ledger release boundary for model-token reservations.
-- Product checkpoint: `e3fd5c7` (`Prove model deployment token recovery`).
-- Deterministic validation: focused ASOC/policy tests passed (`123 passed`) for model-deployment recovery release. Full Linux suite passed (`645 passed, 1 skipped`); the default FW-INTEGRITY gate passed its repository/build/startup/configuration/test/Golden Path checks at `e3fd5c7`.
-- Review: exact committed-snapshot read-only review found no blocking defect.
+- Task ID: FW-ASOC-02 — closure
+- Starting checkpoint: `bdd4611`
+- Scope completed: the active Core map records FW-ASOC-02 as Proven. Its canonical controls now cover aggregate blast-radius containment, signed bounded delegation and fan-out, per-lease and tenant-wide concurrent-work capacity, per-work and tenant-wide model-token accounting, Model Broker revalidation, Evidence-bound reservation/completion, and recovery/expiry/model-deployment release.
+- Canonical owner: `AggregateBlastRadiusLedger`, `WorkBudgetLedger`, `LeaseRegistry`, `CapabilityAuthorizer`, `ASOCControlPlane`, `DeterministicPolicy`, the Model Broker, and canonical Evidence remain the sole owners; no parallel subsystem was added.
+- Proof: the final focused ASOC/policy checkpoint passed (`123 passed`); the final full Linux suite passed (`645 passed, 1 skipped`); default FW-INTEGRITY passed its repository/build/startup/configuration/test/Golden Path checks at `e3fd5c7`. Exact committed-snapshot review found no blocking defect.
+- Remaining limitation: this is an in-memory, single-process DRY_RUN Core boundary. Broader orchestration, production execution, endpoint protection, SOC incidents, identity, normalized events, and compliance remain separately owned roadmap work, not unfinished ASOC-02 controls.
+- Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
+- Blocker: no safety or integrity blocker. Activation of a broader roadmap family requires an explicit phase decision.
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
 - Blocker: none.
-- Next action: derive the next highest-risk unmet bounded FW-ASOC-02 control from `ROADMAP.md` and existing canonical code without rerunning this completed proof.
+- Next action: await explicit activation of the next roadmap family; do not create further ASOC-02 micro-slices or rerun its completed proof.
 
 ## Execution log
 
@@ -63,6 +61,7 @@ On every restart or continuation:
 - 2026-08-31: FW-ASOC-02 model-token Evidence checkpoint: canonical `work_admitted` Evidence now binds exact model/provider/deployment/version/approval data, request data classification, approved purpose, and policy version to each model-token reservation. Focused proof passed (121 tests); the full suite passed (643 passed, 1 skipped), and the default integrity gate passed at `eddb447`. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap ownership gaps.
 - 2026-08-31: FW-ASOC-02 fail-closed completion-accounting checkpoint: canonical completion Evidence is now written inside the existing work-budget ledger lock before a work or model-token reservation is released. An unavailable Evidence sink preserves capacity; a later durable completion releases it once. Focused proof passed (122 tests); the full suite passed (644 passed, 1 skipped), and the default integrity gate passed at `ac8de94`. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap ownership gaps.
 - 2026-08-31: FW-ASOC-02 model-deployment recovery checkpoint: canonical model-deployment revocation is now explicitly proven to release its outstanding tenant model-token reservation through the shared ledger. Focused proof passed (123 tests); the full suite passed (645 passed, 1 skipped), and the default integrity gate passed at `e3fd5c7`. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap ownership gaps.
+- 2026-08-31: FW-ASOC-02 closure: the active Core scope is complete and Proven in the functionality map. Its final evidence is the 123-test focused checkpoint, the 645-passing full suite, the passing integrity/Golden Path run at `e3fd5c7`, and exact read-only review with no blocking defect. Further work requires activating a separately owned roadmap family.
 
 ## Stop conditions
 
@@ -72,4 +71,4 @@ Do not stop merely because a task or review cycle finished. Stop only under the 
 
 - Reason: NONE
 - Exact condition: no external or human blocker is known.
-- First resume action: derive and begin the next bounded FW-ASOC-02 control from the current handoff checkpoint.
+- First resume action: await explicit activation of the next roadmap family after the completed FW-ASOC-02 closure.
