@@ -44,7 +44,7 @@ On every restart or continuation:
 - Review: exact-diff read-only review found no blocking defect in `d7bad98`; prior external exact-review attempts returned no structured payload, so no independent approval is claimed.
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
 - Blocker: none.
-- Next action: commit and review aggregate token capacity, then run the full suite and default integrity gate once.
+- Next action: derive the next highest-risk unmet bounded FW-ASOC-02 control from `ROADMAP.md` and the canonical code, then begin its smallest safe code/test unit without rerunning completed model-token proof.
 
 ## Execution log
 
