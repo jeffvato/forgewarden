@@ -34,7 +34,7 @@ On every restart or continuation:
 - Negative paths: malformed or non-positive child ceiling; signed-ceiling tampering; ceiling exhaustion; concurrent issuance race; and all established delegation escalation, tenant, issuer, lifetime, depth, blast-radius, work-budget, and model-token denials.
 - Proof plan: focused ASOC/policy tests prove schema validation, signature binding, sequential exhaustion, and concurrent issuance containment. When this focused slice is committed and read-only reviewed, run the full suite and default integrity gate once.
 - Exact first change: add signed `max_delegated_leases` to `CapabilityLease`, defaulting safely to one, then make `LeaseRegistry.issue_delegated` atomically deny a direct child beyond the parent ceiling.
-- Deterministic validation: focused ASOC/policy tests passed (`118 passed`) for the initial schema, signature, exhaustion, and race coverage. Full-suite and integrity proof remain pending this product checkpoint.
+- Deterministic validation: focused ASOC/policy tests passed (`119 passed`) for schema validation, signature binding, sequential exhaustion, concurrent issuance, and delegated fan-out escalation. Full-suite and integrity proof remain pending this product checkpoint.
 - Review: pending exact committed-snapshot read-only review.
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
 - Blocker: none.

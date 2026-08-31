@@ -135,6 +135,24 @@ def test_delegation_denies_lifetime_depth_and_scope_escalation(change, reason):
         leases.issue_delegated(delegable.lease_id, replace(child, **change), now=150)
 
 
+def test_delegation_denies_child_fanout_budget_escalation():
+    _, switch, _, leases, _, _, agent, parent = make_plane()
+    switch.clear_for_dry_run()
+    delegable = leases.issue(replace(
+        parent, lease_id="lease-parent-fanout-escalation", delegation_allowed=True,
+        delegation_depth=2, max_delegated_leases=1,
+    ))
+    child = CapabilityLease(
+        "lease-child-fanout-escalation", "agent-child", agent.agent_id, parent.tenant_id,
+        ("telemetry.read",), parent.allowed_tools, parent.allowed_resources,
+        parent.allowed_data_classifications, ("READ",), 1, True, 1, 110, 190,
+        parent.policy_version, "approval-child", "ticket-child", "bounded child", parent.key_reference,
+        max_delegated_leases=2,
+    )
+    with pytest.raises(AuthorizationDenied, match="DELEGATION_FANOUT_BUDGET_EXCEEDED"):
+        leases.issue_delegated(delegable.lease_id, child, now=150)
+
+
 def test_delegation_denies_revoked_and_expired_parent_leases():
     _, switch, _, leases, _, _, agent, parent = make_plane()
     switch.clear_for_dry_run()
