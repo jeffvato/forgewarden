@@ -2,9 +2,9 @@
 
 ## Current state
 
-- Active phase: ForgeWarden Core
-- Current focus: FW-ASOC-02 — closure
-- Current task: complete; no further bounded ASOC-02 control remains in the active Core scope.
+- Active phase: FW-AV — Native anti-malware
+- Current focus: FW-AV — deterministic hash-signature scanning foundation
+- Current task: FW-AV-01 — implement a bounded, detect-only scan of caller-supplied bytes.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -27,17 +27,16 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-ASOC-02 — closure
-- Starting checkpoint: `bdd4611`
-- Scope completed: the active Core map records FW-ASOC-02 as Proven. Its canonical controls now cover aggregate blast-radius containment, signed bounded delegation and fan-out, per-lease and tenant-wide concurrent-work capacity, per-work and tenant-wide model-token accounting, Model Broker revalidation, Evidence-bound reservation/completion, and recovery/expiry/model-deployment release.
-- Canonical owner: `AggregateBlastRadiusLedger`, `WorkBudgetLedger`, `LeaseRegistry`, `CapabilityAuthorizer`, `ASOCControlPlane`, `DeterministicPolicy`, the Model Broker, and canonical Evidence remain the sole owners; no parallel subsystem was added.
-- Proof: the final focused ASOC/policy checkpoint passed (`123 passed`); the final full Linux suite passed (`645 passed, 1 skipped`); default FW-INTEGRITY passed its repository/build/startup/configuration/test/Golden Path checks at `e3fd5c7`. Exact committed-snapshot review found no blocking defect.
-- Remaining limitation: this is an in-memory, single-process DRY_RUN Core boundary. Broader orchestration, production execution, endpoint protection, SOC incidents, identity, normalized events, and compliance remain separately owned roadmap work, not unfinished ASOC-02 controls.
-- Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
-- Blocker: no safety or integrity blocker. Activation of a broader roadmap family requires an explicit phase decision.
+- Task ID: FW-AV-01 — deterministic hash-signature scan foundation
+- Starting checkpoint: `c0e004d`
+- Canonical owner: the new FW-AV detector may only produce detection evidence; ForgeWarden's existing `AuditLog`/`audit_log_sink` remains the durable Evidence owner. Authorization, Action Tickets, Model Broker, MCP Gateway, recovery, and kill-switch boundaries remain their existing canonical owners and are not duplicated or bypassed.
+- Acceptance criteria: scan only caller-supplied bounded `bytes`; calculate one deterministic SHA-256; match only validated exact hash signatures; return a tenant- and artifact-bound `CLEAN` or `DETECTED` finding; record the digest, matching signature IDs, byte count, tenant, artifact, `DRY_RUN`, and `DETECT_ONLY` action through canonical Evidence before returning.
+- Negative paths: malformed signature metadata or digest, duplicate signature identity, invalid tenant/artifact/content, oversized content, and a failed Evidence write must fail closed. A non-match is `CLEAN`; no path may execute, open, traverse, alter, quarantine, upload, or otherwise remediate an artifact.
+- Proof plan: focused unit coverage for exact detection and durable Evidence binding, clean non-match, malformed/oversized input rejection, and unavailable Evidence denial; then review the exact tested commit. Full suite and integrity run only after this focused FW-AV foundation is complete.
+- Exact first change: add `swarm/anti_malware.py` and its focused tests for the deterministic detect-only hash-signature boundary; no scanner daemon, filesystem hook, reputation service, YARA engine, sandbox, or remediation workflow.
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
 - Blocker: none.
-- Next action: await explicit activation of the next roadmap family; do not create further ASOC-02 micro-slices or rerun its completed proof.
+- Next action: implement and verify FW-AV-01.
 
 ## Execution log
 
@@ -62,6 +61,7 @@ On every restart or continuation:
 - 2026-08-31: FW-ASOC-02 fail-closed completion-accounting checkpoint: canonical completion Evidence is now written inside the existing work-budget ledger lock before a work or model-token reservation is released. An unavailable Evidence sink preserves capacity; a later durable completion releases it once. Focused proof passed (122 tests); the full suite passed (644 passed, 1 skipped), and the default integrity gate passed at `ac8de94`. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap ownership gaps.
 - 2026-08-31: FW-ASOC-02 model-deployment recovery checkpoint: canonical model-deployment revocation is now explicitly proven to release its outstanding tenant model-token reservation through the shared ledger. Focused proof passed (123 tests); the full suite passed (645 passed, 1 skipped), and the default integrity gate passed at `e3fd5c7`. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap ownership gaps.
 - 2026-08-31: FW-ASOC-02 closure: the active Core scope is complete and Proven in the functionality map. Its final evidence is the 123-test focused checkpoint, the 645-passing full suite, the passing integrity/Golden Path run at `e3fd5c7`, and exact read-only review with no blocking defect. Further work requires activating a separately owned roadmap family.
+- 2026-08-31: FW-AV activated by Jeff. The first bounded unit is deterministic SHA-256 signature detection over caller-supplied in-memory bytes, with canonical durable Evidence and no execution, filesystem access, quarantine, remediation, sandboxing, network reputation, or deployment behavior.
 
 ## Stop conditions
 
@@ -71,4 +71,4 @@ Do not stop merely because a task or review cycle finished. Stop only under the 
 
 - Reason: NONE
 - Exact condition: no external or human blocker is known.
-- First resume action: await explicit activation of the next roadmap family after the completed FW-ASOC-02 closure.
+- First resume action: implement and validate FW-AV-01 from `c0e004d`.
