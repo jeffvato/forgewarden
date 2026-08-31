@@ -933,10 +933,71 @@ def test_lease_rejects_invalid_model_token_work_limits(value):
         replace(lease, max_model_tokens_per_work=value)
 
 
+@pytest.mark.parametrize("value", [0, -1, True, 1.5, "1"])
+def test_lease_rejects_invalid_delegated_lease_limits(value):
+    _, _, _, _, _, _, _, lease = make_plane()
+    with pytest.raises(ValueError, match="max_delegated_leases"):
+        replace(lease, max_delegated_leases=value)
+
+
+def test_delegation_fanout_is_atomically_bounded_by_the_parent_lease():
+    _, switch, _, leases, _, _, agent, parent = make_plane()
+    switch.clear_for_dry_run()
+    delegable = leases.issue(replace(
+        parent, lease_id="lease-parent-fanout", delegation_allowed=True, delegation_depth=1,
+        max_delegated_leases=1,
+    ))
+    child = CapabilityLease(
+        "lease-child-fanout-1", "agent-child-fanout-1", agent.agent_id, parent.tenant_id,
+        ("telemetry.read",), parent.allowed_tools, parent.allowed_resources,
+        parent.allowed_data_classifications, ("READ",), 1, False, 0, 110, 190,
+        parent.policy_version, "approval-child", "ticket-child", "bounded child", parent.key_reference,
+    )
+    assert leases.issue_delegated(delegable.lease_id, child, now=150).lease_id == child.lease_id
+    with pytest.raises(AuthorizationDenied, match="DELEGATION_FANOUT_EXCEEDED"):
+        leases.issue_delegated(delegable.lease_id, replace(child, lease_id="lease-child-fanout-2", subject_agent_id="agent-child-fanout-2"), now=151)
+
+
 def test_lease_signature_binds_model_token_work_limit():
     _, _, _, leases, _, _, _, lease = make_plane()
     with pytest.raises(LeaseIntegrityError, match="signature mismatch"):
         leases.verify(replace(lease, max_model_tokens_per_work=2))
+
+
+def test_lease_signature_binds_delegated_lease_limit():
+    _, _, _, leases, _, _, _, lease = make_plane()
+    with pytest.raises(LeaseIntegrityError, match="signature mismatch"):
+        leases.verify(replace(lease, max_delegated_leases=2))
+
+
+def test_delegation_fanout_concurrency_allows_only_one_child_lease():
+    _, switch, _, leases, _, _, agent, parent = make_plane()
+    switch.clear_for_dry_run()
+    delegable = leases.issue(replace(
+        parent, lease_id="lease-parent-fanout-concurrent", delegation_allowed=True,
+        delegation_depth=1, max_delegated_leases=1,
+    ))
+    child = CapabilityLease(
+        "lease-child-fanout-concurrent", "agent-child-fanout-concurrent", agent.agent_id,
+        parent.tenant_id, ("telemetry.read",), parent.allowed_tools, parent.allowed_resources,
+        parent.allowed_data_classifications, ("READ",), 1, False, 0, 110, 190,
+        parent.policy_version, "approval-child", "ticket-child", "bounded child", parent.key_reference,
+    )
+
+    def attempt(index: int) -> str:
+        try:
+            leases.issue_delegated(
+                delegable.lease_id,
+                replace(child, lease_id=f"lease-child-fanout-concurrent-{index}", subject_agent_id=f"agent-child-fanout-concurrent-{index}"),
+                now=150,
+            )
+            return "DELEGATED"
+        except AuthorizationDenied as exc:
+            return exc.reason
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        outcomes = list(pool.map(attempt, range(2)))
+    assert sorted(outcomes) == ["DELEGATED", "DELEGATION_FANOUT_EXCEEDED"]
 
 
 def test_work_budget_admission_is_bounded_audited_and_released_on_completion_and_recovery():

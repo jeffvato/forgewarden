@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: FW-ASOC-02 — model-token budget containment
-- Current task: enforce aggregate tenant-wide model-token capacity at canonical work admission.
+- Current focus: FW-ASOC-02 — delegation fan-out containment
+- Current task: bound each parent lease's direct child issuance through the existing canonical lease registry.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -27,24 +27,18 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-ASOC-02 — tenant-wide model-token capacity containment
-- Starting commit: `1e74a50`
-- Product checkpoint: `ccbb3cd` (recovery release proof)
-- Accepted handoff commit: `fc81f90` (records the proven tenant-wide slice)
-- Canonical owner: the existing `WorkBudgetLedger` atomically records work/token reservations; `CapabilityAuthorizer.admit_work` composes signed `CapabilityLease` limits, `DeterministicPolicy` scope and tenant ceilings, and canonical audit Evidence. No parallel budget, authorization, model, or execution subsystem is introduced.
-- Acceptance criteria: policy provides an exact positive tenant model-token ceiling; the shared ledger atomically reserves every admitted request; requests cannot evade the ceiling through concurrent or cross-agent splitting; completion, recovery revocation, and lease expiry release capacity; Evidence reports the remaining tenant capacity.
-- Negative paths: malformed tenant ceiling; missing tenant ceiling; request above signed/policy per-work ceiling; aggregate tenant excess; concurrent races; cross-agent splitting; recovery and expiry leaks. Audit-failure release uses the existing ledger rollback path and remains covered by its work-admission failure handling.
-- Proof plan: focused ASOC/policy tests cover tenant policy validation, aggregate denial, cross-agent splitting, concurrent races, recovery release, expiry release, and Evidence. With those passing, run the full suite and default integrity gate once on the committed slice.
-- Exact first change: add `max_tenant_model_tokens` to `PolicyRule`; persist requested tokens in the existing `WorkBudgetLedger`; atomically deny a tenant total above the policy ceiling and report remaining capacity.
-- First product checkpoint: `cc70943acb9d4b0fd9ad58bc28963b53d5930d77` (`Bind ASOC leases to model token limits`).
-- Per-work admission checkpoint: `89c02477f33d79c8dc69a3916c09ca62be7f4953` (including repair of the missing-model-binding bypass found during review).
-- Aggregate token-capacity checkpoint: `d7bad988db02ed71cd132452055caa9235fb5d3a` (`Contain tenant model token capacity`).
-- Files changed: `swarm/asoc.py`, `swarm/policy_gate.py`, `tests/test_asoc.py`, `tests/test_policy_gate.py`, `SWARM_STATUS.md`.
-- Deterministic validation: focused ASOC/policy aggregate-token tests passed (`110 passed`); full Linux suite passed (`632 passed, 1 skipped`); the default FW-INTEGRITY gate passed all repository/build/startup/configuration/test/Golden Path checks at `d7bad98`.
-- Review: exact-diff read-only review found no blocking defect in `d7bad98`; prior external exact-review attempts returned no structured payload, so no independent approval is claimed.
+- Task ID: FW-ASOC-02 — bounded delegation fan-out
+- Starting commit: `022abd9`
+- Canonical owner: signed `CapabilityLease` declares the parent ceiling, and the existing `LeaseRegistry.issue_delegated` atomically records and enforces direct child issuance. No parallel identity, authorization, policy, audit, ticket, model, gateway, or execution subsystem is introduced.
+- Acceptance criteria: every parent lease carries a signed positive direct-child ceiling; canonical delegated issuance permits no more direct children than that ceiling; concurrent attempts cannot oversubscribe it; parent/child tenant, authority, scope, lifetime, depth, blast-radius, work-budget, and model-token boundaries continue to apply.
+- Negative paths: malformed or non-positive child ceiling; signed-ceiling tampering; ceiling exhaustion; concurrent issuance race; and all established delegation escalation, tenant, issuer, lifetime, depth, blast-radius, work-budget, and model-token denials.
+- Proof plan: focused ASOC/policy tests prove schema validation, signature binding, sequential exhaustion, and concurrent issuance containment. When this focused slice is committed and read-only reviewed, run the full suite and default integrity gate once.
+- Exact first change: add signed `max_delegated_leases` to `CapabilityLease`, defaulting safely to one, then make `LeaseRegistry.issue_delegated` atomically deny a direct child beyond the parent ceiling.
+- Deterministic validation: focused ASOC/policy tests passed (`118 passed`) for the initial schema, signature, exhaustion, and race coverage. Full-suite and integrity proof remain pending this product checkpoint.
+- Review: pending exact committed-snapshot read-only review.
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
 - Blocker: none.
-- Next action: derive the next highest-risk unmet bounded FW-ASOC-02 control from `ROADMAP.md` and the canonical code, then begin its smallest safe code/test unit without rerunning completed model-token proof.
+- Next action: commit and exact-snapshot review the completed delegation fan-out unit, then perform its one-time full-suite and integrity proof.
 
 ## Execution log
 

@@ -182,6 +182,7 @@ class CapabilityLease:
     key_reference: str
     max_concurrent_work: int = 1
     max_model_tokens_per_work: int = 1
+    max_delegated_leases: int = 1
     signature: str = ""
     revoked_at: int | None = None
     revocation_reason: str | None = None
@@ -213,6 +214,8 @@ class CapabilityLease:
             or self.max_model_tokens_per_work <= 0
         ):
             raise ValueError("max_model_tokens_per_work must be a positive integer")
+        if not isinstance(self.max_delegated_leases, int) or isinstance(self.max_delegated_leases, bool) or self.max_delegated_leases <= 0:
+            raise ValueError("max_delegated_leases must be a positive integer")
         if not isinstance(self.delegation_allowed, bool):
             raise ValueError("delegation_allowed must be boolean")
         if not self.delegation_allowed and self.delegation_depth != 0:
@@ -224,7 +227,7 @@ class CapabilityLease:
             "allowed_resources", "allowed_data_classifications", "allowed_action_classes", "max_blast_radius",
             "delegation_allowed", "delegation_depth", "valid_from", "expires_at", "policy_version",
             "approval_reference", "action_ticket_reference", "creation_reason", "key_reference",
-            "max_concurrent_work", "max_model_tokens_per_work")}
+            "max_concurrent_work", "max_model_tokens_per_work", "max_delegated_leases")}
 
     def canonical_bytes(self) -> bytes:
         return json.dumps(self.unsigned_dict(), sort_keys=True, separators=(",", ":")).encode("utf-8")
@@ -334,6 +337,8 @@ class LeaseRegistry:
         self._signer = signer
         self._kill_switch = kill_switch
         self._leases: dict[str, CapabilityLease] = {}
+        self._delegated_children: dict[str, set[str]] = {}
+        self._delegation_lock = Lock()
         self._audit = audit or (lambda _event, _data: None)
 
     def issue(self, lease: CapabilityLease) -> CapabilityLease:
@@ -369,7 +374,12 @@ class LeaseRegistry:
         for child_scope, parent_scope in ((child.granted_capabilities, parent.granted_capabilities), (child.allowed_tools, parent.allowed_tools), (child.allowed_resources, parent.allowed_resources), (child.allowed_data_classifications, parent.allowed_data_classifications), (child.allowed_action_classes, parent.allowed_action_classes)):
             if not set(child_scope).issubset(parent_scope):
                 raise AuthorizationDenied("DELEGATION_PRIVILEGE_ESCALATION")
-        issued = self.issue(child)
+        with self._delegation_lock:
+            children = self._delegated_children.setdefault(parent_lease_id, set())
+            if len(children) >= parent.max_delegated_leases:
+                raise AuthorizationDenied("DELEGATION_FANOUT_EXCEEDED")
+            issued = self.issue(child)
+            children.add(issued.lease_id)
         self._audit("delegated_lease_issued", {"parent_lease_id": parent_lease_id, "lease_id": issued.lease_id, "agent_id": issued.subject_agent_id, "tenant_id": issued.tenant_id})
         return issued
 
