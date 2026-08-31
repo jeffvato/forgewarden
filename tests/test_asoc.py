@@ -946,6 +946,27 @@ def test_work_budget_admission_is_bounded_audited_and_released_on_completion_and
     assert [event for event, _data in events if event == "work_admitted"] == ["work_admitted", "work_admitted"]
 
 
+def test_work_budget_concurrent_admission_allows_only_one_work_item():
+    _, _, _, leases, auth, _, agent, lease = make_plane()
+    leases.issue(replace(
+        lease, lease_id="lease-work-budget-concurrent", valid_from=101, max_concurrent_work=1,
+    ))
+
+    def attempt(work_id):
+        try:
+            auth.admit_work(agent.agent_id, work_id, now=150)
+            return "ADMITTED"
+        except AuthorizationDenied as exc:
+            return exc.reason
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        outcomes = list(pool.map(attempt, ("work-a", "work-b")))
+    assert sorted(outcomes) == ["ADMITTED", "WORK_CONCURRENCY_LIMIT_EXCEEDED"]
+    assert auth.work_budget_ledger.active_count(
+        tenant_id=agent.tenant_id, agent_id=agent.agent_id, now=151,
+    ) == 1
+
+
 def test_releasing_failed_reservation_preserves_prior_aggregate_reservations():
     _, _, _, _, _, _, _, lease = make_plane()
     ledger = AggregateBlastRadiusLedger()
