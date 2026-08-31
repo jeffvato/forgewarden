@@ -703,6 +703,17 @@ def test_policy_owned_aggregate_blast_radius_blocks_splitting_and_releases_after
     assert auth.authorize(agent.agent_id, first, now=201)["lease_id"] == renewed.lease_id
 
 
+def test_positive_blast_radius_requires_a_policy_owned_aggregate_limit():
+    _, switch, agents, leases, _, model, agent, _ = make_plane()
+    policy = DeterministicPolicy([PolicyRule(
+        "tenant-a", "telemetry.read", "endpoint-123", "READ", "FW-ASOC-01-v1",
+    )])
+    auth = CapabilityAuthorizer(agents, leases, switch, policy_engine=policy, model_binding_validator=lambda *_args: True)
+    with pytest.raises(AuthorizationDenied, match="AGGREGATE_BLAST_RADIUS_LIMIT_REQUIRED"):
+        auth.authorize(agent.agent_id, request(blast_radius=1, model_identity=model), now=150)
+    assert auth.authorize(agent.agent_id, request(blast_radius=0, model_identity=model), now=151)["authorized"] is True
+
+
 def test_agent_recovery_releases_tenant_scope_aggregate_blast_radius_reservations():
     _, switch, agents, leases, _, model, agent, lease = make_plane()
     policy = DeterministicPolicy([PolicyRule(

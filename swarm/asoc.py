@@ -559,6 +559,8 @@ class CapabilityAuthorizer:
                     request.tenant_id, agent.agent_id, request.capability, request.resource,
                     request.action_class, request.policy_version,
                 ))
+                if request.blast_radius > 0 and aggregate_blast_radius_limit is None:
+                    raise AuthorizationDenied("AGGREGATE_BLAST_RADIUS_LIMIT_REQUIRED")
                 if aggregate_blast_radius_limit is not None:
                     aggregate_blast_radius_remaining = self.blast_radius_ledger.reserve(
                         request, lease, limit=aggregate_blast_radius_limit, now=current,
