@@ -4,7 +4,7 @@
 
 - Active phase: FW-AV — Native anti-malware
 - Current focus: FW-AV — deterministic hash-signature scanning foundation
-- Current task: FW-AV-01 — implement a bounded, detect-only scan of caller-supplied bytes.
+- Current task: FW-AV-01 complete; derive the next highest-risk bounded FW-AV control.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -34,9 +34,10 @@ On every restart or continuation:
 - Negative paths: malformed signature metadata or digest, duplicate signature identity, invalid tenant/artifact/content, oversized content, and a failed Evidence write must fail closed. A non-match is `CLEAN`; no path may execute, open, traverse, alter, quarantine, upload, or otherwise remediate an artifact.
 - Proof plan: focused unit coverage for exact detection and durable Evidence binding, clean non-match, malformed/oversized input rejection, and unavailable Evidence denial; then review the exact tested commit. Full suite and integrity run only after this focused FW-AV foundation is complete.
 - Exact first change: add `swarm/anti_malware.py` and its focused tests for the deterministic detect-only hash-signature boundary; no scanner daemon, filesystem hook, reputation service, YARA engine, sandbox, or remediation workflow.
+- Proof: focused FW-AV tests passed (`4 passed`); full Linux suite passed (`649 passed, 1 skipped`); the default FW-INTEGRITY gate passed all hard checks and its ASOC Golden Path at `7b925a4`. Exact read-only review of that tested commit found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and defined-but-unimplemented identity, normalized-events, SOC-incident, and compliance owners.
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
 - Blocker: none.
-- Next action: implement and verify FW-AV-01.
+- Next action: derive and implement the next highest-risk bounded FW-AV control; do not add actual file hooks, execution, quarantine, remediation, reputation networking, or sandboxing without separately scoped authority and proof.
 
 ## Execution log
 
@@ -62,6 +63,7 @@ On every restart or continuation:
 - 2026-08-31: FW-ASOC-02 model-deployment recovery checkpoint: canonical model-deployment revocation is now explicitly proven to release its outstanding tenant model-token reservation through the shared ledger. Focused proof passed (123 tests); the full suite passed (645 passed, 1 skipped), and the default integrity gate passed at `e3fd5c7`. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap ownership gaps.
 - 2026-08-31: FW-ASOC-02 closure: the active Core scope is complete and Proven in the functionality map. Its final evidence is the 123-test focused checkpoint, the 645-passing full suite, the passing integrity/Golden Path run at `e3fd5c7`, and exact read-only review with no blocking defect. Further work requires activating a separately owned roadmap family.
 - 2026-08-31: FW-AV activated by Jeff. The first bounded unit is deterministic SHA-256 signature detection over caller-supplied in-memory bytes, with canonical durable Evidence and no execution, filesystem access, quarantine, remediation, sandboxing, network reputation, or deployment behavior.
+- 2026-08-31: FW-AV-01 complete at `7b925a4`: the detect-only SHA-256 signature scanner rejects malformed or oversized input and failed Evidence writes, binds every valid finding to tenant/artifact/digest/signature IDs in canonical durable Evidence, and has no filesystem, execution, quarantine, remediation, network, or sandbox behavior. Focused proof passed (4 tests); the full Linux suite passed (649 passed, 1 skipped); the integrity gate passed all hard checks, remaining YELLOW only for the pre-existing dependency and roadmap-ownership gaps; exact read-only commit review found no blocking defect.
 
 ## Stop conditions
 
@@ -71,4 +73,4 @@ Do not stop merely because a task or review cycle finished. Stop only under the 
 
 - Reason: NONE
 - Exact condition: no external or human blocker is known.
-- First resume action: implement and validate FW-AV-01 from `c0e004d`.
+- First resume action: derive the highest-risk unmet bounded FW-AV control from `ROADMAP.md` and canonical code, then implement its first smallest safe unit.
