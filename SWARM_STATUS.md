@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: FW-ASOC-02 — aggregate blast-radius controls
-- Current task: enforce deterministic, policy-owned aggregate blast-radius limits so requests cannot evade a configured tenant/action scope cap by splitting work across valid leases.
+- Current focus: FW-ASOC-02 — bounded resource budgets
+- Current task: derive the next unmet ASOC-02 containment control after proven aggregate, delegation, and work-budget slices.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -53,6 +53,7 @@ On every restart or continuation:
 - 2026-08-30: FW-ASOC-01 canonical integration now includes deterministic policy, Action Tickets, Model Broker, MCP Gateway, durable evidence, atomic ticket consumption, and tenant/agent/role/deployment/kill-switch recovery revocation. The runnable Golden Path proves authorized operation plus replay, kill-switch, recovery, and cross-tenant denials.
 - 2026-08-30: FW-ASOC-01 proof checkpoint: the exact commit `b4880fb` passed the full repository suite (578 passed, 1 skipped) and its read-only exact-snapshot quality review. The ASOC-specific audit-sink findings were verified as intentional fail-closed handling; no ASOC repair was required. The functionality map now records FW-ASOC-01 as Proven, while external adapters and full Z3 remain future roadmap work.
 - 2026-08-31: FW-ASOC-02 aggregate blast-radius checkpoint: deterministic policy rules can now carry an exact tenant/capability/resource/action limit. Authorization atomically reserves configured aggregate radius through lease expiry, denies cross-agent splitting attempts, records the requested radius in evidence, and releases reservations during recovery revocation. Focused ASOC, policy, and integrity validation passed (66 passed).
+- 2026-08-31: FW-ASOC-02 resource-budget checkpoint: lease-bound concurrent-work limits are validated and signed, enforced through the canonical CapabilityAuthorizer and deterministic policy, audited on admission/denial/completion, isolated under concurrency, released on expiry and recovery, and bounded across delegation. Exact review found no new slice finding; the full suite passed (473 passed, 1 skipped) and the integrity gate passed all checks at `2dc0b59`, remaining YELLOW only for the pre-existing dependency and roadmap-ownership gaps.
 
 ## Stop conditions
 
