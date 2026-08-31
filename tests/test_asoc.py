@@ -1035,6 +1035,11 @@ def test_tenant_work_budget_prevents_cross_agent_capacity_splitting():
     with pytest.raises(AuthorizationDenied, match="TENANT_WORK_CONCURRENCY_LIMIT_EXCEEDED"):
         auth.admit_work(second_agent.agent_id, "tenant-work-2", work_request, now=151)
     assert auth.work_budget_ledger.active_tenant_count(tenant_id="tenant-a", now=151) == 1
+    ASOCControlPlane(
+        agents, leases, KillSwitch(True), work_budget_ledger=auth.work_budget_ledger,
+    ).revoke_agent(agent.agent_id)
+    assert auth.work_budget_ledger.active_tenant_count(tenant_id="tenant-a", now=152) == 0
+    assert auth.admit_work(second_agent.agent_id, "tenant-work-2", work_request, now=152)["admitted"] is True
 
 
 def test_work_budget_expiry_releases_capacity_for_a_renewed_lease():
