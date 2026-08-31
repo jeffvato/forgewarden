@@ -132,6 +132,19 @@ def test_delegation_denies_lifetime_depth_and_scope_escalation(change, reason):
         leases.issue_delegated(delegable.lease_id, replace(child, **change), now=150)
 
 
+def test_delegation_denies_revoked_and_expired_parent_leases():
+    _, switch, _, leases, _, _, agent, parent = make_plane()
+    switch.clear_for_dry_run()
+    delegable = leases.issue(replace(parent, lease_id="lease-parent-inactive", delegation_allowed=True, delegation_depth=1))
+    child = CapabilityLease("lease-child-inactive", "agent-child", agent.agent_id, parent.tenant_id, ("telemetry.read",), parent.allowed_tools, parent.allowed_resources, parent.allowed_data_classifications, ("READ",), 1, False, 0, 110, 190, parent.policy_version, "approval-child", "ticket-child", "bounded child", parent.key_reference)
+    leases.revoke(delegable.lease_id, "parent recovery", now=120)
+    with pytest.raises(AuthorizationDenied, match="PARENT_LEASE_INACTIVE"):
+        leases.issue_delegated(delegable.lease_id, child, now=150)
+    expired = leases.issue(replace(parent, lease_id="lease-parent-expired", delegation_allowed=True, delegation_depth=1, expires_at=140))
+    with pytest.raises(AuthorizationDenied, match="PARENT_LEASE_INACTIVE"):
+        leases.issue_delegated(expired.lease_id, child, now=150)
+
+
 @pytest.mark.parametrize(
     ("overrides", "reason"),
     [
