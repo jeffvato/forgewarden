@@ -9,6 +9,7 @@
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
 - Kill-switch policy: remains engaged where configured
+- Confirmed product response policy: warn for every finding; quarantine only high-confidence trusted-content detections behind deterministic policy; clean/repair only as ticketed, approved, recoverable Core remediation.
 - Codex role: sole application-code writer
 - Claude role: architecture/requirements/adversarial reviewer
 - Gemini role: independent read-only exact-commit reviewer
@@ -38,6 +39,7 @@ On every restart or continuation:
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
 - Blocker: none.
 - Next action: derive and implement the next highest-risk bounded FW-AV control; do not add actual file hooks, execution, quarantine, remediation, reputation networking, or sandboxing without separately scoped authority and proof.
+- Platform delivery definition: Windows and Linux are the first endpoint targets; macOS, Android, and iOS are later platform-native releases. Detailed scope and required proof are in `docs/fw-av-windows-linux-delivery-plan.md`.
 
 ## Execution log
 
@@ -68,6 +70,7 @@ On every restart or continuation:
 - 2026-08-31: FW-AV-02 complete at `8d76be9`: every scanned signature now belongs to an immutable local catalog with an explicit trusted-publisher allowlist; catalog identity and matching publishers are bound to canonical Evidence, while direct untrusted collections and malformed, duplicate, or untrusted signature input fail closed. Focused proof passed (5 tests); the full Linux suite passed (650 passed, 1 skipped); the integrity gate passed all hard checks, remaining YELLOW only for the pre-existing dependency and roadmap-ownership gaps; exact read-only commit review found no blocking defect.
 - 2026-08-31: FW-AV-03 claimed as the highest-risk safe next detection control: trusted bounded literal content indicators in the existing catalog. It deliberately does not claim or introduce a YARA parser/engine, archive/document analysis, file access, execution, sandboxing, quarantine, remediation, or reputation networking.
 - 2026-08-31: FW-AV-03 complete at `7ac7fdb`: the existing trusted local catalog now admits only bounded literal byte indicators from trusted publishers, rejects malformed/untrusted/ambiguous input, orders matches deterministically, and records matching content indicators with canonical Evidence. It remains in-memory and detect-only; no YARA interpreter, file access, execution, sandboxing, quarantine, remediation, or network behavior exists. Focused proof passed (6 tests); full Linux suite passed (651 passed, 1 skipped); the integrity gate passed all hard checks, remaining YELLOW only for the pre-existing dependency and roadmap-ownership gaps; exact read-only commit review found no blocking defect.
+- 2026-08-31: Jeff confirmed the product response model: detect and warn; automatically quarantine only high-confidence trusted-content detections; retain clean/repair as approved, ticketed, recoverable ForgeWarden Core remediation. Windows and Linux are the first endpoint targets, with macOS, Android, and iOS following. This is product-scope authority only; `DRY_RUN`, deployment-disabled state, and engaged kill-switch boundaries remain unchanged.
 
 ## Stop conditions
 
