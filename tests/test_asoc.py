@@ -930,7 +930,8 @@ def test_work_budget_admission_is_bounded_audited_and_released_on_completion_and
     assert first == {
         "admitted": True, "agent_id": agent.agent_id, "tenant_id": agent.tenant_id,
         "lease_id": budgeted.lease_id, "work_id": "work-1", "max_concurrent_work": 1,
-        "policy_concurrent_work_limit": None, "concurrent_work_remaining": 0, "timestamp": 150,
+        "policy_concurrent_work_limit": None, "policy_tenant_concurrent_work_limit": None,
+        "concurrent_work_remaining": 0, "tenant_concurrent_work_remaining": None, "timestamp": 150,
     }
     with pytest.raises(AuthorizationDenied, match="WORK_CONCURRENCY_LIMIT_EXCEEDED"):
         auth.admit_work(agent.agent_id, "work-2", now=151)
@@ -975,7 +976,7 @@ def test_work_budget_uses_an_explicit_deterministic_policy_limit():
     ))
     policy = DeterministicPolicy([PolicyRule(
         "tenant-a", "telemetry.read", "endpoint-123", "READ", "FW-ASOC-01-v1",
-        max_concurrent_work=1,
+        max_concurrent_work=1, max_tenant_concurrent_work=1,
     )])
     auth = CapabilityAuthorizer(
         agents, leases, KillSwitch(True), policy_engine=policy,
@@ -985,6 +986,7 @@ def test_work_budget_uses_an_explicit_deterministic_policy_limit():
     admitted = auth.admit_work(agent.agent_id, "work-policy-1", work_request, now=150)
     assert admitted["lease_id"] == budgeted.lease_id
     assert admitted["policy_concurrent_work_limit"] == 1
+    assert admitted["policy_tenant_concurrent_work_limit"] == 1
     with pytest.raises(AuthorizationDenied, match="WORK_CONCURRENCY_LIMIT_EXCEEDED"):
         auth.admit_work(agent.agent_id, "work-policy-2", work_request, now=151)
     missing_limit = CapabilityAuthorizer(
@@ -995,6 +997,44 @@ def test_work_budget_uses_an_explicit_deterministic_policy_limit():
     )
     with pytest.raises(AuthorizationDenied, match="WORK_CONCURRENCY_LIMIT_REQUIRED"):
         missing_limit.admit_work(agent.agent_id, "work-policy-3", work_request, now=152)
+    missing_tenant_limit = CapabilityAuthorizer(
+        agents, leases, KillSwitch(True),
+        policy_engine=DeterministicPolicy([PolicyRule(
+            "tenant-a", "telemetry.read", "endpoint-123", "READ", "FW-ASOC-01-v1",
+            max_concurrent_work=1,
+        )]),
+    )
+    with pytest.raises(AuthorizationDenied, match="TENANT_WORK_CONCURRENCY_LIMIT_REQUIRED"):
+        missing_tenant_limit.admit_work(agent.agent_id, "work-policy-4", work_request, now=152)
+
+
+def test_tenant_work_budget_prevents_cross_agent_capacity_splitting():
+    _, _, agents, leases, _, model, agent, lease = make_plane()
+    second_agent = AgentIdentity(
+        "agent-work-budget-2", agent.tenant_id, agent.agent_type, agent.role,
+        agent.owner_controller_id, model, agent.provider_deployment, agent.approved_purpose,
+        agent.trust_level, agent.allowed_data_classifications,
+        cryptographic_identity_ref="fw-id/agent-work-budget-2",
+    )
+    agents.register(second_agent)
+    agents.activate(second_agent.agent_id, now=100)
+    leases.issue(CapabilityLease(
+        "lease-work-budget-2", second_agent.agent_id, lease.issuer_identity, lease.tenant_id,
+        lease.granted_capabilities, lease.allowed_tools, lease.allowed_resources,
+        lease.allowed_data_classifications, lease.allowed_action_classes, lease.max_blast_radius,
+        False, 0, 100, 200, lease.policy_version, "approval-work-budget-2",
+        "ticket-work-budget-2", "bounded triage", lease.key_reference,
+    ))
+    policy = DeterministicPolicy([PolicyRule(
+        "tenant-a", "telemetry.read", "endpoint-123", "READ", "FW-ASOC-01-v1",
+        max_concurrent_work=1, max_tenant_concurrent_work=1,
+    )])
+    auth = CapabilityAuthorizer(agents, leases, KillSwitch(True), policy_engine=policy)
+    work_request = request(model_identity=model)
+    assert auth.admit_work(agent.agent_id, "tenant-work-1", work_request, now=150)["admitted"] is True
+    with pytest.raises(AuthorizationDenied, match="TENANT_WORK_CONCURRENCY_LIMIT_EXCEEDED"):
+        auth.admit_work(second_agent.agent_id, "tenant-work-2", work_request, now=151)
+    assert auth.work_budget_ledger.active_tenant_count(tenant_id="tenant-a", now=151) == 1
 
 
 def test_work_budget_expiry_releases_capacity_for_a_renewed_lease():

@@ -493,23 +493,38 @@ class WorkBudgetLedger:
         self._reservations: dict[tuple[str, str], list[tuple[str, int]]] = {}
         self._lock = Lock()
 
-    def admit(self, lease: CapabilityLease, work_id: str, *, limit: int | None = None, now: int) -> int:
+    def admit(self, lease: CapabilityLease, work_id: str, *, limit: int | None = None, tenant_limit: int | None = None, now: int) -> tuple[int, int | None]:
         work_id = _text(work_id, "work_id")
         if limit is not None and (
             not isinstance(limit, int) or isinstance(limit, bool) or limit <= 0
         ):
             raise ValueError("work budget limit is invalid")
+        if tenant_limit is not None and (
+            not isinstance(tenant_limit, int) or isinstance(tenant_limit, bool) or tenant_limit <= 0
+        ):
+            raise ValueError("tenant work budget limit is invalid")
         effective_limit = lease.max_concurrent_work if limit is None else min(lease.max_concurrent_work, limit)
         scope = (lease.tenant_id, lease.subject_agent_id)
         with self._lock:
             active = [entry for entry in self._reservations.get(scope, []) if entry[1] > now]
+            tenant_active = 0
+            for candidate_scope, entries in tuple(self._reservations.items()):
+                candidate_active = [entry for entry in entries if entry[1] > now]
+                if candidate_active:
+                    self._reservations[candidate_scope] = candidate_active
+                    if candidate_scope[0] == lease.tenant_id:
+                        tenant_active += len(candidate_active)
+                else:
+                    self._reservations.pop(candidate_scope, None)
             if any(entry[0] == work_id for entry in active):
                 raise AuthorizationDenied("WORK_ALREADY_ADMITTED")
             if len(active) >= effective_limit:
                 raise AuthorizationDenied("WORK_CONCURRENCY_LIMIT_EXCEEDED")
+            if tenant_limit is not None and tenant_active >= tenant_limit:
+                raise AuthorizationDenied("TENANT_WORK_CONCURRENCY_LIMIT_EXCEEDED")
             active.append((work_id, lease.expires_at))
             self._reservations[scope] = active
-            return effective_limit - len(active)
+            return effective_limit - len(active), None if tenant_limit is None else tenant_limit - tenant_active - 1
 
     def release(self, *, tenant_id: str, agent_id: str, work_id: str, now: int) -> bool:
         scope = (_text(tenant_id, "tenant_id"), _text(agent_id, "agent_id"))
@@ -545,6 +560,20 @@ class WorkBudgetLedger:
             else:
                 self._reservations.pop(scope, None)
             return len(active)
+
+    def active_tenant_count(self, *, tenant_id: str, now: int) -> int:
+        tenant_id = _text(tenant_id, "tenant_id")
+        with self._lock:
+            active_count = 0
+            for scope, entries in tuple(self._reservations.items()):
+                active = [entry for entry in entries if entry[1] > now]
+                if active:
+                    self._reservations[scope] = active
+                    if scope[0] == tenant_id:
+                        active_count += len(active)
+                else:
+                    self._reservations.pop(scope, None)
+            return active_count
 
 
 class CapabilityAuthorizer:
@@ -586,6 +615,7 @@ class CapabilityAuthorizer:
         current = int(time.time()) if now is None else now
         lease: CapabilityLease | None = None
         policy_work_limit: int | None = None
+        policy_tenant_work_limit: int | None = None
         try:
             validate_safety_evidence(self._safety_evidence_provider(), require_kill_switch=False)
             agent = self._agents.get(agent_id)
@@ -611,8 +641,11 @@ class CapabilityAuthorizer:
                 policy_work_limit = self._policy_engine.concurrent_work_limit(context)
                 if policy_work_limit is None:
                     raise AuthorizationDenied("WORK_CONCURRENCY_LIMIT_REQUIRED")
-            remaining = self.work_budget_ledger.admit(
-                lease, work_id, limit=policy_work_limit, now=current,
+                policy_tenant_work_limit = self._policy_engine.tenant_concurrent_work_limit(context)
+                if policy_tenant_work_limit is None:
+                    raise AuthorizationDenied("TENANT_WORK_CONCURRENCY_LIMIT_REQUIRED")
+            remaining, tenant_remaining = self.work_budget_ledger.admit(
+                lease, work_id, limit=policy_work_limit, tenant_limit=policy_tenant_work_limit, now=current,
             )
         except (AuthorizationDenied, LeaseIntegrityError, ValueError) as exc:
             reason = exc.reason if isinstance(exc, AuthorizationDenied) else "WORK_ADMISSION_INVALID"
@@ -627,7 +660,9 @@ class CapabilityAuthorizer:
             "lease_id": lease.lease_id, "work_id": work_id,
             "max_concurrent_work": lease.max_concurrent_work,
             "policy_concurrent_work_limit": policy_work_limit,
-            "concurrent_work_remaining": remaining, "timestamp": current,
+            "policy_tenant_concurrent_work_limit": policy_tenant_work_limit,
+            "concurrent_work_remaining": remaining, "tenant_concurrent_work_remaining": tenant_remaining,
+            "timestamp": current,
         }
         try:
             self._audit("work_admitted", result)
