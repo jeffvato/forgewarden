@@ -1,6 +1,7 @@
 import json
 import time
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -74,6 +75,26 @@ def test_active_lease_authorizes_and_audits():
     assert events[-1][0] == "authorization_success"
     assert events[-1][1]["resource"] == "endpoint-123"
     assert events[-1][1]["data_classification"] == "INTERNAL"
+
+
+def test_delegated_lease_is_bounded_by_the_parent_lease():
+    _, switch, _, leases, _, _, agent, parent = make_plane()
+    switch.clear_for_dry_run()
+    delegable = leases.issue(CapabilityLease(
+        "lease-parent-delegable", agent.agent_id, parent.issuer_identity, parent.tenant_id,
+        parent.granted_capabilities, parent.allowed_tools, parent.allowed_resources,
+        parent.allowed_data_classifications, parent.allowed_action_classes, 1, True, 1, 100, 200,
+        parent.policy_version, "approval-parent", "ticket-parent", "bounded parent", parent.key_reference,
+    ))
+    child = CapabilityLease(
+        "lease-child", "agent-child", agent.agent_id, parent.tenant_id,
+        ("telemetry.read",), parent.allowed_tools, parent.allowed_resources, parent.allowed_data_classifications,
+        ("READ",), 1, False, 0, 110, 190, parent.policy_version, "approval-child", "ticket-child", "bounded child", parent.key_reference,
+    )
+    assert leases.issue_delegated(delegable.lease_id, child, now=150).lease_id == child.lease_id
+    escalated = replace(child, lease_id="lease-child-escalated", max_blast_radius=2)
+    with pytest.raises(AuthorizationDenied, match="DELEGATION_BLAST_RADIUS_EXCEEDED"):
+        leases.issue_delegated(delegable.lease_id, escalated, now=150)
 
 
 @pytest.mark.parametrize(
