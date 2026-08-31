@@ -49,6 +49,7 @@ class PolicyRule:
     action_class: str
     policy_version: str
     max_aggregate_blast_radius: int | None = None
+    max_concurrent_work: int | None = None
 
     def __post_init__(self) -> None:
         for field in ("tenant_id", "capability", "resource", "action_class", "policy_version"):
@@ -59,6 +60,12 @@ class PolicyRule:
             or self.max_aggregate_blast_radius < 0
         ):
             raise PolicyInvariantError("max_aggregate_blast_radius must be a non-negative integer or None")
+        if self.max_concurrent_work is not None and (
+            not isinstance(self.max_concurrent_work, int)
+            or isinstance(self.max_concurrent_work, bool)
+            or self.max_concurrent_work <= 0
+        ):
+            raise PolicyInvariantError("max_concurrent_work must be a positive integer or None")
 
 
 @dataclass(frozen=True)
@@ -98,6 +105,13 @@ class DeterministicPolicy:
             raise PolicyInvariantError("policy context is invalid")
         rule = self._scope_rule(context)
         return None if rule is None else rule.max_aggregate_blast_radius
+
+    def concurrent_work_limit(self, context: PolicyContext) -> int | None:
+        """Return the exact policy-owned work budget for an authorization scope."""
+        if not isinstance(context, PolicyContext):
+            raise PolicyInvariantError("policy context is invalid")
+        rule = self._scope_rule(context)
+        return None if rule is None else rule.max_concurrent_work
 
     def _scope_rule(self, context: PolicyContext) -> PolicyRule | None:
         return self._by_scope.get((

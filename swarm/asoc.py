@@ -491,18 +491,23 @@ class WorkBudgetLedger:
         self._reservations: dict[tuple[str, str], list[tuple[str, int]]] = {}
         self._lock = Lock()
 
-    def admit(self, lease: CapabilityLease, work_id: str, *, now: int) -> int:
+    def admit(self, lease: CapabilityLease, work_id: str, *, limit: int | None = None, now: int) -> int:
         work_id = _text(work_id, "work_id")
+        if limit is not None and (
+            not isinstance(limit, int) or isinstance(limit, bool) or limit <= 0
+        ):
+            raise ValueError("work budget limit is invalid")
+        effective_limit = lease.max_concurrent_work if limit is None else min(lease.max_concurrent_work, limit)
         scope = (lease.tenant_id, lease.subject_agent_id)
         with self._lock:
             active = [entry for entry in self._reservations.get(scope, []) if entry[1] > now]
             if any(entry[0] == work_id for entry in active):
                 raise AuthorizationDenied("WORK_ALREADY_ADMITTED")
-            if len(active) >= lease.max_concurrent_work:
+            if len(active) >= effective_limit:
                 raise AuthorizationDenied("WORK_CONCURRENCY_LIMIT_EXCEEDED")
             active.append((work_id, lease.expires_at))
             self._reservations[scope] = active
-            return lease.max_concurrent_work - len(active)
+            return effective_limit - len(active)
 
     def release(self, *, tenant_id: str, agent_id: str, work_id: str, now: int) -> bool:
         scope = (_text(tenant_id, "tenant_id"), _text(agent_id, "agent_id"))
@@ -574,10 +579,11 @@ class CapabilityAuthorizer:
         except Exception:
             pass
 
-    def admit_work(self, agent_id: str, work_id: str, now: int | None = None) -> dict[str, Any]:
+    def admit_work(self, agent_id: str, work_id: str, request: AuthorizationRequest | None = None, now: int | None = None) -> dict[str, Any]:
         """Reserve a lease's bounded concurrent-work capacity after authorization."""
         current = int(time.time()) if now is None else now
         lease: CapabilityLease | None = None
+        policy_work_limit: int | None = None
         try:
             validate_safety_evidence(self._safety_evidence_provider(), require_kill_switch=False)
             agent = self._agents.get(agent_id)
@@ -589,7 +595,23 @@ class CapabilityAuthorizer:
                 raise AuthorizationDenied("AGENT_EXPIRED")
             if lease.revoked_at is not None or current < lease.valid_from or current >= lease.expires_at:
                 raise AuthorizationDenied("LEASE_INACTIVE")
-            remaining = self.work_budget_ledger.admit(lease, work_id, now=current)
+            if self._policy_engine is not None:
+                if not isinstance(request, AuthorizationRequest):
+                    raise AuthorizationDenied("WORK_POLICY_CONTEXT_REQUIRED")
+                if request.tenant_id != lease.tenant_id:
+                    raise AuthorizationDenied("TENANT_MISMATCH")
+                context = PolicyContext(
+                    request.tenant_id, agent.agent_id, request.capability, request.resource,
+                    request.action_class, request.policy_version,
+                )
+                if not self._policy_engine.evaluate(context).allowed:
+                    raise AuthorizationDenied("WORK_POLICY_DENIED")
+                policy_work_limit = self._policy_engine.concurrent_work_limit(context)
+                if policy_work_limit is None:
+                    raise AuthorizationDenied("WORK_CONCURRENCY_LIMIT_REQUIRED")
+            remaining = self.work_budget_ledger.admit(
+                lease, work_id, limit=policy_work_limit, now=current,
+            )
         except (AuthorizationDenied, LeaseIntegrityError, ValueError) as exc:
             reason = exc.reason if isinstance(exc, AuthorizationDenied) else "WORK_ADMISSION_INVALID"
             self._best_effort_audit("work_admission_denied", {
@@ -602,6 +624,7 @@ class CapabilityAuthorizer:
             "admitted": True, "agent_id": agent_id, "tenant_id": lease.tenant_id,
             "lease_id": lease.lease_id, "work_id": work_id,
             "max_concurrent_work": lease.max_concurrent_work,
+            "policy_concurrent_work_limit": policy_work_limit,
             "concurrent_work_remaining": remaining, "timestamp": current,
         }
         try:

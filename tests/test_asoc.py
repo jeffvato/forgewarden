@@ -929,7 +929,7 @@ def test_work_budget_admission_is_bounded_audited_and_released_on_completion_and
     assert first == {
         "admitted": True, "agent_id": agent.agent_id, "tenant_id": agent.tenant_id,
         "lease_id": budgeted.lease_id, "work_id": "work-1", "max_concurrent_work": 1,
-        "concurrent_work_remaining": 0, "timestamp": 150,
+        "policy_concurrent_work_limit": None, "concurrent_work_remaining": 0, "timestamp": 150,
     }
     with pytest.raises(AuthorizationDenied, match="WORK_CONCURRENCY_LIMIT_EXCEEDED"):
         auth.admit_work(agent.agent_id, "work-2", now=151)
@@ -965,6 +965,35 @@ def test_work_budget_concurrent_admission_allows_only_one_work_item():
     assert auth.work_budget_ledger.active_count(
         tenant_id=agent.tenant_id, agent_id=agent.agent_id, now=151,
     ) == 1
+
+
+def test_work_budget_uses_an_explicit_deterministic_policy_limit():
+    _, _, agents, leases, _, model, agent, lease = make_plane()
+    budgeted = leases.issue(replace(
+        lease, lease_id="lease-work-budget-policy", valid_from=101, max_concurrent_work=2,
+    ))
+    policy = DeterministicPolicy([PolicyRule(
+        "tenant-a", "telemetry.read", "endpoint-123", "READ", "FW-ASOC-01-v1",
+        max_concurrent_work=1,
+    )])
+    auth = CapabilityAuthorizer(
+        agents, leases, KillSwitch(True), policy_engine=policy,
+        model_binding_validator=lambda *_args: True,
+    )
+    work_request = request(model_identity=model)
+    admitted = auth.admit_work(agent.agent_id, "work-policy-1", work_request, now=150)
+    assert admitted["lease_id"] == budgeted.lease_id
+    assert admitted["policy_concurrent_work_limit"] == 1
+    with pytest.raises(AuthorizationDenied, match="WORK_CONCURRENCY_LIMIT_EXCEEDED"):
+        auth.admit_work(agent.agent_id, "work-policy-2", work_request, now=151)
+    missing_limit = CapabilityAuthorizer(
+        agents, leases, KillSwitch(True),
+        policy_engine=DeterministicPolicy([PolicyRule(
+            "tenant-a", "telemetry.read", "endpoint-123", "READ", "FW-ASOC-01-v1",
+        )]),
+    )
+    with pytest.raises(AuthorizationDenied, match="WORK_CONCURRENCY_LIMIT_REQUIRED"):
+        missing_limit.admit_work(agent.agent_id, "work-policy-3", work_request, now=152)
 
 
 def test_releasing_failed_reservation_preserves_prior_aggregate_reservations():
