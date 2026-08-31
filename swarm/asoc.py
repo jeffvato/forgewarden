@@ -348,8 +348,8 @@ class LeaseRegistry:
         if lease.lease_id in self._leases:
             raise ValueError("lease already exists")
         signed = self._signer.sign(lease)
-        self._leases[lease.lease_id] = signed
         self._audit("lease_issued", {"lease_id": lease.lease_id, "agent_id": lease.subject_agent_id, "tenant_id": lease.tenant_id})
+        self._leases[lease.lease_id] = signed
         return signed
 
     def issue_delegated(self, parent_lease_id: str, child: CapabilityLease, now: int | None = None) -> CapabilityLease:

@@ -153,6 +153,22 @@ def test_delegation_denies_child_fanout_budget_escalation():
         leases.issue_delegated(delegable.lease_id, child, now=150)
 
 
+def test_lease_issuance_fails_closed_when_audit_evidence_cannot_be_recorded():
+    _, switch, _, _, _, _, _, lease = make_plane()
+
+    def unavailable_audit(_event, _data):
+        raise RuntimeError("audit unavailable")
+
+    leases = LeaseRegistry(
+        HMACLeaseSigner({"fw-keys/asoc-test": b"test-only-key-material"}), switch, unavailable_audit,
+    )
+    failed = replace(lease, lease_id="lease-audit-unavailable")
+    with pytest.raises(RuntimeError, match="audit unavailable"):
+        leases.issue(failed)
+    with pytest.raises(AuthorizationDenied, match="LEASE_NOT_FOUND"):
+        leases.get(failed.lease_id)
+
+
 def test_delegation_denies_revoked_and_expired_parent_leases():
     _, switch, _, leases, _, _, agent, parent = make_plane()
     switch.clear_for_dry_run()
