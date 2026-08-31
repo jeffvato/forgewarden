@@ -336,6 +336,28 @@ class LeaseRegistry:
         self._audit("lease_issued", {"lease_id": lease.lease_id, "agent_id": lease.subject_agent_id, "tenant_id": lease.tenant_id})
         return signed
 
+    def issue_delegated(self, parent_lease_id: str, child: CapabilityLease, now: int | None = None) -> CapabilityLease:
+        """Issue a child lease only when it is a strict bounded subset of its parent."""
+        current = int(time.time()) if now is None else now
+        parent = self.get(parent_lease_id)
+        self.verify(parent)
+        if parent.revoked_at is not None or current >= parent.expires_at:
+            raise AuthorizationDenied("PARENT_LEASE_INACTIVE")
+        if not parent.delegation_allowed or parent.delegation_depth <= 0:
+            raise AuthorizationDenied("DELEGATION_NOT_ALLOWED")
+        if child.tenant_id != parent.tenant_id or child.issuer_identity != parent.subject_agent_id:
+            raise AuthorizationDenied("DELEGATION_TENANT_OR_ISSUER_MISMATCH")
+        if child.valid_from < parent.valid_from or child.expires_at > parent.expires_at or child.delegation_depth >= parent.delegation_depth:
+            raise AuthorizationDenied("DELEGATION_LIFETIME_OR_DEPTH_EXCEEDED")
+        if child.max_blast_radius > parent.max_blast_radius:
+            raise AuthorizationDenied("DELEGATION_BLAST_RADIUS_EXCEEDED")
+        for child_scope, parent_scope in ((child.granted_capabilities, parent.granted_capabilities), (child.allowed_tools, parent.allowed_tools), (child.allowed_resources, parent.allowed_resources), (child.allowed_data_classifications, parent.allowed_data_classifications), (child.allowed_action_classes, parent.allowed_action_classes)):
+            if not set(child_scope).issubset(parent_scope):
+                raise AuthorizationDenied("DELEGATION_PRIVILEGE_ESCALATION")
+        issued = self.issue(child)
+        self._audit("delegated_lease_issued", {"parent_lease_id": parent_lease_id, "lease_id": issued.lease_id, "agent_id": issued.subject_agent_id, "tenant_id": issued.tenant_id})
+        return issued
+
     def get(self, lease_id: str) -> CapabilityLease:
         try:
             return self._leases[lease_id]
