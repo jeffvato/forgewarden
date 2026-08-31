@@ -694,16 +694,32 @@ def test_policy_owned_aggregate_blast_radius_blocks_splitting_and_releases_after
     assert auth.authorize(agent.agent_id, first, now=201)["lease_id"] == renewed.lease_id
 
 
-def test_tenant_recovery_releases_aggregate_blast_radius_reservations():
+def test_agent_recovery_releases_tenant_scope_aggregate_blast_radius_reservations():
     _, switch, agents, leases, _, model, agent, lease = make_plane()
     policy = DeterministicPolicy([PolicyRule(
         "tenant-a", "telemetry.read", "endpoint-123", "READ", "FW-ASOC-01-v1", 1,
     )])
     auth = CapabilityAuthorizer(agents, leases, switch, policy_engine=policy, model_binding_validator=lambda *_args: True)
     assert auth.authorize(agent.agent_id, request(blast_radius=1, model_identity=model), now=150)["authorized"] is True
+    second_agent = AgentIdentity(
+        "agent-triage-2", agent.tenant_id, agent.agent_type, agent.role, agent.owner_controller_id,
+        model, agent.provider_deployment, agent.approved_purpose, agent.trust_level,
+        agent.allowed_data_classifications, cryptographic_identity_ref="fw-id/agent-triage-2",
+    )
+    agents.register(second_agent)
+    agents.activate(second_agent.agent_id, now=100)
+    leases.issue(CapabilityLease(
+        "lease-radius-agent-2", second_agent.agent_id, lease.issuer_identity, lease.tenant_id,
+        lease.granted_capabilities, lease.allowed_tools, lease.allowed_resources,
+        lease.allowed_data_classifications, lease.allowed_action_classes, lease.max_blast_radius,
+        False, 0, 100, 200, lease.policy_version, "approval-radius-agent-2",
+        "ticket-radius-agent-2", "bounded triage", lease.key_reference,
+    ))
+    with pytest.raises(AuthorizationDenied, match="AGGREGATE_BLAST_RADIUS_EXCEEDED"):
+        auth.authorize(second_agent.agent_id, request(blast_radius=1, model_identity=model), now=151)
     control = ASOCControlPlane(agents, leases, switch, blast_radius_ledger=auth.blast_radius_ledger)
-    assert control.revoke_tenant("tenant-a") >= 1
-    assert auth.blast_radius_ledger.revoke_matching(tenant_id="tenant-a") == 0
+    control.revoke_agent(agent.agent_id)
+    assert auth.authorize(second_agent.agent_id, request(blast_radius=1, model_identity=model), now=152)["authorized"] is True
 
 
 def test_asoc_golden_path_investigate_then_deny_mutation():
