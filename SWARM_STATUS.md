@@ -34,11 +34,12 @@ On every restart or continuation:
 - Negative paths: absent broker approval; post-admission broker revocation; unavailable broker; model binding mismatch; missing or excessive signed/policy token budget; tenant aggregate excess; recovery/expiry release; and concurrent splitting.
 - Proof plan: focused ASOC/policy tests prove broker denial, approval, revocation, unavailability, and that denied admission leaves no tenant token reservation. When this focused slice is committed and read-only reviewed, run the full suite and default integrity gate once.
 - Exact first change: apply the canonical `ModelBroker.allows` validation path already used by authorization inside model-bound `admit_work`, immediately before model-token reservation.
-- Deterministic validation: focused ASOC/policy tests passed (`121 passed`) for the initial broker revalidation coverage. Full-suite and integrity proof remain pending this product checkpoint.
-- Review: pending exact committed-snapshot read-only review.
+- Product checkpoint: `7eeb1b8` (`Revalidate model broker before token admission`).
+- Deterministic validation: focused ASOC/policy tests passed (`121 passed`) for broker denial, approval, revocation, unavailability, and zero reservation on denial. Full Linux suite passed (`643 passed, 1 skipped`); the default FW-INTEGRITY gate passed its repository/build/startup/configuration/test/Golden Path checks at `7eeb1b8`.
+- Review: exact committed-snapshot read-only review found no blocking defect.
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
 - Blocker: none.
-- Next action: commit and exact-snapshot review the completed model-token broker-revalidation unit, then perform its one-time full-suite and integrity proof.
+- Next action: derive the next highest-risk unmet bounded FW-ASOC-02 control from `ROADMAP.md` and existing canonical code without rerunning this completed proof.
 
 ## Execution log
 
@@ -58,6 +59,7 @@ On every restart or continuation:
 - 2026-08-31: FW-ASOC-02 model-token admission checkpoint: model-bound policy work now names its registered model and a positive requested token budget. Canonical admission denies malformed, missing, policy-missing, lease-excess, policy-excess, and model-binding-mismatch requests, and records signed lease/policy/requested values in Evidence. Aggregate token reservation, release, recovery, expiry, concurrency, and tenant-splitting proof remain the next bounded slice.
 - 2026-08-31: FW-ASOC-02 aggregate model-token checkpoint: the existing `WorkBudgetLedger` atomically reserves policy-bound tenant capacity for each requested model-token amount and releases it on completion, recovery revocation, and lease expiry. Focused proof covers malformed/missing limits, lease and policy caps, concurrent reservation, cross-agent splitting, recovery, and expiry; 110 focused tests, the full suite (632 passed, 1 skipped), and the default integrity gate passed at `d7bad98`. Health remains YELLOW only for the pre-existing dependency and roadmap-ownership findings.
 - 2026-08-31: FW-ASOC-02 delegation fan-out checkpoint: parent leases now carry a signed positive direct-child ceiling, and the canonical `LeaseRegistry` atomically contains sequential and concurrent child issuance. Child fan-out cannot exceed the parent ceiling; failed Evidence writes leave no issued lease. Focused proof passed (120 tests); the full suite passed (642 passed, 1 skipped), and the default integrity gate passed at `e371488`. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap ownership gaps.
+- 2026-08-31: FW-ASOC-02 model-token broker-revalidation checkpoint: model-bound work admission now rechecks the canonical Model Broker's exact tenant/agent/model/deployment/version approval before any model-token reservation. Missing, revoked, and unavailable approval deny without reserving capacity. Focused proof passed (121 tests); the full suite passed (643 passed, 1 skipped), and the default integrity gate passed at `7eeb1b8`. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap ownership gaps.
 
 ## Stop conditions
 
