@@ -12,6 +12,7 @@ import json
 import time
 import uuid
 from dataclasses import dataclass, field, replace
+from threading import Lock
 from typing import Any, Callable, Iterable, Mapping, Protocol
 
 from .action_ticket import ActionTicketError, ActionTicketRegistry
@@ -400,8 +401,45 @@ class AuthorizationRequest:
             raise ValueError("model_identity must be a ModelBinding")
 
 
+class AggregateBlastRadiusLedger:
+    """Fail-closed, policy-owned aggregate radius reservations for live leases."""
+
+    def __init__(self) -> None:
+        self._reservations: dict[tuple[str, str, str, str, str], list[tuple[str, str, int, int]]] = {}
+        self._lock = Lock()
+
+    def reserve(self, request: AuthorizationRequest, lease: CapabilityLease, *, limit: int, now: int) -> int:
+        if not isinstance(limit, int) or isinstance(limit, bool) or limit < 0:
+            raise ValueError("aggregate blast radius limit is invalid")
+        scope = (request.tenant_id, request.capability, request.resource, request.action_class, request.policy_version)
+        with self._lock:
+            active = [item for item in self._reservations.get(scope, []) if item[3] > now]
+            used = sum(item[2] for item in active)
+            if used + request.blast_radius > limit:
+                raise AuthorizationDenied("AGGREGATE_BLAST_RADIUS_EXCEEDED")
+            active.append((lease.subject_agent_id, lease.lease_id, request.blast_radius, lease.expires_at))
+            self._reservations[scope] = active
+            return limit - used - request.blast_radius
+
+    def revoke_matching(self, *, tenant_id: str | None = None, agent_id: str | None = None) -> int:
+        removed = 0
+        with self._lock:
+            for scope, entries in tuple(self._reservations.items()):
+                if tenant_id is not None and scope[0] != tenant_id:
+                    continue
+                retained = [entry for entry in entries if agent_id is not None and entry[0] != agent_id]
+                if agent_id is None:
+                    retained = []
+                removed += len(entries) - len(retained)
+                if retained:
+                    self._reservations[scope] = retained
+                else:
+                    self._reservations.pop(scope, None)
+        return removed
+
+
 class CapabilityAuthorizer:
-    def __init__(self, agents: AgentRegistry, leases: LeaseRegistry, kill_switch: KillSwitch, audit: AuditSink | None = None, policy: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, action_ticket_validator: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, action_tickets: ActionTicketRegistry | None = None, policy_engine: DeterministicPolicy | None = None, mcp_tool_validator: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, mcp_gateway: MCPGateway | None = None, model_binding_validator: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, model_broker: ModelBroker | None = None, safety_evidence_provider: Callable[[], Mapping[str, Any]] | None = None):
+    def __init__(self, agents: AgentRegistry, leases: LeaseRegistry, kill_switch: KillSwitch, audit: AuditSink | None = None, policy: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, action_ticket_validator: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, action_tickets: ActionTicketRegistry | None = None, policy_engine: DeterministicPolicy | None = None, mcp_tool_validator: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, mcp_gateway: MCPGateway | None = None, model_binding_validator: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, model_broker: ModelBroker | None = None, safety_evidence_provider: Callable[[], Mapping[str, Any]] | None = None, blast_radius_ledger: AggregateBlastRadiusLedger | None = None):
         self._agents, self._leases, self._kill_switch = agents, leases, kill_switch
         self._audit = audit or (lambda _event, _data: None)
         # An absent policy must never become implicit authority at this
@@ -420,6 +458,7 @@ class CapabilityAuthorizer:
         # canonical Model Broker must approve the model/deployment binding.
         self._model_binding_validator = model_binding_validator or (lambda _agent, _lease, _request: False)
         self._model_broker = model_broker
+        self.blast_radius_ledger = blast_radius_ledger or AggregateBlastRadiusLedger()
         # Reuse FW-ROOT's canonical safety contract rather than duplicating it.
         self._safety_evidence_provider = safety_evidence_provider or (
             lambda: {"mode": "DRY_RUN", "deployment": "DISABLED", "kill_switch": "ENGAGED" if self._kill_switch.engaged else "CLEARED_FOR_DRY_RUN"}
@@ -542,6 +581,13 @@ class CapabilityAuthorizer:
                         self._best_effort_audit("action_ticket_validation_failed", {"agent_id": agent_id, "lease_id": lease.lease_id, "reason": type(exc).__name__})
                         raise AuthorizationDenied("ACTION_TICKET_UNAVAILABLE") from exc
                     if ticket_valid is not True: raise AuthorizationDenied("ACTION_TICKET_REQUIRED")
+            if self._policy_engine is not None:
+                limit = self._policy_engine.aggregate_blast_radius_limit(PolicyContext(
+                    request.tenant_id, agent.agent_id, request.capability, request.resource,
+                    request.action_class, request.policy_version,
+                ))
+                if limit is not None:
+                    self.blast_radius_ledger.reserve(request, lease, limit=limit, now=current)
         except (AuthorizationDenied, LeaseIntegrityError, ValueError) as exc:
             if isinstance(exc, AuthorizationDenied):
                 reason = exc.reason
@@ -571,6 +617,7 @@ class CapabilityAuthorizer:
             "action_class": request.action_class, "tool": request.tool,
             "policy_version": request.policy_version, "action_ticket_id": consumed_ticket_id,
             "policy_decision_reason": policy_decision_reason,
+            "blast_radius": request.blast_radius,
             "model_binding": request.model_identity.as_dict() if request.model_identity is not None else None,
             "approved_purpose": agent.approved_purpose,
             "timestamp": current,
@@ -587,11 +634,12 @@ class CapabilityAuthorizer:
 class ASOCControlPlane:
     """Small coordination boundary for immediate revocation operations."""
 
-    def __init__(self, agents: AgentRegistry, leases: LeaseRegistry, kill_switch: KillSwitch, action_tickets: ActionTicketRegistry | None = None, model_broker: ModelBroker | None = None, mcp_gateway: MCPGateway | None = None):
+    def __init__(self, agents: AgentRegistry, leases: LeaseRegistry, kill_switch: KillSwitch, action_tickets: ActionTicketRegistry | None = None, model_broker: ModelBroker | None = None, mcp_gateway: MCPGateway | None = None, blast_radius_ledger: AggregateBlastRadiusLedger | None = None):
         self.agents, self.leases, self.kill_switch = agents, leases, kill_switch
         self.action_tickets = action_tickets
         self.model_broker = model_broker
         self.mcp_gateway = mcp_gateway
+        self.blast_radius_ledger = blast_radius_ledger
 
     def revoke_agent(self, agent_id: str, reason: str = "agent revoked") -> None:
         self.agents.revoke(agent_id, reason)
@@ -602,6 +650,8 @@ class ASOCControlPlane:
             self.model_broker.revoke_matching(subject_agent_id=agent_id)
         if self.mcp_gateway is not None:
             self.mcp_gateway.revoke_matching(subject_agent_id=agent_id)
+        if self.blast_radius_ledger is not None:
+            self.blast_radius_ledger.revoke_matching(agent_id=agent_id)
 
     def revoke_role(self, role: str, reason: str = "role revoked") -> int:
         ids = self.agents.ids_matching(role=role)
@@ -616,6 +666,9 @@ class ASOCControlPlane:
         if self.mcp_gateway is not None:
             for agent_id in ids:
                 self.mcp_gateway.revoke_matching(subject_agent_id=agent_id)
+        if self.blast_radius_ledger is not None:
+            for agent_id in ids:
+                self.blast_radius_ledger.revoke_matching(agent_id=agent_id)
         return revoked
 
     def revoke_model_deployment(self, model_deployment: str, reason: str = "model deployment revoked") -> int:
@@ -630,6 +683,9 @@ class ASOCControlPlane:
         if self.mcp_gateway is not None:
             for agent_id in ids:
                 self.mcp_gateway.revoke_matching(subject_agent_id=agent_id)
+        if self.blast_radius_ledger is not None:
+            for agent_id in ids:
+                self.blast_radius_ledger.revoke_matching(agent_id=agent_id)
         return revoked
 
     def revoke_tenant(self, tenant_id: str, reason: str = "tenant revoked") -> int:
@@ -642,6 +698,8 @@ class ASOCControlPlane:
             self.model_broker.revoke_matching(tenant_id=tenant_id)
         if self.mcp_gateway is not None:
             self.mcp_gateway.revoke_matching(tenant_id=tenant_id)
+        if self.blast_radius_ledger is not None:
+            self.blast_radius_ledger.revoke_matching(tenant_id=tenant_id)
         return revoked
 
     def engage_ai_kill_switch(self, reason: str = "AI kill switch") -> int:
@@ -659,6 +717,9 @@ class ASOCControlPlane:
         if self.mcp_gateway is not None:
             for agent_id in ai_ids:
                 self.mcp_gateway.revoke_matching(subject_agent_id=agent_id)
+        if self.blast_radius_ledger is not None:
+            for agent_id in ai_ids:
+                self.blast_radius_ledger.revoke_matching(agent_id=agent_id)
         return revoked
 
 

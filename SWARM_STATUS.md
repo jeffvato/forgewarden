@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: FW-ASOC-01 — Agent Identity, Roles & Bounded Capability Leasing proof complete
-- Current task: FW-ASOC-01 is Proven by the full repository suite (578 passed, 1 skipped), the runnable authorization Golden Path, and exact-commit read-only review. External adapters and a full Z3 solver remain future work; derive the next authorized FW-ASOC-02 task before implementation.
+- Current focus: FW-ASOC-02 — aggregate blast-radius controls
+- Current task: enforce deterministic, policy-owned aggregate blast-radius limits so requests cannot evade a configured tenant/action scope cap by splitting work across valid leases.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -38,7 +38,7 @@ On every restart or continuation:
 - Gemini review: unavailable; no Gemini result was fabricated or substituted
 - Unresolved findings: full Z3 solver, normalized events, SOC incidents, and compliance remain future requirements; ASOC's in-repository canonical Action Ticket, Model Broker, and MCP Gateway are present.
 - Blocker: none; independent safe ASOC hardening and proof work remains available
-- Next action: run the default FW-INTEGRITY gate for this proof checkpoint, then derive the next authorized FW-ASOC-02 task without implementing it yet.
+- Next action: obtain read-only review for the tested aggregate blast-radius checkpoint, then repair only concrete findings.
 
 ## Execution log
 
@@ -52,6 +52,7 @@ On every restart or continuation:
 - 2026-08-30: Canonical Action Ticket integration: added signed, tenant/agent/lease/action/policy-bound, short-lived, single-use tickets and connected them to mutating ASOC authorization. Direct and integrated negative-path validation passed (39 passed).
 - 2026-08-30: FW-ASOC-01 canonical integration now includes deterministic policy, Action Tickets, Model Broker, MCP Gateway, durable evidence, atomic ticket consumption, and tenant/agent/role/deployment/kill-switch recovery revocation. The runnable Golden Path proves authorized operation plus replay, kill-switch, recovery, and cross-tenant denials.
 - 2026-08-30: FW-ASOC-01 proof checkpoint: the exact commit `b4880fb` passed the full repository suite (578 passed, 1 skipped) and its read-only exact-snapshot quality review. The ASOC-specific audit-sink findings were verified as intentional fail-closed handling; no ASOC repair was required. The functionality map now records FW-ASOC-01 as Proven, while external adapters and full Z3 remain future roadmap work.
+- 2026-08-31: FW-ASOC-02 aggregate blast-radius checkpoint: deterministic policy rules can now carry an exact tenant/capability/resource/action limit. Authorization atomically reserves configured aggregate radius through lease expiry, denies splitting attempts, records the requested radius in evidence, and releases reservations during recovery revocation. Focused ASOC, policy, and integrity validation passed (66 passed).
 
 ## Stop conditions
 

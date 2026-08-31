@@ -673,6 +673,39 @@ def test_asoc_canonical_golden_path_uses_policy_broker_gateway_ticket_and_eviden
     assert events[-1][1]["action_ticket_id"] == "ticket-canonical-golden"
 
 
+def test_policy_owned_aggregate_blast_radius_blocks_splitting_and_releases_after_expiry():
+    _, switch, agents, leases, _, model, agent, lease = make_plane()
+    policy = DeterministicPolicy([PolicyRule(
+        "tenant-a", "telemetry.read", "endpoint-123", "READ", "FW-ASOC-01-v1", 1,
+    )])
+    auth = CapabilityAuthorizer(agents, leases, switch, policy_engine=policy, model_binding_validator=lambda *_args: True)
+    first = request(blast_radius=1, model_identity=model)
+    assert auth.authorize(agent.agent_id, first, now=150)["authorized"] is True
+    with pytest.raises(AuthorizationDenied, match="AGGREGATE_BLAST_RADIUS_EXCEEDED"):
+        auth.authorize(agent.agent_id, first, now=151)
+
+    renewed = leases.issue(CapabilityLease(
+        "lease-radius-renewed", agent.agent_id, lease.issuer_identity, lease.tenant_id,
+        lease.granted_capabilities, lease.allowed_tools, lease.allowed_resources,
+        lease.allowed_data_classifications, lease.allowed_action_classes, lease.max_blast_radius,
+        False, 0, 200, 300, lease.policy_version, "approval-radius-renewed",
+        "ticket-radius-renewed", "renewed bounded triage", lease.key_reference,
+    ))
+    assert auth.authorize(agent.agent_id, first, now=201)["lease_id"] == renewed.lease_id
+
+
+def test_tenant_recovery_releases_aggregate_blast_radius_reservations():
+    _, switch, agents, leases, _, model, agent, lease = make_plane()
+    policy = DeterministicPolicy([PolicyRule(
+        "tenant-a", "telemetry.read", "endpoint-123", "READ", "FW-ASOC-01-v1", 1,
+    )])
+    auth = CapabilityAuthorizer(agents, leases, switch, policy_engine=policy, model_binding_validator=lambda *_args: True)
+    assert auth.authorize(agent.agent_id, request(blast_radius=1, model_identity=model), now=150)["authorized"] is True
+    control = ASOCControlPlane(agents, leases, switch, blast_radius_ledger=auth.blast_radius_ledger)
+    assert control.revoke_tenant("tenant-a") >= 1
+    assert auth.blast_radius_ledger.revoke_matching(tenant_id="tenant-a") == 0
+
+
 def test_asoc_golden_path_investigate_then_deny_mutation():
     events, switch, _, leases, auth, model, agent, lease = make_plane()
 

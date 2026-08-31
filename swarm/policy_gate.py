@@ -48,10 +48,17 @@ class PolicyRule:
     resource: str
     action_class: str
     policy_version: str
+    max_aggregate_blast_radius: int | None = None
 
     def __post_init__(self) -> None:
         for field in ("tenant_id", "capability", "resource", "action_class", "policy_version"):
             object.__setattr__(self, field, _policy_text(getattr(self, field), field))
+        if self.max_aggregate_blast_radius is not None and (
+            not isinstance(self.max_aggregate_blast_radius, int)
+            or isinstance(self.max_aggregate_blast_radius, bool)
+            or self.max_aggregate_blast_radius < 0
+        ):
+            raise PolicyInvariantError("max_aggregate_blast_radius must be a non-negative integer or None")
 
 
 @dataclass(frozen=True)
@@ -72,19 +79,31 @@ class DeterministicPolicy:
         if not isinstance(rules, (tuple, list)) or not all(isinstance(rule, PolicyRule) for rule in rules):
             raise PolicyInvariantError("policy rules must be PolicyRule values")
         self._rules = frozenset(rules)
+        self._by_scope = {
+            (rule.tenant_id, rule.capability, rule.resource, rule.action_class, rule.policy_version): rule
+            for rule in rules
+        }
+        if len(self._by_scope) != len(rules):
+            raise PolicyInvariantError("policy rules must not duplicate an authorization scope")
 
     def evaluate(self, context: PolicyContext) -> PolicyDecision:
         if not isinstance(context, PolicyContext):
             raise PolicyInvariantError("policy context is invalid")
-        matches = any(
-            rule.tenant_id == context.tenant_id
-            and rule.capability == context.capability
-            and rule.resource == context.resource
-            and rule.action_class == context.action_class
-            and rule.policy_version == context.policy_version
-            for rule in self._rules
-        )
+        matches = self._scope_rule(context) is not None
         return PolicyDecision(matches, "RULE_MATCH" if matches else "RULE_NOT_FOUND")
+
+    def aggregate_blast_radius_limit(self, context: PolicyContext) -> int | None:
+        """Return the exact policy-owned aggregate limit for a scope."""
+        if not isinstance(context, PolicyContext):
+            raise PolicyInvariantError("policy context is invalid")
+        rule = self._scope_rule(context)
+        return None if rule is None else rule.max_aggregate_blast_radius
+
+    def _scope_rule(self, context: PolicyContext) -> PolicyRule | None:
+        return self._by_scope.get((
+            context.tenant_id, context.capability, context.resource,
+            context.action_class, context.policy_version,
+        ))
 
 
 def validate_safety_evidence(
