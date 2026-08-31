@@ -913,6 +913,39 @@ def test_aggregate_blast_radius_concurrency_allows_only_one_reservation():
     assert sorted(outcomes) == ["AGGREGATE_BLAST_RADIUS_EXCEEDED", "AUTHORIZED"]
 
 
+@pytest.mark.parametrize("value", [0, -1, True, "1"])
+def test_lease_rejects_invalid_concurrent_work_limits(value):
+    _, _, _, _, _, _, _, lease = make_plane()
+    with pytest.raises(ValueError, match="max_concurrent_work"):
+        replace(lease, max_concurrent_work=value)
+
+
+def test_work_budget_admission_is_bounded_audited_and_released_on_completion_and_recovery():
+    events, _, agents, leases, auth, _, agent, lease = make_plane()
+    budgeted = leases.issue(replace(
+        lease, lease_id="lease-work-budget", valid_from=101, max_concurrent_work=1,
+    ))
+    first = auth.admit_work(agent.agent_id, "work-1", now=150)
+    assert first == {
+        "admitted": True, "agent_id": agent.agent_id, "tenant_id": agent.tenant_id,
+        "lease_id": budgeted.lease_id, "work_id": "work-1", "max_concurrent_work": 1,
+        "concurrent_work_remaining": 0, "timestamp": 150,
+    }
+    with pytest.raises(AuthorizationDenied, match="WORK_CONCURRENCY_LIMIT_EXCEEDED"):
+        auth.admit_work(agent.agent_id, "work-2", now=151)
+    assert events[-1][0] == "work_admission_denied"
+    assert auth.complete_work(agent.agent_id, "work-1", now=152) is True
+    assert auth.admit_work(agent.agent_id, "work-2", now=153)["admitted"] is True
+    control = ASOCControlPlane(
+        agents, leases, KillSwitch(True), work_budget_ledger=auth.work_budget_ledger,
+    )
+    control.revoke_agent(agent.agent_id)
+    assert auth.work_budget_ledger.active_count(
+        tenant_id=agent.tenant_id, agent_id=agent.agent_id, now=154,
+    ) == 0
+    assert [event for event, _data in events if event == "work_admitted"] == ["work_admitted", "work_admitted"]
+
+
 def test_releasing_failed_reservation_preserves_prior_aggregate_reservations():
     _, _, _, _, _, _, _, lease = make_plane()
     ledger = AggregateBlastRadiusLedger()

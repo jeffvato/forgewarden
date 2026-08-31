@@ -180,6 +180,7 @@ class CapabilityLease:
     action_ticket_reference: str
     creation_reason: str
     key_reference: str
+    max_concurrent_work: int = 1
     signature: str = ""
     revoked_at: int | None = None
     revocation_reason: str | None = None
@@ -203,6 +204,8 @@ class CapabilityLease:
         object.__setattr__(self, "allowed_action_classes", action_classes)
         if self.max_blast_radius < 0 or self.delegation_depth < 0 or self.valid_from >= self.expires_at:
             raise ValueError("invalid lease bounds")
+        if not isinstance(self.max_concurrent_work, int) or isinstance(self.max_concurrent_work, bool) or self.max_concurrent_work <= 0:
+            raise ValueError("max_concurrent_work must be a positive integer")
         if not isinstance(self.delegation_allowed, bool):
             raise ValueError("delegation_allowed must be boolean")
         if not self.delegation_allowed and self.delegation_depth != 0:
@@ -213,7 +216,8 @@ class CapabilityLease:
             "lease_id", "subject_agent_id", "issuer_identity", "tenant_id", "granted_capabilities", "allowed_tools",
             "allowed_resources", "allowed_data_classifications", "allowed_action_classes", "max_blast_radius",
             "delegation_allowed", "delegation_depth", "valid_from", "expires_at", "policy_version",
-            "approval_reference", "action_ticket_reference", "creation_reason", "key_reference")}
+            "approval_reference", "action_ticket_reference", "creation_reason", "key_reference",
+            "max_concurrent_work")}
 
     def canonical_bytes(self) -> bytes:
         return json.dumps(self.unsigned_dict(), sort_keys=True, separators=(",", ":")).encode("utf-8")
@@ -480,8 +484,64 @@ class AggregateBlastRadiusLedger:
                 self._reservations.pop(scope, None)
 
 
+class WorkBudgetLedger:
+    """Lease-bound concurrent-work admission; capacity is tenant and agent scoped."""
+
+    def __init__(self) -> None:
+        self._reservations: dict[tuple[str, str], list[tuple[str, int]]] = {}
+        self._lock = Lock()
+
+    def admit(self, lease: CapabilityLease, work_id: str, *, now: int) -> int:
+        work_id = _text(work_id, "work_id")
+        scope = (lease.tenant_id, lease.subject_agent_id)
+        with self._lock:
+            active = [entry for entry in self._reservations.get(scope, []) if entry[1] > now]
+            if any(entry[0] == work_id for entry in active):
+                raise AuthorizationDenied("WORK_ALREADY_ADMITTED")
+            if len(active) >= lease.max_concurrent_work:
+                raise AuthorizationDenied("WORK_CONCURRENCY_LIMIT_EXCEEDED")
+            active.append((work_id, lease.expires_at))
+            self._reservations[scope] = active
+            return lease.max_concurrent_work - len(active)
+
+    def release(self, *, tenant_id: str, agent_id: str, work_id: str, now: int) -> bool:
+        scope = (_text(tenant_id, "tenant_id"), _text(agent_id, "agent_id"))
+        work_id = _text(work_id, "work_id")
+        with self._lock:
+            active = [entry for entry in self._reservations.get(scope, []) if entry[1] > now]
+            retained = [entry for entry in active if entry[0] != work_id]
+            released = len(retained) != len(active)
+            if retained:
+                self._reservations[scope] = retained
+            else:
+                self._reservations.pop(scope, None)
+            return released
+
+    def revoke_matching(self, *, tenant_id: str | None = None, agent_id: str | None = None) -> int:
+        removed = 0
+        with self._lock:
+            for scope, entries in tuple(self._reservations.items()):
+                tenant_matches = tenant_id is None or scope[0] == tenant_id
+                agent_matches = agent_id is None or scope[1] == agent_id
+                if not (tenant_matches and agent_matches):
+                    continue
+                removed += len(entries)
+                self._reservations.pop(scope, None)
+        return removed
+
+    def active_count(self, *, tenant_id: str, agent_id: str, now: int) -> int:
+        scope = (_text(tenant_id, "tenant_id"), _text(agent_id, "agent_id"))
+        with self._lock:
+            active = [entry for entry in self._reservations.get(scope, []) if entry[1] > now]
+            if active:
+                self._reservations[scope] = active
+            else:
+                self._reservations.pop(scope, None)
+            return len(active)
+
+
 class CapabilityAuthorizer:
-    def __init__(self, agents: AgentRegistry, leases: LeaseRegistry, kill_switch: KillSwitch, audit: AuditSink | None = None, policy: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, action_ticket_validator: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, action_tickets: ActionTicketRegistry | None = None, policy_engine: DeterministicPolicy | None = None, mcp_tool_validator: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, mcp_gateway: MCPGateway | None = None, model_binding_validator: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, model_broker: ModelBroker | None = None, safety_evidence_provider: Callable[[], Mapping[str, Any]] | None = None, blast_radius_ledger: AggregateBlastRadiusLedger | None = None):
+    def __init__(self, agents: AgentRegistry, leases: LeaseRegistry, kill_switch: KillSwitch, audit: AuditSink | None = None, policy: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, action_ticket_validator: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, action_tickets: ActionTicketRegistry | None = None, policy_engine: DeterministicPolicy | None = None, mcp_tool_validator: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, mcp_gateway: MCPGateway | None = None, model_binding_validator: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, model_broker: ModelBroker | None = None, safety_evidence_provider: Callable[[], Mapping[str, Any]] | None = None, blast_radius_ledger: AggregateBlastRadiusLedger | None = None, work_budget_ledger: WorkBudgetLedger | None = None):
         self._agents, self._leases, self._kill_switch = agents, leases, kill_switch
         self._audit = audit or (lambda _event, _data: None)
         # An absent policy must never become implicit authority at this
@@ -501,6 +561,7 @@ class CapabilityAuthorizer:
         self._model_binding_validator = model_binding_validator or (lambda _agent, _lease, _request: False)
         self._model_broker = model_broker
         self.blast_radius_ledger = blast_radius_ledger or AggregateBlastRadiusLedger()
+        self.work_budget_ledger = work_budget_ledger or WorkBudgetLedger()
         # Reuse FW-ROOT's canonical safety contract rather than duplicating it.
         self._safety_evidence_provider = safety_evidence_provider or (
             lambda: {"mode": "DRY_RUN", "deployment": "DISABLED", "kill_switch": "ENGAGED" if self._kill_switch.engaged else "CLEARED_FOR_DRY_RUN"}
@@ -512,6 +573,62 @@ class CapabilityAuthorizer:
             self._audit(event, data)
         except Exception:
             pass
+
+    def admit_work(self, agent_id: str, work_id: str, now: int | None = None) -> dict[str, Any]:
+        """Reserve a lease's bounded concurrent-work capacity after authorization."""
+        current = int(time.time()) if now is None else now
+        lease: CapabilityLease | None = None
+        try:
+            validate_safety_evidence(self._safety_evidence_provider(), require_kill_switch=False)
+            agent = self._agents.get(agent_id)
+            lease = self._leases.for_agent(agent_id)
+            self._leases.verify(lease)
+            if agent.lifecycle_state != "ACTIVE" or agent.revoked_at is not None:
+                raise AuthorizationDenied("AGENT_NOT_ACTIVE")
+            if agent.expires_at is not None and current >= agent.expires_at:
+                raise AuthorizationDenied("AGENT_EXPIRED")
+            if lease.revoked_at is not None or current < lease.valid_from or current >= lease.expires_at:
+                raise AuthorizationDenied("LEASE_INACTIVE")
+            remaining = self.work_budget_ledger.admit(lease, work_id, now=current)
+        except (AuthorizationDenied, LeaseIntegrityError, ValueError) as exc:
+            reason = exc.reason if isinstance(exc, AuthorizationDenied) else "WORK_ADMISSION_INVALID"
+            self._best_effort_audit("work_admission_denied", {
+                "agent_id": agent_id, "work_id": work_id, "reason": reason, "timestamp": current,
+            })
+            if isinstance(exc, AuthorizationDenied):
+                raise
+            raise AuthorizationDenied(reason) from exc
+        result = {
+            "admitted": True, "agent_id": agent_id, "tenant_id": lease.tenant_id,
+            "lease_id": lease.lease_id, "work_id": work_id,
+            "max_concurrent_work": lease.max_concurrent_work,
+            "concurrent_work_remaining": remaining, "timestamp": current,
+        }
+        try:
+            self._audit("work_admitted", result)
+        except Exception as exc:
+            self.work_budget_ledger.release(
+                tenant_id=lease.tenant_id, agent_id=agent_id, work_id=work_id, now=current,
+            )
+            raise AuthorizationDenied("EVIDENCE_WRITE_FAILED") from exc
+        return result
+
+    def complete_work(self, agent_id: str, work_id: str, now: int | None = None) -> bool:
+        """Release only the caller's tenant-bound admitted work capacity."""
+        current = int(time.time()) if now is None else now
+        agent = self._agents.get(agent_id)
+        released = self.work_budget_ledger.release(
+            tenant_id=agent.tenant_id, agent_id=agent_id, work_id=work_id, now=current,
+        )
+        if released:
+            try:
+                self._audit("work_completed", {
+                    "agent_id": agent_id, "tenant_id": agent.tenant_id,
+                    "work_id": work_id, "timestamp": current,
+                })
+            except Exception as exc:
+                raise AuthorizationDenied("EVIDENCE_WRITE_FAILED") from exc
+        return released
 
     def authorize(self, agent_id: str, request: AuthorizationRequest, now: int | None = None) -> dict[str, Any]:
         current = int(time.time()) if now is None else now
@@ -706,12 +823,13 @@ class CapabilityAuthorizer:
 class ASOCControlPlane:
     """Small coordination boundary for immediate revocation operations."""
 
-    def __init__(self, agents: AgentRegistry, leases: LeaseRegistry, kill_switch: KillSwitch, action_tickets: ActionTicketRegistry | None = None, model_broker: ModelBroker | None = None, mcp_gateway: MCPGateway | None = None, blast_radius_ledger: AggregateBlastRadiusLedger | None = None):
+    def __init__(self, agents: AgentRegistry, leases: LeaseRegistry, kill_switch: KillSwitch, action_tickets: ActionTicketRegistry | None = None, model_broker: ModelBroker | None = None, mcp_gateway: MCPGateway | None = None, blast_radius_ledger: AggregateBlastRadiusLedger | None = None, work_budget_ledger: WorkBudgetLedger | None = None):
         self.agents, self.leases, self.kill_switch = agents, leases, kill_switch
         self.action_tickets = action_tickets
         self.model_broker = model_broker
         self.mcp_gateway = mcp_gateway
         self.blast_radius_ledger = blast_radius_ledger
+        self.work_budget_ledger = work_budget_ledger
 
     def revoke_agent(self, agent_id: str, reason: str = "agent revoked") -> None:
         self.agents.revoke(agent_id, reason)
@@ -725,6 +843,8 @@ class ASOCControlPlane:
             self.mcp_gateway.revoke_matching(subject_agent_id=agent_id)
         if self.blast_radius_ledger is not None:
             self.blast_radius_ledger.revoke_matching(agent_id=agent_id)
+        if self.work_budget_ledger is not None:
+            self.work_budget_ledger.revoke_matching(agent_id=agent_id)
 
     def revoke_role(self, role: str, reason: str = "role revoked") -> int:
         ids = self.agents.ids_matching(role=role)
@@ -742,6 +862,9 @@ class ASOCControlPlane:
         if self.blast_radius_ledger is not None:
             for agent_id in ids:
                 self.blast_radius_ledger.revoke_matching(agent_id=agent_id)
+        if self.work_budget_ledger is not None:
+            for agent_id in ids:
+                self.work_budget_ledger.revoke_matching(agent_id=agent_id)
         return revoked
 
     def revoke_model_deployment(self, model_deployment: str, reason: str = "model deployment revoked") -> int:
@@ -759,6 +882,9 @@ class ASOCControlPlane:
         if self.blast_radius_ledger is not None:
             for agent_id in ids:
                 self.blast_radius_ledger.revoke_matching(agent_id=agent_id)
+        if self.work_budget_ledger is not None:
+            for agent_id in ids:
+                self.work_budget_ledger.revoke_matching(agent_id=agent_id)
         return revoked
 
     def revoke_tenant(self, tenant_id: str, reason: str = "tenant revoked") -> int:
@@ -773,6 +899,8 @@ class ASOCControlPlane:
             self.mcp_gateway.revoke_matching(tenant_id=tenant_id)
         if self.blast_radius_ledger is not None:
             self.blast_radius_ledger.revoke_matching(tenant_id=tenant_id)
+        if self.work_budget_ledger is not None:
+            self.work_budget_ledger.revoke_matching(tenant_id=tenant_id)
         return revoked
 
     def engage_ai_kill_switch(self, reason: str = "AI kill switch") -> int:
@@ -793,6 +921,9 @@ class ASOCControlPlane:
         if self.blast_radius_ledger is not None:
             for agent_id in ai_ids:
                 self.blast_radius_ledger.revoke_matching(agent_id=agent_id)
+        if self.work_budget_ledger is not None:
+            for agent_id in ai_ids:
+                self.work_budget_ledger.revoke_matching(agent_id=agent_id)
         return revoked
 
 
