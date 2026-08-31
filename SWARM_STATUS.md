@@ -4,7 +4,7 @@
 
 - Active phase: FW-AV — Native anti-malware
 - Current focus: FW-AV — verified detection-content snapshot boundary
-- Current task: FW-AV-04 — require the immutable trusted catalog to match an expected deterministic snapshot digest.
+- Current task: FW-AV-04 complete; derive the next highest-risk bounded FW-AV control.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -35,9 +35,10 @@ On every restart or continuation:
 - Negative paths: missing, malformed, or mismatched expected digest; tampering with any bound catalog field; unsupported/duplicate/untrusted indicator input; direct catalog collection; invalid scan input; and failed Evidence write must fail closed. There is no remote fetch, signature verification, key handling, file I/O, quarantine, execution, sandboxing, or remediation.
 - Proof plan: focused tests for stable digest across ordering, mismatch denial for each detector-input class, verified digest in durable Evidence, clean/hash/content compatibility, and evidence failure; exact read-only commit review after focused validation. Run the full suite and integrity gate only when this bounded snapshot slice is complete.
 - Exact first change: extend the existing trusted catalog with canonical digest calculation and mandatory expected-digest verification, then bind that digest in scanner Evidence; do not implement detection-content transport, signature issuance/verification, keys, updates, or response behavior.
+- Proof: focused FW-AV tests passed (`7 passed`); full Linux suite passed (`652 passed, 1 skipped`); the default FW-INTEGRITY gate passed all hard checks and its ASOC Golden Path at `e6661d4`. Exact read-only review of that tested commit found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and defined-but-unimplemented identity, normalized-events, SOC-incident, and compliance owners.
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
 - Blocker: none.
-- Next action: implement and verify FW-AV-04.
+- Next action: derive and implement the next highest-risk bounded FW-AV control; do not add actual file hooks, execution, quarantine, remediation, reputation networking, or sandboxing without separately scoped authority and proof.
 - Platform delivery definition: Windows and Linux are the first endpoint targets; macOS, Android, and iOS are later platform-native releases. Detailed scope and required proof are in `docs/fw-av-windows-linux-delivery-plan.md`.
 
 ## Execution log
@@ -71,6 +72,7 @@ On every restart or continuation:
 - 2026-08-31: FW-AV-03 complete at `7ac7fdb`: the existing trusted local catalog now admits only bounded literal byte indicators from trusted publishers, rejects malformed/untrusted/ambiguous input, orders matches deterministically, and records matching content indicators with canonical Evidence. It remains in-memory and detect-only; no YARA interpreter, file access, execution, sandboxing, quarantine, remediation, or network behavior exists. Focused proof passed (6 tests); full Linux suite passed (651 passed, 1 skipped); the integrity gate passed all hard checks, remaining YELLOW only for the pre-existing dependency and roadmap-ownership gaps; exact read-only commit review found no blocking defect.
 - 2026-08-31: Jeff confirmed the product response model: detect and warn; automatically quarantine only high-confidence trusted-content detections; retain clean/repair as approved, ticketed, recoverable ForgeWarden Core remediation. Windows and Linux are the first endpoint targets, with macOS, Android, and iOS following. This is product-scope authority only; `DRY_RUN`, deployment-disabled state, and engaged kill-switch boundaries remain unchanged.
 - 2026-08-31: FW-AV-04 claimed as the next prerequisite for high-confidence automatic quarantine: a deterministic digest binding for the exact trusted detection-content snapshot. This is catalog-integrity plumbing only; publisher signatures, key management, transport, update, endpoint scanning, quarantine, and remediation remain separately owned work.
+- 2026-08-31: FW-AV-04 complete at `e6661d4`: every trusted local catalog now requires an exact deterministic SHA-256 snapshot binding for its identity, publisher set, hash signatures, and literal content indicators; mismatched or tampered snapshots fail closed, and the verified digest is attached to canonical scan Evidence. No keys, signature transport, updates, endpoint access, quarantine, execution, sandboxing, or remediation were added. Focused proof passed (7 tests); full Linux suite passed (652 passed, 1 skipped); the integrity gate passed all hard checks, remaining YELLOW only for the pre-existing dependency and roadmap-ownership gaps; exact read-only commit review found no blocking defect.
 
 ## Stop conditions
 
@@ -80,4 +82,4 @@ Do not stop merely because a task or review cycle finished. Stop only under the 
 
 - Reason: NONE
 - Exact condition: no external or human blocker is known.
-- First resume action: implement and validate FW-AV-04 from `d65eb98`.
+- First resume action: derive the highest-risk unmet bounded FW-AV control from `ROADMAP.md` and canonical code, then implement its first smallest safe unit.
