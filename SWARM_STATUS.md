@@ -36,12 +36,13 @@ On every restart or continuation:
 - Negative paths: zero, negative, boolean, fractional, or text limits; changed signed limit; delegated token-budget escalation; missing policy ceiling during the future admission-enforcement unit; tenant/capacity splitting, recovery, expiry, and audit failure during later ledger proof.
 - Proof plan: this unit runs focused ASOC/policy schema and signature/delegation tests; the next unit will add atomic requested-token reservation, release/recovery/expiry behavior, cross-agent and tenant splitting denials, Evidence, and Model Broker-bound focused tests before broader validation.
 - Exact first change: add `max_model_tokens_per_work` to the signed `CapabilityLease` canonical payload and `PolicyRule`, validate it as a positive integer, expose the deterministic accessor, and deny delegated increases.
-- Files changed: in progress — `swarm/asoc.py`, `swarm/policy_gate.py`, `tests/test_asoc.py`, `tests/test_policy_gate.py`, `SWARM_STATUS.md`.
-- Deterministic validation: focused ASOC/policy schema tests passed (`97 passed` in the Linux repository runtime); prior tenant-wide capacity evidence remains `84` focused tests, `473 passed, 1 skipped` full suite, and a passing integrity gate at `ccbb3cd`.
-- Independent review: pending for this new meaningful commit; the prior `ccbb3cd` review remains evidence only for the prior tenant-capacity slice.
+- First product checkpoint: `cc70943acb9d4b0fd9ad58bc28963b53d5930d77` (`Bind ASOC leases to model token limits`).
+- Files changed: `swarm/asoc.py`, `swarm/policy_gate.py`, `tests/test_asoc.py`, `tests/test_policy_gate.py`, `SWARM_STATUS.md`.
+- Deterministic validation: focused ASOC/policy schema tests passed (`97 passed` in the Linux repository runtime); `git diff --check` and `git show --check` passed. Prior tenant-wide capacity evidence remains `84` focused tests, `473 passed, 1 skipped` full suite, and a passing integrity gate at `ccbb3cd`.
+- Review: exact-diff read-only review found no blocking defect; the configured external exact-review adapter returned no structured payload, so no independent approval is claimed. The prior `ccbb3cd` review remains evidence only for the prior tenant-capacity slice.
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
 - Blocker: none.
-- Next action: validate and commit the model-token schema boundary, then implement canonical token admission accounting.
+- Next action: implement canonical token admission accounting through the existing `WorkBudgetLedger` and `CapabilityAuthorizer` boundary, then prove release, recovery, expiry, concurrency, and tenant-splitting denials.
 
 ## Execution log
 
