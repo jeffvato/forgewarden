@@ -996,6 +996,19 @@ def test_work_budget_uses_an_explicit_deterministic_policy_limit():
         missing_limit.admit_work(agent.agent_id, "work-policy-3", work_request, now=152)
 
 
+def test_work_budget_expiry_releases_capacity_for_a_renewed_lease():
+    _, _, _, leases, auth, _, agent, lease = make_plane()
+    auth.admit_work(agent.agent_id, "work-expiring", now=150)
+    leases.issue(replace(
+        lease, lease_id="lease-work-budget-renewed", valid_from=201, expires_at=300,
+    ))
+    assert auth.admit_work(agent.agent_id, "work-renewed", now=201)["admitted"] is True
+    assert auth.complete_work(agent.agent_id, "work-expiring", now=201) is False
+    assert auth.work_budget_ledger.active_count(
+        tenant_id=agent.tenant_id, agent_id=agent.agent_id, now=201,
+    ) == 1
+
+
 def test_releasing_failed_reservation_preserves_prior_aggregate_reservations():
     _, _, _, _, _, _, _, lease = make_plane()
     ledger = AggregateBlastRadiusLedger()
