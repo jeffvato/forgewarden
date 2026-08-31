@@ -1067,6 +1067,36 @@ def test_work_budget_admission_is_bounded_audited_and_released_on_completion_and
     assert [event for event, _data in events if event == "work_admitted"] == ["work_admitted", "work_admitted"]
 
 
+def test_completion_evidence_failure_does_not_release_work_or_model_token_capacity():
+    _, _, _, leases, auth, model, agent, lease = make_plane()
+    leases.issue(replace(
+        lease, lease_id="lease-completion-evidence", valid_from=101, max_concurrent_work=2,
+    ))
+    auth._policy_engine = DeterministicPolicy([PolicyRule(
+        "tenant-a", "telemetry.read", "endpoint-123", "READ", "FW-ASOC-01-v1",
+        max_concurrent_work=2, max_tenant_concurrent_work=2, max_model_tokens_per_work=1,
+        max_tenant_model_tokens=1,
+    )])
+    auth.admit_work(
+        agent.agent_id, "completion-evidence-work",
+        request(model_identity=model, requested_model_tokens=1), now=150,
+    )
+    original_audit = auth._audit
+
+    def unavailable_completion_audit(event, data):
+        if event == "work_completed":
+            raise OSError("audit unavailable")
+        original_audit(event, data)
+
+    auth._audit = unavailable_completion_audit
+    with pytest.raises(AuthorizationDenied, match="EVIDENCE_WRITE_FAILED"):
+        auth.complete_work(agent.agent_id, "completion-evidence-work", now=151)
+    assert auth.work_budget_ledger.active_tenant_model_tokens(tenant_id=agent.tenant_id, now=151) == 1
+    auth._audit = original_audit
+    assert auth.complete_work(agent.agent_id, "completion-evidence-work", now=152) is True
+    assert auth.work_budget_ledger.active_tenant_model_tokens(tenant_id=agent.tenant_id, now=152) == 0
+
+
 def test_work_budget_concurrent_admission_allows_only_one_work_item():
     _, _, _, leases, auth, _, agent, lease = make_plane()
     leases.issue(replace(

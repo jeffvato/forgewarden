@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: FW-ASOC-02 — model-token admission evidence binding
-- Current task: bind exact model and request context to the canonical model-token reservation Evidence.
+- Current focus: FW-ASOC-02 — fail-closed model-token completion accounting
+- Current task: preserve canonical work and model-token reservations until their completion Evidence is durable.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -27,19 +27,18 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-ASOC-02 — model-token admission evidence binding
-- Starting commit: `616fdb7`
-- Canonical owner: the existing `CapabilityAuthorizer.admit_work` emits the canonical `work_admitted` Evidence after the existing `WorkBudgetLedger` reservation. It reuses the signed `CapabilityLease`, validated `AuthorizationRequest`, and canonical model binding; no parallel audit, model, or budget system is introduced.
-- Acceptance criteria: every model-token reservation Evidence record carries the exact approved model/provider/deployment/version/approval binding, request data classification, approved purpose, and policy version together with existing signed/policy/requested token values.
-- Negative paths: unbound work must record no model or data context; binding mismatch, missing/revoked/unavailable Model Broker approval, invalid token request, policy denial, tenant excess, concurrency, recovery, and expiry continue to deny or release before a successful Evidence record.
-- Proof plan: focused ASOC/policy tests assert model-token admission Evidence includes the exact binding and contextual fields while unbound work retains explicit null context. When this focused slice is committed and read-only reviewed, run the full suite and default integrity gate once.
-- Exact first change: extend the existing `work_admitted` result/Evidence payload with exact model binding, data classification, approved purpose, and policy version.
-- Product checkpoint: `eddb447` (`Bind model token reservations to evidence`).
-- Deterministic validation: focused ASOC/policy tests passed (`121 passed`) for model-binding and contextual Evidence coverage. Full Linux suite passed (`643 passed, 1 skipped`); the default FW-INTEGRITY gate passed its repository/build/startup/configuration/test/Golden Path checks at `eddb447`.
-- Review: exact committed-snapshot read-only review found no blocking defect.
+- Task ID: FW-ASOC-02 — fail-closed model-token completion accounting
+- Starting commit: `2ab3662`
+- Canonical owner: existing `CapabilityAuthorizer.complete_work` coordinates the existing lock-protected `WorkBudgetLedger` and canonical completion Evidence. No parallel accounting, audit, or execution subsystem is introduced.
+- Acceptance criteria: a successful completion records Evidence before releasing the same work reservation; unavailable completion Evidence leaves work and model-token capacity reserved; a later successful completion releases it exactly once.
+- Negative paths: unavailable completion Evidence; duplicate or expired completion; tenant/agent isolation; and existing admission, token-cap, recovery, expiry, and concurrency controls continue to remain fail closed.
+- Proof plan: focused ASOC/policy tests prove a completion-Evidence failure preserves tenant model-token capacity and a later durable completion releases it. When this focused slice is committed and read-only reviewed, run the full suite and default integrity gate once.
+- Exact first change: add an optional pre-release callback inside the existing ledger lock, then have completion write canonical Evidence through it before mutating the reservation.
+- Deterministic validation: focused ASOC/policy tests passed (`122 passed`) for the initial fail-closed completion coverage. Full-suite and integrity proof remain pending this product checkpoint.
+- Review: pending exact committed-snapshot read-only review.
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
 - Blocker: none.
-- Next action: derive the next highest-risk unmet bounded FW-ASOC-02 control from `ROADMAP.md` and existing canonical code without rerunning this completed proof.
+- Next action: commit and exact-snapshot review the completed fail-closed completion-accounting unit, then perform its one-time full-suite and integrity proof.
 
 ## Execution log
 

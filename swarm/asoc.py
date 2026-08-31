@@ -573,13 +573,15 @@ class WorkBudgetLedger:
                 None if tenant_model_token_limit is None else tenant_model_token_limit - tenant_model_tokens_used - model_tokens,
             )
 
-    def release(self, *, tenant_id: str, agent_id: str, work_id: str, now: int) -> bool:
+    def release(self, *, tenant_id: str, agent_id: str, work_id: str, now: int, before_release: Callable[[], None] | None = None) -> bool:
         scope = (_text(tenant_id, "tenant_id"), _text(agent_id, "agent_id"))
         work_id = _text(work_id, "work_id")
         with self._lock:
             active = [entry for entry in self._reservations.get(scope, []) if entry[1] > now]
             retained = [entry for entry in active if entry[0] != work_id]
             released = len(retained) != len(active)
+            if released and before_release is not None:
+                before_release()
             if retained:
                 self._reservations[scope] = retained
             else:
@@ -784,18 +786,17 @@ class CapabilityAuthorizer:
         """Release only the caller's tenant-bound admitted work capacity."""
         current = int(time.time()) if now is None else now
         agent = self._agents.get(agent_id)
-        released = self.work_budget_ledger.release(
-            tenant_id=agent.tenant_id, agent_id=agent_id, work_id=work_id, now=current,
-        )
-        if released:
-            try:
-                self._audit("work_completed", {
-                    "agent_id": agent_id, "tenant_id": agent.tenant_id,
-                    "work_id": work_id, "timestamp": current,
-                })
-            except Exception as exc:
-                raise AuthorizationDenied("EVIDENCE_WRITE_FAILED") from exc
-        return released
+        completion_evidence = {
+            "agent_id": agent_id, "tenant_id": agent.tenant_id,
+            "work_id": work_id, "timestamp": current,
+        }
+        try:
+            return self.work_budget_ledger.release(
+                tenant_id=agent.tenant_id, agent_id=agent_id, work_id=work_id, now=current,
+                before_release=lambda: self._audit("work_completed", completion_evidence),
+            )
+        except Exception as exc:
+            raise AuthorizationDenied("EVIDENCE_WRITE_FAILED") from exc
 
     def authorize(self, agent_id: str, request: AuthorizationRequest, now: int | None = None) -> dict[str, Any]:
         current = int(time.time()) if now is None else now
