@@ -78,7 +78,7 @@ def test_active_lease_authorizes_and_audits():
 
 
 def test_delegated_lease_is_bounded_by_the_parent_lease():
-    _, switch, _, leases, _, _, agent, parent = make_plane()
+    events, switch, _, leases, _, _, agent, parent = make_plane()
     switch.clear_for_dry_run()
     delegable = leases.issue(CapabilityLease(
         "lease-parent-delegable", agent.agent_id, parent.issuer_identity, parent.tenant_id,
@@ -92,6 +92,7 @@ def test_delegated_lease_is_bounded_by_the_parent_lease():
         ("READ",), 1, False, 0, 110, 190, parent.policy_version, "approval-child", "ticket-child", "bounded child", parent.key_reference,
     )
     assert leases.issue_delegated(delegable.lease_id, child, now=150).lease_id == child.lease_id
+    assert events[-1] == ("delegated_lease_issued", {"parent_lease_id": delegable.lease_id, "lease_id": child.lease_id, "agent_id": child.subject_agent_id, "tenant_id": child.tenant_id})
     escalated = replace(child, lease_id="lease-child-escalated", max_blast_radius=2)
     with pytest.raises(AuthorizationDenied, match="DELEGATION_BLAST_RADIUS_EXCEEDED"):
         leases.issue_delegated(delegable.lease_id, escalated, now=150)
