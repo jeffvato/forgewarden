@@ -1081,6 +1081,8 @@ def test_model_work_admission_requires_and_enforces_a_policy_owned_token_budget(
     assert admitted["max_model_tokens_per_work"] == 2
     assert admitted["policy_model_tokens_per_work_limit"] == 1
     assert admitted["requested_model_tokens"] == 1
+    with pytest.raises(AuthorizationDenied, match="MODEL_BINDING_MISMATCH"):
+        auth.admit_work(agent.agent_id, "token-work-unbound", request(requested_model_tokens=1), now=151)
     with pytest.raises(AuthorizationDenied, match="MODEL_TOKEN_BUDGET_REQUIRED"):
         auth.admit_work(agent.agent_id, "token-work-2", request(model_identity=model), now=151)
     with pytest.raises(AuthorizationDenied, match="MODEL_TOKEN_BUDGET_EXCEEDED"):

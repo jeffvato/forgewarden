@@ -661,7 +661,9 @@ class CapabilityAuthorizer:
                 policy_tenant_work_limit = self._policy_engine.tenant_concurrent_work_limit(context)
                 if policy_tenant_work_limit is None:
                     raise AuthorizationDenied("TENANT_WORK_CONCURRENCY_LIMIT_REQUIRED")
-                if request.model_identity is not None:
+                if agent.model_identity is not None:
+                    if request.model_identity != agent.model_identity:
+                        raise AuthorizationDenied("MODEL_BINDING_MISMATCH")
                     if request.requested_model_tokens <= 0:
                         raise AuthorizationDenied("MODEL_TOKEN_BUDGET_REQUIRED")
                     policy_model_token_limit = self._policy_engine.model_tokens_per_work_limit(context)
