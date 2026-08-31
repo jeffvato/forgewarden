@@ -1,5 +1,6 @@
 import json
 import time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import pytest
@@ -764,6 +765,25 @@ def test_aggregate_cap_denial_does_not_consume_a_valid_action_ticket():
         capability="endpoint.isolate.request", resource="endpoint-123", action_class="ISOLATE_ENDPOINT",
         policy_version=mutation.policy_version, now=151,
     ).ticket_id == "ticket-cap"
+
+
+def test_aggregate_blast_radius_concurrency_allows_only_one_reservation():
+    _, switch, agents, leases, _, model, agent, _ = make_plane()
+    policy = DeterministicPolicy([PolicyRule(
+        "tenant-a", "telemetry.read", "endpoint-123", "READ", "FW-ASOC-01-v1", 1,
+    )])
+    auth = CapabilityAuthorizer(agents, leases, switch, policy_engine=policy, model_binding_validator=lambda *_args: True)
+
+    def attempt() -> str:
+        try:
+            auth.authorize(agent.agent_id, request(blast_radius=1, model_identity=model), now=150)
+            return "AUTHORIZED"
+        except AuthorizationDenied as exc:
+            return exc.reason
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        outcomes = list(pool.map(lambda _index: attempt(), range(2)))
+    assert sorted(outcomes) == ["AGGREGATE_BLAST_RADIUS_EXCEEDED", "AUTHORIZED"]
 
 
 def test_asoc_golden_path_investigate_then_deny_mutation():
