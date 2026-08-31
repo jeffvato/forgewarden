@@ -38,9 +38,10 @@ On every restart or continuation:
 - Exact first change: add `max_tenant_model_tokens` to `PolicyRule`; persist requested tokens in the existing `WorkBudgetLedger`; atomically deny a tenant total above the policy ceiling and report remaining capacity.
 - First product checkpoint: `cc70943acb9d4b0fd9ad58bc28963b53d5930d77` (`Bind ASOC leases to model token limits`).
 - Per-work admission checkpoint: `89c02477f33d79c8dc69a3916c09ca62be7f4953` (including repair of the missing-model-binding bypass found during review).
-- Files changed: in progress — `swarm/asoc.py`, `swarm/policy_gate.py`, `tests/test_asoc.py`, `tests/test_policy_gate.py`, `SWARM_STATUS.md`.
-- Deterministic validation: focused ASOC/policy aggregate-token tests passed (`110 passed` in the Linux repository runtime); `git diff --check` passed. Full suite and integrity gate are pending because the focused slice has just completed.
-- Review: pending for this new meaningful commit; prior external exact-review attempts returned no structured payload, so no independent approval is claimed.
+- Aggregate token-capacity checkpoint: `d7bad988db02ed71cd132452055caa9235fb5d3a` (`Contain tenant model token capacity`).
+- Files changed: `swarm/asoc.py`, `swarm/policy_gate.py`, `tests/test_asoc.py`, `tests/test_policy_gate.py`, `SWARM_STATUS.md`.
+- Deterministic validation: focused ASOC/policy aggregate-token tests passed (`110 passed`); full Linux suite passed (`632 passed, 1 skipped`); the default FW-INTEGRITY gate passed all repository/build/startup/configuration/test/Golden Path checks at `d7bad98`.
+- Review: exact-diff read-only review found no blocking defect in `d7bad98`; prior external exact-review attempts returned no structured payload, so no independent approval is claimed.
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
 - Blocker: none.
 - Next action: commit and review aggregate token capacity, then run the full suite and default integrity gate once.
@@ -61,6 +62,7 @@ On every restart or continuation:
 - 2026-08-31: FW-ASOC-02 resource-budget checkpoint: lease-bound concurrent-work limits are validated and signed, enforced through the canonical CapabilityAuthorizer and deterministic policy, audited on admission/denial/completion, isolated under concurrency, released on expiry and recovery, and bounded across delegation. Exact review found no new slice finding; the full suite passed (473 passed, 1 skipped) and the integrity gate passed all checks at `2dc0b59`, remaining YELLOW only for the pre-existing dependency and roadmap-ownership gaps.
 - 2026-08-31: FW-ASOC-02 tenant-wide capacity checkpoint: deterministic policy now requires a positive tenant limit as well as the per-lease limit, and the shared ledger atomically prevents cross-agent work splitting. Recovery releases only the revoked agent's allocation. Exact review of `ccbb3cd` found no new slice defect; the full suite passed (473 passed, 1 skipped) and the integrity gate passed all checks, remaining YELLOW only for the pre-existing dependency and roadmap-ownership gaps.
 - 2026-08-31: FW-ASOC-02 model-token admission checkpoint: model-bound policy work now names its registered model and a positive requested token budget. Canonical admission denies malformed, missing, policy-missing, lease-excess, policy-excess, and model-binding-mismatch requests, and records signed lease/policy/requested values in Evidence. Aggregate token reservation, release, recovery, expiry, concurrency, and tenant-splitting proof remain the next bounded slice.
+- 2026-08-31: FW-ASOC-02 aggregate model-token checkpoint: the existing `WorkBudgetLedger` atomically reserves policy-bound tenant capacity for each requested model-token amount and releases it on completion, recovery revocation, and lease expiry. Focused proof covers malformed/missing limits, lease and policy caps, concurrent reservation, cross-agent splitting, recovery, and expiry; 110 focused tests, the full suite (632 passed, 1 skipped), and the default integrity gate passed at `d7bad98`. Health remains YELLOW only for the pre-existing dependency and roadmap-ownership findings.
 
 ## Stop conditions
 
