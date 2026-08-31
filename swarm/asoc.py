@@ -554,6 +554,15 @@ class CapabilityAuthorizer:
             if not isinstance(policy_allows, bool):
                 raise AuthorizationDenied("POLICY_RESULT_INVALID")
             if not policy_allows: raise AuthorizationDenied("POLICY_DENIED")
+            if self._policy_engine is not None:
+                aggregate_blast_radius_limit = self._policy_engine.aggregate_blast_radius_limit(PolicyContext(
+                    request.tenant_id, agent.agent_id, request.capability, request.resource,
+                    request.action_class, request.policy_version,
+                ))
+                if aggregate_blast_radius_limit is not None:
+                    aggregate_blast_radius_remaining = self.blast_radius_ledger.reserve(
+                        request, lease, limit=aggregate_blast_radius_limit, now=current,
+                    )
             if request.action_class in MUTATING_ACTIONS:
                 if self._action_tickets is not None:
                     if request.action_ticket_id != lease.action_ticket_reference:
@@ -583,15 +592,6 @@ class CapabilityAuthorizer:
                         self._best_effort_audit("action_ticket_validation_failed", {"agent_id": agent_id, "lease_id": lease.lease_id, "reason": type(exc).__name__})
                         raise AuthorizationDenied("ACTION_TICKET_UNAVAILABLE") from exc
                     if ticket_valid is not True: raise AuthorizationDenied("ACTION_TICKET_REQUIRED")
-            if self._policy_engine is not None:
-                aggregate_blast_radius_limit = self._policy_engine.aggregate_blast_radius_limit(PolicyContext(
-                    request.tenant_id, agent.agent_id, request.capability, request.resource,
-                    request.action_class, request.policy_version,
-                ))
-                if aggregate_blast_radius_limit is not None:
-                    aggregate_blast_radius_remaining = self.blast_radius_ledger.reserve(
-                        request, lease, limit=aggregate_blast_radius_limit, now=current,
-                    )
         except (AuthorizationDenied, LeaseIntegrityError, ValueError) as exc:
             if isinstance(exc, AuthorizationDenied):
                 reason = exc.reason

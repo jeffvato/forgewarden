@@ -730,6 +730,42 @@ def test_agent_recovery_releases_tenant_scope_aggregate_blast_radius_reservation
     assert auth.authorize(second_agent.agent_id, request(blast_radius=1, model_identity=model), now=152)["authorized"] is True
 
 
+def test_aggregate_cap_denial_does_not_consume_a_valid_action_ticket():
+    _, switch, agents, leases, _, model, agent, lease = make_plane()
+    switch.clear_for_dry_run()
+    mutation = leases.issue(CapabilityLease(
+        "lease-ticket-cap", agent.agent_id, lease.issuer_identity, lease.tenant_id,
+        ("endpoint.isolate.request",), lease.allowed_tools, lease.allowed_resources,
+        lease.allowed_data_classifications, ("ISOLATE_ENDPOINT",), 1, False, 0, 100, 200,
+        lease.policy_version, "approval-ticket-cap", "ticket-cap", "bounded containment", lease.key_reference,
+    ))
+    del leases._leases[lease.lease_id]
+    tickets = ActionTicketRegistry(HMACLeaseSigner({lease.key_reference: b"test-only-key-material"}))
+    tickets.issue(ActionTicket(
+        "ticket-cap", agent.tenant_id, agent.agent_id, mutation.lease_id,
+        "endpoint.isolate.request", "endpoint-123", "ISOLATE_ENDPOINT", "human-controller-1",
+        "approval-ticket-cap", mutation.policy_version, 100, 200, mutation.key_reference,
+    ))
+    policy = DeterministicPolicy([PolicyRule(
+        "tenant-a", "endpoint.isolate.request", "endpoint-123", "ISOLATE_ENDPOINT", "FW-ASOC-01-v1", 0,
+    )])
+    auth = CapabilityAuthorizer(
+        agents, leases, switch, policy_engine=policy, action_tickets=tickets,
+        model_binding_validator=lambda *_args: True,
+    )
+    denied = request(
+        capability="endpoint.isolate.request", action_class="ISOLATE_ENDPOINT", blast_radius=1,
+        action_ticket_id="ticket-cap", model_identity=model,
+    )
+    with pytest.raises(AuthorizationDenied, match="AGGREGATE_BLAST_RADIUS_EXCEEDED"):
+        auth.authorize(agent.agent_id, denied, now=150)
+    assert tickets.validate_and_consume(
+        "ticket-cap", tenant_id="tenant-a", subject_agent_id=agent.agent_id, lease_id=mutation.lease_id,
+        capability="endpoint.isolate.request", resource="endpoint-123", action_class="ISOLATE_ENDPOINT",
+        policy_version=mutation.policy_version, now=151,
+    ).ticket_id == "ticket-cap"
+
+
 def test_asoc_golden_path_investigate_then_deny_mutation():
     events, switch, _, leases, auth, model, agent, lease = make_plane()
 
