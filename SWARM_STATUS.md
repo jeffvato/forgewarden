@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: FW-AV — Native anti-malware
-- Current focus: FW-AV — bounded scan-result emission
-- Current task: FW-AV-07 complete; derive the next highest-risk bounded FW-AV control.
+- Current focus: FW-AV — version-bound trusted detection content
+- Current task: FW-AV-08 complete; derive the next highest-risk bounded FW-AV control.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -28,14 +28,14 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-AV-07 — bounded scan-result emission
-- Starting checkpoint: `d81d783`
-- Canonical owner: `HashSignatureScanner` remains the sole detect-only evaluator and result assembler; `TrustedSignatureCatalog` remains the immutable detector-content owner, and `AuditLog`/`audit_log_sink` remain the durable Evidence owner. No identity, authorization, policy, ticket, model, gateway, execution, filesystem, endpoint-agent, or response system is created.
-- Acceptance criteria: a scan can emit at most 256 combined trusted hash/content matches; overflow denies before an incomplete finding or partial Evidence is returned. Valid lower-cardinality findings retain deterministic ordering and existing Evidence binding.
-- Negative paths: trusted hash or literal matches above the result limit fail closed without emitting Evidence. Malformed, untrusted, duplicate, catalog-overflow, input-overflow, and Evidence-unavailable paths remain fail closed. The scanner must not access paths, execute input, fetch content, quarantine, or remediate.
-- Proof plan: focused hash- and literal-match-overflow regressions with an observing audit sink, exact read-only commit review, full suite, and integrity gate after the bounded slice completes.
-- Exact first change: add one result-cardinality limit to the existing stream scan path before it constructs a finding or calls the existing Evidence sink; no filtering, partial reporting, cache, filesystem scanner, endpoint agent, policy response, or quarantine workflow.
-- Proof: focused FW-AV tests passed (`11 passed`); full Linux suite passed (`656 passed, 1 skipped`); the default FW-INTEGRITY gate passed all hard checks and its Golden Path at `2308c85`. Exact local read-only review found no remaining blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and defined-but-unimplemented identity, normalized-events, SOC-incident, and compliance owners.
+- Task ID: FW-AV-08 — version-bound trusted detection content
+- Starting checkpoint: `d323323`
+- Canonical owner: `TrustedSignatureCatalog` remains the immutable local detector-content owner; `HashSignatureScanner` remains the sole detect-only evaluator and `AuditLog`/`audit_log_sink` remain the durable Evidence owner. No identity, authorization, policy, ticket, model, gateway, execution, filesystem, endpoint-agent, or response system is created.
+- Acceptance criteria: each catalog supplies a bounded lowercase version; the version changes the deterministic catalog snapshot, is stored in the immutable catalog, and is bound to every finding and canonical Evidence record.
+- Negative paths: missing or malformed versions deny catalog construction; a snapshot bound to one version cannot be used with another. Existing malformed, untrusted, duplicate, over-capacity, input-overflow, result-overflow, and Evidence-unavailable paths remain fail closed. The detector must not access paths, execute input, fetch content, quarantine, or remediate.
+- Proof plan: focused version validation, version/snapshot mismatch, finding, and Evidence regressions; exact read-only commit review, full suite, and integrity gate after the bounded slice completes.
+- Exact first change: extend the existing trusted catalog snapshot input with a strict catalog version and pass the verified value to the existing finding and Evidence structures; no signed bundle transport, update mechanism, rollback store, cache, filesystem scanner, endpoint agent, policy response, or quarantine workflow.
+- Proof: focused FW-AV tests passed (`11 passed`); full Linux suite passed (`656 passed, 1 skipped`); the default FW-INTEGRITY gate passed all hard checks and its Golden Path at `bc5dc83`. Exact local read-only review found no remaining blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and defined-but-unimplemented identity, normalized-events, SOC-incident, and compliance owners.
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
 - Blocker: none.
 - Next action: derive and implement the next highest-risk bounded FW-AV control; do not add actual file hooks, execution, quarantine, remediation, reputation networking, or sandboxing without separately scoped authority and proof.
@@ -78,6 +78,7 @@ On every restart or continuation:
 - 2026-08-31: External-review recovery for FW-AV-05: all four configured providers were invoked through isolated, read-only exact-commit review at `413dc72`. Claude returned low-risk APPROVE but correctly listed the missing public `scan()`-over-64-KiB regression, so it was not treated as approval. Gemini returned no schema-valid payload after its formatting retry, OpenRouter was rate-limited (HTTP 429), and NVIDIA returned a provider-side HTTP 500; none was counted as a pass. The narrow test repair at `df4e634` adds the missing public-path equivalence proof (hash, trusted hash signature, and trusted literal detection); focused FW-AV proof passed (9 tests), and an exact isolated Claude review returned schema-valid low-risk APPROVE with no blocking findings or missing tests. No full-suite or integrity rerun was needed because production code and the active slice behavior were unchanged.
 - 2026-08-31: FW-AV-06 complete at `feb53c3`: the existing immutable trusted detection catalog now bounds publisher entries (64), hash signatures (4,096), and literal content indicators (1,024) during input iteration. Overflow fails closed before unbounded catalog state is retained, including repeated publisher input. Focused proof passed (10 tests); full Linux suite passed (655 passed, 1 skipped); the default integrity gate passed every hard check and its Golden Path. Exact local read-only review found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap-ownership gaps.
 - 2026-08-31: FW-AV-07 complete at `2308c85`: the existing detect-only scanner now denies a scan when combined trusted hash/content matches exceed 256, before returning partial findings or calling the Evidence sink. Hash and literal overflow regressions prove no partial Evidence is emitted. Focused proof passed (11 tests); full Linux suite passed (656 passed, 1 skipped); the default integrity gate passed every hard check and its Golden Path. Exact local read-only review found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap-ownership gaps.
+- 2026-08-31: FW-AV-08 complete at `bc5dc83`: trusted detection catalogs now require a bounded lowercase version that changes the verified catalog snapshot and is carried into every finding and Evidence record. Missing/malformed versions and cross-version snapshot reuse fail closed. Focused proof passed (11 tests); full Linux suite passed (656 passed, 1 skipped); the default integrity gate passed every hard check and its Golden Path. Exact local read-only review found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap-ownership gaps.
 
 ## Stop conditions
 
