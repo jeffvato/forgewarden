@@ -950,8 +950,10 @@ def test_work_budget_admission_is_bounded_audited_and_released_on_completion_and
         "lease_id": budgeted.lease_id, "work_id": "work-1", "max_concurrent_work": 1,
         "policy_concurrent_work_limit": None, "policy_tenant_concurrent_work_limit": None,
         "max_model_tokens_per_work": 1, "policy_model_tokens_per_work_limit": None,
+        "policy_tenant_model_tokens_limit": None,
         "requested_model_tokens": 0,
         "concurrent_work_remaining": 0, "tenant_concurrent_work_remaining": None, "timestamp": 150,
+        "tenant_model_tokens_remaining": None,
     }
     with pytest.raises(AuthorizationDenied, match="WORK_CONCURRENCY_LIMIT_EXCEEDED"):
         auth.admit_work(agent.agent_id, "work-2", now=151)
@@ -997,6 +999,7 @@ def test_work_budget_uses_an_explicit_deterministic_policy_limit():
     policy = DeterministicPolicy([PolicyRule(
         "tenant-a", "telemetry.read", "endpoint-123", "READ", "FW-ASOC-01-v1",
         max_concurrent_work=1, max_tenant_concurrent_work=1, max_model_tokens_per_work=1,
+        max_tenant_model_tokens=1,
     )])
     auth = CapabilityAuthorizer(
         agents, leases, KillSwitch(True), policy_engine=policy,
@@ -1008,6 +1011,7 @@ def test_work_budget_uses_an_explicit_deterministic_policy_limit():
     assert admitted["policy_concurrent_work_limit"] == 1
     assert admitted["policy_tenant_concurrent_work_limit"] == 1
     assert admitted["policy_model_tokens_per_work_limit"] == 1
+    assert admitted["policy_tenant_model_tokens_limit"] == 1
     assert admitted["requested_model_tokens"] == 1
     with pytest.raises(AuthorizationDenied, match="WORK_CONCURRENCY_LIMIT_EXCEEDED"):
         auth.admit_work(agent.agent_id, "work-policy-2", work_request, now=151)
@@ -1050,6 +1054,7 @@ def test_tenant_work_budget_prevents_cross_agent_capacity_splitting():
     policy = DeterministicPolicy([PolicyRule(
         "tenant-a", "telemetry.read", "endpoint-123", "READ", "FW-ASOC-01-v1",
         max_concurrent_work=1, max_tenant_concurrent_work=1, max_model_tokens_per_work=1,
+        max_tenant_model_tokens=1,
     )])
     auth = CapabilityAuthorizer(agents, leases, KillSwitch(True), policy_engine=policy)
     work_request = request(model_identity=model, requested_model_tokens=1)
@@ -1073,6 +1078,7 @@ def test_model_work_admission_requires_and_enforces_a_policy_owned_token_budget(
     policy = DeterministicPolicy([PolicyRule(
         "tenant-a", "telemetry.read", "endpoint-123", "READ", "FW-ASOC-01-v1",
         max_concurrent_work=2, max_tenant_concurrent_work=2, max_model_tokens_per_work=1,
+        max_tenant_model_tokens=1,
     )])
     auth = CapabilityAuthorizer(agents, leases, KillSwitch(True), policy_engine=policy)
     admitted = auth.admit_work(
@@ -1080,6 +1086,7 @@ def test_model_work_admission_requires_and_enforces_a_policy_owned_token_budget(
     )
     assert admitted["max_model_tokens_per_work"] == 2
     assert admitted["policy_model_tokens_per_work_limit"] == 1
+    assert admitted["policy_tenant_model_tokens_limit"] == 1
     assert admitted["requested_model_tokens"] == 1
     with pytest.raises(AuthorizationDenied, match="MODEL_BINDING_MISMATCH"):
         auth.admit_work(agent.agent_id, "token-work-unbound", request(requested_model_tokens=1), now=151)
@@ -1095,6 +1102,7 @@ def test_model_work_admission_requires_and_enforces_a_policy_owned_token_budget(
         policy_engine=DeterministicPolicy([PolicyRule(
             "tenant-a", "telemetry.read", "endpoint-123", "READ", "FW-ASOC-01-v1",
             max_concurrent_work=2, max_tenant_concurrent_work=2, max_model_tokens_per_work=2,
+            max_tenant_model_tokens=2,
         )]),
     )
     with pytest.raises(AuthorizationDenied, match="MODEL_TOKEN_BUDGET_EXCEEDED"):
@@ -1105,13 +1113,103 @@ def test_model_work_admission_requires_and_enforces_a_policy_owned_token_budget(
     missing_limit = CapabilityAuthorizer(
         agents, leases, KillSwitch(True), policy_engine=DeterministicPolicy([PolicyRule(
             "tenant-a", "telemetry.read", "endpoint-123", "READ", "FW-ASOC-01-v1",
-            max_concurrent_work=2, max_tenant_concurrent_work=2,
+            max_concurrent_work=2, max_tenant_concurrent_work=2, max_tenant_model_tokens=2,
         )]),
     )
     with pytest.raises(AuthorizationDenied, match="MODEL_TOKEN_BUDGET_LIMIT_REQUIRED"):
         missing_limit.admit_work(
             agent.agent_id, "token-work-missing-policy", request(model_identity=model, requested_model_tokens=1), now=152,
         )
+
+
+def test_tenant_model_token_budget_prevents_cross_agent_splitting_and_releases_on_recovery():
+    _, _, agents, leases, _, model, agent, lease = make_plane()
+    second_agent = AgentIdentity(
+        "agent-model-token-budget-2", agent.tenant_id, agent.agent_type, agent.role,
+        agent.owner_controller_id, model, agent.provider_deployment, agent.approved_purpose,
+        agent.trust_level, agent.allowed_data_classifications,
+        cryptographic_identity_ref="fw-id/agent-model-token-budget-2",
+    )
+    agents.register(second_agent)
+    agents.activate(second_agent.agent_id, now=100)
+    leases.issue(CapabilityLease(
+        "lease-model-token-budget-2", second_agent.agent_id, lease.issuer_identity, lease.tenant_id,
+        lease.granted_capabilities, lease.allowed_tools, lease.allowed_resources,
+        lease.allowed_data_classifications, lease.allowed_action_classes, lease.max_blast_radius,
+        False, 0, 100, 200, lease.policy_version, "approval-model-token-budget-2",
+        "ticket-model-token-budget-2", "bounded triage", lease.key_reference,
+    ))
+    policy = DeterministicPolicy([PolicyRule(
+        "tenant-a", "telemetry.read", "endpoint-123", "READ", "FW-ASOC-01-v1",
+        max_concurrent_work=2, max_tenant_concurrent_work=2, max_model_tokens_per_work=1,
+        max_tenant_model_tokens=1,
+    )])
+    auth = CapabilityAuthorizer(agents, leases, KillSwitch(True), policy_engine=policy)
+    work_request = request(model_identity=model, requested_model_tokens=1)
+    assert auth.admit_work(agent.agent_id, "tenant-token-1", work_request, now=150)["tenant_model_tokens_remaining"] == 0
+    with pytest.raises(AuthorizationDenied, match="TENANT_MODEL_TOKEN_BUDGET_EXCEEDED"):
+        auth.admit_work(second_agent.agent_id, "tenant-token-2", work_request, now=151)
+    assert auth.work_budget_ledger.active_tenant_model_tokens(tenant_id="tenant-a", now=151) == 1
+    ASOCControlPlane(
+        agents, leases, KillSwitch(True), work_budget_ledger=auth.work_budget_ledger,
+    ).revoke_agent(agent.agent_id)
+    assert auth.work_budget_ledger.active_tenant_model_tokens(tenant_id="tenant-a", now=152) == 0
+    assert auth.admit_work(second_agent.agent_id, "tenant-token-2", work_request, now=152)["admitted"] is True
+
+
+def test_tenant_model_token_budget_is_atomic_and_expires_with_the_lease():
+    _, _, agents, leases, _, model, agent, lease = make_plane()
+    second_agent = AgentIdentity(
+        "agent-model-token-expiry-2", agent.tenant_id, agent.agent_type, agent.role,
+        agent.owner_controller_id, model, agent.provider_deployment, agent.approved_purpose,
+        agent.trust_level, agent.allowed_data_classifications,
+        cryptographic_identity_ref="fw-id/agent-model-token-expiry-2",
+    )
+    agents.register(second_agent)
+    agents.activate(second_agent.agent_id, now=100)
+    leases.issue(CapabilityLease(
+        "lease-model-token-expiry-2", second_agent.agent_id, lease.issuer_identity, lease.tenant_id,
+        lease.granted_capabilities, lease.allowed_tools, lease.allowed_resources,
+        lease.allowed_data_classifications, lease.allowed_action_classes, lease.max_blast_radius,
+        False, 0, 201, 300, lease.policy_version, "approval-model-token-expiry-2",
+        "ticket-model-token-expiry-2", "bounded triage", lease.key_reference,
+    ))
+    policy = DeterministicPolicy([PolicyRule(
+        "tenant-a", "telemetry.read", "endpoint-123", "READ", "FW-ASOC-01-v1",
+        max_concurrent_work=2, max_tenant_concurrent_work=2, max_model_tokens_per_work=1,
+        max_tenant_model_tokens=1,
+    )])
+    auth = CapabilityAuthorizer(agents, leases, KillSwitch(True), policy_engine=policy)
+    work_request = request(model_identity=model, requested_model_tokens=1)
+    assert auth.admit_work(agent.agent_id, "tenant-token-expiring", work_request, now=150)["admitted"] is True
+    assert auth.work_budget_ledger.active_tenant_model_tokens(tenant_id="tenant-a", now=201) == 0
+    assert auth.admit_work(second_agent.agent_id, "tenant-token-renewed", work_request, now=201)["admitted"] is True
+
+
+def test_tenant_model_token_budget_concurrent_admission_allows_only_one_reservation():
+    _, _, agents, leases, _, model, agent, lease = make_plane()
+    leases.issue(replace(
+        lease, lease_id="lease-model-token-concurrent", valid_from=101, max_concurrent_work=2,
+    ))
+    policy = DeterministicPolicy([PolicyRule(
+        "tenant-a", "telemetry.read", "endpoint-123", "READ", "FW-ASOC-01-v1",
+        max_concurrent_work=2, max_tenant_concurrent_work=2, max_model_tokens_per_work=1,
+        max_tenant_model_tokens=1,
+    )])
+    auth = CapabilityAuthorizer(agents, leases, KillSwitch(True), policy_engine=policy)
+    work_request = request(model_identity=model, requested_model_tokens=1)
+
+    def attempt(work_id):
+        try:
+            auth.admit_work(agent.agent_id, work_id, work_request, now=150)
+            return "ADMITTED"
+        except AuthorizationDenied as exc:
+            return exc.reason
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        outcomes = list(pool.map(attempt, ("tenant-token-concurrent-a", "tenant-token-concurrent-b")))
+    assert sorted(outcomes) == ["ADMITTED", "TENANT_MODEL_TOKEN_BUDGET_EXCEEDED"]
+    assert auth.work_budget_ledger.active_tenant_model_tokens(tenant_id="tenant-a", now=151) == 1
 
 
 def test_work_budget_expiry_releases_capacity_for_a_renewed_lease():

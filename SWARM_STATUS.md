@@ -4,7 +4,7 @@
 
 - Active phase: ForgeWarden Core
 - Current focus: FW-ASOC-02 — model-token budget containment
-- Current task: enforce a requested per-work model-token budget at canonical work admission.
+- Current task: enforce aggregate tenant-wide model-token capacity at canonical work admission.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -27,23 +27,23 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-ASOC-02 — model-token budget containment, per-work admission
-- Starting commit: `b54113e`
+- Task ID: FW-ASOC-02 — tenant-wide model-token capacity containment
+- Starting commit: `1e74a50`
 - Product checkpoint: `ccbb3cd` (recovery release proof)
 - Accepted handoff commit: `fc81f90` (records the proven tenant-wide slice)
-- Canonical owner: `CapabilityAuthorizer.admit_work` is the canonical work-admission boundary; it composes signed `CapabilityLease` limits, `DeterministicPolicy` scope ceilings, the existing work admission ledger, and the canonical audit sink. Model execution remains a future extension at the existing Model Broker boundary, not a new execution system.
-- Acceptance criteria: model-bound work declares a non-negative request; a positive request is required for policy-bound model work; policy carries a positive token ceiling; admission denies a request above the smaller signed lease and policy ceilings; admission Evidence records all three values; no authorization, model, audit, or execution subsystem is duplicated.
-- Negative paths: negative, boolean, fractional, and text requested counts; omitted/zero request for model-bound policy work; missing policy ceiling; request above policy or lease ceiling; later aggregate tenant splitting, recovery, expiry, and audit-failure paths remain required before this control is fully proven.
-- Proof plan: focused ASOC/policy tests cover malformed input, required limits, policy and lease cap denials, and admission evidence. The next unit will atomically reserve aggregate model tokens through the existing work ledger and prove release, recovery, expiry, concurrency, and tenant-splitting denials before broader validation.
-- Exact first change: add `requested_model_tokens` to `AuthorizationRequest`; at `admit_work`, require and bound it for model-bound policy work, and include the lease/policy/requested token values in canonical admission Evidence.
+- Canonical owner: the existing `WorkBudgetLedger` atomically records work/token reservations; `CapabilityAuthorizer.admit_work` composes signed `CapabilityLease` limits, `DeterministicPolicy` scope and tenant ceilings, and canonical audit Evidence. No parallel budget, authorization, model, or execution subsystem is introduced.
+- Acceptance criteria: policy provides an exact positive tenant model-token ceiling; the shared ledger atomically reserves every admitted request; requests cannot evade the ceiling through concurrent or cross-agent splitting; completion, recovery revocation, and lease expiry release capacity; Evidence reports the remaining tenant capacity.
+- Negative paths: malformed tenant ceiling; missing tenant ceiling; request above signed/policy per-work ceiling; aggregate tenant excess; concurrent races; cross-agent splitting; recovery and expiry leaks. Audit-failure release uses the existing ledger rollback path and remains covered by its work-admission failure handling.
+- Proof plan: focused ASOC/policy tests cover tenant policy validation, aggregate denial, cross-agent splitting, concurrent races, recovery release, expiry release, and Evidence. With those passing, run the full suite and default integrity gate once on the committed slice.
+- Exact first change: add `max_tenant_model_tokens` to `PolicyRule`; persist requested tokens in the existing `WorkBudgetLedger`; atomically deny a tenant total above the policy ceiling and report remaining capacity.
 - First product checkpoint: `cc70943acb9d4b0fd9ad58bc28963b53d5930d77` (`Bind ASOC leases to model token limits`).
 - Per-work admission checkpoint: `89c02477f33d79c8dc69a3916c09ca62be7f4953` (including repair of the missing-model-binding bypass found during review).
-- Files changed: `swarm/asoc.py`, `tests/test_asoc.py`, `SWARM_STATUS.md`.
-- Deterministic validation: focused ASOC/policy admission tests passed (`102 passed` in the Linux repository runtime); `git diff --check` and `git show --check` passed. Prior tenant-wide capacity evidence remains `84` focused tests, `473 passed, 1 skipped` full suite, and a passing integrity gate at `ccbb3cd`.
-- Review: exact-diff read-only review found and repaired the missing-model-binding bypass, then found no blocking defect in `89c0247`; the configured external exact-review adapter returned no structured payload, so no independent approval is claimed.
+- Files changed: in progress — `swarm/asoc.py`, `swarm/policy_gate.py`, `tests/test_asoc.py`, `tests/test_policy_gate.py`, `SWARM_STATUS.md`.
+- Deterministic validation: focused ASOC/policy aggregate-token tests passed (`110 passed` in the Linux repository runtime); `git diff --check` passed. Full suite and integrity gate are pending because the focused slice has just completed.
+- Review: pending for this new meaningful commit; prior external exact-review attempts returned no structured payload, so no independent approval is claimed.
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
 - Blocker: none.
-- Next action: commit and review per-work admission enforcement, then atomically reserve aggregate model-token capacity through the existing `WorkBudgetLedger`.
+- Next action: commit and review aggregate token capacity, then run the full suite and default integrity gate once.
 
 ## Execution log
 

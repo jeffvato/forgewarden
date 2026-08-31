@@ -81,6 +81,16 @@ def test_policy_returns_the_exact_model_token_work_limit_for_a_scope():
     )
     policy = DeterministicPolicy([PolicyRule(
         "tenant-a", "telemetry.read", "endpoint-123", "READ", "FW-ASOC-01-v1",
-        max_model_tokens_per_work=512,
+        max_model_tokens_per_work=512, max_tenant_model_tokens=1024,
     )])
     assert policy.model_tokens_per_work_limit(context) == 512
+    assert policy.tenant_model_tokens_limit(context) == 1024
+
+
+@pytest.mark.parametrize("value", [0, -1, True, 1.5, "1"])
+def test_policy_rejects_invalid_tenant_model_token_limits(value):
+    with pytest.raises(PolicyInvariantError, match="max_tenant_model_tokens"):
+        PolicyRule(
+            "tenant-a", "telemetry.read", "endpoint-123", "READ", "FW-ASOC-01-v1",
+            max_tenant_model_tokens=value,
+        )

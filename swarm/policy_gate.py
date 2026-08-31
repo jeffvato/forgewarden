@@ -52,6 +52,7 @@ class PolicyRule:
     max_concurrent_work: int | None = None
     max_tenant_concurrent_work: int | None = None
     max_model_tokens_per_work: int | None = None
+    max_tenant_model_tokens: int | None = None
 
     def __post_init__(self) -> None:
         for field in ("tenant_id", "capability", "resource", "action_class", "policy_version"):
@@ -80,6 +81,12 @@ class PolicyRule:
             or self.max_model_tokens_per_work <= 0
         ):
             raise PolicyInvariantError("max_model_tokens_per_work must be a positive integer or None")
+        if self.max_tenant_model_tokens is not None and (
+            not isinstance(self.max_tenant_model_tokens, int)
+            or isinstance(self.max_tenant_model_tokens, bool)
+            or self.max_tenant_model_tokens <= 0
+        ):
+            raise PolicyInvariantError("max_tenant_model_tokens must be a positive integer or None")
 
 
 @dataclass(frozen=True)
@@ -140,6 +147,13 @@ class DeterministicPolicy:
             raise PolicyInvariantError("policy context is invalid")
         rule = self._scope_rule(context)
         return None if rule is None else rule.max_model_tokens_per_work
+
+    def tenant_model_tokens_limit(self, context: PolicyContext) -> int | None:
+        """Return the exact policy-owned tenant-wide model-token ceiling."""
+        if not isinstance(context, PolicyContext):
+            raise PolicyInvariantError("policy context is invalid")
+        rule = self._scope_rule(context)
+        return None if rule is None else rule.max_tenant_model_tokens
 
     def _scope_rule(self, context: PolicyContext) -> PolicyRule | None:
         return self._by_scope.get((

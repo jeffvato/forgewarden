@@ -506,10 +506,10 @@ class WorkBudgetLedger:
     """Lease-bound concurrent-work admission; capacity is tenant and agent scoped."""
 
     def __init__(self) -> None:
-        self._reservations: dict[tuple[str, str], list[tuple[str, int]]] = {}
+        self._reservations: dict[tuple[str, str], list[tuple[str, int, int]]] = {}
         self._lock = Lock()
 
-    def admit(self, lease: CapabilityLease, work_id: str, *, limit: int | None = None, tenant_limit: int | None = None, now: int) -> tuple[int, int | None]:
+    def admit(self, lease: CapabilityLease, work_id: str, *, limit: int | None = None, tenant_limit: int | None = None, model_tokens: int = 0, tenant_model_token_limit: int | None = None, now: int) -> tuple[int, int | None, int | None]:
         work_id = _text(work_id, "work_id")
         if limit is not None and (
             not isinstance(limit, int) or isinstance(limit, bool) or limit <= 0
@@ -519,17 +519,27 @@ class WorkBudgetLedger:
             not isinstance(tenant_limit, int) or isinstance(tenant_limit, bool) or tenant_limit <= 0
         ):
             raise ValueError("tenant work budget limit is invalid")
+        if not isinstance(model_tokens, int) or isinstance(model_tokens, bool) or model_tokens < 0:
+            raise ValueError("model token budget is invalid")
+        if tenant_model_token_limit is not None and (
+            not isinstance(tenant_model_token_limit, int)
+            or isinstance(tenant_model_token_limit, bool)
+            or tenant_model_token_limit <= 0
+        ):
+            raise ValueError("tenant model token budget limit is invalid")
         effective_limit = lease.max_concurrent_work if limit is None else min(lease.max_concurrent_work, limit)
         scope = (lease.tenant_id, lease.subject_agent_id)
         with self._lock:
             active = [entry for entry in self._reservations.get(scope, []) if entry[1] > now]
             tenant_active = 0
+            tenant_model_tokens_used = 0
             for candidate_scope, entries in tuple(self._reservations.items()):
                 candidate_active = [entry for entry in entries if entry[1] > now]
                 if candidate_active:
                     self._reservations[candidate_scope] = candidate_active
                     if candidate_scope[0] == lease.tenant_id:
                         tenant_active += len(candidate_active)
+                        tenant_model_tokens_used += sum(entry[2] for entry in candidate_active)
                 else:
                     self._reservations.pop(candidate_scope, None)
             if any(entry[0] == work_id for entry in active):
@@ -538,9 +548,18 @@ class WorkBudgetLedger:
                 raise AuthorizationDenied("WORK_CONCURRENCY_LIMIT_EXCEEDED")
             if tenant_limit is not None and tenant_active >= tenant_limit:
                 raise AuthorizationDenied("TENANT_WORK_CONCURRENCY_LIMIT_EXCEEDED")
-            active.append((work_id, lease.expires_at))
+            if (
+                tenant_model_token_limit is not None
+                and tenant_model_tokens_used + model_tokens > tenant_model_token_limit
+            ):
+                raise AuthorizationDenied("TENANT_MODEL_TOKEN_BUDGET_EXCEEDED")
+            active.append((work_id, lease.expires_at, model_tokens))
             self._reservations[scope] = active
-            return effective_limit - len(active), None if tenant_limit is None else tenant_limit - tenant_active - 1
+            return (
+                effective_limit - len(active),
+                None if tenant_limit is None else tenant_limit - tenant_active - 1,
+                None if tenant_model_token_limit is None else tenant_model_token_limit - tenant_model_tokens_used - model_tokens,
+            )
 
     def release(self, *, tenant_id: str, agent_id: str, work_id: str, now: int) -> bool:
         scope = (_text(tenant_id, "tenant_id"), _text(agent_id, "agent_id"))
@@ -591,6 +610,20 @@ class WorkBudgetLedger:
                     self._reservations.pop(scope, None)
             return active_count
 
+    def active_tenant_model_tokens(self, *, tenant_id: str, now: int) -> int:
+        tenant_id = _text(tenant_id, "tenant_id")
+        with self._lock:
+            active_tokens = 0
+            for scope, entries in tuple(self._reservations.items()):
+                active = [entry for entry in entries if entry[1] > now]
+                if active:
+                    self._reservations[scope] = active
+                    if scope[0] == tenant_id:
+                        active_tokens += sum(entry[2] for entry in active)
+                else:
+                    self._reservations.pop(scope, None)
+            return active_tokens
+
 
 class CapabilityAuthorizer:
     def __init__(self, agents: AgentRegistry, leases: LeaseRegistry, kill_switch: KillSwitch, audit: AuditSink | None = None, policy: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, action_ticket_validator: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, action_tickets: ActionTicketRegistry | None = None, policy_engine: DeterministicPolicy | None = None, mcp_tool_validator: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, mcp_gateway: MCPGateway | None = None, model_binding_validator: Callable[[AgentIdentity, CapabilityLease, AuthorizationRequest], bool] | None = None, model_broker: ModelBroker | None = None, safety_evidence_provider: Callable[[], Mapping[str, Any]] | None = None, blast_radius_ledger: AggregateBlastRadiusLedger | None = None, work_budget_ledger: WorkBudgetLedger | None = None):
@@ -633,6 +666,7 @@ class CapabilityAuthorizer:
         policy_work_limit: int | None = None
         policy_tenant_work_limit: int | None = None
         policy_model_token_limit: int | None = None
+        policy_tenant_model_token_limit: int | None = None
         try:
             validate_safety_evidence(self._safety_evidence_provider(), require_kill_switch=False)
             agent = self._agents.get(agent_id)
@@ -669,12 +703,17 @@ class CapabilityAuthorizer:
                     policy_model_token_limit = self._policy_engine.model_tokens_per_work_limit(context)
                     if policy_model_token_limit is None:
                         raise AuthorizationDenied("MODEL_TOKEN_BUDGET_LIMIT_REQUIRED")
+                    policy_tenant_model_token_limit = self._policy_engine.tenant_model_tokens_limit(context)
+                    if policy_tenant_model_token_limit is None:
+                        raise AuthorizationDenied("TENANT_MODEL_TOKEN_BUDGET_LIMIT_REQUIRED")
                     if request.requested_model_tokens > min(
                         lease.max_model_tokens_per_work, policy_model_token_limit,
                     ):
                         raise AuthorizationDenied("MODEL_TOKEN_BUDGET_EXCEEDED")
-            remaining, tenant_remaining = self.work_budget_ledger.admit(
-                lease, work_id, limit=policy_work_limit, tenant_limit=policy_tenant_work_limit, now=current,
+            remaining, tenant_remaining, tenant_model_tokens_remaining = self.work_budget_ledger.admit(
+                lease, work_id, limit=policy_work_limit, tenant_limit=policy_tenant_work_limit,
+                model_tokens=0 if request is None else request.requested_model_tokens,
+                tenant_model_token_limit=policy_tenant_model_token_limit, now=current,
             )
         except (AuthorizationDenied, LeaseIntegrityError, ValueError) as exc:
             reason = exc.reason if isinstance(exc, AuthorizationDenied) else "WORK_ADMISSION_INVALID"
@@ -692,8 +731,10 @@ class CapabilityAuthorizer:
             "policy_tenant_concurrent_work_limit": policy_tenant_work_limit,
             "max_model_tokens_per_work": lease.max_model_tokens_per_work,
             "policy_model_tokens_per_work_limit": policy_model_token_limit,
+            "policy_tenant_model_tokens_limit": policy_tenant_model_token_limit,
             "requested_model_tokens": 0 if request is None else request.requested_model_tokens,
             "concurrent_work_remaining": remaining, "tenant_concurrent_work_remaining": tenant_remaining,
+            "tenant_model_tokens_remaining": tenant_model_tokens_remaining,
             "timestamp": current,
         }
         try:
