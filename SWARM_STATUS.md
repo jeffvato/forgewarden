@@ -34,11 +34,12 @@ On every restart or continuation:
 - Negative paths: unbound work must record no model or data context; binding mismatch, missing/revoked/unavailable Model Broker approval, invalid token request, policy denial, tenant excess, concurrency, recovery, and expiry continue to deny or release before a successful Evidence record.
 - Proof plan: focused ASOC/policy tests assert model-token admission Evidence includes the exact binding and contextual fields while unbound work retains explicit null context. When this focused slice is committed and read-only reviewed, run the full suite and default integrity gate once.
 - Exact first change: extend the existing `work_admitted` result/Evidence payload with exact model binding, data classification, approved purpose, and policy version.
-- Deterministic validation: focused ASOC/policy tests passed (`121 passed`) for the initial Evidence-binding coverage. Full-suite and integrity proof remain pending this product checkpoint.
-- Review: pending exact committed-snapshot read-only review.
+- Product checkpoint: `eddb447` (`Bind model token reservations to evidence`).
+- Deterministic validation: focused ASOC/policy tests passed (`121 passed`) for model-binding and contextual Evidence coverage. Full Linux suite passed (`643 passed, 1 skipped`); the default FW-INTEGRITY gate passed its repository/build/startup/configuration/test/Golden Path checks at `eddb447`.
+- Review: exact committed-snapshot read-only review found no blocking defect.
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
 - Blocker: none.
-- Next action: commit and exact-snapshot review the completed model-token Evidence-binding unit, then perform its one-time full-suite and integrity proof.
+- Next action: derive the next highest-risk unmet bounded FW-ASOC-02 control from `ROADMAP.md` and existing canonical code without rerunning this completed proof.
 
 ## Execution log
 
@@ -59,6 +60,7 @@ On every restart or continuation:
 - 2026-08-31: FW-ASOC-02 aggregate model-token checkpoint: the existing `WorkBudgetLedger` atomically reserves policy-bound tenant capacity for each requested model-token amount and releases it on completion, recovery revocation, and lease expiry. Focused proof covers malformed/missing limits, lease and policy caps, concurrent reservation, cross-agent splitting, recovery, and expiry; 110 focused tests, the full suite (632 passed, 1 skipped), and the default integrity gate passed at `d7bad98`. Health remains YELLOW only for the pre-existing dependency and roadmap-ownership findings.
 - 2026-08-31: FW-ASOC-02 delegation fan-out checkpoint: parent leases now carry a signed positive direct-child ceiling, and the canonical `LeaseRegistry` atomically contains sequential and concurrent child issuance. Child fan-out cannot exceed the parent ceiling; failed Evidence writes leave no issued lease. Focused proof passed (120 tests); the full suite passed (642 passed, 1 skipped), and the default integrity gate passed at `e371488`. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap ownership gaps.
 - 2026-08-31: FW-ASOC-02 model-token broker-revalidation checkpoint: model-bound work admission now rechecks the canonical Model Broker's exact tenant/agent/model/deployment/version approval before any model-token reservation. Missing, revoked, and unavailable approval deny without reserving capacity. Focused proof passed (121 tests); the full suite passed (643 passed, 1 skipped), and the default integrity gate passed at `7eeb1b8`. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap ownership gaps.
+- 2026-08-31: FW-ASOC-02 model-token Evidence checkpoint: canonical `work_admitted` Evidence now binds exact model/provider/deployment/version/approval data, request data classification, approved purpose, and policy version to each model-token reservation. Focused proof passed (121 tests); the full suite passed (643 passed, 1 skipped), and the default integrity gate passed at `eddb447`. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap ownership gaps.
 
 ## Stop conditions
 
