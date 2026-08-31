@@ -160,6 +160,16 @@ def test_delegation_denies_tool_resource_data_and_action_expansion(change):
         leases.issue_delegated(delegable.lease_id, replace(child, **change), now=150)
 
 
+def test_parent_recovery_revokes_delegated_child_leases():
+    _, switch, agents, leases, _, _, agent, parent = make_plane()
+    switch.clear_for_dry_run()
+    delegable = leases.issue(replace(parent, lease_id="lease-parent-recovery", delegation_allowed=True, delegation_depth=1))
+    child = CapabilityLease("lease-child-recovery", "agent-child", agent.agent_id, parent.tenant_id, ("telemetry.read",), parent.allowed_tools, parent.allowed_resources, parent.allowed_data_classifications, ("READ",), 1, False, 0, 110, 190, parent.policy_version, "approval-child", "ticket-child", "bounded child", parent.key_reference)
+    leases.issue_delegated(delegable.lease_id, child, now=150)
+    ASOCControlPlane(agents, leases, switch).revoke_agent(agent.agent_id)
+    assert leases.get(child.lease_id).revoked_at is not None
+
+
 @pytest.mark.parametrize(
     ("overrides", "reason"),
     [

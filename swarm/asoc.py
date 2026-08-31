@@ -379,6 +379,13 @@ class LeaseRegistry:
             self.revoke(lease_id, reason)
         return len(targets)
 
+    def revoke_issued_by(self, issuer_identity: str, reason: str = "parent delegation revoked") -> int:
+        issuer_identity = _text(issuer_identity, "issuer_identity")
+        targets = [lease.lease_id for lease in self._leases.values() if lease.issuer_identity == issuer_identity]
+        for lease_id in targets:
+            self.revoke(lease_id, reason)
+        return len(targets)
+
     def revoke(self, lease_id: str, reason: str, now: int | None = None) -> None:
         lease = self.get(lease_id)
         self._leases[lease_id] = replace(lease, revoked_at=now or int(time.time()), revocation_reason=_text(reason, "revocation_reason"))
@@ -709,6 +716,7 @@ class ASOCControlPlane:
     def revoke_agent(self, agent_id: str, reason: str = "agent revoked") -> None:
         self.agents.revoke(agent_id, reason)
         self.leases.revoke_agent_ids({agent_id}, reason)
+        self.leases.revoke_issued_by(agent_id, reason)
         if self.action_tickets is not None:
             self.action_tickets.revoke_matching(subject_agent_id=agent_id)
         if self.model_broker is not None:
