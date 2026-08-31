@@ -34,11 +34,12 @@ On every restart or continuation:
 - Negative paths: model deployment mismatch; tenant/agent isolation; pre-admission Model Broker denial; unavailable completion Evidence; and existing recovery, expiry, tenant-cap, and concurrency controls remain intact.
 - Proof plan: focused ASOC/policy tests admit a bounded model-token work item, revoke its canonical deployment, and prove the tenant reservation is released. When this focused slice is committed and read-only reviewed, run the full suite and default integrity gate once.
 - Exact first change: add a regression proving existing model-deployment recovery calls the canonical ledger release boundary for model-token reservations.
-- Deterministic validation: focused ASOC/policy tests passed (`123 passed`) for the initial model-deployment recovery proof. Full-suite and integrity proof remain pending this product checkpoint.
-- Review: pending exact committed-snapshot read-only review.
+- Product checkpoint: `e3fd5c7` (`Prove model deployment token recovery`).
+- Deterministic validation: focused ASOC/policy tests passed (`123 passed`) for model-deployment recovery release. Full Linux suite passed (`645 passed, 1 skipped`); the default FW-INTEGRITY gate passed its repository/build/startup/configuration/test/Golden Path checks at `e3fd5c7`.
+- Review: exact committed-snapshot read-only review found no blocking defect.
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
 - Blocker: none.
-- Next action: commit and exact-snapshot review the completed model-deployment recovery unit, then perform its one-time full-suite and integrity proof.
+- Next action: derive the next highest-risk unmet bounded FW-ASOC-02 control from `ROADMAP.md` and existing canonical code without rerunning this completed proof.
 
 ## Execution log
 
@@ -61,6 +62,7 @@ On every restart or continuation:
 - 2026-08-31: FW-ASOC-02 model-token broker-revalidation checkpoint: model-bound work admission now rechecks the canonical Model Broker's exact tenant/agent/model/deployment/version approval before any model-token reservation. Missing, revoked, and unavailable approval deny without reserving capacity. Focused proof passed (121 tests); the full suite passed (643 passed, 1 skipped), and the default integrity gate passed at `7eeb1b8`. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap ownership gaps.
 - 2026-08-31: FW-ASOC-02 model-token Evidence checkpoint: canonical `work_admitted` Evidence now binds exact model/provider/deployment/version/approval data, request data classification, approved purpose, and policy version to each model-token reservation. Focused proof passed (121 tests); the full suite passed (643 passed, 1 skipped), and the default integrity gate passed at `eddb447`. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap ownership gaps.
 - 2026-08-31: FW-ASOC-02 fail-closed completion-accounting checkpoint: canonical completion Evidence is now written inside the existing work-budget ledger lock before a work or model-token reservation is released. An unavailable Evidence sink preserves capacity; a later durable completion releases it once. Focused proof passed (122 tests); the full suite passed (644 passed, 1 skipped), and the default integrity gate passed at `ac8de94`. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap ownership gaps.
+- 2026-08-31: FW-ASOC-02 model-deployment recovery checkpoint: canonical model-deployment revocation is now explicitly proven to release its outstanding tenant model-token reservation through the shared ledger. Focused proof passed (123 tests); the full suite passed (645 passed, 1 skipped), and the default integrity gate passed at `e3fd5c7`. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap ownership gaps.
 
 ## Stop conditions
 
