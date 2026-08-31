@@ -4,7 +4,7 @@
 
 - Active phase: FW-AV — Native anti-malware
 - Current focus: FW-AV — trusted exact-content indicator boundary
-- Current task: FW-AV-03 — add only bounded literal content indicators to the existing trusted local catalog.
+- Current task: FW-AV-03 complete; derive the next highest-risk bounded FW-AV control.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -34,9 +34,10 @@ On every restart or continuation:
 - Negative paths: blank, oversized, non-bytes, duplicate, or untrusted content indicators; any duplicate identity across hash and content indicator types; direct untrusted collection; invalid scan input; and failed Evidence write must deny. No regex/YARA expression parsing, archive/document decoding, file I/O, network, execution, sandboxing, quarantine, or remediation is permitted.
 - Proof plan: focused tests for trusted exact content detection and durable Evidence, non-match, deterministic ordering, all malformed/untrusted/duplicate input classes, hash compatibility, and Evidence failure; exact read-only commit review after focused validation. Run the full suite and integrity gate only when this bounded content slice is complete.
 - Exact first change: extend `swarm/anti_malware.py` and its focused tests with trusted bounded literal `ContentIndicator` values in the existing immutable catalog; do not add a YARA parser/engine or any artifact access/response behavior.
+- Proof: focused FW-AV tests passed (`6 passed`); full Linux suite passed (`651 passed, 1 skipped`); the default FW-INTEGRITY gate passed all hard checks and its ASOC Golden Path at `7ac7fdb`. Exact read-only review of that tested commit found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and defined-but-unimplemented identity, normalized-events, SOC-incident, and compliance owners.
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
 - Blocker: none.
-- Next action: implement and verify FW-AV-03.
+- Next action: derive and implement the next highest-risk bounded FW-AV control; do not add actual file hooks, execution, quarantine, remediation, reputation networking, or sandboxing without separately scoped authority and proof.
 
 ## Execution log
 
@@ -66,6 +67,7 @@ On every restart or continuation:
 - 2026-08-31: FW-AV-02 claimed as the highest-risk unmet bounded control after detection-only scanning: publisher provenance for signature input. It will introduce only an immutable local trusted-publisher catalog and Evidence binding; signature transport, network reputation, filesystem scanning, content execution, sandboxing, quarantine, and remediation remain out of scope.
 - 2026-08-31: FW-AV-02 complete at `8d76be9`: every scanned signature now belongs to an immutable local catalog with an explicit trusted-publisher allowlist; catalog identity and matching publishers are bound to canonical Evidence, while direct untrusted collections and malformed, duplicate, or untrusted signature input fail closed. Focused proof passed (5 tests); the full Linux suite passed (650 passed, 1 skipped); the integrity gate passed all hard checks, remaining YELLOW only for the pre-existing dependency and roadmap-ownership gaps; exact read-only commit review found no blocking defect.
 - 2026-08-31: FW-AV-03 claimed as the highest-risk safe next detection control: trusted bounded literal content indicators in the existing catalog. It deliberately does not claim or introduce a YARA parser/engine, archive/document analysis, file access, execution, sandboxing, quarantine, remediation, or reputation networking.
+- 2026-08-31: FW-AV-03 complete at `7ac7fdb`: the existing trusted local catalog now admits only bounded literal byte indicators from trusted publishers, rejects malformed/untrusted/ambiguous input, orders matches deterministically, and records matching content indicators with canonical Evidence. It remains in-memory and detect-only; no YARA interpreter, file access, execution, sandboxing, quarantine, remediation, or network behavior exists. Focused proof passed (6 tests); full Linux suite passed (651 passed, 1 skipped); the integrity gate passed all hard checks, remaining YELLOW only for the pre-existing dependency and roadmap-ownership gaps; exact read-only commit review found no blocking defect.
 
 ## Stop conditions
 
@@ -75,4 +77,4 @@ Do not stop merely because a task or review cycle finished. Stop only under the 
 
 - Reason: NONE
 - Exact condition: no external or human blocker is known.
-- First resume action: implement and validate FW-AV-03 from `6a35285`.
+- First resume action: derive the highest-risk unmet bounded FW-AV control from `ROADMAP.md` and canonical code, then implement its first smallest safe unit.
