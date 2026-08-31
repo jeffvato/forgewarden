@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: FW-AV — Native anti-malware
-- Current focus: FW-AV — bounded stream iteration
-- Current task: FW-AV-09 complete; derive the next highest-risk bounded FW-AV control.
+- Current focus: FW-AV — bounded literal matching work
+- Current task: FW-AV-10 complete; derive the next highest-risk bounded FW-AV control.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -28,14 +28,14 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-AV-09 — bounded stream iteration
-- Starting checkpoint: `e1b8b46`
-- Canonical owner: `HashSignatureScanner` remains the sole detect-only stream evaluator; `TrustedSignatureCatalog` remains the immutable detector-content owner and `AuditLog`/`audit_log_sink` remain the durable Evidence owner. No identity, authorization, policy, ticket, model, gateway, execution, filesystem, endpoint-agent, or response system is created.
-- Acceptance criteria: caller-supplied streams can contain at most 16,384 chunks; the exact boundary is accepted, while one additional chunk fails before a finding or Evidence is emitted. Existing byte, per-chunk, result, catalog, and Evidence bounds remain unchanged.
-- Negative paths: an empty or tiny-chunk stream above the iteration limit fails closed, preventing unbounded CPU work without consuming scan bytes. Existing malformed, untrusted, duplicate, over-capacity, input-overflow, result-overflow, and Evidence-unavailable paths remain fail closed. The detector must not access paths, execute input, fetch content, quarantine, or remediate.
-- Proof plan: focused exact-boundary and overflow regression tests, exact read-only commit review, full suite, and integrity gate after the bounded slice completes.
-- Exact first change: add one iteration count bound inside the existing stream loop before chunk processing; no filtering, cache, filesystem scanner, endpoint agent, policy response, or quarantine workflow.
-- Proof: focused FW-AV tests passed (`11 passed`); full Linux suite passed (`656 passed, 1 skipped`); the default FW-INTEGRITY gate passed all hard checks and its Golden Path at `bb4134d`. Exact local read-only review found no remaining blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and defined-but-unimplemented identity, normalized-events, SOC-incident, and compliance owners.
+- Task ID: FW-AV-10 — bounded literal matching work
+- Starting checkpoint: `3983351`
+- Canonical owner: `HashSignatureScanner` remains the sole detect-only evaluator; `TrustedSignatureCatalog` remains the immutable detector-content owner and `AuditLog`/`audit_log_sink` remain the durable Evidence owner. No identity, authorization, policy, ticket, model, gateway, execution, filesystem, endpoint-agent, or response system is created.
+- Acceptance criteria: trusted literal matching performs at most 262,144 indicator comparisons per scan; overflow denies before a finding or Evidence is emitted, while scans within the exact bound preserve existing deterministic behavior.
+- Negative paths: too many literal comparisons fail closed without partial Evidence. Existing malformed, untrusted, duplicate, catalog-overflow, input-overflow, iteration-overflow, result-overflow, and Evidence-unavailable paths remain fail closed. The detector must not access paths, execute input, fetch content, quarantine, or remediate.
+- Proof plan: focused exact-boundary and overflow regression tests using a reduced test-only limit, exact read-only commit review, full suite, and integrity gate after the bounded slice completes.
+- Exact first change: track the existing catalog's literal indicator count at each existing stream window before invoking literal matching; no filtering, cache, filesystem scanner, endpoint agent, policy response, or quarantine workflow.
+- Proof: focused FW-AV tests passed (`12 passed`); full Linux suite passed (`657 passed, 1 skipped`); the default FW-INTEGRITY gate passed all hard checks and its Golden Path at `97d8ac3`. Exact local read-only review found no remaining blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and defined-but-unimplemented identity, normalized-events, SOC-incident, and compliance owners.
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
 - Blocker: none.
 - Next action: derive and implement the next highest-risk bounded FW-AV control; do not add actual file hooks, execution, quarantine, remediation, reputation networking, or sandboxing without separately scoped authority and proof.
@@ -80,6 +80,7 @@ On every restart or continuation:
 - 2026-08-31: FW-AV-07 complete at `2308c85`: the existing detect-only scanner now denies a scan when combined trusted hash/content matches exceed 256, before returning partial findings or calling the Evidence sink. Hash and literal overflow regressions prove no partial Evidence is emitted. Focused proof passed (11 tests); full Linux suite passed (656 passed, 1 skipped); the default integrity gate passed every hard check and its Golden Path. Exact local read-only review found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap-ownership gaps.
 - 2026-08-31: FW-AV-08 complete at `bc5dc83`: trusted detection catalogs now require a bounded lowercase version that changes the verified catalog snapshot and is carried into every finding and Evidence record. Missing/malformed versions and cross-version snapshot reuse fail closed. Focused proof passed (11 tests); full Linux suite passed (656 passed, 1 skipped); the default integrity gate passed every hard check and its Golden Path. Exact local read-only review found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap-ownership gaps.
 - 2026-08-31: FW-AV-09 complete at `13d7bf6`/`bb4134d`: caller-supplied streams now accept at most 16,384 chunks. The exact boundary remains a clean valid scan; an additional empty chunk fails closed before a partial finding or Evidence can be emitted, preventing unbounded zero-byte iteration. Focused proof passed (11 tests); full Linux suite passed (656 passed, 1 skipped); the default integrity gate passed every hard check and its Golden Path. Exact local read-only review found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap-ownership gaps.
+- 2026-08-31: FW-AV-10 complete at `97d8ac3`: the existing detector now counts trusted literal indicator checks across stream windows and fails closed above 262,144 checks before producing partial findings or Evidence. A reduced-limit regression proves the exact boundary succeeds and overflow adds no Evidence. Focused proof passed (12 tests); full Linux suite passed (657 passed, 1 skipped); the default integrity gate passed every hard check and its Golden Path. Exact local read-only review found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap-ownership gaps.
 
 ## Stop conditions
 
