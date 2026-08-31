@@ -4,7 +4,7 @@
 
 - Active phase: ForgeWarden Core
 - Current focus: FW-ASOC-02 — model-token budget containment
-- Current task: establish the signed, policy-owned token-budget boundary before model-work admission accounting.
+- Current task: enforce a requested per-work model-token budget at canonical work admission.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -27,22 +27,22 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-ASOC-02 — model-token budget containment, schema boundary
-- Starting commit: `be63e40`
+- Task ID: FW-ASOC-02 — model-token budget containment, per-work admission
+- Starting commit: `b54113e`
 - Product checkpoint: `ccbb3cd` (recovery release proof)
 - Accepted handoff commit: `fc81f90` (records the proven tenant-wide slice)
-- Canonical owner: `swarm.asoc.CapabilityLease` and `LeaseRegistry` own signed/delegated authority; `swarm.policy_gate.DeterministicPolicy` owns the exact scope ceiling; a later bounded unit will enforce accounting at `CapabilityAuthorizer`'s existing Model Broker boundary and record Evidence through the canonical audit sink.
-- Acceptance criteria: each lease carries a positive, signed per-work model-token maximum; deterministic policy may carry an exact positive per-scope ceiling; child leases cannot increase that maximum; malformed values and any post-signing change fail closed; no alternate budget system or execution authority is introduced.
-- Negative paths: zero, negative, boolean, fractional, or text limits; changed signed limit; delegated token-budget escalation; missing policy ceiling during the future admission-enforcement unit; tenant/capacity splitting, recovery, expiry, and audit failure during later ledger proof.
-- Proof plan: this unit runs focused ASOC/policy schema and signature/delegation tests; the next unit will add atomic requested-token reservation, release/recovery/expiry behavior, cross-agent and tenant splitting denials, Evidence, and Model Broker-bound focused tests before broader validation.
-- Exact first change: add `max_model_tokens_per_work` to the signed `CapabilityLease` canonical payload and `PolicyRule`, validate it as a positive integer, expose the deterministic accessor, and deny delegated increases.
+- Canonical owner: `CapabilityAuthorizer.admit_work` is the canonical work-admission boundary; it composes signed `CapabilityLease` limits, `DeterministicPolicy` scope ceilings, the existing work admission ledger, and the canonical audit sink. Model execution remains a future extension at the existing Model Broker boundary, not a new execution system.
+- Acceptance criteria: model-bound work declares a non-negative request; a positive request is required for policy-bound model work; policy carries a positive token ceiling; admission denies a request above the smaller signed lease and policy ceilings; admission Evidence records all three values; no authorization, model, audit, or execution subsystem is duplicated.
+- Negative paths: negative, boolean, fractional, and text requested counts; omitted/zero request for model-bound policy work; missing policy ceiling; request above policy or lease ceiling; later aggregate tenant splitting, recovery, expiry, and audit-failure paths remain required before this control is fully proven.
+- Proof plan: focused ASOC/policy tests cover malformed input, required limits, policy and lease cap denials, and admission evidence. The next unit will atomically reserve aggregate model tokens through the existing work ledger and prove release, recovery, expiry, concurrency, and tenant-splitting denials before broader validation.
+- Exact first change: add `requested_model_tokens` to `AuthorizationRequest`; at `admit_work`, require and bound it for model-bound policy work, and include the lease/policy/requested token values in canonical admission Evidence.
 - First product checkpoint: `cc70943acb9d4b0fd9ad58bc28963b53d5930d77` (`Bind ASOC leases to model token limits`).
-- Files changed: `swarm/asoc.py`, `swarm/policy_gate.py`, `tests/test_asoc.py`, `tests/test_policy_gate.py`, `SWARM_STATUS.md`.
-- Deterministic validation: focused ASOC/policy schema tests passed (`97 passed` in the Linux repository runtime); `git diff --check` and `git show --check` passed. Prior tenant-wide capacity evidence remains `84` focused tests, `473 passed, 1 skipped` full suite, and a passing integrity gate at `ccbb3cd`.
-- Review: exact-diff read-only review found no blocking defect; the configured external exact-review adapter returned no structured payload, so no independent approval is claimed. The prior `ccbb3cd` review remains evidence only for the prior tenant-capacity slice.
+- Files changed: in progress — `swarm/asoc.py`, `tests/test_asoc.py`, `SWARM_STATUS.md`.
+- Deterministic validation: focused ASOC/policy admission tests passed (`102 passed` in the Linux repository runtime); `git diff --check` passed. Prior tenant-wide capacity evidence remains `84` focused tests, `473 passed, 1 skipped` full suite, and a passing integrity gate at `ccbb3cd`.
+- Review: pending for this new meaningful commit; the external exact-review adapter returned no structured payload for the prior schema commit, so no independent approval is claimed.
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
 - Blocker: none.
-- Next action: implement canonical token admission accounting through the existing `WorkBudgetLedger` and `CapabilityAuthorizer` boundary, then prove release, recovery, expiry, concurrency, and tenant-splitting denials.
+- Next action: commit and review per-work admission enforcement, then atomically reserve aggregate model-token capacity through the existing `WorkBudgetLedger`.
 
 ## Execution log
 

@@ -429,6 +429,7 @@ class AuthorizationRequest:
     policy_version: str = "FW-ASOC-01-v1"
     action_ticket_valid: bool = False
     action_ticket_id: str | None = None
+    requested_model_tokens: int = 0
 
     def __post_init__(self) -> None:
         for field in ("capability", "tenant_id", "resource", "data_classification", "action_class", "policy_version"):
@@ -439,6 +440,12 @@ class AuthorizationRequest:
             object.__setattr__(self, "action_ticket_id", _text(self.action_ticket_id, "action_ticket_id"))
         if not isinstance(self.blast_radius, int) or isinstance(self.blast_radius, bool) or self.blast_radius < 0:
             raise ValueError("blast_radius must be a non-negative integer")
+        if (
+            not isinstance(self.requested_model_tokens, int)
+            or isinstance(self.requested_model_tokens, bool)
+            or self.requested_model_tokens < 0
+        ):
+            raise ValueError("requested_model_tokens must be a non-negative integer")
         if not isinstance(self.action_ticket_valid, bool):
             raise ValueError("action_ticket_valid must be boolean")
         if self.model_identity is not None and not isinstance(self.model_identity, ModelBinding):
@@ -625,6 +632,7 @@ class CapabilityAuthorizer:
         lease: CapabilityLease | None = None
         policy_work_limit: int | None = None
         policy_tenant_work_limit: int | None = None
+        policy_model_token_limit: int | None = None
         try:
             validate_safety_evidence(self._safety_evidence_provider(), require_kill_switch=False)
             agent = self._agents.get(agent_id)
@@ -653,6 +661,16 @@ class CapabilityAuthorizer:
                 policy_tenant_work_limit = self._policy_engine.tenant_concurrent_work_limit(context)
                 if policy_tenant_work_limit is None:
                     raise AuthorizationDenied("TENANT_WORK_CONCURRENCY_LIMIT_REQUIRED")
+                if request.model_identity is not None:
+                    if request.requested_model_tokens <= 0:
+                        raise AuthorizationDenied("MODEL_TOKEN_BUDGET_REQUIRED")
+                    policy_model_token_limit = self._policy_engine.model_tokens_per_work_limit(context)
+                    if policy_model_token_limit is None:
+                        raise AuthorizationDenied("MODEL_TOKEN_BUDGET_LIMIT_REQUIRED")
+                    if request.requested_model_tokens > min(
+                        lease.max_model_tokens_per_work, policy_model_token_limit,
+                    ):
+                        raise AuthorizationDenied("MODEL_TOKEN_BUDGET_EXCEEDED")
             remaining, tenant_remaining = self.work_budget_ledger.admit(
                 lease, work_id, limit=policy_work_limit, tenant_limit=policy_tenant_work_limit, now=current,
             )
@@ -670,6 +688,9 @@ class CapabilityAuthorizer:
             "max_concurrent_work": lease.max_concurrent_work,
             "policy_concurrent_work_limit": policy_work_limit,
             "policy_tenant_concurrent_work_limit": policy_tenant_work_limit,
+            "max_model_tokens_per_work": lease.max_model_tokens_per_work,
+            "policy_model_tokens_per_work_limit": policy_model_token_limit,
+            "requested_model_tokens": 0 if request is None else request.requested_model_tokens,
             "concurrent_work_remaining": remaining, "tenant_concurrent_work_remaining": tenant_remaining,
             "timestamp": current,
         }
