@@ -1151,7 +1151,10 @@ def test_tenant_work_budget_prevents_cross_agent_capacity_splitting():
         max_concurrent_work=1, max_tenant_concurrent_work=1, max_model_tokens_per_work=1,
         max_tenant_model_tokens=1,
     )])
-    auth = CapabilityAuthorizer(agents, leases, KillSwitch(True), policy_engine=policy)
+    auth = CapabilityAuthorizer(
+        agents, leases, KillSwitch(True), policy_engine=policy,
+        model_binding_validator=lambda *_args: True,
+    )
     work_request = request(model_identity=model, requested_model_tokens=1)
     assert auth.admit_work(agent.agent_id, "tenant-work-1", work_request, now=150)["admitted"] is True
     with pytest.raises(AuthorizationDenied, match="TENANT_WORK_CONCURRENCY_LIMIT_EXCEEDED"):
@@ -1175,7 +1178,10 @@ def test_model_work_admission_requires_and_enforces_a_policy_owned_token_budget(
         max_concurrent_work=2, max_tenant_concurrent_work=2, max_model_tokens_per_work=1,
         max_tenant_model_tokens=1,
     )])
-    auth = CapabilityAuthorizer(agents, leases, KillSwitch(True), policy_engine=policy)
+    auth = CapabilityAuthorizer(
+        agents, leases, KillSwitch(True), policy_engine=policy,
+        model_binding_validator=lambda *_args: True,
+    )
     admitted = auth.admit_work(
         agent.agent_id, "token-work-1", request(model_identity=model, requested_model_tokens=1), now=150,
     )
@@ -1199,6 +1205,7 @@ def test_model_work_admission_requires_and_enforces_a_policy_owned_token_budget(
             max_concurrent_work=2, max_tenant_concurrent_work=2, max_model_tokens_per_work=2,
             max_tenant_model_tokens=2,
         )]),
+        model_binding_validator=lambda *_args: True,
     )
     with pytest.raises(AuthorizationDenied, match="MODEL_TOKEN_BUDGET_EXCEEDED"):
         lease_limited.admit_work(
@@ -1210,11 +1217,48 @@ def test_model_work_admission_requires_and_enforces_a_policy_owned_token_budget(
             "tenant-a", "telemetry.read", "endpoint-123", "READ", "FW-ASOC-01-v1",
             max_concurrent_work=2, max_tenant_concurrent_work=2, max_tenant_model_tokens=2,
         )]),
+        model_binding_validator=lambda *_args: True,
     )
     with pytest.raises(AuthorizationDenied, match="MODEL_TOKEN_BUDGET_LIMIT_REQUIRED"):
         missing_limit.admit_work(
             agent.agent_id, "token-work-missing-policy", request(model_identity=model, requested_model_tokens=1), now=152,
         )
+
+
+def test_model_token_admission_requires_current_canonical_broker_approval():
+    _, _, agents, leases, _, model, agent, _ = make_plane()
+    policy = DeterministicPolicy([PolicyRule(
+        "tenant-a", "telemetry.read", "endpoint-123", "READ", "FW-ASOC-01-v1",
+        max_concurrent_work=2, max_tenant_concurrent_work=2, max_model_tokens_per_work=1,
+        max_tenant_model_tokens=1,
+    )])
+    broker = ModelBroker()
+    auth = CapabilityAuthorizer(agents, leases, KillSwitch(True), policy_engine=policy, model_broker=broker)
+    work_request = request(model_identity=model, requested_model_tokens=1)
+    with pytest.raises(AuthorizationDenied, match="MODEL_BROKER_DENIED"):
+        auth.admit_work(agent.agent_id, "broker-token-denied", work_request, now=150)
+    assert auth.work_budget_ledger.active_tenant_model_tokens(tenant_id=agent.tenant_id, now=150) == 0
+
+    broker.register(ApprovedModel(
+        agent.tenant_id, agent.agent_id, model.model, model.provider, model.deployment,
+        model.version, model.approval_version,
+    ))
+    assert auth.admit_work(agent.agent_id, "broker-token-approved", work_request, now=151)["admitted"] is True
+    assert broker.revoke_matching(subject_agent_id=agent.agent_id) == 1
+    with pytest.raises(AuthorizationDenied, match="MODEL_BROKER_DENIED"):
+        auth.admit_work(agent.agent_id, "broker-token-revoked", work_request, now=152)
+    assert auth.work_budget_ledger.active_tenant_model_tokens(tenant_id=agent.tenant_id, now=152) == 1
+
+    class UnavailableBroker:
+        def allows(self, **_kwargs):
+            raise OSError("broker unavailable")
+
+    unavailable = CapabilityAuthorizer(
+        agents, leases, KillSwitch(True), policy_engine=policy, model_broker=UnavailableBroker(),
+    )
+    with pytest.raises(AuthorizationDenied, match="MODEL_BROKER_UNAVAILABLE"):
+        unavailable.admit_work(agent.agent_id, "broker-token-unavailable", work_request, now=153)
+    assert unavailable.work_budget_ledger.active_tenant_model_tokens(tenant_id=agent.tenant_id, now=153) == 0
 
 
 def test_tenant_model_token_budget_prevents_cross_agent_splitting_and_releases_on_recovery():
@@ -1239,7 +1283,10 @@ def test_tenant_model_token_budget_prevents_cross_agent_splitting_and_releases_o
         max_concurrent_work=2, max_tenant_concurrent_work=2, max_model_tokens_per_work=1,
         max_tenant_model_tokens=1,
     )])
-    auth = CapabilityAuthorizer(agents, leases, KillSwitch(True), policy_engine=policy)
+    auth = CapabilityAuthorizer(
+        agents, leases, KillSwitch(True), policy_engine=policy,
+        model_binding_validator=lambda *_args: True,
+    )
     work_request = request(model_identity=model, requested_model_tokens=1)
     assert auth.admit_work(agent.agent_id, "tenant-token-1", work_request, now=150)["tenant_model_tokens_remaining"] == 0
     with pytest.raises(AuthorizationDenied, match="TENANT_MODEL_TOKEN_BUDGET_EXCEEDED"):
@@ -1274,7 +1321,10 @@ def test_tenant_model_token_budget_is_atomic_and_expires_with_the_lease():
         max_concurrent_work=2, max_tenant_concurrent_work=2, max_model_tokens_per_work=1,
         max_tenant_model_tokens=1,
     )])
-    auth = CapabilityAuthorizer(agents, leases, KillSwitch(True), policy_engine=policy)
+    auth = CapabilityAuthorizer(
+        agents, leases, KillSwitch(True), policy_engine=policy,
+        model_binding_validator=lambda *_args: True,
+    )
     work_request = request(model_identity=model, requested_model_tokens=1)
     assert auth.admit_work(agent.agent_id, "tenant-token-expiring", work_request, now=150)["admitted"] is True
     assert auth.work_budget_ledger.active_tenant_model_tokens(tenant_id="tenant-a", now=201) == 0
@@ -1291,7 +1341,10 @@ def test_tenant_model_token_budget_concurrent_admission_allows_only_one_reservat
         max_concurrent_work=2, max_tenant_concurrent_work=2, max_model_tokens_per_work=1,
         max_tenant_model_tokens=1,
     )])
-    auth = CapabilityAuthorizer(agents, leases, KillSwitch(True), policy_engine=policy)
+    auth = CapabilityAuthorizer(
+        agents, leases, KillSwitch(True), policy_engine=policy,
+        model_binding_validator=lambda *_args: True,
+    )
     work_request = request(model_identity=model, requested_model_tokens=1)
 
     def attempt(work_id):

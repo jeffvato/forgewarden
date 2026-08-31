@@ -710,6 +710,24 @@ class CapabilityAuthorizer:
                 if agent.model_identity is not None:
                     if request.model_identity != agent.model_identity:
                         raise AuthorizationDenied("MODEL_BINDING_MISMATCH")
+                    try:
+                        if self._model_broker is not None:
+                            model_allowed = self._model_broker.allows(
+                                tenant_id=agent.tenant_id, subject_agent_id=agent.agent_id,
+                                model=agent.model_identity.model, provider=agent.model_identity.provider,
+                                deployment=agent.model_identity.deployment, version=agent.model_identity.version,
+                                approval_version=agent.model_identity.approval_version,
+                            )
+                        else:
+                            model_allowed = self._model_binding_validator(agent, lease, request)
+                    except Exception as exc:
+                        self._best_effort_audit("model_binding_validation_failed", {
+                            "agent_id": agent_id, "lease_id": lease.lease_id,
+                            "reason": type(exc).__name__, "timestamp": current,
+                        })
+                        raise AuthorizationDenied("MODEL_BROKER_UNAVAILABLE") from exc
+                    if model_allowed is not True:
+                        raise AuthorizationDenied("MODEL_BROKER_DENIED")
                     if request.requested_model_tokens <= 0:
                         raise AuthorizationDenied("MODEL_TOKEN_BUDGET_REQUIRED")
                     policy_model_token_limit = self._policy_engine.model_tokens_per_work_limit(context)

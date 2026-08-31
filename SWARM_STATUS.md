@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: FW-ASOC-02 — delegation fan-out containment
-- Current task: bound each parent lease's direct child issuance through the existing canonical lease registry.
+- Current focus: FW-ASOC-02 — model-token admission broker revalidation
+- Current task: require current canonical Model Broker approval before reserving model-token capacity.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -27,19 +27,18 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-ASOC-02 — bounded delegation fan-out
-- Starting commit: `022abd9`
-- Canonical owner: signed `CapabilityLease` declares the parent ceiling, and the existing `LeaseRegistry.issue_delegated` atomically records and enforces direct child issuance. No parallel identity, authorization, policy, audit, ticket, model, gateway, or execution subsystem is introduced.
-- Acceptance criteria: every parent lease carries a signed positive direct-child ceiling; canonical delegated issuance permits no more direct children than that ceiling; concurrent attempts cannot oversubscribe it; a failed Evidence write cannot leave an issued lease; parent/child tenant, authority, scope, lifetime, depth, blast-radius, work-budget, and model-token boundaries continue to apply.
-- Negative paths: malformed or non-positive child ceiling; signed-ceiling tampering; ceiling exhaustion; concurrent issuance race; unavailable Evidence sink; and all established delegation escalation, tenant, issuer, lifetime, depth, blast-radius, work-budget, and model-token denials.
-- Proof plan: focused ASOC/policy tests prove schema validation, signature binding, sequential exhaustion, concurrent issuance containment, fan-out escalation denial, and audit fail-closed issuance. When this focused slice is committed and read-only reviewed, run the full suite and default integrity gate once.
-- Exact first change: add signed `max_delegated_leases` to `CapabilityLease`, defaulting safely to one, then make `LeaseRegistry.issue_delegated` atomically deny a direct child beyond the parent ceiling.
-- Product checkpoint: `e371488` (`Fail closed when ASOC lease evidence fails`), following the fan-out enforcement and delegated-budget escalation repairs in `75ac555` and `4a470b3`.
-- Deterministic validation: focused ASOC/policy tests passed (`120 passed`) for schema validation, signature binding, sequential exhaustion, concurrent issuance, delegated fan-out escalation, and audit fail-closed issuance. Full Linux suite passed (`642 passed, 1 skipped`); the default FW-INTEGRITY gate passed its repository/build/startup/configuration/test/Golden Path checks at `e371488`.
-- Review: exact committed-snapshot read-only review found and repaired the child fan-out escalation and audit-write atomicity defects before this final checkpoint; the final exact review found no remaining blocking defect.
+- Task ID: FW-ASOC-02 — model-token admission broker revalidation
+- Starting commit: `f1a5a53`
+- Canonical owner: `CapabilityAuthorizer.admit_work` reuses the existing approved `ModelBroker` decision before it composes signed `CapabilityLease` and deterministic-policy token ceilings with the canonical `WorkBudgetLedger`. No parallel model, budget, authorization, or execution subsystem is introduced.
+- Acceptance criteria: model-bound work requires the same exact tenant/agent/model/provider/deployment/version/approval Model Broker decision as authorization; missing, revoked, or unavailable approval denies before a token reservation; existing non-broker validation remains an explicit fail-closed test adapter.
+- Negative paths: absent broker approval; post-admission broker revocation; unavailable broker; model binding mismatch; missing or excessive signed/policy token budget; tenant aggregate excess; recovery/expiry release; and concurrent splitting.
+- Proof plan: focused ASOC/policy tests prove broker denial, approval, revocation, unavailability, and that denied admission leaves no tenant token reservation. When this focused slice is committed and read-only reviewed, run the full suite and default integrity gate once.
+- Exact first change: apply the canonical `ModelBroker.allows` validation path already used by authorization inside model-bound `admit_work`, immediately before model-token reservation.
+- Deterministic validation: focused ASOC/policy tests passed (`121 passed`) for the initial broker revalidation coverage. Full-suite and integrity proof remain pending this product checkpoint.
+- Review: pending exact committed-snapshot read-only review.
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
 - Blocker: none.
-- Next action: derive the next highest-risk unmet bounded FW-ASOC-02 control from `ROADMAP.md` and existing canonical code without rerunning this completed proof.
+- Next action: commit and exact-snapshot review the completed model-token broker-revalidation unit, then perform its one-time full-suite and integrity proof.
 
 ## Execution log
 
