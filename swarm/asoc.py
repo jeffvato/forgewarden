@@ -181,6 +181,7 @@ class CapabilityLease:
     creation_reason: str
     key_reference: str
     max_concurrent_work: int = 1
+    max_model_tokens_per_work: int = 1
     signature: str = ""
     revoked_at: int | None = None
     revocation_reason: str | None = None
@@ -206,6 +207,12 @@ class CapabilityLease:
             raise ValueError("invalid lease bounds")
         if not isinstance(self.max_concurrent_work, int) or isinstance(self.max_concurrent_work, bool) or self.max_concurrent_work <= 0:
             raise ValueError("max_concurrent_work must be a positive integer")
+        if (
+            not isinstance(self.max_model_tokens_per_work, int)
+            or isinstance(self.max_model_tokens_per_work, bool)
+            or self.max_model_tokens_per_work <= 0
+        ):
+            raise ValueError("max_model_tokens_per_work must be a positive integer")
         if not isinstance(self.delegation_allowed, bool):
             raise ValueError("delegation_allowed must be boolean")
         if not self.delegation_allowed and self.delegation_depth != 0:
@@ -217,7 +224,7 @@ class CapabilityLease:
             "allowed_resources", "allowed_data_classifications", "allowed_action_classes", "max_blast_radius",
             "delegation_allowed", "delegation_depth", "valid_from", "expires_at", "policy_version",
             "approval_reference", "action_ticket_reference", "creation_reason", "key_reference",
-            "max_concurrent_work")}
+            "max_concurrent_work", "max_model_tokens_per_work")}
 
     def canonical_bytes(self) -> bytes:
         return json.dumps(self.unsigned_dict(), sort_keys=True, separators=(",", ":")).encode("utf-8")
@@ -357,6 +364,8 @@ class LeaseRegistry:
             raise AuthorizationDenied("DELEGATION_BLAST_RADIUS_EXCEEDED")
         if child.max_concurrent_work > parent.max_concurrent_work:
             raise AuthorizationDenied("DELEGATION_WORK_BUDGET_EXCEEDED")
+        if child.max_model_tokens_per_work > parent.max_model_tokens_per_work:
+            raise AuthorizationDenied("DELEGATION_MODEL_TOKEN_BUDGET_EXCEEDED")
         for child_scope, parent_scope in ((child.granted_capabilities, parent.granted_capabilities), (child.allowed_tools, parent.allowed_tools), (child.allowed_resources, parent.allowed_resources), (child.allowed_data_classifications, parent.allowed_data_classifications), (child.allowed_action_classes, parent.allowed_action_classes)):
             if not set(child_scope).issubset(parent_scope):
                 raise AuthorizationDenied("DELEGATION_PRIVILEGE_ESCALATION")

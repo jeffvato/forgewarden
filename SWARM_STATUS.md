@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: FW-ASOC-02 — bounded resource budgets
-- Current task: derive the next unmet ASOC-02 containment control after proven aggregate, delegation, and work-budget slices.
+- Current focus: FW-ASOC-02 — model-token budget containment
+- Current task: establish the signed, policy-owned token-budget boundary before model-work admission accounting.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -27,16 +27,21 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-ASOC-02 — tenant-wide concurrent-work containment
-- Starting commit: `8af7a83`
+- Task ID: FW-ASOC-02 — model-token budget containment, schema boundary
+- Starting commit: `be63e40`
 - Product checkpoint: `ccbb3cd` (recovery release proof)
 - Accepted handoff commit: `fc81f90` (records the proven tenant-wide slice)
-- Files changed: `swarm/asoc.py`, `swarm/policy_gate.py`, `tests/test_asoc.py`, `swarm/integrity.py`, `docs/fw-integrity-functionality-map.md`, `SWARM_STATUS.md`
-- Deterministic validation: focused ASOC/policy tests 84 passed; full suite 473 passed/1 skipped; default FW-INTEGRITY gate passed every check at `ccbb3cd`.
-- Independent review: exact-snapshot read-only quality review of `ccbb3cd` found no new tenant-budget defect. Its ASOC findings were pre-existing audit-wrapper/structural observations, not a reason to reopen the slice.
+- Canonical owner: `swarm.asoc.CapabilityLease` and `LeaseRegistry` own signed/delegated authority; `swarm.policy_gate.DeterministicPolicy` owns the exact scope ceiling; a later bounded unit will enforce accounting at `CapabilityAuthorizer`'s existing Model Broker boundary and record Evidence through the canonical audit sink.
+- Acceptance criteria: each lease carries a positive, signed per-work model-token maximum; deterministic policy may carry an exact positive per-scope ceiling; child leases cannot increase that maximum; malformed values and any post-signing change fail closed; no alternate budget system or execution authority is introduced.
+- Negative paths: zero, negative, boolean, fractional, or text limits; changed signed limit; delegated token-budget escalation; missing policy ceiling during the future admission-enforcement unit; tenant/capacity splitting, recovery, expiry, and audit failure during later ledger proof.
+- Proof plan: this unit runs focused ASOC/policy schema and signature/delegation tests; the next unit will add atomic requested-token reservation, release/recovery/expiry behavior, cross-agent and tenant splitting denials, Evidence, and Model Broker-bound focused tests before broader validation.
+- Exact first change: add `max_model_tokens_per_work` to the signed `CapabilityLease` canonical payload and `PolicyRule`, validate it as a positive integer, expose the deterministic accessor, and deny delegated increases.
+- Files changed: in progress — `swarm/asoc.py`, `swarm/policy_gate.py`, `tests/test_asoc.py`, `tests/test_policy_gate.py`, `SWARM_STATUS.md`.
+- Deterministic validation: focused ASOC/policy schema tests passed (`97 passed` in the Linux repository runtime); prior tenant-wide capacity evidence remains `84` focused tests, `473 passed, 1 skipped` full suite, and a passing integrity gate at `ccbb3cd`.
+- Independent review: pending for this new meaningful commit; the prior `ccbb3cd` review remains evidence only for the prior tenant-capacity slice.
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
 - Blocker: none.
-- Next action: inspect `ROADMAP.md` and canonical components to derive the next highest-risk unmet, bounded FW-ASOC-02 control; record its owner, acceptance criteria, negative paths, proof plan, and first code change, then implement that first code/test/commit unit.
+- Next action: validate and commit the model-token schema boundary, then implement canonical token admission accounting.
 
 ## Execution log
 

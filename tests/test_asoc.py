@@ -119,6 +119,7 @@ def test_delegation_denies_non_delegable_parent_and_tenant_mismatch():
     ({"delegation_allowed": True, "delegation_depth": 1}, "DELEGATION_LIFETIME_OR_DEPTH_EXCEEDED"),
     ({"granted_capabilities": ("telemetry.read", "endpoint.inspect")}, "DELEGATION_PRIVILEGE_ESCALATION"),
     ({"max_concurrent_work": 2}, "DELEGATION_WORK_BUDGET_EXCEEDED"),
+    ({"max_model_tokens_per_work": 2}, "DELEGATION_MODEL_TOKEN_BUDGET_EXCEEDED"),
 ])
 def test_delegation_denies_lifetime_depth_and_scope_escalation(change, reason):
     _, switch, _, leases, _, _, agent, parent = make_plane()
@@ -919,6 +920,19 @@ def test_lease_rejects_invalid_concurrent_work_limits(value):
     _, _, _, _, _, _, _, lease = make_plane()
     with pytest.raises(ValueError, match="max_concurrent_work"):
         replace(lease, max_concurrent_work=value)
+
+
+@pytest.mark.parametrize("value", [0, -1, True, 1.5, "1"])
+def test_lease_rejects_invalid_model_token_work_limits(value):
+    _, _, _, _, _, _, _, lease = make_plane()
+    with pytest.raises(ValueError, match="max_model_tokens_per_work"):
+        replace(lease, max_model_tokens_per_work=value)
+
+
+def test_lease_signature_binds_model_token_work_limit():
+    _, _, _, leases, _, _, _, lease = make_plane()
+    with pytest.raises(LeaseIntegrityError, match="signature mismatch"):
+        leases.verify(replace(lease, max_model_tokens_per_work=2))
 
 
 def test_work_budget_admission_is_bounded_audited_and_released_on_completion_and_recovery():
