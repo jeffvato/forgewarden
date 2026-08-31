@@ -34,11 +34,12 @@ On every restart or continuation:
 - Negative paths: malformed or non-positive child ceiling; signed-ceiling tampering; ceiling exhaustion; concurrent issuance race; unavailable Evidence sink; and all established delegation escalation, tenant, issuer, lifetime, depth, blast-radius, work-budget, and model-token denials.
 - Proof plan: focused ASOC/policy tests prove schema validation, signature binding, sequential exhaustion, concurrent issuance containment, fan-out escalation denial, and audit fail-closed issuance. When this focused slice is committed and read-only reviewed, run the full suite and default integrity gate once.
 - Exact first change: add signed `max_delegated_leases` to `CapabilityLease`, defaulting safely to one, then make `LeaseRegistry.issue_delegated` atomically deny a direct child beyond the parent ceiling.
-- Deterministic validation: focused ASOC/policy tests passed (`120 passed`) for schema validation, signature binding, sequential exhaustion, concurrent issuance, delegated fan-out escalation, and audit fail-closed issuance. Full-suite and integrity proof remain pending this product checkpoint.
-- Review: pending exact committed-snapshot read-only review.
+- Product checkpoint: `e371488` (`Fail closed when ASOC lease evidence fails`), following the fan-out enforcement and delegated-budget escalation repairs in `75ac555` and `4a470b3`.
+- Deterministic validation: focused ASOC/policy tests passed (`120 passed`) for schema validation, signature binding, sequential exhaustion, concurrent issuance, delegated fan-out escalation, and audit fail-closed issuance. Full Linux suite passed (`642 passed, 1 skipped`); the default FW-INTEGRITY gate passed its repository/build/startup/configuration/test/Golden Path checks at `e371488`.
+- Review: exact committed-snapshot read-only review found and repaired the child fan-out escalation and audit-write atomicity defects before this final checkpoint; the final exact review found no remaining blocking defect.
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
 - Blocker: none.
-- Next action: commit and exact-snapshot review the completed delegation fan-out unit, then perform its one-time full-suite and integrity proof.
+- Next action: derive the next highest-risk unmet bounded FW-ASOC-02 control from `ROADMAP.md` and existing canonical code without rerunning this completed proof.
 
 ## Execution log
 
@@ -57,6 +58,7 @@ On every restart or continuation:
 - 2026-08-31: FW-ASOC-02 tenant-wide capacity checkpoint: deterministic policy now requires a positive tenant limit as well as the per-lease limit, and the shared ledger atomically prevents cross-agent work splitting. Recovery releases only the revoked agent's allocation. Exact review of `ccbb3cd` found no new slice defect; the full suite passed (473 passed, 1 skipped) and the integrity gate passed all checks, remaining YELLOW only for the pre-existing dependency and roadmap-ownership gaps.
 - 2026-08-31: FW-ASOC-02 model-token admission checkpoint: model-bound policy work now names its registered model and a positive requested token budget. Canonical admission denies malformed, missing, policy-missing, lease-excess, policy-excess, and model-binding-mismatch requests, and records signed lease/policy/requested values in Evidence. Aggregate token reservation, release, recovery, expiry, concurrency, and tenant-splitting proof remain the next bounded slice.
 - 2026-08-31: FW-ASOC-02 aggregate model-token checkpoint: the existing `WorkBudgetLedger` atomically reserves policy-bound tenant capacity for each requested model-token amount and releases it on completion, recovery revocation, and lease expiry. Focused proof covers malformed/missing limits, lease and policy caps, concurrent reservation, cross-agent splitting, recovery, and expiry; 110 focused tests, the full suite (632 passed, 1 skipped), and the default integrity gate passed at `d7bad98`. Health remains YELLOW only for the pre-existing dependency and roadmap-ownership findings.
+- 2026-08-31: FW-ASOC-02 delegation fan-out checkpoint: parent leases now carry a signed positive direct-child ceiling, and the canonical `LeaseRegistry` atomically contains sequential and concurrent child issuance. Child fan-out cannot exceed the parent ceiling; failed Evidence writes leave no issued lease. Focused proof passed (120 tests); the full suite passed (642 passed, 1 skipped), and the default integrity gate passed at `e371488`. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap ownership gaps.
 
 ## Stop conditions
 
