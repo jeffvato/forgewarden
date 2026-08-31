@@ -11,6 +11,7 @@ from swarm.model_broker import ApprovedModel, ModelBroker
 from swarm.policy_gate import DeterministicPolicy, PolicyRule
 from swarm.asoc import (
     ASOCControlPlane,
+    AggregateBlastRadiusLedger,
     AgentIdentity,
     AgentRegistry,
     AuthorizationDenied,
@@ -815,6 +816,18 @@ def test_aggregate_blast_radius_concurrency_allows_only_one_reservation():
     with ThreadPoolExecutor(max_workers=2) as pool:
         outcomes = list(pool.map(lambda _index: attempt(), range(2)))
     assert sorted(outcomes) == ["AGGREGATE_BLAST_RADIUS_EXCEEDED", "AUTHORIZED"]
+
+
+def test_releasing_failed_reservation_preserves_prior_aggregate_reservations():
+    _, _, _, _, _, _, _, lease = make_plane()
+    ledger = AggregateBlastRadiusLedger()
+    reserved = request(blast_radius=1)
+    assert ledger.reserve(reserved, lease, limit=2, now=150) == 1
+    assert ledger.reserve(reserved, lease, limit=2, now=151) == 0
+    ledger.release_latest(reserved, lease, now=151)
+    assert ledger.reserve(reserved, lease, limit=2, now=152) == 0
+    with pytest.raises(AuthorizationDenied, match="AGGREGATE_BLAST_RADIUS_EXCEEDED"):
+        ledger.reserve(reserved, lease, limit=2, now=153)
 
 
 def test_asoc_golden_path_investigate_then_deny_mutation():
