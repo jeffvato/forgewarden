@@ -355,6 +355,8 @@ class LeaseRegistry:
             raise AuthorizationDenied("DELEGATION_LIFETIME_OR_DEPTH_EXCEEDED")
         if child.max_blast_radius > parent.max_blast_radius:
             raise AuthorizationDenied("DELEGATION_BLAST_RADIUS_EXCEEDED")
+        if child.max_concurrent_work > parent.max_concurrent_work:
+            raise AuthorizationDenied("DELEGATION_WORK_BUDGET_EXCEEDED")
         for child_scope, parent_scope in ((child.granted_capabilities, parent.granted_capabilities), (child.allowed_tools, parent.allowed_tools), (child.allowed_resources, parent.allowed_resources), (child.allowed_data_classifications, parent.allowed_data_classifications), (child.allowed_action_classes, parent.allowed_action_classes)):
             if not set(child_scope).issubset(parent_scope):
                 raise AuthorizationDenied("DELEGATION_PRIVILEGE_ESCALATION")

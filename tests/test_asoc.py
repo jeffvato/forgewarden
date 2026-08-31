@@ -118,6 +118,7 @@ def test_delegation_denies_non_delegable_parent_and_tenant_mismatch():
     ({"expires_at": 201}, "DELEGATION_LIFETIME_OR_DEPTH_EXCEEDED"),
     ({"delegation_allowed": True, "delegation_depth": 1}, "DELEGATION_LIFETIME_OR_DEPTH_EXCEEDED"),
     ({"granted_capabilities": ("telemetry.read", "endpoint.inspect")}, "DELEGATION_PRIVILEGE_ESCALATION"),
+    ({"max_concurrent_work": 2}, "DELEGATION_WORK_BUDGET_EXCEEDED"),
 ])
 def test_delegation_denies_lifetime_depth_and_scope_escalation(change, reason):
     _, switch, _, leases, _, _, agent, parent = make_plane()
