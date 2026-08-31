@@ -128,12 +128,28 @@ class ActionTicketRegistry:
         policy_version: str,
         now: int | None = None,
     ) -> ActionTicket:
+        ticket = self.validate(
+            ticket_id, tenant_id=tenant_id, subject_agent_id=subject_agent_id, lease_id=lease_id,
+            capability=capability, resource=resource, action_class=action_class,
+            policy_version=policy_version, now=now,
+        )
         with self._lock:
+            current = int(time.time()) if now is None else now
+            # Re-validate under the consumption lock to close a concurrent replay.
+            ticket = self._validate_locked(ticket_id, tenant_id, subject_agent_id, lease_id, capability, resource, action_class, policy_version, current)
+            consumed = replace(ticket, consumed_at=current)
+            self._tickets[ticket_id] = consumed
+            return consumed
+
+    def validate(self, ticket_id: str, *, tenant_id: str, subject_agent_id: str, lease_id: str, capability: str, resource: str, action_class: str, policy_version: str, now: int | None = None) -> ActionTicket:
+        with self._lock:
+            return self._validate_locked(ticket_id, tenant_id, subject_agent_id, lease_id, capability, resource, action_class, policy_version, int(time.time()) if now is None else now)
+
+    def _validate_locked(self, ticket_id: str, tenant_id: str, subject_agent_id: str, lease_id: str, capability: str, resource: str, action_class: str, policy_version: str, current: int) -> ActionTicket:
             ticket = self._tickets.get(ticket_id)
             if ticket is None:
                 raise ActionTicketError("ticket not found")
             self._signer.verify(ticket)
-            current = int(time.time()) if now is None else now
             if ticket_id in self._revoked_ticket_ids:
                 raise ActionTicketError("ticket revoked")
             if ticket.consumed_at is not None:
@@ -151,6 +167,4 @@ class ActionTicketRegistry:
             }
             if any(getattr(ticket, field) != value for field, value in expected.items()):
                 raise ActionTicketError("ticket binding mismatch")
-            consumed = replace(ticket, consumed_at=current)
-            self._tickets[ticket_id] = consumed
-            return consumed
+            return ticket
