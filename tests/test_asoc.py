@@ -97,6 +97,22 @@ def test_delegated_lease_is_bounded_by_the_parent_lease():
         leases.issue_delegated(delegable.lease_id, escalated, now=150)
 
 
+def test_delegation_denies_non_delegable_parent_and_tenant_mismatch():
+    _, switch, _, leases, _, _, agent, parent = make_plane()
+    switch.clear_for_dry_run()
+    child = CapabilityLease(
+        "lease-child-denied", "agent-child", agent.agent_id, "tenant-b", parent.granted_capabilities,
+        parent.allowed_tools, parent.allowed_resources, parent.allowed_data_classifications,
+        parent.allowed_action_classes, parent.max_blast_radius, False, 0, 110, 190,
+        parent.policy_version, "approval-child", "ticket-child", "bounded child", parent.key_reference,
+    )
+    with pytest.raises(AuthorizationDenied, match="DELEGATION_NOT_ALLOWED"):
+        leases.issue_delegated(parent.lease_id, child, now=150)
+    delegable = leases.issue(replace(parent, lease_id="lease-parent-tenant", delegation_allowed=True, delegation_depth=1))
+    with pytest.raises(AuthorizationDenied, match="DELEGATION_TENANT_OR_ISSUER_MISMATCH"):
+        leases.issue_delegated(delegable.lease_id, child, now=150)
+
+
 @pytest.mark.parametrize(
     ("overrides", "reason"),
     [
