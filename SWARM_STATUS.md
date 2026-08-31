@@ -27,18 +27,16 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-ASOC-01
-- Starting commit: `a10b53a88ccf83a6573591446766ba400d1dc59a`
-- Candidate commit: working tree after `8e9e35078f3f7c02a5c18b1650f413a1a129078b`
-- Candidate context: public registry boundary hardening for AI kill-switch lease revocation
-- Accepted commit: `cc822f7882200bc7c50a51f3df5eb814036c3be4` (new hardening candidate pending checkpoint)
-- Files changed: `swarm/asoc.py`, `tests/test_asoc.py`, `docs/fw-asoc-01-agent-leases.md`
-- Deterministic validation: full Integrity Gate at accepted commit 552 passed/1 skipped; new hardening candidate ASOC tests 31 passed
-- Claude review: exact commit `cc822f7` returned APPROVE/LOW with no blocking findings
-- Gemini review: unavailable; no Gemini result was fabricated or substituted
-- Unresolved findings: full Z3 solver, normalized events, SOC incidents, and compliance remain future requirements; ASOC's in-repository canonical Action Ticket, Model Broker, and MCP Gateway are present.
-- Blocker: none; independent safe ASOC hardening and proof work remains available
-- Next action: obtain read-only review for the tested aggregate blast-radius checkpoint, then repair only concrete findings.
+- Task ID: FW-ASOC-02 — tenant-wide concurrent-work containment
+- Starting commit: `8af7a83`
+- Product checkpoint: `ccbb3cd` (recovery release proof)
+- Accepted handoff commit: `fc81f90` (records the proven tenant-wide slice)
+- Files changed: `swarm/asoc.py`, `swarm/policy_gate.py`, `tests/test_asoc.py`, `swarm/integrity.py`, `docs/fw-integrity-functionality-map.md`, `SWARM_STATUS.md`
+- Deterministic validation: focused ASOC/policy tests 84 passed; full suite 473 passed/1 skipped; default FW-INTEGRITY gate passed every check at `ccbb3cd`.
+- Independent review: exact-snapshot read-only quality review of `ccbb3cd` found no new tenant-budget defect. Its ASOC findings were pre-existing audit-wrapper/structural observations, not a reason to reopen the slice.
+- Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
+- Blocker: none.
+- Next action: inspect `ROADMAP.md` and canonical components to derive the next highest-risk unmet, bounded FW-ASOC-02 control; record its owner, acceptance criteria, negative paths, proof plan, and first code change, then implement that first code/test/commit unit.
 
 ## Execution log
 
@@ -63,5 +61,5 @@ Do not stop merely because a task or review cycle finished. Stop only under the 
 ## Current stop condition
 
 - Reason: NONE
-- Exact condition: FWQ-0008 is blocked by B-002, while FWQ-0009 is explicitly approved READY and independent.
-- First resume action: claim FWQ-0009 and inspect existing audit paths without changing safety state.
+- Exact condition: no external or human blocker is known.
+- First resume action: derive and begin the next bounded FW-ASOC-02 control from the current handoff checkpoint.
