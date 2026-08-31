@@ -285,7 +285,7 @@ def test_role_and_model_deployment_revocation_revoke_bound_leases():
 
 
 def test_tenant_revocation_does_not_cross_tenant_boundaries():
-    _, switch, agents, leases, _, model, agent, lease = make_plane()
+    events, switch, agents, leases, _, model, agent, lease = make_plane()
     other = AgentIdentity(
         "agent-tenant-b", "tenant-b", "soc", "SOC Triage Agent", "human-controller-2", model,
         agent.provider_deployment, "bounded triage", "medium", ("INTERNAL",),
@@ -674,15 +674,23 @@ def test_asoc_canonical_golden_path_uses_policy_broker_gateway_ticket_and_eviden
 
 
 def test_policy_owned_aggregate_blast_radius_blocks_splitting_and_releases_after_expiry():
-    _, switch, agents, leases, _, model, agent, lease = make_plane()
+    events, switch, agents, leases, _, model, agent, lease = make_plane()
     policy = DeterministicPolicy([PolicyRule(
         "tenant-a", "telemetry.read", "endpoint-123", "READ", "FW-ASOC-01-v1", 1,
     )])
-    auth = CapabilityAuthorizer(agents, leases, switch, policy_engine=policy, model_binding_validator=lambda *_args: True)
+    auth = CapabilityAuthorizer(
+        agents, leases, switch, lambda event, data: events.append((event, dict(data))),
+        policy_engine=policy, model_binding_validator=lambda *_args: True,
+    )
     first = request(blast_radius=1, model_identity=model)
-    assert auth.authorize(agent.agent_id, first, now=150)["authorized"] is True
+    result = auth.authorize(agent.agent_id, first, now=150)
+    assert result["authorized"] is True
+    assert result["aggregate_blast_radius_limit"] == 1
+    assert result["aggregate_blast_radius_remaining"] == 0
     with pytest.raises(AuthorizationDenied, match="AGGREGATE_BLAST_RADIUS_EXCEEDED"):
         auth.authorize(agent.agent_id, first, now=151)
+    assert events[-1][1]["blast_radius"] == 1
+    assert events[-1][1]["aggregate_blast_radius_limit"] == 1
 
     renewed = leases.issue(CapabilityLease(
         "lease-radius-renewed", agent.agent_id, lease.issuer_identity, lease.tenant_id,

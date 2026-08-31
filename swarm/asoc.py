@@ -475,6 +475,8 @@ class CapabilityAuthorizer:
         current = int(time.time()) if now is None else now
         consumed_ticket_id: str | None = None
         policy_decision_reason: str | None = None
+        aggregate_blast_radius_limit: int | None = None
+        aggregate_blast_radius_remaining: int | None = None
         try:
             try:
                 validate_safety_evidence(self._safety_evidence_provider(), require_kill_switch=False)
@@ -582,12 +584,14 @@ class CapabilityAuthorizer:
                         raise AuthorizationDenied("ACTION_TICKET_UNAVAILABLE") from exc
                     if ticket_valid is not True: raise AuthorizationDenied("ACTION_TICKET_REQUIRED")
             if self._policy_engine is not None:
-                limit = self._policy_engine.aggregate_blast_radius_limit(PolicyContext(
+                aggregate_blast_radius_limit = self._policy_engine.aggregate_blast_radius_limit(PolicyContext(
                     request.tenant_id, agent.agent_id, request.capability, request.resource,
                     request.action_class, request.policy_version,
                 ))
-                if limit is not None:
-                    self.blast_radius_ledger.reserve(request, lease, limit=limit, now=current)
+                if aggregate_blast_radius_limit is not None:
+                    aggregate_blast_radius_remaining = self.blast_radius_ledger.reserve(
+                        request, lease, limit=aggregate_blast_radius_limit, now=current,
+                    )
         except (AuthorizationDenied, LeaseIntegrityError, ValueError) as exc:
             if isinstance(exc, AuthorizationDenied):
                 reason = exc.reason
@@ -601,6 +605,8 @@ class CapabilityAuthorizer:
                     "resource": request.resource, "data_classification": request.data_classification,
                     "action_class": request.action_class, "tool": request.tool,
                     "policy_version": request.policy_version, "action_ticket_id": request.action_ticket_id,
+                    "blast_radius": request.blast_radius,
+                    "aggregate_blast_radius_limit": aggregate_blast_radius_limit,
                     "reason": reason, "timestamp": current,
                 })
             except Exception:
@@ -618,6 +624,8 @@ class CapabilityAuthorizer:
             "policy_version": request.policy_version, "action_ticket_id": consumed_ticket_id,
             "policy_decision_reason": policy_decision_reason,
             "blast_radius": request.blast_radius,
+            "aggregate_blast_radius_limit": aggregate_blast_radius_limit,
+            "aggregate_blast_radius_remaining": aggregate_blast_radius_remaining,
             "model_binding": request.model_identity.as_dict() if request.model_identity is not None else None,
             "approved_purpose": agent.approved_purpose,
             "timestamp": current,
