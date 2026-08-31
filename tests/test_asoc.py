@@ -1097,6 +1097,25 @@ def test_completion_evidence_failure_does_not_release_work_or_model_token_capaci
     assert auth.work_budget_ledger.active_tenant_model_tokens(tenant_id=agent.tenant_id, now=152) == 0
 
 
+def test_model_deployment_revocation_releases_model_token_capacity():
+    _, switch, agents, leases, auth, model, agent, _ = make_plane()
+    auth._policy_engine = DeterministicPolicy([PolicyRule(
+        "tenant-a", "telemetry.read", "endpoint-123", "READ", "FW-ASOC-01-v1",
+        max_concurrent_work=1, max_tenant_concurrent_work=1, max_model_tokens_per_work=1,
+        max_tenant_model_tokens=1,
+    )])
+    auth.admit_work(
+        agent.agent_id, "model-revocation-work",
+        request(model_identity=model, requested_model_tokens=1), now=150,
+    )
+    assert auth.work_budget_ledger.active_tenant_model_tokens(tenant_id=agent.tenant_id, now=150) == 1
+    control = ASOCControlPlane(
+        agents, leases, switch, work_budget_ledger=auth.work_budget_ledger,
+    )
+    assert control.revoke_model_deployment(f"{model.provider}/{model.deployment}") == 1
+    assert auth.work_budget_ledger.active_tenant_model_tokens(tenant_id=agent.tenant_id, now=151) == 0
+
+
 def test_work_budget_concurrent_admission_allows_only_one_work_item():
     _, _, _, leases, auth, _, agent, lease = make_plane()
     leases.issue(replace(

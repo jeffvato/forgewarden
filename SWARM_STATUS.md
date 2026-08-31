@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: FW-ASOC-02 — fail-closed model-token completion accounting
-- Current task: preserve canonical work and model-token reservations until their completion Evidence is durable.
+- Current focus: FW-ASOC-02 — model-deployment recovery token release
+- Current task: prove canonical model-deployment revocation releases its reserved tenant model-token capacity.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -27,19 +27,18 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-ASOC-02 — fail-closed model-token completion accounting
-- Starting commit: `2ab3662`
-- Canonical owner: existing `CapabilityAuthorizer.complete_work` coordinates the existing lock-protected `WorkBudgetLedger` and canonical completion Evidence. No parallel accounting, audit, or execution subsystem is introduced.
-- Acceptance criteria: a successful completion records Evidence before releasing the same work reservation; unavailable completion Evidence leaves work and model-token capacity reserved; a later successful completion releases it exactly once.
-- Negative paths: unavailable completion Evidence; duplicate or expired completion; tenant/agent isolation; and existing admission, token-cap, recovery, expiry, and concurrency controls continue to remain fail closed.
-- Proof plan: focused ASOC/policy tests prove a completion-Evidence failure preserves tenant model-token capacity and a later durable completion releases it. When this focused slice is committed and read-only reviewed, run the full suite and default integrity gate once.
-- Exact first change: add an optional pre-release callback inside the existing ledger lock, then have completion write canonical Evidence through it before mutating the reservation.
-- Product checkpoint: `ac8de94` (`Fail closed model token completion accounting`).
-- Deterministic validation: focused ASOC/policy tests passed (`122 passed`) for completion-Evidence failure, retained model-token capacity, and later durable release. Full Linux suite passed (`644 passed, 1 skipped`); the default FW-INTEGRITY gate passed its repository/build/startup/configuration/test/Golden Path checks at `ac8de94`.
-- Review: exact committed-snapshot read-only review found no blocking defect.
+- Task ID: FW-ASOC-02 — model-deployment recovery token release
+- Starting commit: `fd78487`
+- Canonical owner: existing `ASOCControlPlane.revoke_model_deployment` coordinates canonical agent/lease recovery with the existing shared `WorkBudgetLedger`. No parallel recovery, model, or accounting subsystem is introduced.
+- Acceptance criteria: revoking a model deployment revokes its bound AI authority and releases only that deployment's outstanding model-token capacity, allowing recovery without a tenant-budget leak.
+- Negative paths: model deployment mismatch; tenant/agent isolation; pre-admission Model Broker denial; unavailable completion Evidence; and existing recovery, expiry, tenant-cap, and concurrency controls remain intact.
+- Proof plan: focused ASOC/policy tests admit a bounded model-token work item, revoke its canonical deployment, and prove the tenant reservation is released. When this focused slice is committed and read-only reviewed, run the full suite and default integrity gate once.
+- Exact first change: add a regression proving existing model-deployment recovery calls the canonical ledger release boundary for model-token reservations.
+- Deterministic validation: focused ASOC/policy tests passed (`123 passed`) for the initial model-deployment recovery proof. Full-suite and integrity proof remain pending this product checkpoint.
+- Review: pending exact committed-snapshot read-only review.
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
 - Blocker: none.
-- Next action: derive the next highest-risk unmet bounded FW-ASOC-02 control from `ROADMAP.md` and existing canonical code without rerunning this completed proof.
+- Next action: commit and exact-snapshot review the completed model-deployment recovery unit, then perform its one-time full-suite and integrity proof.
 
 ## Execution log
 
