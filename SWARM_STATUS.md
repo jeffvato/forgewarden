@@ -4,7 +4,7 @@
 
 - Active phase: FW-AV — Native anti-malware
 - Current focus: FW-AV — bounded streaming detection boundary
-- Current task: FW-AV-05 — scan caller-supplied byte chunks with bounded memory and no artifact access.
+- Current task: FW-AV-05 complete; derive the next highest-risk bounded FW-AV control.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -35,9 +35,10 @@ On every restart or continuation:
 - Negative paths: non-bytes chunks, a total size beyond the existing limit, unavailable Evidence, and malformed catalog input must fail closed. The stream API must not open paths, traverse files, retain whole content, execute input, fetch content, quarantine, or remediate.
 - Proof plan: focused tests for hash and literal matches split across chunks, identical one-buffer/stream results, bounded-size rejection, invalid chunks, clean stream, and Evidence failure; exact read-only commit review after focused validation. Run the full suite and integrity gate only when this bounded streaming slice is complete.
 - Exact first change: add a chunked input method to the existing `HashSignatureScanner`, refactoring its existing in-memory method through the shared bounded detector path; no filesystem enumerator, on-access hook, scheduler, endpoint service, or response workflow.
+- Proof: focused FW-AV tests passed (`8 passed`); full Linux suite passed (`653 passed, 1 skipped`); the default FW-INTEGRITY gate passed all hard checks and its ASOC Golden Path at `413dc72`. Exact read-only review of that tested commit found the initial oversized-chunk window concern repaired by the 64 KiB chunk cap; no remaining blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and defined-but-unimplemented identity, normalized-events, SOC-incident, and compliance owners.
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
 - Blocker: none.
-- Next action: implement and verify FW-AV-05.
+- Next action: derive and implement the next highest-risk bounded FW-AV control; do not add actual file hooks, execution, quarantine, remediation, reputation networking, or sandboxing without separately scoped authority and proof.
 - Platform delivery definition: Windows and Linux are the first endpoint targets; macOS, Android, and iOS are later platform-native releases. Detailed scope and required proof are in `docs/fw-av-windows-linux-delivery-plan.md`.
 
 ## Execution log
@@ -73,6 +74,7 @@ On every restart or continuation:
 - 2026-08-31: FW-AV-04 claimed as the next prerequisite for high-confidence automatic quarantine: a deterministic digest binding for the exact trusted detection-content snapshot. This is catalog-integrity plumbing only; publisher signatures, key management, transport, update, endpoint scanning, quarantine, and remediation remain separately owned work.
 - 2026-08-31: FW-AV-04 complete at `e6661d4`: every trusted local catalog now requires an exact deterministic SHA-256 snapshot binding for its identity, publisher set, hash signatures, and literal content indicators; mismatched or tampered snapshots fail closed, and the verified digest is attached to canonical scan Evidence. No keys, signature transport, updates, endpoint access, quarantine, execution, sandboxing, or remediation were added. Focused proof passed (7 tests); full Linux suite passed (652 passed, 1 skipped); the integrity gate passed all hard checks, remaining YELLOW only for the pre-existing dependency and roadmap-ownership gaps; exact read-only commit review found no blocking defect.
 - 2026-08-31: FW-AV-05 claimed as the first low-memory scanner primitive: caller-supplied chunked byte scanning with a strict total limit and bounded literal-pattern overlap. It is not an endpoint agent, file scanner, on-access hook, scheduler, service, or response feature.
+- 2026-08-31: FW-AV-05 complete at `413dc72`: caller-supplied byte chunks now scan with a 64 KiB per-chunk cap, the existing 1 MiB total cap, incremental SHA-256, and only the literal-pattern overlap retained between chunks. Hash and literal detections are identical across one-buffer and split-boundary scans; invalid/oversized input and unavailable Evidence fail closed. No filesystem access, endpoint service, execution, quarantine, remediation, networking, or sandboxing was added. Focused proof passed (8 tests); full Linux suite passed (653 passed, 1 skipped); the integrity gate passed all hard checks, remaining YELLOW only for the pre-existing dependency and roadmap-ownership gaps; exact read-only commit review found no blocking defect after the chunk-cap repair.
 
 ## Stop conditions
 
@@ -82,4 +84,4 @@ Do not stop merely because a task or review cycle finished. Stop only under the 
 
 - Reason: NONE
 - Exact condition: no external or human blocker is known.
-- First resume action: implement and validate FW-AV-05 from `7a11ec3`.
+- First resume action: derive the highest-risk unmet bounded FW-AV control from `ROADMAP.md` and canonical code, then implement its first smallest safe unit.
