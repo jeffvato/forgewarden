@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: FW-ASOC-02 — model-token admission broker revalidation
-- Current task: require current canonical Model Broker approval before reserving model-token capacity.
+- Current focus: FW-ASOC-02 — model-token admission evidence binding
+- Current task: bind exact model and request context to the canonical model-token reservation Evidence.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -27,19 +27,18 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-ASOC-02 — model-token admission broker revalidation
-- Starting commit: `f1a5a53`
-- Canonical owner: `CapabilityAuthorizer.admit_work` reuses the existing approved `ModelBroker` decision before it composes signed `CapabilityLease` and deterministic-policy token ceilings with the canonical `WorkBudgetLedger`. No parallel model, budget, authorization, or execution subsystem is introduced.
-- Acceptance criteria: model-bound work requires the same exact tenant/agent/model/provider/deployment/version/approval Model Broker decision as authorization; missing, revoked, or unavailable approval denies before a token reservation; existing non-broker validation remains an explicit fail-closed test adapter.
-- Negative paths: absent broker approval; post-admission broker revocation; unavailable broker; model binding mismatch; missing or excessive signed/policy token budget; tenant aggregate excess; recovery/expiry release; and concurrent splitting.
-- Proof plan: focused ASOC/policy tests prove broker denial, approval, revocation, unavailability, and that denied admission leaves no tenant token reservation. When this focused slice is committed and read-only reviewed, run the full suite and default integrity gate once.
-- Exact first change: apply the canonical `ModelBroker.allows` validation path already used by authorization inside model-bound `admit_work`, immediately before model-token reservation.
-- Product checkpoint: `7eeb1b8` (`Revalidate model broker before token admission`).
-- Deterministic validation: focused ASOC/policy tests passed (`121 passed`) for broker denial, approval, revocation, unavailability, and zero reservation on denial. Full Linux suite passed (`643 passed, 1 skipped`); the default FW-INTEGRITY gate passed its repository/build/startup/configuration/test/Golden Path checks at `7eeb1b8`.
-- Review: exact committed-snapshot read-only review found no blocking defect.
+- Task ID: FW-ASOC-02 — model-token admission evidence binding
+- Starting commit: `616fdb7`
+- Canonical owner: the existing `CapabilityAuthorizer.admit_work` emits the canonical `work_admitted` Evidence after the existing `WorkBudgetLedger` reservation. It reuses the signed `CapabilityLease`, validated `AuthorizationRequest`, and canonical model binding; no parallel audit, model, or budget system is introduced.
+- Acceptance criteria: every model-token reservation Evidence record carries the exact approved model/provider/deployment/version/approval binding, request data classification, approved purpose, and policy version together with existing signed/policy/requested token values.
+- Negative paths: unbound work must record no model or data context; binding mismatch, missing/revoked/unavailable Model Broker approval, invalid token request, policy denial, tenant excess, concurrency, recovery, and expiry continue to deny or release before a successful Evidence record.
+- Proof plan: focused ASOC/policy tests assert model-token admission Evidence includes the exact binding and contextual fields while unbound work retains explicit null context. When this focused slice is committed and read-only reviewed, run the full suite and default integrity gate once.
+- Exact first change: extend the existing `work_admitted` result/Evidence payload with exact model binding, data classification, approved purpose, and policy version.
+- Deterministic validation: focused ASOC/policy tests passed (`121 passed`) for the initial Evidence-binding coverage. Full-suite and integrity proof remain pending this product checkpoint.
+- Review: pending exact committed-snapshot read-only review.
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
 - Blocker: none.
-- Next action: derive the next highest-risk unmet bounded FW-ASOC-02 control from `ROADMAP.md` and existing canonical code without rerunning this completed proof.
+- Next action: commit and exact-snapshot review the completed model-token Evidence-binding unit, then perform its one-time full-suite and integrity proof.
 
 ## Execution log
 

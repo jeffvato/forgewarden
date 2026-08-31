@@ -1047,6 +1047,8 @@ def test_work_budget_admission_is_bounded_audited_and_released_on_completion_and
         "max_model_tokens_per_work": 1, "policy_model_tokens_per_work_limit": None,
         "policy_tenant_model_tokens_limit": None,
         "requested_model_tokens": 0,
+        "model_binding": None, "data_classification": None,
+        "approved_purpose": agent.approved_purpose, "policy_version": budgeted.policy_version,
         "concurrent_work_remaining": 0, "tenant_concurrent_work_remaining": None, "timestamp": 150,
         "tenant_model_tokens_remaining": None,
     }
@@ -1108,6 +1110,10 @@ def test_work_budget_uses_an_explicit_deterministic_policy_limit():
     assert admitted["policy_model_tokens_per_work_limit"] == 1
     assert admitted["policy_tenant_model_tokens_limit"] == 1
     assert admitted["requested_model_tokens"] == 1
+    assert admitted["model_binding"] == model.as_dict()
+    assert admitted["data_classification"] == "INTERNAL"
+    assert admitted["approved_purpose"] == agent.approved_purpose
+    assert admitted["policy_version"] == "FW-ASOC-01-v1"
     with pytest.raises(AuthorizationDenied, match="WORK_CONCURRENCY_LIMIT_EXCEEDED"):
         auth.admit_work(agent.agent_id, "work-policy-2", work_request, now=151)
     missing_limit = CapabilityAuthorizer(
