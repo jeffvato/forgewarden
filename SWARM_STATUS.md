@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: FW-AV — Native anti-malware
-- Current focus: FW-AV — trusted signature publisher boundary
-- Current task: FW-AV-02 complete; derive the next highest-risk bounded FW-AV control.
+- Current focus: FW-AV — trusted exact-content indicator boundary
+- Current task: FW-AV-03 — add only bounded literal content indicators to the existing trusted local catalog.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -27,17 +27,16 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-AV-02 — trusted signature publisher boundary
-- Starting checkpoint: `0b740eb`
-- Canonical owner: `HashSignatureScanner` remains a detect-only evaluator and the existing `AuditLog`/`audit_log_sink` remains the durable Evidence owner. The FW-AV catalog is a local immutable detector input, not a new identity, authorization, policy, audit, ticket, model, gateway, or execution system; it cannot grant authority or cause a response action.
-- Acceptance criteria: every hash signature must name a validated publisher and can be scanned only from a deterministic local catalog whose trusted-publisher allowlist is explicit; the catalog has one stable identity and rejects duplicate signature IDs; scan Evidence binds each result to that catalog identity and its matching publishers while retaining tenant/artifact isolation and `DRY_RUN`/`DETECT_ONLY` behavior.
-- Negative paths: a blank, malformed, duplicate, or untrusted publisher/signature; malformed catalog identity; duplicate signature identity; a direct untrusted signature collection; invalid scan input; or failed Evidence write must deny. The catalog must never fetch updates, use a network reputation source, read files, execute content, quarantine, or remediate.
-- Proof plan: focused tests for trusted matching publisher Evidence, rejected untrusted/malformed/duplicate catalog input, deterministic matching order, clean result, and Evidence failure; exact read-only commit review after focused validation. Run the full suite and integrity gate only when this bounded publisher-trust slice is complete.
-- Exact first change: extend the existing `swarm/anti_malware.py` detector with immutable local trusted-publisher catalog construction and require it at scanner creation; no signature transport, update service, filesystem scanner, reputation lookup, sandbox, or remediation workflow.
-- Proof: focused FW-AV tests passed (`5 passed`); full Linux suite passed (`650 passed, 1 skipped`); the default FW-INTEGRITY gate passed all hard checks and its ASOC Golden Path at `8d76be9`. Exact read-only review of that tested commit found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and defined-but-unimplemented identity, normalized-events, SOC-incident, and compliance owners.
+- Task ID: FW-AV-03 — trusted exact-content indicator boundary
+- Starting checkpoint: `6a35285`
+- Canonical owner: `HashSignatureScanner` and its existing immutable trusted local catalog remain the sole detector-input owner, while `AuditLog`/`audit_log_sink` remains the durable Evidence owner. This slice adds no identity, authorization, policy, audit, ticket, model, gateway, or execution system and cannot cause a response action.
+- Acceptance criteria: an exact-content indicator has a validated identifier, name, trusted publisher, and non-empty bounded literal `bytes` pattern; the existing local trusted catalog validates it and rejects ambiguous identifiers; the scanner evaluates only literal containment in caller-supplied bounded bytes; every match is ordered deterministically and bound to catalog/publisher/content-indicator Evidence under `DRY_RUN`/`DETECT_ONLY`.
+- Negative paths: blank, oversized, non-bytes, duplicate, or untrusted content indicators; any duplicate identity across hash and content indicator types; direct untrusted collection; invalid scan input; and failed Evidence write must deny. No regex/YARA expression parsing, archive/document decoding, file I/O, network, execution, sandboxing, quarantine, or remediation is permitted.
+- Proof plan: focused tests for trusted exact content detection and durable Evidence, non-match, deterministic ordering, all malformed/untrusted/duplicate input classes, hash compatibility, and Evidence failure; exact read-only commit review after focused validation. Run the full suite and integrity gate only when this bounded content slice is complete.
+- Exact first change: extend `swarm/anti_malware.py` and its focused tests with trusted bounded literal `ContentIndicator` values in the existing immutable catalog; do not add a YARA parser/engine or any artifact access/response behavior.
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
 - Blocker: none.
-- Next action: derive and implement the next highest-risk bounded FW-AV control; do not add actual file hooks, execution, quarantine, remediation, reputation networking, or sandboxing without separately scoped authority and proof.
+- Next action: implement and verify FW-AV-03.
 
 ## Execution log
 
@@ -66,6 +65,7 @@ On every restart or continuation:
 - 2026-08-31: FW-AV-01 complete at `7b925a4`: the detect-only SHA-256 signature scanner rejects malformed or oversized input and failed Evidence writes, binds every valid finding to tenant/artifact/digest/signature IDs in canonical durable Evidence, and has no filesystem, execution, quarantine, remediation, network, or sandbox behavior. Focused proof passed (4 tests); the full Linux suite passed (649 passed, 1 skipped); the integrity gate passed all hard checks, remaining YELLOW only for the pre-existing dependency and roadmap-ownership gaps; exact read-only commit review found no blocking defect.
 - 2026-08-31: FW-AV-02 claimed as the highest-risk unmet bounded control after detection-only scanning: publisher provenance for signature input. It will introduce only an immutable local trusted-publisher catalog and Evidence binding; signature transport, network reputation, filesystem scanning, content execution, sandboxing, quarantine, and remediation remain out of scope.
 - 2026-08-31: FW-AV-02 complete at `8d76be9`: every scanned signature now belongs to an immutable local catalog with an explicit trusted-publisher allowlist; catalog identity and matching publishers are bound to canonical Evidence, while direct untrusted collections and malformed, duplicate, or untrusted signature input fail closed. Focused proof passed (5 tests); the full Linux suite passed (650 passed, 1 skipped); the integrity gate passed all hard checks, remaining YELLOW only for the pre-existing dependency and roadmap-ownership gaps; exact read-only commit review found no blocking defect.
+- 2026-08-31: FW-AV-03 claimed as the highest-risk safe next detection control: trusted bounded literal content indicators in the existing catalog. It deliberately does not claim or introduce a YARA parser/engine, archive/document analysis, file access, execution, sandboxing, quarantine, remediation, or reputation networking.
 
 ## Stop conditions
 
@@ -75,4 +75,4 @@ Do not stop merely because a task or review cycle finished. Stop only under the 
 
 - Reason: NONE
 - Exact condition: no external or human blocker is known.
-- First resume action: derive the highest-risk unmet bounded FW-AV control from `ROADMAP.md` and canonical code, then implement its first smallest safe unit.
+- First resume action: implement and validate FW-AV-03 from `6a35285`.
