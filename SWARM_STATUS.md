@@ -4,7 +4,7 @@
 
 - Active phase: FW-AV — Native anti-malware
 - Current focus: FW-AV — publisher-signed detection-content trust
-- Current task: FW-AV-22 — durable accepted catalog-content cache clear/recovery.
+- Current task: FW-AV-23 — accepted catalog startup recovery.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -28,14 +28,14 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-AV-22 — durable accepted catalog-content cache clear/recovery
-- Starting checkpoint: `9484d48`
+- Task ID: FW-AV-23 — accepted catalog startup recovery
+- Starting checkpoint: `b1dae2d`
 - Canonical owner: `DurableCatalogSequenceStore` owns both the canonical sequence watermark and one bounded accepted-content slot; `AcceptedCatalogCache` remains the sole in-memory slot, and `TrustedSignatureCatalog` remains the immutable content owner.
-- Acceptance criteria: clear only the exact current accepted content row after canonical Evidence, preserve the sequence watermark, deny subsequent content load, and permit explicit recaching from the same recovered accepted bundle.
+- Acceptance criteria: startup recovery requires fresh FW-KEYS verification, exact watermark recovery, durable content loading, and explicit in-memory admission in that order.
 - Negative paths: failed Evidence preserves the content row; a missing, stale, malformed, oversized, or metadata-mismatched row denies. Clear cannot lower, delete, or advance anti-rollback state or create response authority.
 - Proof plan: focused clear/recovery/watermark/Evidence regression, exact read-only commit review, full suite, and integrity gate after the bounded slice completes.
-- Exact first change: add `DurableCatalogSequenceStore.clear_cached_catalog()` as a transactional content-row-only delete that checks the current acceptance and writes Evidence before commit.
-- Proof: focused FW-AV tests passed (`17 passed`); full Linux suite passed (`662 passed, 1 skipped`); the default FW-INTEGRITY gate passed every hard check and its Golden Path at `5ef78c1`. Exact local read-only review found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and defined-but-unimplemented identity, normalized-events, SOC-incident, and compliance owners.
+- Exact first change: add `recover_cached_catalog()` as the explicit ordered recovery seam, without accepting cache content until signature verification succeeds.
+- Proof: focused FW-AV tests passed (`17 passed`); full Linux suite passed (`662 passed, 1 skipped`); the default FW-INTEGRITY gate passed every hard check and its Golden Path at `1da4912`. Exact local read-only review found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and defined-but-unimplemented identity, normalized-events, SOC-incident, and compliance owners.
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
 - Blocker: none.
 - Next action: derive a bounded startup-recovery seam that explicitly re-verifies, recovers, loads, and re-admits current catalog content without adding transport, endpoint integration, quarantine, or remediation.
@@ -93,6 +93,7 @@ On every restart or continuation:
 - 2026-09-01: FW-AV-20 complete at `2c9aef0`: the bounded accepted-catalog cache can now clear only its in-memory slot. Post-clear access fails closed, and explicit re-admission still requires the canonical durably accepted bundle and its exact immutable catalog. No durable state or catalog content is deleted or changed, and no response authority, transport, endpoint integration, quarantine, or remediation was added. Focused proof passed (16 tests); full Linux suite passed (661 passed, 1 skipped); the default integrity gate passed every hard check and its Golden Path. Exact local read-only review found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap ownership gaps.
 - 2026-09-01: FW-AV-21 complete at `8c46a2e`: the existing durable sequence owner now stores one 16 MiB-bounded immutable catalog payload only after canonical Evidence, with no keys or signatures persisted. Recovery requires fresh FW-KEYS verification and an exact durable watermark before content can load; missing, stale, failed-Evidence, malformed, oversized, tampered, or mismatched payloads deny. No transport, endpoint integration, quarantine, or remediation was added. Focused proof passed (17 tests); full Linux suite passed (662 passed, 1 skipped); the default integrity gate passed every hard check and its Golden Path. Exact local read-only review found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap ownership gaps.
 - 2026-09-01: FW-AV-22 complete at `5ef78c1`: the durable accepted-content cache can now clear only its exact current content row after canonical Evidence, while preserving the canonical sequence watermark. Evidence failure retains content; subsequent load denies after a successful clear, and the recovered accepted bundle can explicitly recache the same immutable content. No key/signature deletion, transport, endpoint integration, quarantine, or remediation was added. Focused proof passed (17 tests); full Linux suite passed (662 passed, 1 skipped); the default integrity gate passed every hard check and its Golden Path. Exact local read-only review found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap ownership gaps.
+- 2026-09-01: FW-AV-23 complete at `1da4912`: startup recovery now reads a bounded candidate only to freshly verify its signed bundle, recovers only the exact durable watermark, and then explicitly re-admits immutable content to the in-memory slot. Expired bundles deny; no transport, endpoint integration, quarantine, or remediation was added. Focused proof passed (17 tests); full Linux suite passed (662 passed, 1 skipped); the default integrity gate passed every hard check and its Golden Path. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap ownership gaps.
 
 ## Stop conditions
 
