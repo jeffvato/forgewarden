@@ -4,7 +4,7 @@
 
 - Active phase: FW-AV — Native anti-malware
 - Current focus: FW-AV — publisher-signed detection-content trust
-- Current task: FW-AV-38 — publisher-key non-reuse validation pending.
+- Current task: FW-AV-38 — publisher-key non-reuse.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -28,18 +28,17 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-AV-38 — publisher-key non-reuse validation pending
+- Task ID: FW-AV-38 — publisher-key non-reuse
 - Starting checkpoint: `b95ddf0`
-- Candidate checkpoint: `3e60be1`
 - Canonical owner: `DurableCatalogSequenceStore` owns bounded durable publisher-key rotation history and its anti-rollback sequence; `FWKeysCatalogTrustRoot` remains the immutable root-signature verifier.
 - Acceptance criteria: a root-authorized key rotation cannot reintroduce a historical replacement or retired publisher key identifier; denial occurs before Evidence or durable mutation.
 - Negative paths: a reactivation attempt preserves the rotation watermark and ordered history; malformed historical payloads deny fail-closed. No key transport, endpoint integration, quarantine, remediation, or response authority is added.
 - Proof plan: focused non-reuse regression, exact read-only candidate review, full suite, and integrity gate after the bounded slice completes.
 - Exact first change: derive historical publisher key identifiers from the existing bounded signed rotation payloads before `accept_root_rotation` writes Evidence.
-- Proof: focused FW-AV tests passed (`17 passed`); an isolated full Linux suite passed (`662 passed, 1 skipped`). The required default FW-INTEGRITY gate at `3e60be1` is RED because its independent full-suite invocation hit the unrelated `tests/test_desktop_bridge.py::DesktopBridgeTests::test_stdio_ping_and_status_repetitions_share_one_session` child-reaping failure (`MCP fixture child was not reaped: [1903924]`), despite the immediately preceding isolated full-suite pass. All non-test gate checks and the Golden Path passed. Candidate remains unaccepted pending an environment-clean integrity rerun; no FW-AV code repair is indicated by this unrelated fixture failure.
+- Proof: focused FW-AV tests passed (`17 passed`); full Linux suite passed (`662 passed, 1 skipped`); after the external desktop-bridge fixture process was clean, the default FW-INTEGRITY gate passed every hard check and its Golden Path at `3e60be1`. Exact local read-only review found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and defined-but-unimplemented identity, normalized-events, SOC-incident, and compliance owners.
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
-- Blocker: the required integrity gate is RED only because its independent full-suite subprocess observed an external desktop-bridge fixture child that was already gone on inspection; the candidate must not be accepted without a clean required gate.
-- Next action: wait for an environment-clean integrity-gate opportunity for exact candidate `3e60be1`; do not change the candidate or rerun unchanged product tests.
+- Blocker: none.
+- Next action: derive the next highest-risk bounded FW-AV signing-policy control without adding transport, endpoint integration, quarantine, or remediation.
 - Platform delivery definition: Windows and Linux are the first endpoint targets; macOS, Android, and iOS are later platform-native releases. Detailed scope and required proof are in `docs/fw-av-windows-linux-delivery-plan.md`.
 
 ## Execution log
@@ -120,7 +119,7 @@ On every restart or continuation:
 
 - 2026-09-01: FW-AV-37 complete at `b95ddf0`: recovered accepted catalog handles now require the same explicit verified bundle/key freshness boundary as initial acceptance. Expired rotation-authorized metadata cannot be re-admitted from an otherwise current watermark. Focused proof passed (17 tests); full Linux suite passed (662 passed, 1 skipped); the default integrity gate passed every hard check and its Golden Path. Exact local read-only review found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap ownership gaps.
 
-- 2026-09-01: FW-AV-38 candidate at `3e60be1`: the bounded durable rotation history now rejects reactivation of any prior replacement or retired publisher key identifier before Evidence or mutation. Focused proof and an isolated full suite passed (17 focused; 662 passed, 1 skipped), but the required default integrity gate is RED because its independent suite hit an unrelated desktop-bridge MCP fixture child-reaping failure. The referenced child was absent on immediate read-only inspection. Candidate acceptance is pending a clean integrity gate; no product repair was applied.
+- 2026-09-01: FW-AV-38 complete at `3e60be1`: the bounded durable rotation history now rejects reactivation of any prior replacement or retired publisher key identifier before Evidence or mutation. Focused proof and the full Linux suite passed (17 focused; 662 passed, 1 skipped). An initial integrity-gate attempt was RED only for an unrelated desktop-bridge MCP fixture child-reaping failure; after that external fixture was clean, the required integrity gate passed every hard check and its Golden Path. Exact local read-only review found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap ownership gaps.
 
 ## Stop conditions
 
@@ -129,5 +128,5 @@ Do not stop merely because a task or review cycle finished. Stop only under the 
 ## Current stop condition
 
 - Reason: NONE
-- Exact condition: Integrity validation is pending for candidate `3e60be1`: the required gate was RED only for an unrelated desktop-bridge fixture child-reaping failure after an isolated full suite passed. No accepted state may be claimed until the exact candidate has a clean required gate.
-- First resume action: recheck only the integrity-gate environment, then rerun the exact candidate's required gate once when clean; do not change FW-AV code or rerun unchanged product tests.
+- Exact condition: Jeff approved the FW-KEYS vendor-release signing policy. Signed-bundle verification, anti-replay, root rotation and expiry, bounded accepted-catalog replacement, key-aware freshness, in-memory and durable cache clear/recovery, durable accepted content persistence, bounded chained rotation recovery, and publisher-key non-reuse are accepted; transport, endpoint, and response work remain separately bounded.
+- First resume action: derive the next highest-risk bounded FW-AV signing-policy control without changing the verification, Evidence, anti-rollback, DRY_RUN, deployment-disabled, or kill-switch boundaries.
