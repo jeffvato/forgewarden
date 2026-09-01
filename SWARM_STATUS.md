@@ -4,7 +4,7 @@
 
 - Active phase: FW-AV — Native anti-malware
 - Current focus: FW-AV — publisher-signed detection-content trust
-- Current task: FW-AV-38 — publisher-key non-reuse.
+- Current task: FW-AV-39 — publisher public-key-material non-reuse.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -28,14 +28,14 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-AV-38 — publisher-key non-reuse
-- Starting checkpoint: `b95ddf0`
+- Task ID: FW-AV-39 — publisher public-key-material non-reuse
+- Starting checkpoint: `3e60be1`
 - Canonical owner: `DurableCatalogSequenceStore` owns bounded durable publisher-key rotation history and its anti-rollback sequence; `FWKeysCatalogTrustRoot` remains the immutable root-signature verifier.
-- Acceptance criteria: a root-authorized key rotation cannot reintroduce a historical replacement or retired publisher key identifier; denial occurs before Evidence or durable mutation.
-- Negative paths: a reactivation attempt preserves the rotation watermark and ordered history; malformed historical payloads deny fail-closed. No key transport, endpoint integration, quarantine, remediation, or response authority is added.
-- Proof plan: focused non-reuse regression, exact read-only candidate review, full suite, and integrity gate after the bounded slice completes.
-- Exact first change: derive historical publisher key identifiers from the existing bounded signed rotation payloads before `accept_root_rotation` writes Evidence.
-- Proof: focused FW-AV tests passed (`17 passed`); full Linux suite passed (`662 passed, 1 skipped`); after the external desktop-bridge fixture process was clean, the default FW-INTEGRITY gate passed every hard check and its Golden Path at `3e60be1`. Exact local read-only review found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and defined-but-unimplemented identity, normalized-events, SOC-incident, and compliance owners.
+- Acceptance criteria: a root-authorized key rotation cannot reintroduce the current replaced key's public material or any historically accepted replacement/retired public material under a new identifier; denial occurs before Evidence or durable mutation.
+- Negative paths: a public-material reactivation preserves the rotation watermark and ordered history; V2 history binds the stored replaced public key to the reconstructed signed rotation chain; legacy V1 history remains recoverable; malformed history denies fail-closed. No key transport, endpoint integration, quarantine, remediation, or response authority is added.
+- Proof plan: focused public-material non-reuse and recovery regressions, exact read-only candidate review, full suite, and integrity gate after the bounded slice completes.
+- Exact first change: persist the existing replacement key's public bytes in the bounded accepted rotation payload as V2 metadata, before a new rotation writes Evidence.
+- Proof: focused FW-AV tests passed (`17 passed`); full Linux suite passed (`662 passed, 1 skipped`); the default FW-INTEGRITY gate passed every hard check and its Golden Path at `d1d4977`. Exact local read-only review found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and defined-but-unimplemented identity, normalized-events, SOC-incident, and compliance owners.
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
 - Blocker: none.
 - Next action: derive the next highest-risk bounded FW-AV signing-policy control without adding transport, endpoint integration, quarantine, or remediation.
@@ -121,6 +121,8 @@ On every restart or continuation:
 
 - 2026-09-01: FW-AV-38 complete at `3e60be1`: the bounded durable rotation history now rejects reactivation of any prior replacement or retired publisher key identifier before Evidence or mutation. Focused proof and the full Linux suite passed (17 focused; 662 passed, 1 skipped). An initial integrity-gate attempt was RED only for an unrelated desktop-bridge MCP fixture child-reaping failure; after that external fixture was clean, the required integrity gate passed every hard check and its Golden Path. Exact local read-only review found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap ownership gaps.
 
+- 2026-09-01: FW-AV-39 complete at `d1d4977`: bounded durable rotation history now retains the public bytes of each replaced key as V2 metadata, rejects public-key-material reactivation even under a fresh key identifier before Evidence or mutation, and verifies the V2 bytes against the signed rotation chain during recovery. Legacy V1 history remains recoverable. Focused proof passed (17 tests); full Linux suite passed (662 passed, 1 skipped); the default integrity gate passed every hard check and its Golden Path. Exact local read-only review found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap ownership gaps.
+
 ## Stop conditions
 
 Do not stop merely because a task or review cycle finished. Stop only under the explicit conditions in `AGENTS.md`, and record the exact reason and first resume action here.
@@ -128,5 +130,5 @@ Do not stop merely because a task or review cycle finished. Stop only under the 
 ## Current stop condition
 
 - Reason: NONE
-- Exact condition: Jeff approved the FW-KEYS vendor-release signing policy. Signed-bundle verification, anti-replay, root rotation and expiry, bounded accepted-catalog replacement, key-aware freshness, in-memory and durable cache clear/recovery, durable accepted content persistence, bounded chained rotation recovery, and publisher-key non-reuse are accepted; transport, endpoint, and response work remain separately bounded.
+- Exact condition: Jeff approved the FW-KEYS vendor-release signing policy. Signed-bundle verification, anti-replay, root rotation and expiry, bounded accepted-catalog replacement, key-aware freshness, in-memory and durable cache clear/recovery, durable accepted content persistence, bounded chained rotation recovery, and publisher-key identifier/public-material non-reuse are accepted; transport, endpoint, and response work remain separately bounded.
 - First resume action: derive the next highest-risk bounded FW-AV signing-policy control without changing the verification, Evidence, anti-rollback, DRY_RUN, deployment-disabled, or kill-switch boundaries.
