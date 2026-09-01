@@ -4,7 +4,7 @@
 
 - Active phase: FW-AV — Native anti-malware
 - Current focus: FW-AV — publisher-signed detection-content trust
-- Current task: FW-AV-17 — accepted signed-catalog cache admission.
+- Current task: FW-AV-18 — accepted signed-catalog cache replacement.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -28,17 +28,17 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-AV-17 — accepted signed-catalog cache admission
+- Task ID: FW-AV-18 — accepted signed-catalog cache replacement
 - Starting checkpoint: `dfe89e6`
 - Canonical owner: `AcceptedCatalogCache` is a single bounded in-memory catalog slot. It accepts only `AcceptedCatalogBundle` results from `DurableCatalogSequenceStore`, which already binds Ed25519 verification, sequence anti-rollback, and canonical Evidence. `TrustedSignatureCatalog` remains the immutable content owner.
-- Acceptance criteria: admit only a catalog bound to accepted signed metadata; reject unaccepted metadata, mismatched content, identity change, cache rollback, and cache miss; retain one bounded entry only.
-- Negative paths: forged/unaccepted input, mismatched snapshots, identity substitution, downgrade, and cache miss fail closed. No transport, durable content cache, key distribution, endpoint scanning, quarantine, or remediation was added.
-- Proof plan: focused cache-admission regression, exact read-only commit review, full suite, and integrity gate after the bounded slice completes.
-- Exact first change: add a one-slot in-memory cache that retains only the catalog bound to an already accepted signed bundle; it neither reads/writes content nor fetches it.
-- Proof: focused FW-AV tests passed (`16 passed`); full Linux suite passed (`661 passed, 1 skipped`); the default FW-INTEGRITY gate passed every hard check and its Golden Path at `9d8ec69`. Exact local read-only review found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and defined-but-unimplemented identity, normalized-events, SOC-incident, and compliance owners.
+- Acceptance criteria: a same-identity strictly newer accepted bundle may atomically replace the one cache entry; a former accepted handle becomes a cache miss. Unaccepted input, mismatched content, identity change, and equal/lower sequence remain denied.
+- Negative paths: forged/unaccepted input, mismatched snapshots, identity substitution, downgrade, and stale cache handles fail closed. No transport, durable content cache, key distribution, endpoint scanning, quarantine, or remediation was added.
+- Proof plan: focused cache-replacement regression, exact read-only commit review, full suite, and integrity gate after the bounded slice completes.
+- Exact first change: prove the existing one-slot cache replaces only a strictly newer already accepted catalog of the same identity and invalidates the prior handle.
+- Proof: focused FW-AV tests passed (`16 passed`); full Linux suite passed (`661 passed, 1 skipped`); the default FW-INTEGRITY gate passed every hard check and its Golden Path at `d67f0ed`. Exact local read-only review found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and defined-but-unimplemented identity, normalized-events, SOC-incident, and compliance owners.
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
 - Blocker: none.
-- Next action: derive safe bounded cache replacement for a strictly newer accepted bundle. Keep bundle transport, endpoint integration, quarantine, and remediation separate.
+- Next action: derive a fail-closed expiry check at cache access. Keep bundle transport, endpoint integration, quarantine, and remediation separate.
 - Platform delivery definition: Windows and Linux are the first endpoint targets; macOS, Android, and iOS are later platform-native releases. Detailed scope and required proof are in `docs/fw-av-windows-linux-delivery-plan.md`.
 
 ## Execution log
@@ -88,6 +88,7 @@ On every restart or continuation:
 - 2026-09-01: FW-AV-15 complete at `d771825`: FW-KEYS root-signed publisher-key rotations now verify against the injected root public key and produce an immutable replacement key set. The old key cannot verify new catalogs through the rotated root, while the authorized new key can. No key transport/distribution, persistence, content cache, endpoint integration, quarantine, or remediation was added. Focused proof passed (16 tests); full Linux suite passed (661 passed, 1 skipped); the default integrity gate passed every hard check and its Golden Path. Exact local read-only review found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap ownership gaps.
 - 2026-09-01: FW-AV-16 complete at `d9910e2`: root-signed publisher-key rotation payloads now bind a positive sequence, and the existing durable watermark store accepts a rotation only after root verification and canonical Evidence, rejecting replay/downgrade across reopen. No key distribution, content cache, endpoint integration, quarantine, or remediation was added. Focused proof passed (16 tests); full Linux suite passed (661 passed, 1 skipped); the default integrity gate passed every hard check and its Golden Path. Exact local read-only review found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap ownership gaps.
 - 2026-09-01: FW-AV-17 complete at `9d8ec69`: a single bounded in-memory cache now admits only catalogs whose signed metadata has completed durable sequence acceptance and Evidence. It rejects unaccepted input, content mismatch, identity substitution, rollback, and cache miss. No content transport/persistence, endpoint integration, quarantine, or remediation was added. Focused proof passed (16 tests); full Linux suite passed (661 passed, 1 skipped); the default integrity gate passed every hard check and its Golden Path. Exact local read-only review found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap ownership gaps.
+- 2026-09-01: FW-AV-18 complete at `d67f0ed`: the one-slot cache now has regression proof that only a newer accepted same-identity catalog replaces its entry and invalidates the prior handle. Focused proof passed (16 tests); full Linux suite passed (661 passed, 1 skipped); the default integrity gate passed every hard check and its Golden Path. Exact local read-only review found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap ownership gaps.
 
 ## Stop conditions
 
@@ -96,5 +97,5 @@ Do not stop merely because a task or review cycle finished. Stop only under the 
 ## Current stop condition
 
 - Reason: NONE
-- Exact condition: Jeff approved the FW-KEYS vendor-release signing policy. Signed-bundle verification, anti-replay, root rotation, and one-slot accepted-catalog admission are accepted; durable content cache, transport, endpoint, and response work remain separately bounded.
-- First resume action: derive and implement safe one-slot cache replacement for a strictly newer accepted bundle.
+- Exact condition: Jeff approved the FW-KEYS vendor-release signing policy. Signed-bundle verification, anti-replay, root rotation, and bounded accepted-catalog replacement are accepted; cache freshness, durable content cache, transport, endpoint, and response work remain separately bounded.
+- First resume action: derive and implement a fail-closed expiry check at cache access.
