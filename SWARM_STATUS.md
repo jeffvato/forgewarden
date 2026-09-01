@@ -4,7 +4,7 @@
 
 - Active phase: FW-AV — Native anti-malware
 - Current focus: FW-AV — publisher-signed detection-content trust
-- Current task: FW-AV-25 — auditable cache recovery.
+- Current task: FW-AV-26 — root-rotation recovery.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -28,14 +28,14 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-AV-25 — auditable cache recovery
-- Starting checkpoint: `1ac0858`
+- Task ID: FW-AV-26 — root-rotation recovery
+- Starting checkpoint: `4e5d6d1`
 - Canonical owner: `DurableCatalogSequenceStore` owns both the canonical sequence watermark and one bounded accepted-content slot; `AcceptedCatalogCache` remains the sole in-memory slot, and `TrustedSignatureCatalog` remains the immutable content owner.
-- Acceptance criteria: fresh verified startup recovery must emit canonical Evidence before any in-memory catalog admission.
+- Acceptance criteria: a publisher-key rotation can recover only when its root signature is fresh and valid and its exact sequence is durably accepted; recovery writes Evidence before returning the rotated root.
 - Negative paths: failed Evidence preserves the content row; a missing, stale, malformed, oversized, or metadata-mismatched row denies. Clear cannot lower, delete, or advance anti-rollback state or create response authority.
 - Proof plan: focused clear/recovery/watermark/Evidence regression, exact read-only commit review, full suite, and integrity gate after the bounded slice completes.
-- Exact first change: require an Evidence sink in `recover_cached_catalog()` and deny recovery when it cannot record the recovered verified bundle.
-- Proof: focused FW-AV tests passed (`17 passed`); full Linux suite passed (`662 passed, 1 skipped`); the default FW-INTEGRITY gate passed every hard check and its Golden Path at `da87d08`. Exact local read-only review found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and defined-but-unimplemented identity, normalized-events, SOC-incident, and compliance owners.
+- Exact first change: add `recover_root_rotation()` to recover only the exact durable sequence after fresh root verification and Evidence.
+- Proof: focused FW-AV tests passed (`17 passed`); full Linux suite passed (`662 passed, 1 skipped`); the default FW-INTEGRITY gate passed every hard check and its Golden Path at `544b73b`. Exact local read-only review found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and defined-but-unimplemented identity, normalized-events, SOC-incident, and compliance owners.
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
 - Blocker: none.
 - Next action: derive a bounded startup-recovery seam that explicitly re-verifies, recovers, loads, and re-admits current catalog content without adding transport, endpoint integration, quarantine, or remediation.
@@ -96,6 +96,7 @@ On every restart or continuation:
 - 2026-09-01: FW-AV-23 complete at `1da4912`: startup recovery now reads a bounded candidate only to freshly verify its signed bundle, recovers only the exact durable watermark, and then explicitly re-admits immutable content to the in-memory slot. Expired bundles deny; no transport, endpoint integration, quarantine, or remediation was added. Focused proof passed (17 tests); full Linux suite passed (662 passed, 1 skipped); the default integrity gate passed every hard check and its Golden Path. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap ownership gaps.
 - 2026-09-01: FW-AV-24 complete at `97845fc`: durable accepted-content admission now requires an explicit fresh clock and denies expired metadata before Evidence or persistence. Focused proof passed (17 tests); full Linux suite passed (662 passed, 1 skipped); the default integrity gate passed every hard check and its Golden Path. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap ownership gaps.
 - 2026-09-01: FW-AV-25 complete at `da87d08`: startup recovery now writes canonical Evidence for the fresh verified catalog before in-memory re-admission; Evidence failure denies without restoring cache access. Focused proof passed (17 tests); full Linux suite passed (662 passed, 1 skipped); the default integrity gate passed every hard check and its Golden Path. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap ownership gaps.
+- 2026-09-01: FW-AV-26 complete at `544b73b`: root-authorized publisher-key rotations can now recover only after fresh root verification and exact durable sequence matching, with canonical Evidence required before the rotated root is returned. Focused proof passed (17 tests); full Linux suite passed (662 passed, 1 skipped); the default integrity gate passed every hard check and its Golden Path. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap ownership gaps.
 
 ## Stop conditions
 
