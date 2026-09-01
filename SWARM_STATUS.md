@@ -4,7 +4,7 @@
 
 - Active phase: FW-AV — Native anti-malware
 - Current focus: FW-AV — publisher-signed detection-content trust
-- Current task: FW-AV-20 — accepted signed-catalog cache clear/recovery.
+- Current task: FW-AV-21 — durable accepted catalog-content cache.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -28,17 +28,17 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-AV-20 — accepted signed-catalog cache clear/recovery
-- Starting checkpoint: `0013ae0`
-- Canonical owner: `AcceptedCatalogCache` is a single bounded in-memory catalog slot. It accepts only `AcceptedCatalogBundle` results from `DurableCatalogSequenceStore`, which already binds Ed25519 verification, sequence anti-rollback, and canonical Evidence. `TrustedSignatureCatalog` remains the immutable content owner.
-- Acceptance criteria: a clear operation discards only the in-memory slot; subsequent access fails closed, and a prior durably accepted bundle can explicitly re-admit its exact immutable catalog.
-- Negative paths: access after clear is a cache miss; clear cannot alter durable anti-rollback state or create response authority. No transport, durable content cache, endpoint scanning, quarantine, or remediation was added.
-- Proof plan: focused clear/re-admission regression, exact read-only commit review, full suite, and integrity gate after the bounded slice completes.
-- Exact first change: add an in-memory-only `AcceptedCatalogCache.clear()` that drops both accepted metadata and immutable content references.
-- Proof: focused FW-AV tests passed (`16 passed`); full Linux suite passed (`661 passed, 1 skipped`); the default FW-INTEGRITY gate passed every hard check and its Golden Path at `2c9aef0`. Exact local read-only review found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and defined-but-unimplemented identity, normalized-events, SOC-incident, and compliance owners.
+- Task ID: FW-AV-21 — durable accepted catalog-content cache
+- Starting checkpoint: `ce21550`
+- Canonical owner: `DurableCatalogSequenceStore` owns one bounded SQLite payload slot alongside the canonical sequence watermark; `AcceptedCatalogCache` remains the sole in-memory slot, and `TrustedSignatureCatalog` remains the immutable content owner.
+- Acceptance criteria: persist only the exact current accepted immutable catalog after canonical Evidence; on restart, require fresh FW-KEYS verification plus durable-watermark recovery before loading and re-admitting that exact payload.
+- Negative paths: absent, stale, malformed, oversized, tampered, or metadata-mismatched content fails closed; failed Evidence leaves no cached content. The durable cache cannot advance or alter anti-rollback state or create response authority.
+- Proof plan: focused persistence/restart/recovery/tamper regression, exact read-only commit review, full suite, and integrity gate after the bounded slice completes.
+- Exact first change: add a 16 MiB-bounded deterministic catalog encoding and one `accepted_catalog_content` SQLite slot that is bound to the existing root/publisher/catalog sequence watermark.
+- Proof: focused FW-AV tests passed (`17 passed`); full Linux suite passed (`662 passed, 1 skipped`); the default FW-INTEGRITY gate passed every hard check and its Golden Path at `8c46a2e`. Exact local read-only review found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and defined-but-unimplemented identity, normalized-events, SOC-incident, and compliance owners.
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
 - Blocker: none.
-- Next action: derive a bounded durable accepted-content cache primitive. Keep bundle transport, endpoint integration, quarantine, and remediation separate.
+- Next action: derive a bounded durable-content cache clear/recovery primitive that cannot modify the anti-rollback watermark. Keep bundle transport, endpoint integration, quarantine, and remediation separate.
 - Platform delivery definition: Windows and Linux are the first endpoint targets; macOS, Android, and iOS are later platform-native releases. Detailed scope and required proof are in `docs/fw-av-windows-linux-delivery-plan.md`.
 
 ## Execution log
@@ -91,6 +91,7 @@ On every restart or continuation:
 - 2026-09-01: FW-AV-18 complete at `d67f0ed`: the one-slot cache now has regression proof that only a newer accepted same-identity catalog replaces its entry and invalidates the prior handle. Focused proof passed (16 tests); full Linux suite passed (661 passed, 1 skipped); the default integrity gate passed every hard check and its Golden Path. Exact local read-only review found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap ownership gaps.
 - 2026-09-01: FW-AV-19 complete at `469c1b0`: cache access now requires an explicit clock and surfaces expired accepted content as detect-only rather than fresh response-capable content. Focused proof passed (16 tests); full Linux suite passed (661 passed, 1 skipped); the default integrity gate passed every hard check and its Golden Path. Exact local read-only review found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap ownership gaps.
 - 2026-09-01: FW-AV-20 complete at `2c9aef0`: the bounded accepted-catalog cache can now clear only its in-memory slot. Post-clear access fails closed, and explicit re-admission still requires the canonical durably accepted bundle and its exact immutable catalog. No durable state or catalog content is deleted or changed, and no response authority, transport, endpoint integration, quarantine, or remediation was added. Focused proof passed (16 tests); full Linux suite passed (661 passed, 1 skipped); the default integrity gate passed every hard check and its Golden Path. Exact local read-only review found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap ownership gaps.
+- 2026-09-01: FW-AV-21 complete at `8c46a2e`: the existing durable sequence owner now stores one 16 MiB-bounded immutable catalog payload only after canonical Evidence, with no keys or signatures persisted. Recovery requires fresh FW-KEYS verification and an exact durable watermark before content can load; missing, stale, failed-Evidence, malformed, oversized, tampered, or mismatched payloads deny. No transport, endpoint integration, quarantine, or remediation was added. Focused proof passed (17 tests); full Linux suite passed (662 passed, 1 skipped); the default integrity gate passed every hard check and its Golden Path. Exact local read-only review found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap ownership gaps.
 
 ## Stop conditions
 
@@ -99,5 +100,5 @@ Do not stop merely because a task or review cycle finished. Stop only under the 
 ## Current stop condition
 
 - Reason: NONE
-- Exact condition: Jeff approved the FW-KEYS vendor-release signing policy. Signed-bundle verification, anti-replay, root rotation, bounded accepted-catalog replacement, freshness, and in-memory cache clear/recovery are accepted; durable content cache, transport, endpoint, and response work remain separately bounded.
-- First resume action: derive the next bounded durable accepted-content cache primitive without changing the verification, Evidence, anti-rollback, DRY_RUN, deployment-disabled, or kill-switch boundaries.
+- Exact condition: Jeff approved the FW-KEYS vendor-release signing policy. Signed-bundle verification, anti-replay, root rotation, bounded accepted-catalog replacement, freshness, in-memory cache clear/recovery, and durable accepted content persistence are accepted; durable cache clear/recovery, transport, endpoint, and response work remain separately bounded.
+- First resume action: derive and implement durable cache clear/recovery without changing the verification, Evidence, anti-rollback, DRY_RUN, deployment-disabled, or kill-switch boundaries.
