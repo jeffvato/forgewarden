@@ -4,7 +4,7 @@
 
 - Active phase: FW-AV — Native anti-malware
 - Current focus: FW-AV — publisher-signed detection-content trust
-- Current task: FW-AV-31 — chained key-rotation proof.
+- Current task: FW-AV-32 — chained key-rotation Evidence binding.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -28,14 +28,14 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-AV-31 — chained key-rotation proof
-- Starting checkpoint: `807ec55`
+- Task ID: FW-AV-32 — chained key-rotation Evidence binding
+- Starting checkpoint: `bdfd286`
 - Canonical owner: `DurableCatalogSequenceStore` owns both the canonical sequence watermark and one bounded accepted-content slot; `AcceptedCatalogCache` remains the sole in-memory slot, and `TrustedSignatureCatalog` remains the immutable content owner.
-- Acceptance criteria: prove that startup recovery reconstructs a two-link ordered publisher-key transition and denies a non-current history.
+- Acceptance criteria: recovery Evidence binds the final active publisher key identity and public-key digest in addition to the ordered chain.
 - Negative paths: failed Evidence preserves the content row; a missing, stale, malformed, oversized, or metadata-mismatched row denies. Clear cannot lower, delete, or advance anti-rollback state or create response authority.
 - Proof plan: focused clear/recovery/watermark/Evidence regression, exact read-only commit review, full suite, and integrity gate after the bounded slice completes.
-- Exact first change: extend the canonical rotation regression with a second signed replacement and exact chained restart reconstruction.
-- Proof: focused FW-AV tests passed (`17 passed`); full Linux suite passed (`662 passed, 1 skipped`); the default FW-INTEGRITY gate passed every hard check and its Golden Path at `a3b798e`. Exact local read-only review found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and defined-but-unimplemented identity, normalized-events, SOC-incident, and compliance owners.
+- Exact first change: add final-key identity and SHA-256 binding to `anti_malware_publisher_key_rotation_chain_recovered` Evidence.
+- Proof: focused FW-AV tests passed (`17 passed`); full Linux suite passed (`662 passed, 1 skipped`); the default FW-INTEGRITY gate passed every hard check and its Golden Path at `9f9b4f7`. Exact local read-only review found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and defined-but-unimplemented identity, normalized-events, SOC-incident, and compliance owners.
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
 - Blocker: none.
 - Next action: derive a bounded startup-recovery seam that explicitly re-verifies, recovers, loads, and re-admits current catalog content without adding transport, endpoint integration, quarantine, or remediation.
@@ -106,6 +106,8 @@ On every restart or continuation:
 - 2026-09-01: FW-AV-30 complete at `52ba216`: chained rotation recovery now denies unless its final durable history link exactly matches the current anti-rollback watermark. Focused proof passed (17 tests); full Linux suite passed (662 passed, 1 skipped); the default integrity gate passed every hard check and its Golden Path. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap ownership gaps.
 
 - 2026-09-01: FW-AV-31 complete at `a3b798e`: regression proof now covers two successive root-signed publisher-key replacements and confirms chained restart recovery returns the final key. Focused proof passed (17 tests); full Linux suite passed (662 passed, 1 skipped); the default integrity gate passed every hard check and its Golden Path. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap ownership gaps.
+
+- 2026-09-01: FW-AV-32 complete at `9f9b4f7`: chained rotation recovery Evidence now binds the exact final active key ID and public-key digest. Focused proof passed (17 tests); full Linux suite passed (662 passed, 1 skipped); the default integrity gate passed every hard check and its Golden Path. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap ownership gaps.
 
 ## Stop conditions
 
