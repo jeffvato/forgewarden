@@ -4,7 +4,7 @@
 
 - Active phase: FW-AV — Native anti-malware
 - Current focus: FW-AV — publisher-signed detection-content trust
-- Current task: FW-AV-36 — catalog acceptance freshness enforcement.
+- Current task: FW-AV-37 — recovered catalog-acceptance freshness enforcement.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -28,14 +28,14 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-AV-36 — catalog acceptance freshness enforcement
-- Starting checkpoint: `3df06fe`
-- Canonical owner: `DurableCatalogSequenceStore` owns durable catalog sequence acceptance; `VerifiedCatalogBundle` remains the canonical verified metadata carrier.
-- Acceptance criteria: durable sequence acceptance requires an explicit clock and rejects a bundle that is not yet valid, expired, or signed by an expired rotated publisher key before Evidence or watermark mutation.
-- Negative paths: expired acceptance leaves the durable sequence at zero, writes no Evidence, and cannot poison anti-rollback state; normal signed-bundle expiration remains enforced. No transport, endpoint integration, quarantine, remediation, or response authority is added.
-- Proof plan: focused acceptance-expiry regression, exact read-only commit review, full suite, and integrity gate after the bounded slice completes.
-- Exact first change: require `now_epoch` in `DurableCatalogSequenceStore.accept`, enforce the canonical bundle/key freshness window, and bind rotated-key expiry in acceptance Evidence.
-- Proof: focused FW-AV tests passed (`17 passed`); full Linux suite passed (`662 passed, 1 skipped`); the default FW-INTEGRITY gate passed every hard check and its Golden Path at `f6739a3`. Exact local read-only review found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and defined-but-unimplemented identity, normalized-events, SOC-incident, and compliance owners.
+- Task ID: FW-AV-37 — recovered catalog-acceptance freshness enforcement
+- Starting checkpoint: `f6739a3`
+- Canonical owner: `DurableCatalogSequenceStore` owns both durable catalog sequence acceptance and accepted-handle recovery; `VerifiedCatalogBundle` remains the canonical verified metadata carrier.
+- Acceptance criteria: recovering an accepted catalog handle requires an explicit clock and denies metadata that is not yet valid, expired, or signed by an expired rotated publisher key.
+- Negative paths: a recovered expired bundle denies even when its durable watermark remains current; startup recovery passes the same clock through fresh verification and handle recovery. No transport, endpoint integration, quarantine, remediation, or response authority is added.
+- Proof plan: focused recovered-acceptance expiry regression, exact read-only commit review, full suite, and integrity gate after the bounded slice completes.
+- Exact first change: require `now_epoch` in `DurableCatalogSequenceStore.recover_accepted` and apply the existing verified bundle/key freshness window before returning a handle.
+- Proof: focused FW-AV tests passed (`17 passed`); full Linux suite passed (`662 passed, 1 skipped`); the default FW-INTEGRITY gate passed every hard check and its Golden Path at `b95ddf0`. Exact local read-only review found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and defined-but-unimplemented identity, normalized-events, SOC-incident, and compliance owners.
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
 - Blocker: none.
 - Next action: derive the next highest-risk bounded FW-AV signing-policy control without adding transport, endpoint integration, quarantine, or remediation.
@@ -116,6 +116,8 @@ On every restart or continuation:
 - 2026-09-01: FW-AV-35 complete at `3df06fe`: rotated-key expiry now propagates into verified catalog metadata, in-memory cache freshness, and durable content-cache admission. After key expiry, cached content is explicitly expired and new durable admission denies even if the catalog bundle remains fresh. Focused proof passed (17 tests); full Linux suite passed (662 passed, 1 skipped); the default integrity gate passed every hard check and its Golden Path. Exact local read-only review found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap ownership gaps.
 
 - 2026-09-01: FW-AV-36 complete at `f6739a3`: durable catalog sequence acceptance now requires an explicit clock and rejects expired verified metadata before Evidence or anti-rollback mutation. Acceptance Evidence binds the rotated-key expiry. Focused proof passed (17 tests); full Linux suite passed (662 passed, 1 skipped); the default integrity gate passed every hard check and its Golden Path. Exact local read-only review found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap ownership gaps.
+
+- 2026-09-01: FW-AV-37 complete at `b95ddf0`: recovered accepted catalog handles now require the same explicit verified bundle/key freshness boundary as initial acceptance. Expired rotation-authorized metadata cannot be re-admitted from an otherwise current watermark. Focused proof passed (17 tests); full Linux suite passed (662 passed, 1 skipped); the default integrity gate passed every hard check and its Golden Path. Exact local read-only review found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap ownership gaps.
 
 ## Stop conditions
 
