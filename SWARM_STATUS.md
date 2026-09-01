@@ -4,7 +4,7 @@
 
 - Active phase: FW-AV — Native anti-malware
 - Current focus: FW-AV — publisher-signed detection-content trust
-- Current task: FW-AV-13 blocked pending explicit FW-KEYS trust-root and anti-rollback authority.
+- Current task: FW-AV-13 — verified publisher-signed detection content.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -28,17 +28,17 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-AV-12 — fail-closed stream-source errors
-- Starting checkpoint: `5ec0f4e`
-- Canonical owner: `HashSignatureScanner` remains the sole detect-only stream evaluator; `TrustedSignatureCatalog` remains the immutable detector-content owner and `AuditLog`/`audit_log_sink` remain the durable Evidence owner. No identity, authorization, policy, ticket, model, gateway, execution, filesystem, endpoint-agent, or response system is created.
-- Acceptance criteria: a caller-supplied stream that raises while being read denies with a canonical `STREAM_READ_FAILED` result before a finding or Evidence record is emitted; valid streams preserve existing behavior.
-- Negative paths: source iteration failures fail closed without partial Evidence. Existing malformed, untrusted, duplicate, catalog-overflow, input-overflow, iteration-overflow, literal-work-overflow, result-overflow, and Evidence-unavailable paths remain fail closed. The detector must not access paths, execute input, fetch content, quarantine, or remediate.
-- Proof plan: focused broken-stream regression with an observing audit sink, exact read-only commit review, full suite, and integrity gate after the bounded slice completes.
-- Exact first change: use explicit reads from the existing stream iterator and map only iterator failures to the existing `ScanDenied` boundary; no source access, cache, filesystem scanner, endpoint agent, policy response, or quarantine workflow.
-- Proof: focused FW-AV tests passed (`13 passed`); full Linux suite passed (`658 passed, 1 skipped`); the default FW-INTEGRITY gate passed all hard checks and its Golden Path at `040a941`. Exact local read-only review found no remaining blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and defined-but-unimplemented identity, normalized-events, SOC-incident, and compliance owners.
+- Task ID: FW-AV-13 — verified publisher-signed detection content
+- Starting checkpoint: `c1026dc`
+- Canonical owner: FW-KEYS owns the authorized vendor release-signing root and its injected public verification keys. `FWKeysCatalogTrustRoot` is a static in-memory verifier input only; `TrustedSignatureCatalog` remains the immutable detector-content owner and `AuditLog`/`audit_log_sink` remain the durable scan Evidence owner. No identity, authorization, policy, ticket, model, gateway, execution, filesystem, endpoint-agent, or response system is created.
+- Acceptance criteria: only an FW-KEYS-authorized Ed25519 publisher key can verify a fresh signed bundle; the signature must bind publisher/key IDs, catalog identity/version/snapshot digest, positive sequence, issued time, and expiry to the exact immutable catalog.
+- Negative paths: unknown keys, malformed metadata, invalid signatures, catalog substitution, pre-issue use, and expiry deny before a verified result. Existing scan bounds and fail-closed Evidence behavior remain unchanged. The verifier must not generate or retain private keys, fetch or cache content, distribute/rotate keys, persist anti-rollback state, access endpoints, quarantine, or remediate.
+- Proof plan: focused signing regression using only test-generated keys, exact read-only commit review, full suite, and integrity gate after the bounded slice completes.
+- Exact first change: add a dependency-pinned Ed25519 public-key verification interface and immutable signed metadata binding to the existing `TrustedSignatureCatalog`; the caller injects the authorized FW-KEYS public-key root and clock. No key transport, rotation, storage, endpoint integration, or response wiring is added.
+- Proof: focused FW-AV tests passed (`14 passed`); full Linux suite passed (`659 passed, 1 skipped`); the default FW-INTEGRITY gate passed every hard check and its Golden Path at `14fe744`. Exact local read-only review found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and defined-but-unimplemented identity, normalized-events, SOC-incident, and compliance owners.
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
 - Blocker: none.
-- Next action: obtain explicit authority for the canonical FW-KEYS publisher signing/verification root, endpoint public-key distribution and rotation, and durable anti-rollback state before implementing signed detection bundles. Do not substitute the existing HMAC lease signer, invent a parallel PKI, or treat a self-declared digest as publisher trust.
+- Next action: derive the smallest bounded FW-KEYS anti-rollback persistence interface for already verified catalog sequences. Keep key distribution/rotation, bundle transport/cache, endpoint integration, quarantine, and remediation separate.
 - Platform delivery definition: Windows and Linux are the first endpoint targets; macOS, Android, and iOS are later platform-native releases. Detailed scope and required proof are in `docs/fw-av-windows-linux-delivery-plan.md`.
 
 ## Execution log
@@ -83,7 +83,7 @@ On every restart or continuation:
 - 2026-08-31: FW-AV-10 complete at `97d8ac3`: the existing detector now counts trusted literal indicator checks across stream windows and fails closed above 262,144 checks before producing partial findings or Evidence. A reduced-limit regression proves the exact boundary succeeds and overflow adds no Evidence. Focused proof passed (12 tests); full Linux suite passed (657 passed, 1 skipped); the default integrity gate passed every hard check and its Golden Path. Exact local read-only review found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap-ownership gaps.
 - 2026-08-31: FW-AV-11 complete at `7c940a2`: the trusted catalog now rejects scalar text, bytes, bytearrays, and non-iterable values for publisher, signature, and literal-indicator collections before snapshot construction. Focused proof passed (12 tests); full Linux suite passed (657 passed, 1 skipped); the default integrity gate passed every hard check and its Golden Path. Exact local read-only review found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap-ownership gaps.
 - 2026-08-31: FW-AV-12 complete at `040a941`: a caller-supplied stream that raises during iteration now fails closed with `STREAM_READ_FAILED`, without returning a partial finding or calling the Evidence sink. Focused proof passed (13 tests); full Linux suite passed (658 passed, 1 skipped); the default integrity gate passed every hard check and its Golden Path. Exact local read-only review found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap-ownership gaps.
-- 2026-09-01: FW-AV-13 derivation reached an authority boundary. The highest-risk unmet prerequisite is publisher-signed, expiry- and anti-rollback-protected detection content. The roadmap assigns signing roots, key distribution, rotation, and secure key handling to FW-KEYS; the checkout exposes only the separate HMAC lease signer, which cannot safely serve as an endpoint publisher-verification root. No self-declared catalog digest, new parallel PKI, local cache, signed transport, or anti-rollback state was added. Explicit Root direction is required before this family can advance safely.
+- 2026-09-01: FW-AV-13 authority was approved by Jeff. The first bounded result at `14fe744` is a static FW-KEYS-injected Ed25519 public-key verification primitive: it verifies only fresh publisher-signed metadata bound to the exact immutable catalog snapshot and returns no response authority. The verifier neither generates nor stores private keys, nor fetches, transports, caches, rotates, or persists content/keys. Focused proof passed (14 tests); full Linux suite passed (659 passed, 1 skipped); the default integrity gate passed every hard check and its Golden Path. Exact local read-only review found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap ownership gaps.
 
 ## Stop conditions
 
@@ -91,6 +91,6 @@ Do not stop merely because a task or review cycle finished. Stop only under the 
 
 ## Current stop condition
 
-- Reason: AUTHORITY_REQUIRED
-- Exact condition: FW-AV signed detection bundles require a canonical FW-KEYS publisher-verification root, endpoint public-key distribution/rotation policy, expiry and durable anti-rollback authority. The existing lease HMAC signer is not an authorized substitute.
-- First resume action: after Root selects or authorizes the canonical FW-KEYS integration and key/rollback policy, derive its smallest bounded read-only verification unit.
+- Reason: NONE
+- Exact condition: Jeff approved the FW-KEYS vendor-release signing policy. The static public-key verification primitive is accepted; remaining anti-rollback persistence, root-authorized rotation, transport, cache, endpoint, and response work remain separately bounded.
+- First resume action: derive and implement the smallest safe anti-rollback persistence interface for already verified bundle sequences.
