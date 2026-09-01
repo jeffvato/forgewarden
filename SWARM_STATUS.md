@@ -4,7 +4,7 @@
 
 - Active phase: FW-AV — Native anti-malware
 - Current focus: FW-AV — publisher-signed detection-content trust
-- Current task: FW-AV-15 — root-authorized publisher-key rotation verification.
+- Current task: FW-AV-16 — durable root-signed publisher-key rotation anti-replay.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -28,17 +28,17 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-AV-15 — root-authorized publisher-key rotation verification
-- Starting checkpoint: `b6a0f97`
-- Canonical owner: `FWKeysCatalogTrustRoot` owns the immutable vendor-release root public key and publisher-key set. `RootSignedPublisherKeyRotation` carries an explicit root-signed replacement key; `TrustedSignatureCatalog`, `DurableCatalogSequenceStore`, and `AuditLog`/`audit_log_sink` retain their existing responsibilities. No new key service, transport, content cache, endpoint agent, or response system is created.
-- Acceptance criteria: a fresh Ed25519 signature from the injected FW-KEYS root alone may replace one existing publisher verification key with a distinct new key. The signed rotation binds root/publisher/replaced/new key identities and material, issued time, and expiry; the original root is unchanged.
-- Negative paths: wrong root, expired/pre-issue rotation, unknown replaced key, duplicate new key, malformed metadata, and invalid root signature fail closed. A rotated root must reject the replaced key while accepting the new key; no private key, bundle transport, persistence, scanner, quarantine, or remediation behavior is added.
-- Proof plan: focused root-rotation regression using only test-generated keys, exact read-only commit review, full suite, and integrity gate after the bounded slice completes.
-- Exact first change: add a pure root-signature verifier that returns a new immutable `FWKeysCatalogTrustRoot` with exactly one publisher-key replacement. It does not persist or distribute the rotation.
-- Proof: focused FW-AV tests passed (`16 passed`); full Linux suite passed (`661 passed, 1 skipped`); the default FW-INTEGRITY gate passed every hard check and its Golden Path at `d771825`. Exact local read-only review found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and defined-but-unimplemented identity, normalized-events, SOC-incident, and compliance owners.
+- Task ID: FW-AV-16 — durable root-signed publisher-key rotation anti-replay
+- Starting checkpoint: `62f496a`
+- Canonical owner: `DurableCatalogSequenceStore` extends its existing bounded SQLite watermark boundary to root/publisher key-rotation sequences. `FWKeysCatalogTrustRoot` remains the sole root-signature verifier; canonical `AuditSink` records Evidence before durable sequence advance. No key-distribution, content-cache, endpoint, or response system is created.
+- Acceptance criteria: only a valid root-signed rotation with a strictly increasing per-root/publisher sequence is accepted; its Evidence is durable before its watermark advances; equal/lower replays and failed Evidence leave state unchanged across reopen.
+- Negative paths: invalid/expired root signatures, replay/downgrade, audit/state failure, and untrusted replacement keys fail closed. The store retains no private key or content and does not distribute keys, scan endpoints, quarantine, or remediate.
+- Proof plan: focused root-rotation anti-replay regression, exact read-only commit review, full suite, and integrity gate after the bounded slice completes.
+- Exact first change: bind a positive rotation sequence into the root-signed payload, persist only the highest root/publisher rotation sequence in the existing SQLite state, and return the rotated root only after Evidence and durable advancement succeed.
+- Proof: focused FW-AV tests passed (`16 passed`); full Linux suite passed (`661 passed, 1 skipped`); the default FW-INTEGRITY gate passed every hard check and its Golden Path at `d9910e2`. Exact local read-only review found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and defined-but-unimplemented identity, normalized-events, SOC-incident, and compliance owners.
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
 - Blocker: none.
-- Next action: derive the smallest bounded durable anti-replay sequence control for root-signed publisher-key rotations. Keep key distribution transport, content cache, endpoint integration, quarantine, and remediation separate.
+- Next action: derive the smallest bounded content-cache admission interface that uses only accepted signed catalog bundles. Keep bundle transport, endpoint integration, quarantine, and remediation separate.
 - Platform delivery definition: Windows and Linux are the first endpoint targets; macOS, Android, and iOS are later platform-native releases. Detailed scope and required proof are in `docs/fw-av-windows-linux-delivery-plan.md`.
 
 ## Execution log
@@ -86,6 +86,7 @@ On every restart or continuation:
 - 2026-09-01: FW-AV-13 authority was approved by Jeff. The first bounded result at `14fe744` is a static FW-KEYS-injected Ed25519 public-key verification primitive: it verifies only fresh publisher-signed metadata bound to the exact immutable catalog snapshot and returns no response authority. The verifier neither generates nor stores private keys, nor fetches, transports, caches, rotates, or persists content/keys. Focused proof passed (14 tests); full Linux suite passed (659 passed, 1 skipped); the default integrity gate passed every hard check and its Golden Path. Exact local read-only review found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap ownership gaps.
 - 2026-09-01: FW-AV-14 complete at `3c327cf`: a durable SQLite watermark now stores only the highest sequence for a verified root/publisher/catalog bundle, rejects replay/downgrade across reopen, and advances only after canonical Evidence succeeds. The verification-result token prevents direct construction from bypassing Ed25519 verification. It is not a content cache, key store, key-rotation mechanism, or endpoint component. Focused proof passed (15 tests); full Linux suite passed (660 passed, 1 skipped); the default integrity gate passed every hard check and its Golden Path. Exact local read-only review found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap ownership gaps.
 - 2026-09-01: FW-AV-15 complete at `d771825`: FW-KEYS root-signed publisher-key rotations now verify against the injected root public key and produce an immutable replacement key set. The old key cannot verify new catalogs through the rotated root, while the authorized new key can. No key transport/distribution, persistence, content cache, endpoint integration, quarantine, or remediation was added. Focused proof passed (16 tests); full Linux suite passed (661 passed, 1 skipped); the default integrity gate passed every hard check and its Golden Path. Exact local read-only review found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap ownership gaps.
+- 2026-09-01: FW-AV-16 complete at `d9910e2`: root-signed publisher-key rotation payloads now bind a positive sequence, and the existing durable watermark store accepts a rotation only after root verification and canonical Evidence, rejecting replay/downgrade across reopen. No key distribution, content cache, endpoint integration, quarantine, or remediation was added. Focused proof passed (16 tests); full Linux suite passed (661 passed, 1 skipped); the default integrity gate passed every hard check and its Golden Path. Exact local read-only review found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap ownership gaps.
 
 ## Stop conditions
 
@@ -94,5 +95,5 @@ Do not stop merely because a task or review cycle finished. Stop only under the 
 ## Current stop condition
 
 - Reason: NONE
-- Exact condition: Jeff approved the FW-KEYS vendor-release signing policy. Signed-bundle verification, durable bundle anti-rollback, and root-authorized key replacement are accepted; durable rotation anti-replay, transport, cache, endpoint, and response work remain separately bounded.
-- First resume action: derive and implement the smallest safe durable anti-replay sequence control for root-signed publisher-key rotations.
+- Exact condition: Jeff approved the FW-KEYS vendor-release signing policy. Signed-bundle verification, durable bundle anti-rollback, root-authorized key replacement, and durable rotation anti-replay are accepted; bundle transport, cache, endpoint, and response work remain separately bounded.
+- First resume action: derive and implement the smallest safe content-cache admission interface for accepted signed catalog bundles.
