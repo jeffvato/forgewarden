@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: FW-AV — Native anti-malware
-- Current focus: FW-AV — fail-closed stream-source errors
-- Current task: FW-AV-12 complete; derive the next highest-risk bounded FW-AV control.
+- Current focus: FW-AV — publisher-signed detection-content trust
+- Current task: FW-AV-13 blocked pending explicit FW-KEYS trust-root and anti-rollback authority.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -38,7 +38,7 @@ On every restart or continuation:
 - Proof: focused FW-AV tests passed (`13 passed`); full Linux suite passed (`658 passed, 1 skipped`); the default FW-INTEGRITY gate passed all hard checks and its Golden Path at `040a941`. Exact local read-only review found no remaining blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and defined-but-unimplemented identity, normalized-events, SOC-incident, and compliance owners.
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
 - Blocker: none.
-- Next action: derive and implement the next highest-risk bounded FW-AV control; do not add actual file hooks, execution, quarantine, remediation, reputation networking, or sandboxing without separately scoped authority and proof.
+- Next action: obtain explicit authority for the canonical FW-KEYS publisher signing/verification root, endpoint public-key distribution and rotation, and durable anti-rollback state before implementing signed detection bundles. Do not substitute the existing HMAC lease signer, invent a parallel PKI, or treat a self-declared digest as publisher trust.
 - Platform delivery definition: Windows and Linux are the first endpoint targets; macOS, Android, and iOS are later platform-native releases. Detailed scope and required proof are in `docs/fw-av-windows-linux-delivery-plan.md`.
 
 ## Execution log
@@ -83,6 +83,7 @@ On every restart or continuation:
 - 2026-08-31: FW-AV-10 complete at `97d8ac3`: the existing detector now counts trusted literal indicator checks across stream windows and fails closed above 262,144 checks before producing partial findings or Evidence. A reduced-limit regression proves the exact boundary succeeds and overflow adds no Evidence. Focused proof passed (12 tests); full Linux suite passed (657 passed, 1 skipped); the default integrity gate passed every hard check and its Golden Path. Exact local read-only review found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap-ownership gaps.
 - 2026-08-31: FW-AV-11 complete at `7c940a2`: the trusted catalog now rejects scalar text, bytes, bytearrays, and non-iterable values for publisher, signature, and literal-indicator collections before snapshot construction. Focused proof passed (12 tests); full Linux suite passed (657 passed, 1 skipped); the default integrity gate passed every hard check and its Golden Path. Exact local read-only review found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap-ownership gaps.
 - 2026-08-31: FW-AV-12 complete at `040a941`: a caller-supplied stream that raises during iteration now fails closed with `STREAM_READ_FAILED`, without returning a partial finding or calling the Evidence sink. Focused proof passed (13 tests); full Linux suite passed (658 passed, 1 skipped); the default integrity gate passed every hard check and its Golden Path. Exact local read-only review found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap-ownership gaps.
+- 2026-09-01: FW-AV-13 derivation reached an authority boundary. The highest-risk unmet prerequisite is publisher-signed, expiry- and anti-rollback-protected detection content. The roadmap assigns signing roots, key distribution, rotation, and secure key handling to FW-KEYS; the checkout exposes only the separate HMAC lease signer, which cannot safely serve as an endpoint publisher-verification root. No self-declared catalog digest, new parallel PKI, local cache, signed transport, or anti-rollback state was added. Explicit Root direction is required before this family can advance safely.
 
 ## Stop conditions
 
@@ -90,6 +91,6 @@ Do not stop merely because a task or review cycle finished. Stop only under the 
 
 ## Current stop condition
 
-- Reason: NONE
-- Exact condition: no external or human blocker is known.
-- First resume action: derive the highest-risk unmet bounded FW-AV control from `ROADMAP.md` and canonical code, then implement its first smallest safe unit.
+- Reason: AUTHORITY_REQUIRED
+- Exact condition: FW-AV signed detection bundles require a canonical FW-KEYS publisher-verification root, endpoint public-key distribution/rotation policy, expiry and durable anti-rollback authority. The existing lease HMAC signer is not an authorized substitute.
+- First resume action: after Root selects or authorizes the canonical FW-KEYS integration and key/rollback policy, derive its smallest bounded read-only verification unit.
