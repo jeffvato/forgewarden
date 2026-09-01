@@ -4,7 +4,7 @@
 
 - Active phase: FW-AV — Native anti-malware
 - Current focus: FW-AV — publisher-signed detection-content trust
-- Current task: FW-AV-40 — offline definition-source declarations.
+- Current task: FW-AV-41 — offline source-candidate provenance binding.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -28,17 +28,17 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-AV-40 — offline definition-source declarations
-- Starting checkpoint: `d1d4977`
-- Canonical owner: `DefinitionSourceRegistry` owns only bounded offline source declarations; `TrustedSignatureCatalog`, `FWKeysCatalogTrustRoot`, and `DurableCatalogSequenceStore` remain the only catalog/trust/anti-rollback owners.
-- Acceptance criteria: the declared future source categories are bounded, deterministic, uniquely identified, explicitly licensing-classified, and disabled by default; no declaration can enable transport or catalog admission.
-- Negative paths: unknown categories or license classifications, duplicate identifiers, scalar input, over-capacity registries, and any enabled source fail closed. No endpoint, URL, credential, downloader, parser, network call, catalog admission, quarantine, remediation, or response authority is added.
-- Proof plan: focused source-profile regression, exact read-only candidate review, full suite, and integrity gate after the bounded slice completes.
-- Exact first change: introduce immutable offline declarations for ClamAV-compatible, abuse.ch, MISP/STIX/TAXII, Microsoft Defender for Endpoint, and OEM-engine source categories.
-- Proof: focused FW-AV tests passed (`18 passed`); full Linux suite passed (`663 passed, 1 skipped`); the default FW-INTEGRITY gate passed every hard check and its Golden Path at `9a13d8f`. Exact local read-only review found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and defined-but-unimplemented identity, normalized-events, SOC-incident, and compliance owners.
+- Task ID: FW-AV-41 — offline source-candidate provenance binding
+- Starting checkpoint: `9a13d8f`
+- Canonical owner: `DefinitionSourceRegistry` may bind bounded caller-supplied opaque candidate bytes only to declared source provenance; `TrustedSignatureCatalog`, `FWKeysCatalogTrustRoot`, and `DurableCatalogSequenceStore` remain the only catalog/trust/anti-rollback owners.
+- Acceptance criteria: a source candidate requires a declared disabled source, a bounded non-empty opaque byte payload, bounded identifier and capture time, and immutable source ID/category/license provenance. It provides only a digest; it cannot fetch, parse, admit, cache, scan, quarantine, remediate, or respond.
+- Negative paths: unknown sources, direct candidate construction, empty or oversized payloads, and malformed identifiers/timestamps fail closed. No endpoint, URL, credential, downloader, parser, network call, catalog admission, cache mutation, quarantine, remediation, or response authority is added.
+- Proof plan: focused candidate provenance/negative-path regression, exact read-only candidate review, full suite, and integrity gate after the bounded slice completes.
+- Exact first change: introduce a token-constrained immutable candidate envelope and registry-only creation method for caller-supplied opaque source bytes.
+- Proof: focused FW-AV tests passed (`19 passed`); full Linux suite passed (`664 passed, 1 skipped`); the default FW-INTEGRITY gate passed every hard check and its Golden Path at `2ee143d`. Exact local read-only review found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and defined-but-unimplemented identity, normalized-events, SOC-incident, and compliance owners.
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
 - Blocker: none.
-- Next action: derive the next safe bounded offline candidate-content boundary without adding transport, endpoint integration, quarantine, or remediation.
+- Next action: derive the next safe bounded offline candidate-review boundary without adding transport, endpoint integration, parser, catalog admission, quarantine, or remediation.
 - Platform delivery definition: Windows and Linux are the first endpoint targets; macOS, Android, and iOS are later platform-native releases. Detailed scope and required proof are in `docs/fw-av-windows-linux-delivery-plan.md`.
 
 ## Execution log
@@ -125,6 +125,8 @@ On every restart or continuation:
 
 - 2026-09-01: FW-AV-40 complete at `9a13d8f`: bounded immutable offline declarations now name the future ClamAV-compatible, abuse.ch, MISP/STIX/TAXII, Microsoft Defender for Endpoint, and OEM-engine source categories. Every declaration remains disabled; any activation attempt, unknown classification, duplicate identifier, or over-capacity registry denies without an endpoint, credential, network operation, parser, catalog admission, or response path. Focused proof passed (18 tests); full Linux suite passed (663 passed, 1 skipped); the default integrity gate passed every hard check and its Golden Path. Exact local read-only review found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap ownership gaps.
 
+- 2026-09-01: FW-AV-41 complete at `2ee143d`: a declared offline source can now bind only caller-supplied, non-empty, 64-KiB-bounded opaque bytes to immutable source ID/category/license provenance and a digest. Registry-only creation rejects unknown sources, direct construction, empty content, and oversize payloads; the envelope has no transport, parser, catalog-admission, cache, scanner, quarantine, remediation, or response behavior. Focused proof passed (19 tests); full Linux suite passed (664 passed, 1 skipped); the default integrity gate passed every hard check and its Golden Path. Exact local read-only review found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap ownership gaps.
+
 ## Stop conditions
 
 Do not stop merely because a task or review cycle finished. Stop only under the explicit conditions in `AGENTS.md`, and record the exact reason and first resume action here.
@@ -132,5 +134,5 @@ Do not stop merely because a task or review cycle finished. Stop only under the 
 ## Current stop condition
 
 - Reason: NONE
-- Exact condition: Jeff approved the FW-KEYS vendor-release signing policy and future disabled-by-default source declarations. Signed-bundle verification, anti-replay, root rotation and expiry, bounded accepted-catalog replacement, key-aware freshness, in-memory and durable cache clear/recovery, durable accepted content persistence, bounded chained rotation recovery, publisher-key identifier/public-material non-reuse, and offline source declarations are accepted; transport, endpoint, and response work remain separately bounded.
-- First resume action: derive the next safe bounded offline candidate-content boundary without changing the verification, Evidence, anti-rollback, DRY_RUN, deployment-disabled, or kill-switch boundaries.
+- Exact condition: Jeff approved the FW-KEYS vendor-release signing policy and future disabled-by-default source declarations. Signed-bundle verification, anti-replay, root rotation and expiry, bounded accepted-catalog replacement, key-aware freshness, in-memory and durable cache clear/recovery, durable accepted content persistence, bounded chained rotation recovery, publisher-key identifier/public-material non-reuse, offline source declarations, and opaque candidate provenance binding are accepted; transport, endpoint, parser, catalog-admission, and response work remain separately bounded.
+- First resume action: derive the next safe bounded offline candidate-review boundary without changing the verification, Evidence, anti-rollback, DRY_RUN, deployment-disabled, or kill-switch boundaries.
