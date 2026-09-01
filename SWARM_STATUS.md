@@ -4,7 +4,7 @@
 
 - Active phase: FW-AV — Native anti-malware
 - Current focus: FW-AV — publisher-signed detection-content trust
-- Current task: FW-AV-44 — offline source-review future-date denial.
+- Current task: FW-AV-45 — offline source-review snapshot binding.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -28,14 +28,14 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-AV-44 — offline source-review future-date denial
-- Starting checkpoint: `bdd51b2`
-- Canonical owner: `DefinitionSourceRegistry` owns the explicit caller-supplied review clock check; `DefinitionSourceCandidateReview` retains immutable non-admission metadata, while `TrustedSignatureCatalog`, `FWKeysCatalogTrustRoot`, and `DurableCatalogSequenceStore` remain the only catalog/trust/anti-rollback owners.
-- Acceptance criteria: a candidate review requires an explicit non-negative review clock and denies before Evidence when the review timestamp is later than that clock. The existing capture-to-review ordering remains mandatory and the boundary remains non-admission.
+- Task ID: FW-AV-45 — offline source-review snapshot binding
+- Starting checkpoint: `12c0f6b`
+- Canonical owner: `DefinitionSourceCandidateReview` owns the deterministic digest over immutable offline review metadata; `DefinitionSourceRegistry` remains the sole candidate/review factory and emits canonical Evidence, while `TrustedSignatureCatalog`, `FWKeysCatalogTrustRoot`, and `DurableCatalogSequenceStore` remain the only catalog/trust/anti-rollback owners.
+- Acceptance criteria: every non-admission review exposes and evidences a deterministic SHA-256 snapshot of source provenance, candidate identifier/digest/capture time, review reference/time, and disposition. The raw candidate payload is never included in the snapshot.
 - Negative paths: future-dated or pre-capture review timestamps, direct review construction, foreign-registry candidates, invalid or approval-like dispositions, and unavailable Evidence fail closed. No endpoint, URL, credential, downloader, parser, network call, catalog admission, cache mutation, quarantine, remediation, or response authority is added.
-- Proof plan: focused review-clock/negative-path regression, exact read-only candidate review, full suite, and integrity gate after the bounded slice completes.
-- Exact first change: require an explicit `now_epoch` and reject future-dated offline candidate reviews before Evidence emission.
-- Proof: focused FW-AV tests passed (`20 passed`); full Linux suite passed (`665 passed, 1 skipped`); the default FW-INTEGRITY gate passed every hard check and its Golden Path at `12c0f6b`. Exact local read-only review found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and defined-but-unimplemented identity, normalized-events, SOC-incident, and compliance owners.
+- Proof plan: focused canonical-snapshot/Evidence regression, exact read-only candidate review, full suite, and integrity gate after the bounded slice completes.
+- Exact first change: add a canonical review snapshot digest and bind it to `definition_source_candidate_reviewed` Evidence.
+- Proof: focused FW-AV tests passed (`20 passed`); full Linux suite passed (`665 passed, 1 skipped`); the default FW-INTEGRITY gate passed every hard check and its Golden Path at `0be88b8`. Exact local read-only review found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and defined-but-unimplemented identity, normalized-events, SOC-incident, and compliance owners.
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
 - Blocker: none.
 - Next action: derive the next safe bounded offline source-review boundary without adding transport, endpoint integration, parser, catalog admission, quarantine, or remediation.
@@ -133,6 +133,8 @@ On every restart or continuation:
 
 - 2026-09-01: FW-AV-44 complete at `12c0f6b`: offline candidate review now requires an explicit non-negative clock and denies a review timestamp later than that clock before creating the review object or emitting Evidence. The existing capture-to-review order remains enforced. This adds no source access or admission: no transport, endpoint, parser, catalog, cache, scanner, quarantine, remediation, or response behavior exists. Focused proof passed (20 tests); full Linux suite passed (665 passed, 1 skipped); the default integrity gate passed every hard check and its Golden Path. Exact local read-only review found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap ownership gaps.
 
+- 2026-09-01: FW-AV-45 complete at `0be88b8`: every immutable offline candidate review now exposes and records a deterministic SHA-256 snapshot of source ID/category/license provenance, candidate identifier/digest/capture time, review reference/time, and non-admission disposition. The opaque payload itself is never emitted or parsed. This adds no source access or admission: no transport, endpoint, parser, catalog, cache, scanner, quarantine, remediation, or response behavior exists. Focused proof passed (20 tests); full Linux suite passed (665 passed, 1 skipped); the default integrity gate passed every hard check and its Golden Path. Exact local read-only review found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap ownership gaps.
+
 ## Stop conditions
 
 Do not stop merely because a task or review cycle finished. Stop only under the explicit conditions in `AGENTS.md`, and record the exact reason and first resume action here.
@@ -140,5 +142,5 @@ Do not stop merely because a task or review cycle finished. Stop only under the 
 ## Current stop condition
 
 - Reason: NONE
-- Exact condition: Jeff approved the FW-KEYS vendor-release signing policy and future disabled-by-default source declarations. Signed-bundle verification, anti-replay, root rotation and expiry, bounded accepted-catalog replacement, key-aware freshness, in-memory and durable cache clear/recovery, durable accepted content persistence, bounded chained rotation recovery, publisher-key identifier/public-material non-reuse, offline source declarations, opaque candidate provenance binding, Evidence-required non-admission review, and review timestamp integrity are accepted; transport, endpoint, parser, catalog-admission, and response work remain separately bounded.
+- Exact condition: Jeff approved the FW-KEYS vendor-release signing policy and future disabled-by-default source declarations. Signed-bundle verification, anti-replay, root rotation and expiry, bounded accepted-catalog replacement, key-aware freshness, in-memory and durable cache clear/recovery, durable accepted content persistence, bounded chained rotation recovery, publisher-key identifier/public-material non-reuse, offline source declarations, opaque candidate provenance binding, Evidence-required non-admission review, review timestamp integrity, and review snapshot binding are accepted; transport, endpoint, parser, catalog-admission, and response work remain separately bounded.
 - First resume action: derive the next safe bounded offline source-review boundary without changing the verification, Evidence, anti-rollback, DRY_RUN, deployment-disabled, or kill-switch boundaries.
