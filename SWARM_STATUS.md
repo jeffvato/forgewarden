@@ -4,7 +4,7 @@
 
 - Active phase: FW-AV — Native anti-malware
 - Current focus: FW-AV — publisher-signed detection-content trust
-- Current task: FW-AV-34 — rotated publisher-key freshness enforcement.
+- Current task: FW-AV-35 — cached rotated-key freshness propagation.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -28,14 +28,14 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-AV-34 — rotated publisher-key freshness enforcement
-- Starting checkpoint: `3099596`
-- Canonical owner: `FWKeysCatalogTrustRoot` owns immutable root-authorized publisher verification keys; `DurableCatalogSequenceStore` remains the canonical rotation acceptance and anti-rollback owner.
-- Acceptance criteria: a root-authorized rotated publisher key can verify catalog content only before the rotation's expiry, even when an in-memory trust root was created while the rotation was fresh.
-- Negative paths: an expired rotated key denies a still-fresh signed catalog bundle; an unrecognized key still denies as untrusted. Initial configured keys retain their existing policy behavior. No transport, endpoint integration, quarantine, remediation, or response authority is added.
-- Proof plan: focused rotation-expiry regression, exact read-only commit review, full suite, and integrity gate after the bounded slice completes.
-- Exact first change: carry a rotated key's root-authorized expiry inside the immutable trust root and require time-aware lookup during catalog signature verification.
-- Proof: focused FW-AV tests passed (`17 passed`); full Linux suite passed (`662 passed, 1 skipped`); the default FW-INTEGRITY gate passed every hard check and its Golden Path at `723dfdc`. Exact local read-only review found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and defined-but-unimplemented identity, normalized-events, SOC-incident, and compliance owners.
+- Task ID: FW-AV-35 — cached rotated-key freshness propagation
+- Starting checkpoint: `723dfdc`
+- Canonical owner: `VerifiedCatalogBundle` retains verified immutable catalog metadata; `AcceptedCatalogCache` and `DurableCatalogSequenceStore` consume that canonical freshness boundary without creating a second trust or cache system.
+- Acceptance criteria: a catalog verified with a rotated publisher key retains its root-authorized key-expiry boundary through accepted in-memory and durable-cache admission paths.
+- Negative paths: after the rotated key expires, an in-memory cache surfaces the catalog as expired and durable content admission denies even if the catalog bundle remains fresh. Initial configured keys retain their existing policy behavior. No transport, endpoint integration, quarantine, remediation, or response authority is added.
+- Proof plan: focused cache/key-expiry regression, exact read-only commit review, full suite, and integrity gate after the bounded slice completes.
+- Exact first change: bind the rotated publisher-key expiry into `VerifiedCatalogBundle` and use it in cache freshness and durable-content admission checks.
+- Proof: focused FW-AV tests passed (`17 passed`); full Linux suite passed (`662 passed, 1 skipped`); the default FW-INTEGRITY gate passed every hard check and its Golden Path at `3df06fe`. Exact local read-only review found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and defined-but-unimplemented identity, normalized-events, SOC-incident, and compliance owners.
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
 - Blocker: none.
 - Next action: derive the next highest-risk bounded FW-AV signing-policy control without adding transport, endpoint integration, quarantine, or remediation.
@@ -113,6 +113,8 @@ On every restart or continuation:
 
 - 2026-09-01: FW-AV-34 complete at `723dfdc`: a root-authorized publisher key inherited from a fresh rotation now carries that rotation's expiry into its immutable trust-root entry. Catalog verification fails closed after that boundary even when the catalog bundle itself remains fresh. Focused proof passed (17 tests); full Linux suite passed (662 passed, 1 skipped); the default integrity gate passed every hard check and its Golden Path. Exact local read-only review found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap ownership gaps.
 
+- 2026-09-01: FW-AV-35 complete at `3df06fe`: rotated-key expiry now propagates into verified catalog metadata, in-memory cache freshness, and durable content-cache admission. After key expiry, cached content is explicitly expired and new durable admission denies even if the catalog bundle remains fresh. Focused proof passed (17 tests); full Linux suite passed (662 passed, 1 skipped); the default integrity gate passed every hard check and its Golden Path. Exact local read-only review found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap ownership gaps.
+
 ## Stop conditions
 
 Do not stop merely because a task or review cycle finished. Stop only under the explicit conditions in `AGENTS.md`, and record the exact reason and first resume action here.
@@ -120,5 +122,5 @@ Do not stop merely because a task or review cycle finished. Stop only under the 
 ## Current stop condition
 
 - Reason: NONE
-- Exact condition: Jeff approved the FW-KEYS vendor-release signing policy. Signed-bundle verification, anti-replay, root rotation and expiry, bounded accepted-catalog replacement, freshness, in-memory and durable cache clear/recovery, durable accepted content persistence, and bounded chained rotation recovery are accepted; transport, endpoint, and response work remain separately bounded.
+- Exact condition: Jeff approved the FW-KEYS vendor-release signing policy. Signed-bundle verification, anti-replay, root rotation and expiry, bounded accepted-catalog replacement, key-aware freshness, in-memory and durable cache clear/recovery, durable accepted content persistence, and bounded chained rotation recovery are accepted; transport, endpoint, and response work remain separately bounded.
 - First resume action: derive the next highest-risk bounded FW-AV signing-policy control without changing the verification, Evidence, anti-rollback, DRY_RUN, deployment-disabled, or kill-switch boundaries.
