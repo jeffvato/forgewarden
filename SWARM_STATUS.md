@@ -4,7 +4,7 @@
 
 - Active phase: FW-AV — Native anti-malware
 - Current focus: FW-AV — publisher-signed detection-content trust
-- Current task: FW-AV-27 — durable key-rotation history.
+- Current task: FW-AV-28 — durable key-rotation payload history.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -28,14 +28,14 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-AV-27 — durable key-rotation history
-- Starting checkpoint: `7286a3c`
+- Task ID: FW-AV-28 — durable key-rotation payload history
+- Starting checkpoint: `359d722`
 - Canonical owner: `DurableCatalogSequenceStore` owns both the canonical sequence watermark and one bounded accepted-content slot; `AcceptedCatalogCache` remains the sole in-memory slot, and `TrustedSignatureCatalog` remains the immutable content owner.
-- Acceptance criteria: every accepted rotation sequence is retained durably in order, rather than only preserving the latest watermark, as the foundation for chained restart recovery.
+- Acceptance criteria: every accepted rotation retains its bounded signed public payload alongside its ordered durable sequence, enabling later chained verification without key transport.
 - Negative paths: failed Evidence preserves the content row; a missing, stale, malformed, oversized, or metadata-mismatched row denies. Clear cannot lower, delete, or advance anti-rollback state or create response authority.
 - Proof plan: focused clear/recovery/watermark/Evidence regression, exact read-only commit review, full suite, and integrity gate after the bounded slice completes.
-- Exact first change: atomically append the accepted rotation sequence to `accepted_publisher_key_rotation_history` alongside the existing latest-sequence watermark.
-- Proof: focused FW-AV tests passed (`17 passed`); full Linux suite passed (`662 passed, 1 skipped`); the default FW-INTEGRITY gate passed every hard check and its Golden Path at `d6e83d7`. Exact local read-only review found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and defined-but-unimplemented identity, normalized-events, SOC-incident, and compliance owners.
+- Exact first change: atomically persist a 4 KiB-bounded canonical signed rotation payload alongside its history sequence and latest watermark.
+- Proof: focused FW-AV tests passed (`17 passed`); full Linux suite passed (`662 passed, 1 skipped`); the default FW-INTEGRITY gate passed every hard check and its Golden Path at `d41f662`. Exact local read-only review found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and defined-but-unimplemented identity, normalized-events, SOC-incident, and compliance owners.
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
 - Blocker: none.
 - Next action: derive a bounded startup-recovery seam that explicitly re-verifies, recovers, loads, and re-admits current catalog content without adding transport, endpoint integration, quarantine, or remediation.
@@ -98,6 +98,8 @@ On every restart or continuation:
 - 2026-09-01: FW-AV-25 complete at `da87d08`: startup recovery now writes canonical Evidence for the fresh verified catalog before in-memory re-admission; Evidence failure denies without restoring cache access. Focused proof passed (17 tests); full Linux suite passed (662 passed, 1 skipped); the default integrity gate passed every hard check and its Golden Path. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap ownership gaps.
 - 2026-09-01: FW-AV-26 complete at `544b73b`: root-authorized publisher-key rotations can now recover only after fresh root verification and exact durable sequence matching, with canonical Evidence required before the rotated root is returned. Focused proof passed (17 tests); full Linux suite passed (662 passed, 1 skipped); the default integrity gate passed every hard check and its Golden Path. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap ownership gaps.
 - 2026-09-01: FW-AV-27 complete at `d6e83d7`: each accepted publisher-key rotation now appends its sequence to bounded durable history atomically with the latest watermark. This retains ordered recovery evidence without changing key authority or response behavior. Focused proof passed (17 tests); full Linux suite passed (662 passed, 1 skipped); the default integrity gate passed every hard check and its Golden Path. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap ownership gaps.
+
+- 2026-09-01: FW-AV-28 complete at `d41f662`: accepted publisher-key rotations now persist bounded canonical signed public payloads alongside ordered sequence history. Focused proof passed (17 tests); full Linux suite passed (662 passed, 1 skipped); the default integrity gate passed every hard check and its Golden Path. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap ownership gaps.
 
 ## Stop conditions
 
