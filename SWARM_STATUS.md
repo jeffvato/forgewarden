@@ -4,7 +4,7 @@
 
 - Active phase: FW-AV — Native anti-malware
 - Current focus: FW-AV — publisher-signed detection-content trust
-- Current task: FW-AV-46 — offline source-candidate future-date denial.
+- Current task: FW-AV Stage 1 source-content foundation complete; Stage 2 intake scope awaits Customer Root direction.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -28,17 +28,17 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-AV-46 — offline source-candidate future-date denial
-- Starting checkpoint: `0be88b8`
-- Canonical owner: `DefinitionSourceRegistry` owns the explicit caller-supplied candidate-capture clock check; `DefinitionSourceCandidateReview` retains immutable non-admission metadata, while `TrustedSignatureCatalog`, `FWKeysCatalogTrustRoot`, and `DurableCatalogSequenceStore` remain the only catalog/trust/anti-rollback owners.
-- Acceptance criteria: an opaque source candidate requires an explicit non-negative capture clock and denies before object creation when its claimed capture time is later than that clock. Review/capture ordering and review Evidence requirements remain mandatory.
-- Negative paths: future-dated candidate capture, future-dated or pre-capture review timestamps, direct candidate/review construction, foreign-registry candidates, invalid or approval-like dispositions, and unavailable Evidence fail closed. No endpoint, URL, credential, downloader, parser, network call, catalog admission, cache mutation, quarantine, remediation, or response authority is added.
-- Proof plan: focused capture-clock/negative-path regression, exact read-only candidate review, full suite, and integrity gate after the bounded slice completes.
-- Exact first change: require an explicit `now_epoch` and reject future-dated offline source candidates before allocation.
-- Proof: focused FW-AV tests passed (`20 passed`); full Linux suite passed (`665 passed, 1 skipped`); the default FW-INTEGRITY gate passed every hard check and its Golden Path at `1915549`. Exact local read-only review found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and defined-but-unimplemented identity, normalized-events, SOC-incident, and compliance owners.
+- Task ID: FW-AV Stage 2 source-intake authority boundary
+- Starting checkpoint: `1915549` (FW-AV-46 accepted)
+- Canonical owner: `DefinitionSourceRegistry` and `DefinitionSourceCandidateReview` own the completed offline declaration, provenance, and non-admission review boundary. `TrustedSignatureCatalog`, `FWKeysCatalogTrustRoot`, and `DurableCatalogSequenceStore` remain the only catalog, trust, and anti-rollback owners.
+- Acceptance criteria: do not construct a parser, catalog-admission path, or source connector until Customer Root selects one initial offline signed-bundle format and authorizes its licensing/scope. The existing source boundary remains disabled, opaque, audited, timestamp-bound, and non-admitting.
+- Negative paths: any endpoint, URL, credential, downloader, network call, parser, catalog admission, cache mutation, quarantine, remediation, or response authority remains denied. Future-dated candidate capture, future-dated or pre-capture review timestamps, direct candidate/review construction, foreign-registry candidates, approval-like dispositions, and unavailable Evidence remain fail closed.
+- Proof plan: once the scope is authorized, add a parser/admission bridge only for that named offline format; prove malformed input, unsigned/untrusted content, wrong source/license provenance, stale/replayed content, and unavailable Evidence all deny before canonical catalog mutation.
+- Exact first change: Customer Root authorizes the exact initial offline signed definition-bundle format and license boundary; then add its smallest canonical adapter without source transport or response authority.
+- Proof: FW-AV-46 focused proof passed (`20 passed`); full Linux suite passed (`665 passed, 1 skipped`); the default FW-INTEGRITY gate passed every hard check and its Golden Path at `1915549`. Exact local read-only review found no blocking defect. No further meaningful offline source-review control remains without crossing the prohibited parser/catalog-admission boundary.
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
-- Blocker: none.
-- Next action: derive the next safe bounded offline source-review boundary without adding transport, endpoint integration, parser, catalog admission, quarantine, or remediation.
+- Blocker: B-003 — FW-AV Stage 2 definition-intake scope.
+- Next action: await Customer Root's selection and authorization of one initial offline signed definition-bundle format and license boundary; then implement only its canonical non-network adapter.
 - Platform delivery definition: Windows and Linux are the first endpoint targets; macOS, Android, and iOS are later platform-native releases. Detailed scope and required proof are in `docs/fw-av-windows-linux-delivery-plan.md`.
 
 ## Execution log
@@ -137,12 +137,14 @@ On every restart or continuation:
 
 - 2026-09-01: FW-AV-46 complete at `1915549`: opaque source-candidate capture now requires an explicit non-negative clock and rejects a claimed capture timestamp later than that clock before any candidate object is created. Candidate/review chronology and non-admission Evidence remain enforced. This adds no source access or admission: no transport, endpoint, parser, catalog, cache, scanner, quarantine, remediation, or response behavior exists. Focused proof passed (20 tests); full Linux suite passed (665 passed, 1 skipped); the default integrity gate passed every hard check and its Golden Path. Exact local read-only review found no blocking defect. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and roadmap ownership gaps.
 
+- 2026-09-01: FW-AV Stage 1 source-content foundation closed at `1915549`: all disabled future-source declarations, opaque candidate provenance, required non-admission Evidence, deterministic review snapshots, and capture/review temporal integrity are accepted. Further source-review hardening would be cosmetic; the next meaningful control must parse and admit one named offline signed bundle into the existing canonical FW-KEYS/catalog boundary. That is intentionally outside the active no-parser/no-admission authority, so B-003 records the required Customer Root format and licensing decision. No product code or response authority was changed.
+
 ## Stop conditions
 
 Do not stop merely because a task or review cycle finished. Stop only under the explicit conditions in `AGENTS.md`, and record the exact reason and first resume action here.
 
 ## Current stop condition
 
-- Reason: NONE
-- Exact condition: Jeff approved the FW-KEYS vendor-release signing policy and future disabled-by-default source declarations. Signed-bundle verification, anti-replay, root rotation and expiry, bounded accepted-catalog replacement, key-aware freshness, in-memory and durable cache clear/recovery, durable accepted content persistence, bounded chained rotation recovery, publisher-key identifier/public-material non-reuse, offline source declarations, opaque candidate provenance binding, Evidence-required non-admission review, review snapshot binding, and capture/review timestamp integrity are accepted; transport, endpoint, parser, catalog-admission, and response work remain separately bounded.
-- First resume action: derive the next safe bounded offline source-review boundary without changing the verification, Evidence, anti-rollback, DRY_RUN, deployment-disabled, or kill-switch boundaries.
+- Reason: CUSTOMER_ROOT_SCOPE_DECISION_REQUIRED
+- Exact condition: FW-AV Stage 1 source-content trust is accepted through `1915549`. A further meaningful source-review unit requires an explicit Customer Root choice of one initial offline signed definition-bundle format and its license boundary, because parsing or admitting opaque candidate bytes would otherwise violate the active no-parser/no-catalog-admission scope. Existing sources remain disabled and no network, endpoint, credential, quarantine, remediation, or response authority exists.
+- First resume action: Customer Root authorizes the initial offline signed definition-bundle format and license boundary; implement its smallest adapter into `TrustedSignatureCatalog` through the existing `FWKeysCatalogTrustRoot` and `DurableCatalogSequenceStore` verification path, with transport and response still excluded.
