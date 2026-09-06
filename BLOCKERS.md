@@ -4,13 +4,17 @@ This file records only genuine blockers that require Customer Root authority, un
 
 ## Current blockers
 
-### B-011 — Exact Claude review pending for FW-ENDPOINT-02 follow-up
+None.
+
+### B-011 — Exact Claude review pending for FW-ENDPOINT-02 follow-up (resolved)
 
 - Related task/requirement: FW-ENDPOINT-02 — ordinary-size unexpected top-level fixture-key regression
 - Exact condition: follow-up test candidate is not yet reviewed against its exact commit.
 - Why work cannot complete safely: deterministic tests cannot substitute for the required exact external reviewer; no acceptance may be inferred without exact APPROVE/LOW.
 - Evidence: the follow-up is test-only; focused fixture proof passes (9 tests), and no production code or authority changed.
 - First resume action: obtain exact Claude APPROVE/LOW for the follow-up candidate, then checkpoint the proof-only update.
+
+- Resolution: canonical Claude exact-commit review for `97fdb59` returned APPROVED; focused proof passed (9 tests). The follow-up is test-only and preserves all endpoint safety boundaries.
 
 ### B-010 — Exact Claude review pending for FW-ENDPOINT-02 (resolved)
 
