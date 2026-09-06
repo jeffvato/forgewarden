@@ -4,7 +4,7 @@
 
 - Active phase: FW-AV — Native anti-malware
 - Current focus: FW-AV — publisher-signed detection-content trust
-- Current task: FW-AV-49 — Reject explicit negative source reviews before ClamAV admission approval.
+- Current task: FW-AV-49 — Reject explicit negative source reviews before ClamAV admission approval (review pending).
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -30,19 +30,21 @@ On every restart or continuation:
 
 - Task ID: FW-AV-48 — Evidence-backed source-candidate approval before ClamAV admission
 - Starting checkpoint: `518b113` (FW-AV-47 accepted)
-- Candidate commit: `07842a614a5557b914946b065070e71199ce2f37` (test-coverage repair for FW-AV-48); accepted after exact Claude Co-Work APPROVE/LOW.
+- Candidate commit: `d729ca450db1e37c19943a0212d477d000006862` (FW-AV-49 implementation and regression); FW-AV-48 repair `07842a6` accepted.
 - Canonical owner: `DefinitionSourceRegistry.approve_candidate` owns explicit approval Evidence; `admit_clamav_signed_bundle` enforces exact approval/candidate binding. FW-KEYS, `TrustedSignatureCatalog`, `DurableCatalogSequenceStore`, and canonical audit remain the only verification/catalog/anti-rollback owners.
 - Acceptance criteria: a ClamAV bundle can be admitted only with a registry-created approval bound to a reviewed candidate, exact payload bytes, source identity/license, and bounded chronology. Approval Evidence must succeed before canonical sequence/content mutation.
 - Negative paths: missing/direct/foreign approvals, candidate or payload mismatch, future approval, pre-review approval, malformed/unsigned/untrusted/stale/replayed bundle, and unavailable Evidence deny before unauthorized admission. No source transport, endpoint, credential, network, quarantine, remediation, or response authority is added.
-- Proof plan: focused rejection-disposition approval denial regression, exact Claude review of the FW-AV-49 candidate, full suite, and integrity gate after review acceptance.
+- Proof plan: focused rejection-disposition approval denial regression, exact Claude review of candidate `d729ca4`, full suite, and integrity gate after review acceptance.
 - Exact first change: reject an explicit `REJECTED` candidate review in `DefinitionSourceRegistry.approve_candidate` and add a denial regression; preserve all existing canonical admission boundaries.
-- Proof: FW-AV-48 focused proof passed (`21 passed`), the full Linux suite passed (`666 passed, 1 skipped`), and the integrity gate passed every hard check and its Golden Path. Exact Claude Co-Work review of `07842a6` returned schema-valid APPROVE/LOW with no missing tests or blocking findings. Health remains YELLOW only for the pre-existing dependency and roadmap-owner gaps.
+- Proof: FW-AV-48 focused proof passed (`21 passed`), the full Linux suite passed (`666 passed, 1 skipped`), and the integrity gate passed every hard check and its Golden Path. Exact Claude Co-Work review of `07842a6` returned schema-valid APPROVE/LOW with no missing tests or blocking findings. FW-AV-49 focused proof passes (`21 passed`); exact review and full validation remain pending. Health remains YELLOW only for the pre-existing dependency and roadmap-owner gaps.
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
-- Blocker: none for FW-AV-48.
-- Next action: implement FW-AV-49, then obtain exact read-only review before acceptance.
+- Blocker: B-005 — exact Claude review unavailable for FW-AV-49 candidate `d729ca4`.
+- Next action: obtain a valid exact-commit Claude APPROVE/LOW for `d729ca4`; then run the full suite/integrity gate and checkpoint acceptance.
 - Platform delivery definition: Windows and Linux are the first endpoint targets; macOS, Android, and iOS are later platform-native releases. Detailed scope and required proof are in `docs/fw-av-windows-linux-delivery-plan.md`.
 
 ## Execution log
+
+- 2026-09-06: FW-AV-49 candidate `d729ca4` rejects `REJECTED` source-review dispositions before approval creation and adds a regression. Focused FW-AV proof passed (21 tests). Canonical Claude review is pending; no acceptance is inferred without exact APPROVE/LOW.
 
 - 2026-09-06: FW-AV-48 accepted at `07842a6` with repair checkpoint `dfa10fb`: focused FW-AV proof passed (21 tests), full Linux suite passed (666 passed, 1 skipped), integrity gate passed all hard checks and Golden Path with pre-existing YELLOW findings, and exact Claude Co-Work review returned APPROVE/LOW. The next bounded control is fail-closed rejection of explicitly rejected source reviews.
 
