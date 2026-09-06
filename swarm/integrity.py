@@ -22,7 +22,7 @@ CANONICAL_OWNERSHIP: dict[str, dict[str, Any]] = {
     "mcp_access": {"owner": "MCP Gateway", "implementation": "swarm.mcp_gateway.MCPGateway", "status": "IMPLEMENTED"},
     "evidence": {"owner": "FW-EVID", "implementation": "swarm.core.AuditLog / evidence modules", "status": "IMPLEMENTED_PARTIAL"},
     "recovery": {"owner": "FW-REC", "implementation": "swarm.autonomous_loop recovery sequencing", "status": "IMPLEMENTED_PARTIAL"},
-    "normalized_events": {"owner": "canonical ForgeWarden Event Schema", "implementation": "not_yet_present_in_checkout", "status": "DEFINED"},
+    "normalized_events": {"owner": "canonical ForgeWarden Event Schema", "implementation": "swarm.normalized_events.NormalizedEventStore", "status": "IMPLEMENTED_PARTIAL"},
     "soc_incidents": {"owner": "FW-SOC", "implementation": "not_yet_present_in_checkout", "status": "DEFINED"},
     "compliance": {"owner": "FW-COMP", "implementation": "roadmap only", "status": "DEFINED"},
 }

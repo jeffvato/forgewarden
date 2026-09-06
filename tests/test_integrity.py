@@ -22,7 +22,8 @@ def test_canonical_ownership_exposes_missing_roadmap_primitives_honestly():
     assert CANONICAL_OWNERSHIP["model_selection"]["implementation"] == "swarm.model_broker.ModelBroker"
     assert CANONICAL_OWNERSHIP["mcp_access"]["implementation"] == "swarm.mcp_gateway.MCPGateway"
     assert CANONICAL_OWNERSHIP["identity"]["status"] == "DEFINED"
-    assert CANONICAL_OWNERSHIP["normalized_events"]["status"] == "DEFINED"
+    assert CANONICAL_OWNERSHIP["normalized_events"]["implementation"] == "swarm.normalized_events.NormalizedEventStore"
+    assert CANONICAL_OWNERSHIP["normalized_events"]["status"] == "IMPLEMENTED_PARTIAL"
 
 
 def test_standing_gate_documents_ownership_graph_and_product_map():
