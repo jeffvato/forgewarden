@@ -50,3 +50,12 @@ def test_normalized_event_store_fails_closed_on_evidence_failure_without_enqueue
     with pytest.raises(EndpointFixtureDenied, match="EVIDENCE_WRITE_FAILED"):
         store.admit_fixture(_fixture(), tenant_id="tenant-a", device_id="device-a", source="LINUX_SENSOR", now_epoch=150)
     assert store.queued_count(tenant_id="tenant-a", device_id="device-a") == 0
+
+
+def test_normalized_event_store_caps_duplicate_tombstones_per_device():
+    store = NormalizedEventStore(lambda *_args: None, max_queued_events_per_device=1024)
+    for index in range(1024):
+        store.admit_fixture(_fixture(f"event-{index}"), tenant_id="tenant-a", device_id="device-a", source="LINUX_SENSOR", now_epoch=150)
+        assert store.dequeue(tenant_id="tenant-a", device_id="device-a") is not None
+    with pytest.raises(EndpointFixtureDenied, match="EVENT_ID_CAPACITY"):
+        store.admit_fixture(_fixture("event-over-cap"), tenant_id="tenant-a", device_id="device-a", source="LINUX_SENSOR", now_epoch=150)

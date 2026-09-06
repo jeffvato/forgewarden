@@ -27,6 +27,7 @@ class NormalizedEventStore:
         self._limit = max_queued_events_per_device
         self._lock = RLock()
         self._seen: set[tuple[str, str, str]] = set()
+        self._seen_counts: dict[tuple[str, str], int] = {}
         self._queues: dict[tuple[str, str], deque[EndpointObservation]] = {}
 
     @property
@@ -52,6 +53,8 @@ class NormalizedEventStore:
             queue = self._queues.setdefault(device_key, deque())
             if len(queue) >= self._limit:
                 raise EndpointFixtureDenied("EVENT_QUEUE_FULL")
+            if self._seen_counts.get(device_key, 0) >= MAX_QUEUED_EVENTS_PER_DEVICE:
+                raise EndpointFixtureDenied("EVENT_ID_CAPACITY")
             try:
                 self._audit("endpoint_event_admitted", {
                     "event_id": observation.event_id,
@@ -67,6 +70,7 @@ class NormalizedEventStore:
             except Exception as exc:
                 raise EndpointFixtureDenied("EVIDENCE_WRITE_FAILED") from exc
             self._seen.add(event_key)
+            self._seen_counts[device_key] = self._seen_counts.get(device_key, 0) + 1
             queue.append(observation)
             return observation
 
