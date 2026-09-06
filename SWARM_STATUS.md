@@ -30,18 +30,21 @@ On every restart or continuation:
 
 - Task ID: FW-AV-48 — Evidence-backed source-candidate approval before ClamAV admission
 - Starting checkpoint: `518b113` (FW-AV-47 accepted)
+- Candidate commit: `07842a614a5557b914946b065070e71199ce2f37` (test-coverage repair for FW-AV-48)
 - Canonical owner: `DefinitionSourceRegistry.approve_candidate` owns explicit approval Evidence; `admit_clamav_signed_bundle` enforces exact approval/candidate binding. FW-KEYS, `TrustedSignatureCatalog`, `DurableCatalogSequenceStore`, and canonical audit remain the only verification/catalog/anti-rollback owners.
 - Acceptance criteria: a ClamAV bundle can be admitted only with a registry-created approval bound to a reviewed candidate, exact payload bytes, source identity/license, and bounded chronology. Approval Evidence must succeed before canonical sequence/content mutation.
 - Negative paths: missing/direct/foreign approvals, candidate or payload mismatch, future approval, pre-review approval, malformed/unsigned/untrusted/stale/replayed bundle, and unavailable Evidence deny before unauthorized admission. No source transport, endpoint, credential, network, quarantine, remediation, or response authority is added.
-- Proof plan: focused approval/admission denial regressions, exact Claude review of candidate `6a13826`, full suite, and integrity gate after review acceptance.
+- Proof plan: focused approval/admission denial regressions, exact Claude review of candidate `07842a6`, full suite, and integrity gate after review acceptance.
 - Exact first change: require `DefinitionSourceCandidateApproval` for the existing local ClamAV adapter and add approval-binding regressions.
-- Proof: focused FW-AV tests passed (`21 passed`). Exact local read-only review found no blocking issue. Claude exact-commit review of `6a13826` was attempted through the canonical verifier but timed out after 180 seconds; no provider approval is inferred. Full suite/integrity remain pending until valid exact review completes. Health remains YELLOW only for the pre-existing dependency and roadmap-owner gaps.
+- Proof: focused FW-AV tests passed (`21 passed`) after adding direct missing-approval, payload/timestamp mismatch, approval chronology, and unregistered-source denial regressions. The user-provided read-only review of predecessor `6a13826` returned HUMAN_REQUIRED for the missing tests; it is not approval of this repair. The canonical Claude exact-commit review of `07842a6` was attempted and timed out after 180 seconds; no provider approval is inferred. Full suite/integrity remain pending until valid exact review completes. Health remains YELLOW only for the pre-existing dependency and roadmap-owner gaps.
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
-- Blocker: B-004 — exact Claude review unavailable for candidate `6a13826`.
-- Next action: retry the canonical exact-commit Claude review once the provider returns within its bounded timeout; then run the full suite/integrity gate and checkpoint acceptance.
+- Blocker: B-004 — exact Claude review unavailable for candidate `07842a6`.
+- Next action: obtain a valid exact-commit Claude APPROVE/LOW for `07842a6`; then run the full suite/integrity gate and checkpoint acceptance.
 - Platform delivery definition: Windows and Linux are the first endpoint targets; macOS, Android, and iOS are later platform-native releases. Detailed scope and required proof are in `docs/fw-av-windows-linux-delivery-plan.md`.
 
 ## Execution log
+
+- 2026-09-06: FW-AV-48 repair candidate `07842a6` adds direct regression coverage for missing approval, payload mismatch, capture-time mismatch, approval chronology, and unregistered-source denial. Focused proof passed (21 tests). Canonical Claude exact-commit review timed out after 180 seconds; no approval was inferred, so full suite/integrity validation remains pending.
 
 - 2026-08-30: Re-evaluated the FW-ASOC-01 canonical-integration gap. `ROADMAP.md`, `DECISIONS.md`, `swarm/integrity.py`, and the functionality map consistently identify Action Tickets, Model Broker, MCP Gateway, and full Z3 as canonical owners, but no concrete adapters are present in this checkout. No replacement subsystem was added: absent canonical validation continues to deny authorization. Next safe work remains bounded hardening and proof at the existing fail-closed boundary.
 - 2026-08-30: Corrected AI kill-switch scope. It now revokes only model-bound AI identities and their leases, preserving unbound human deterministic-administration identities as required. Focused ASOC security tests passed (31 passed).
