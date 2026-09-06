@@ -4,7 +4,7 @@
 
 - Active phase: FW-AV — Native anti-malware
 - Current focus: FW-AV — publisher-signed detection-content trust
-- Current task: derive next bounded endpoint or anti-malware control after accepted recovery-safe acknowledgment.
+- Current task: derive next bounded endpoint or anti-malware control after accepted sensor-adapter contract.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -30,13 +30,13 @@ On every restart or continuation:
 
 - Task ID: FW-ENDPOINT-02 — Normalize bounded Windows/Linux endpoint fixtures
 - Starting checkpoint: `160ba0c` (FW-ENDPOINT-01 accepted)
-- Candidate commit: `3b56f6077602871a5c701ceacc08c4c0fa3b9391` (atomic dequeue regression; includes `6b1813b`, `8cb7410`, and prior FW-ENDPOINT-03 commits).
+- Candidate commit: `aab40ca985a0a4713ea9c7c4b3a5fdb793c26f3b` (FW-ENDPOINT-05 design-only adapter contract).
 - Canonical owner: `swarm.endpoint_fixtures.normalize_fixture` is only a caller-supplied fixture seam; canonical normalized-event ownership remains future FW-ENDPOINT work. Existing FW-KEYS, `TrustedSignatureCatalog`, `DurableCatalogSequenceStore`, and canonical audit remain the only verification/catalog/anti-rollback owners.
 - Acceptance criteria: bounded Windows/Linux fixture input is tenant/device/source-bound, rejected on malformed/future/oversized/unknown data, emits canonical Evidence before return, and is fixed to DRY_RUN/DETECT_ONLY without live endpoint authority.
 - Negative paths: tenant/device/source mismatch, unknown event, future timestamp, oversized input/ancestry/indicators, invalid evidence reference, and unavailable Evidence deny closed. No source transport, endpoint, credential, network, quarantine, remediation, or response authority is added.
 - Proof plan: focused fixture normalization and denial regressions, exact Claude review of candidate `a433368`, full suite, and integrity gate after review acceptance.
 - Exact first change: add an in-memory normalizer for caller-supplied Windows/Linux fixtures with bounded fields, tenant/device/source binding, Evidence-first return, and fixed DRY_RUN/DETECT_ONLY output; no live sensor or endpoint authority.
-- Proof: FW-ENDPOINT-02 focused proof passed (`8 passed`) and its exact Claude review returned APPROVE/LOW; follow-up key regression passed (`9 passed`) and was approved. FW-ENDPOINT-03 focused proof passed (`13 tests`, then `22` including integrity metadata); bounded-state candidate `8cb7410` was approved, full suite passed (`680 passed, 1 skipped`), and integrity gate passed all hard checks and Golden Path. FW-ENDPOINT-04 focused proof passed (`26 tests`); atomic acknowledgment candidate `3b56f60` received exact Claude APPROVE/LOW with no missing tests, full Linux suite passed (`684 passed, 1 skipped`), and integrity gate passed all hard checks and Golden Path. Health remains YELLOW only for pre-existing dependency and roadmap-owner findings (`identity`, `soc_incidents`, `compliance`).
+- Proof: FW-ENDPOINT-02 focused proof passed (`8 passed`) and its exact Claude review returned APPROVE/LOW; follow-up key regression passed (`9 passed`) and was approved. FW-ENDPOINT-03 focused proof passed (`22 tests` including integrity metadata); FW-ENDPOINT-04 focused proof passed (`26 tests`) with exact Claude APPROVE/LOW, full suite passed (`684 passed, 1 skipped`), and integrity gate passed all hard checks and Golden Path. FW-ENDPOINT-05 design proof passed (`11 tests`), exact Claude review returned APPROVE/LOW with no missing tests, full Linux suite passed (`685 passed, 1 skipped`), and integrity gate passed all hard checks and Golden Path. Health remains YELLOW only for pre-existing dependency and roadmap-owner findings (`identity`, `soc_incidents`, `compliance`).
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
 - Blocker: none for FW-ENDPOINT-03.
 - Next action: derive the next bounded control from the roadmap while preserving the canonical normalized-event owner and all no-live-endpoint boundaries.
@@ -59,6 +59,8 @@ On every restart or continuation:
 - 2026-09-06: FW-ENDPOINT-03 bounded-state repair `8cb7410` accepted: duplicate tombstones are capped at 1,024 per tenant/device to prevent unbounded memory growth; focused proof passed (22 tests), exact Claude review returned APPROVED, full suite passed (680 passed, 1 skipped), and integrity gate passed all hard checks and Golden Path. No live endpoint or response authority was added.
 
 - 2026-09-06: FW-ENDPOINT-04 accepted at `3b56f60`: queue inspection is retry-safe, acknowledgment writes canonical Evidence before removing the exact tenant/device queue head, Evidence failure retains the event, and compatibility dequeue is atomic under concurrency. Focused proof passed (26 tests), exact Claude review returned APPROVE/LOW with no missing tests, full Linux suite passed (684 passed, 1 skipped), and integrity gate passed all hard checks and Golden Path. No live endpoint or response authority was added.
+
+- 2026-09-06: FW-ENDPOINT-05 accepted at `aab40ca`: design-only Windows/Linux sensor adapter contract routes future observations to the canonical NormalizedEventStore and explicitly preserves all no-live-endpoint boundaries. Focused proof passed (11 tests), exact Claude review returned APPROVE/LOW with no missing tests, full Linux suite passed (685 passed, 1 skipped), and integrity gate passed all hard checks and Golden Path. No sensor hooks, services, transport, or response authority were added.
 
 - 2026-09-06: FW-ENDPOINT-01 accepted at `160ba0c` with status checkpoint `0824f4a`: focused contract proof passed (1 test), exact Claude Co-Work review returned APPROVE/LOW, full suite passed (667 passed, 1 skipped), and integrity gate passed all hard checks and Golden Path with only pre-existing YELLOW findings.
 
