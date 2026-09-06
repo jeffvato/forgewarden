@@ -1,0 +1,86 @@
+"""Canonical bounded normalized-event owner for caller-supplied fixtures.
+
+This module owns only the stateful handoff after the existing fixture seam has
+validated an observation.  It has no platform, filesystem, process, network,
+credential, deployment, quarantine, remediation, or response access.
+"""
+from __future__ import annotations
+
+from collections import deque
+from threading import RLock
+from typing import Any, Mapping
+
+from .asoc import AuditSink
+from .endpoint_fixtures import EndpointFixtureDenied, EndpointObservation, normalize_fixture
+
+
+MAX_QUEUED_EVENTS_PER_DEVICE = 1024
+
+
+class NormalizedEventStore:
+    """Bounded tenant/device event queue with event-ID deduplication."""
+
+    def __init__(self, audit: AuditSink, *, max_queued_events_per_device: int = MAX_QUEUED_EVENTS_PER_DEVICE) -> None:
+        if not callable(audit) or not isinstance(max_queued_events_per_device, int) or not 1 <= max_queued_events_per_device <= MAX_QUEUED_EVENTS_PER_DEVICE:
+            raise ValueError("invalid normalized-event store configuration")
+        self._audit = audit
+        self._limit = max_queued_events_per_device
+        self._lock = RLock()
+        self._seen: set[tuple[str, str, str]] = set()
+        self._queues: dict[tuple[str, str], deque[EndpointObservation]] = {}
+
+    @property
+    def max_queued_events_per_device(self) -> int:
+        return self._limit
+
+    def admit_fixture(
+        self,
+        fixture: Mapping[str, Any], *, tenant_id: str, device_id: str, source: str,
+        now_epoch: int,
+    ) -> EndpointObservation:
+        """Normalize, deduplicate, write Evidence, then enqueue one observation."""
+        # First perform all pure fixture validation without an Evidence side effect.
+        observation = normalize_fixture(
+            fixture, tenant_id=tenant_id, device_id=device_id, source=source,
+            now_epoch=now_epoch, audit=lambda *_args: None,
+        )
+        event_key = (observation.tenant_id, observation.device_id, observation.event_id)
+        device_key = (observation.tenant_id, observation.device_id)
+        with self._lock:
+            if event_key in self._seen:
+                raise EndpointFixtureDenied("EVENT_ID_DUPLICATE")
+            queue = self._queues.setdefault(device_key, deque())
+            if len(queue) >= self._limit:
+                raise EndpointFixtureDenied("EVENT_QUEUE_FULL")
+            try:
+                self._audit("endpoint_event_admitted", {
+                    "event_id": observation.event_id,
+                    "tenant_id": observation.tenant_id,
+                    "device_id": observation.device_id,
+                    "observed_at_epoch": observation.observed_at_epoch,
+                    "event_type": observation.event_type,
+                    "source": observation.source,
+                    "evidence_ref": observation.evidence_ref,
+                    "mode": observation.mode,
+                    "action": observation.action,
+                })
+            except Exception as exc:
+                raise EndpointFixtureDenied("EVIDENCE_WRITE_FAILED") from exc
+            self._seen.add(event_key)
+            queue.append(observation)
+            return observation
+
+    def dequeue(self, *, tenant_id: str, device_id: str) -> EndpointObservation | None:
+        """Remove and return the oldest admitted event for one tenant/device."""
+        with self._lock:
+            queue = self._queues.get((tenant_id, device_id))
+            if not queue:
+                return None
+            observation = queue.popleft()
+            if not queue:
+                self._queues.pop((tenant_id, device_id), None)
+            return observation
+
+    def queued_count(self, *, tenant_id: str, device_id: str) -> int:
+        with self._lock:
+            return len(self._queues.get((tenant_id, device_id), ()))
