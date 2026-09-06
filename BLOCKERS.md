@@ -4,6 +4,14 @@ This file records only genuine blockers that require Customer Root authority, un
 
 ## Current blockers
 
+### B-013 — Exact Claude review pending for FW-ENDPOINT-07 boundary proof
+
+- Related task/requirement: FW-ENDPOINT-07 — exact-128 positive batch boundary regression
+- Exact condition: candidate `8ad33d104f905f524e8150193e34a469a01d21b4` has focused proof but no exact Claude review because reviewer capacity is unavailable until 7:00 PM CST.
+- Why work cannot complete safely: no acceptance may be inferred without the required exact external reviewer.
+- Evidence: proof-only test candidate; focused endpoint batch proof passed (27 tests); no production code changed.
+- First resume action: submit exact candidate `8ad33d1` to Claude after capacity reset, then accept only on APPROVE/LOW.
+
 ### B-012 — Canonical normalized-event owner unavailable (resolved)
 
 - Related task/requirement: FW-ENDPOINT-03 — stateful event deduplication and bounded queue/backpressure
