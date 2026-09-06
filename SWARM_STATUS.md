@@ -4,7 +4,7 @@
 
 - Active phase: FW-AV — Native anti-malware
 - Current focus: FW-AV — publisher-signed detection-content trust
-- Current task: FW-ENDPOINT-02 — Normalize bounded Windows/Linux endpoint fixtures (review pending).
+- Current task: derive next bounded FW-ENDPOINT control after accepted fixture normalization.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -28,23 +28,25 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-AV-51 — Prove the exact seven-day approval freshness boundary
-- Starting checkpoint: `518b113` (FW-AV-47 accepted)
-- Candidate commit: `a4333680362544c2b0efa65437993944a832116d` (bounded fixture normalizer and regressions); FW-ENDPOINT-01 `160ba0c` accepted.
-- Canonical owner: `DefinitionSourceRegistry.approve_candidate` owns explicit approval Evidence; `admit_clamav_signed_bundle` enforces exact approval/candidate binding. FW-KEYS, `TrustedSignatureCatalog`, `DurableCatalogSequenceStore`, and canonical audit remain the only verification/catalog/anti-rollback owners.
-- Acceptance criteria: a ClamAV bundle can be admitted only with a registry-created approval bound to a reviewed candidate, exact payload bytes, source identity/license, and bounded chronology. Approval Evidence must succeed before canonical sequence/content mutation.
-- Negative paths: missing/direct/foreign approvals, candidate or payload mismatch, future approval, pre-review approval, malformed/unsigned/untrusted/stale/replayed bundle, and unavailable Evidence deny before unauthorized admission. No source transport, endpoint, credential, network, quarantine, remediation, or response authority is added.
+- Task ID: FW-ENDPOINT-02 — Normalize bounded Windows/Linux endpoint fixtures
+- Starting checkpoint: `160ba0c` (FW-ENDPOINT-01 accepted)
+- Candidate commit: `a4333680362544c2b0efa65437993944a832116d` (bounded fixture normalizer and regressions).
+- Canonical owner: `swarm.endpoint_fixtures.normalize_fixture` is only a caller-supplied fixture seam; canonical normalized-event ownership remains future FW-ENDPOINT work. Existing FW-KEYS, `TrustedSignatureCatalog`, `DurableCatalogSequenceStore`, and canonical audit remain the only verification/catalog/anti-rollback owners.
+- Acceptance criteria: bounded Windows/Linux fixture input is tenant/device/source-bound, rejected on malformed/future/oversized/unknown data, emits canonical Evidence before return, and is fixed to DRY_RUN/DETECT_ONLY without live endpoint authority.
+- Negative paths: tenant/device/source mismatch, unknown event, future timestamp, oversized input/ancestry/indicators, invalid evidence reference, and unavailable Evidence deny closed. No source transport, endpoint, credential, network, quarantine, remediation, or response authority is added.
 - Proof plan: focused fixture normalization and denial regressions, exact Claude review of candidate `a433368`, full suite, and integrity gate after review acceptance.
 - Exact first change: add an in-memory normalizer for caller-supplied Windows/Linux fixtures with bounded fields, tenant/device/source binding, Evidence-first return, and fixed DRY_RUN/DETECT_ONLY output; no live sensor or endpoint authority.
-- Proof: FW-AV-50, FW-AV-51, and FW-ENDPOINT-01 remain accepted with focused/full validation and clean integrity gates. FW-ENDPOINT-02 focused proof passed (`8 passed`); exact review and broader validation remain pending. Health remains YELLOW only for the pre-existing dependency and roadmap-owner gaps.
+- Proof: FW-ENDPOINT-02 focused proof passed (`8 passed`); exact Claude review returned APPROVE/LOW with no blocking findings; full Linux suite passed (`674 passed, 1 skipped`); integrity gate passed all hard checks and Golden Path with only the pre-existing YELLOW dependency and roadmap-owner findings. Non-blocking review notes defer cross-call deduplication, queue/backpressure, and a dedicated extra-key regression to a future stateful canonical event owner.
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
-- Blocker: B-010 — exact Claude review pending for FW-ENDPOINT-02 candidate `a433368`.
-- Next action: obtain exact Claude APPROVE/LOW for `a433368`; then run the full suite/integrity gate and checkpoint acceptance.
+- Blocker: none for the accepted FW-ENDPOINT-02 unit.
+- Next action: derive the next bounded FW-ENDPOINT control from the roadmap without adding a live sensor, transport, or response authority.
 - Platform delivery definition: Windows and Linux are the first endpoint targets; macOS, Android, and iOS are later platform-native releases. Detailed scope and required proof are in `docs/fw-av-windows-linux-delivery-plan.md`.
 
 ## Execution log
 
 - 2026-09-06: FW-ENDPOINT-02 candidate `a433368` adds bounded caller-supplied Windows/Linux fixture normalization with Evidence-first return and fixed DRY_RUN/DETECT_ONLY output. Focused proof passed (8 tests); no live endpoint authority was added.
+
+- 2026-09-06: FW-ENDPOINT-02 accepted at `a433368`: exact Claude read-only review returned APPROVE/LOW with no blocking findings; full Linux suite passed (674 passed, 1 skipped); integrity gate passed all hard checks and Golden Path, remaining YELLOW only for the pre-existing dependency and roadmap-owner findings. Review notes explicitly defer cross-call deduplication, queue/backpressure, and a dedicated ordinary extra-key regression to a future canonical event owner.
 
 - 2026-09-06: FW-ENDPOINT-01 accepted at `160ba0c` with status checkpoint `0824f4a`: focused contract proof passed (1 test), exact Claude Co-Work review returned APPROVE/LOW, full suite passed (667 passed, 1 skipped), and integrity gate passed all hard checks and Golden Path with only pre-existing YELLOW findings.
 
