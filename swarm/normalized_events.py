@@ -50,7 +50,9 @@ class NormalizedEventStore:
         with self._lock:
             if event_key in self._seen:
                 raise EndpointFixtureDenied("EVENT_ID_DUPLICATE")
-            queue = self._queues.setdefault(device_key, deque())
+            queue = self._queues.get(device_key)
+            if queue is None:
+                queue = deque()
             if len(queue) >= self._limit:
                 raise EndpointFixtureDenied("EVENT_QUEUE_FULL")
             if self._seen_counts.get(device_key, 0) >= MAX_QUEUED_EVENTS_PER_DEVICE:
@@ -71,7 +73,7 @@ class NormalizedEventStore:
                 raise EndpointFixtureDenied("EVIDENCE_WRITE_FAILED") from exc
             self._seen.add(event_key)
             self._seen_counts[device_key] = self._seen_counts.get(device_key, 0) + 1
-            queue.append(observation)
+            self._queues.setdefault(device_key, queue).append(observation)
             return observation
 
     def admit_batch(
@@ -92,7 +94,9 @@ class NormalizedEventStore:
             raise EndpointFixtureDenied("EVENT_ID_DUPLICATE")
         device_key = (tenant_id, device_id)
         with self._lock:
-            queue = self._queues.setdefault(device_key, deque())
+            queue = self._queues.get(device_key)
+            if queue is None:
+                queue = deque()
             if len(queue) + len(observations) > self._limit:
                 raise EndpointFixtureDenied("EVENT_QUEUE_FULL")
             if any(key in self._seen for key in keys):
@@ -103,13 +107,13 @@ class NormalizedEventStore:
                 self._audit("endpoint_events_batch_admitted", {
                     "tenant_id": tenant_id, "device_id": device_id, "source": source,
                     "event_ids": [item.event_id for item in observations],
-                    "count": len(observations), "mode": "DRY_RUN", "action": "DETECT_ONLY",
+                    "count": len(observations), "mode": observations[0].mode, "action": observations[0].action,
                 })
             except Exception as exc:
                 raise EndpointFixtureDenied("EVIDENCE_WRITE_FAILED") from exc
             self._seen.update(keys)
             self._seen_counts[device_key] = self._seen_counts.get(device_key, 0) + len(observations)
-            queue.extend(observations)
+            self._queues.setdefault(device_key, queue).extend(observations)
             return observations
 
     def peek_next(self, *, tenant_id: str, device_id: str) -> EndpointObservation | None:

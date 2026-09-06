@@ -49,3 +49,13 @@ def test_batch_admission_preflights_queue_and_preserves_state_on_evidence_failur
     healthy = NormalizedEventStore(lambda *_args: None, max_queued_events_per_device=1)
     with pytest.raises(EndpointFixtureDenied, match="EVENT_QUEUE_FULL"):
         healthy.admit_batch(fixtures, tenant_id="tenant-a", device_id="device-a", source="LINUX_SENSOR", now_epoch=150)
+
+
+def test_batch_admission_denies_cross_batch_duplicate_and_empty_direct_batch():
+    store = NormalizedEventStore(lambda *_args: None)
+    fixtures = adapt_batch([_record("event-1")], source="LINUX_SENSOR", tenant_id="tenant-a", device_id="device-a")
+    store.admit_batch(fixtures, tenant_id="tenant-a", device_id="device-a", source="LINUX_SENSOR", now_epoch=150)
+    with pytest.raises(EndpointFixtureDenied, match="EVENT_ID_DUPLICATE"):
+        store.admit_batch(fixtures, tenant_id="tenant-a", device_id="device-a", source="LINUX_SENSOR", now_epoch=150)
+    with pytest.raises(EndpointFixtureDenied, match="BATCH_INVALID"):
+        store.admit_batch([], tenant_id="tenant-a", device_id="device-a", source="LINUX_SENSOR", now_epoch=150)
