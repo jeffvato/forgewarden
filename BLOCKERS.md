@@ -4,14 +4,6 @@ This file records only genuine blockers that require Customer Root authority, un
 
 ## Current blockers
 
-### B-005 — Exact Claude review unavailable for FW-AV-49
-
-- Related task/requirement: FW-AV-49 — reject explicit negative source reviews before ClamAV admission approval; exact-commit review contract
-- Exact condition: canonical Claude verifier timed out after its 180-second bounded review window for candidate `d729ca450db1e37c19943a0212d477d000006862`.
-- Why work cannot complete safely: deterministic tests and local inspection cannot substitute for the required exact external reviewer; no approval may be inferred from a timeout.
-- Evidence: focused FW-AV proof passed (21 tests); the candidate is narrow and fail-closed, but has no valid exact external approval yet.
-- First resume action: obtain a valid exact-commit Claude APPROVE/LOW for `d729ca4`, then run full suite/integrity gate and checkpoint acceptance only on valid approval.
-
 ### B-004 — Exact Claude review unavailable for FW-AV-48 (resolved)
 
 - Related task/requirement: FW-AV-48 Evidence-backed source-candidate approval before ClamAV admission; exact-commit review contract
@@ -30,6 +22,10 @@ This file records only genuine blockers that require Customer Root authority, un
 - First resume action: obtain a valid Gemini payload for the exact candidate, validate its job ID and SHA, then resume FWQ-0008 acceptance.
 
 ## Resolved blockers
+
+### B-005 — Exact Claude review unavailable for FW-AV-49 (resolved)
+
+- Resolution: Jeff supplied an exact Claude Co-Work read-only review for `d729ca4`; the payload was schema-valid, exact-commit bound, APPROVE/LOW, with no missing tests or blocking findings. Full validation passed at `28562fd`.
 
 ### B-003 — FW-AV Stage 2 definition-intake scope (resolved)
 
