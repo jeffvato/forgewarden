@@ -4,7 +4,7 @@
 
 - Active phase: FW-AV — Native anti-malware
 - Current focus: FW-AV — publisher-signed detection-content trust
-- Current task: FW-AV Stage 1 source-content foundation complete; Stage 2 intake scope awaits Customer Root direction.
+- Current task: FW-AV-47 — bounded ClamAV-compatible signed-bundle admission.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -28,17 +28,17 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-AV Stage 2 source-intake authority boundary
+- Task ID: FW-AV-47 — bounded ClamAV-compatible signed-bundle admission
 - Starting checkpoint: `1915549` (FW-AV-46 accepted)
-- Canonical owner: `DefinitionSourceRegistry` and `DefinitionSourceCandidateReview` own the completed offline declaration, provenance, and non-admission review boundary. `TrustedSignatureCatalog`, `FWKeysCatalogTrustRoot`, and `DurableCatalogSequenceStore` remain the only catalog, trust, and anti-rollback owners.
-- Acceptance criteria: do not construct a parser, catalog-admission path, or source connector until Customer Root selects one initial offline signed-bundle format and authorizes its licensing/scope. The existing source boundary remains disabled, opaque, audited, timestamp-bound, and non-admitting.
-- Negative paths: any endpoint, URL, credential, downloader, network call, parser, catalog admission, cache mutation, quarantine, remediation, or response authority remains denied. Future-dated candidate capture, future-dated or pre-capture review timestamps, direct candidate/review construction, foreign-registry candidates, approval-like dispositions, and unavailable Evidence remain fail closed.
-- Proof plan: once the scope is authorized, add a parser/admission bridge only for that named offline format; prove malformed input, unsigned/untrusted content, wrong source/license provenance, stale/replayed content, and unavailable Evidence all deny before canonical catalog mutation.
-- Exact first change: Customer Root authorizes the exact initial offline signed definition-bundle format and license boundary; then add its smallest canonical adapter without source transport or response authority.
-- Proof: FW-AV-46 focused proof passed (`20 passed`); full Linux suite passed (`665 passed, 1 skipped`); the default FW-INTEGRITY gate passed every hard check and its Golden Path at `1915549`. Exact local read-only review found no blocking defect. No further meaningful offline source-review control remains without crossing the prohibited parser/catalog-admission boundary.
+- Canonical owner: `admit_clamav_signed_bundle` is a narrow local adapter; `FWKeysCatalogTrustRoot` / `verify_signed_catalog_bundle` own signature verification, `TrustedSignatureCatalog` owns canonical content validation, and `DurableCatalogSequenceStore` owns sequence acceptance and content persistence.
+- Acceptance criteria: caller-supplied bytes under 1 MiB parse only as the exact `FW-AV-CLAMAV-BUNDLE-1` envelope, bind source/category/license and candidate provenance in Evidence, verify the signed catalog snapshot through FW-KEYS, then delegate acceptance and caching to the existing durable owners. No source transport is enabled.
+- Negative paths: empty, oversized, malformed, duplicate-key, wrong-schema, wrong-source/license, future-captured, unsigned/untrusted, expired, stale/replayed, snapshot-mismatched, and Evidence-failure inputs fail closed before unauthorized catalog mutation. No endpoint, URL, credential, downloader, network, quarantine, remediation, or response authority is added.
+- Proof plan: focused parser/admission and denial regressions, exact Claude review of the candidate, full suite, and integrity gate.
+- Exact first change: add the strict bounded local ClamAV-compatible envelope adapter and route verified content through the canonical FW-KEYS, sequence, and cache boundaries.
+- Proof: focused FW-AV tests passed (`21 passed`); full Linux suite passed (`666 passed, 1 skipped`); the default FW-INTEGRITY gate passed every hard check and its Golden Path at `3ad27d5`. Claude exact-commit review of repaired candidate `405503e` returned schema-valid APPROVE/LOW with no missing tests or blocking findings. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and defined-but-unimplemented identity, normalized-events, SOC-incident, and compliance owners.
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
-- Blocker: B-003 — FW-AV Stage 2 definition-intake scope.
-- Next action: await Customer Root's selection and authorization of one initial offline signed definition-bundle format and license boundary; then implement only its canonical non-network adapter.
+- Blocker: none.
+- Next action: derive the next highest-risk bounded FW-AV control: require prior Evidence-backed source-candidate review approval before ClamAV bundle admission, without enabling transport or response authority.
 - Platform delivery definition: Windows and Linux are the first endpoint targets; macOS, Android, and iOS are later platform-native releases. Detailed scope and required proof are in `docs/fw-av-windows-linux-delivery-plan.md`.
 
 ## Execution log
@@ -139,12 +139,14 @@ On every restart or continuation:
 
 - 2026-09-01: FW-AV Stage 1 source-content foundation closed at `1915549`: all disabled future-source declarations, opaque candidate provenance, required non-admission Evidence, deterministic review snapshots, and capture/review temporal integrity are accepted. Further source-review hardening would be cosmetic; the next meaningful control must parse and admit one named offline signed bundle into the existing canonical FW-KEYS/catalog boundary. That is intentionally outside the active no-parser/no-admission authority, so B-003 records the required Customer Root format and licensing decision. No product code or response authority was changed.
 
+- 2026-09-06: FW-AV-47 complete at `405503e` (implementation `3ad27d5`): the authorized local ClamAV-compatible signed-bundle adapter now enforces a strict 1 MiB JSON envelope, duplicate-key rejection, source/license binding, FW-KEYS signature and snapshot verification, durable sequence acceptance, canonical content caching, and provenance-bound Evidence. Focused proof passed (21 tests), full Linux suite passed (666 passed, 1 skipped), and the default integrity gate passed every hard check and its Golden Path. Claude exact-commit review returned APPROVE/LOW after adding empty and oversized denial regressions. No network, endpoint, credential, quarantine, remediation, deployment, or response authority was added. The next bounded control is explicit prior review approval binding.
+
 ## Stop conditions
 
 Do not stop merely because a task or review cycle finished. Stop only under the explicit conditions in `AGENTS.md`, and record the exact reason and first resume action here.
 
 ## Current stop condition
 
-- Reason: CUSTOMER_ROOT_SCOPE_DECISION_REQUIRED
-- Exact condition: FW-AV Stage 1 source-content trust is accepted through `1915549`. A further meaningful source-review unit requires an explicit Customer Root choice of one initial offline signed definition-bundle format and its license boundary, because parsing or admitting opaque candidate bytes would otherwise violate the active no-parser/no-catalog-admission scope. Existing sources remain disabled and no network, endpoint, credential, quarantine, remediation, or response authority exists.
-- First resume action: Customer Root authorizes the initial offline signed definition-bundle format and license boundary; implement its smallest adapter into `TrustedSignatureCatalog` through the existing `FWKeysCatalogTrustRoot` and `DurableCatalogSequenceStore` verification path, with transport and response still excluded.
+- Reason: NONE
+- Exact condition: The explicitly authorized first ClamAV-compatible local signed-bundle adapter is accepted at `405503e`. It remains caller-supplied and disabled for transport; FW-KEYS verification, canonical Evidence, anti-rollback, DRY_RUN, deployment-disabled, kill-switch, and tenant-isolation boundaries remain intact.
+- First resume action: derive and implement prior Evidence-backed source-candidate review approval binding before admission; keep network, endpoint, credentials, quarantine, remediation, and response authority disabled.

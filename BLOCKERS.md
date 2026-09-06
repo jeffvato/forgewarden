@@ -4,16 +4,6 @@ This file records only genuine blockers that require Customer Root authority, un
 
 ## Current blockers
 
-### B-003 — FW-AV Stage 2 definition-intake scope
-
-- Related task/requirement: FW-AV publisher-signed detection-content trust; roadmap definition-source and endpoint-protection work
-- Exact condition: FW-AV-40 through FW-AV-46 have completed the safe offline declaration, provenance, non-admission Evidence, snapshot, and timestamp-integrity controls. The next meaningful source-review control must interpret a named signed definition-bundle format and pass only verified content to the existing canonical catalog/trust/anti-rollback owners. The active boundary explicitly prohibits a parser and catalog admission, and Customer Root has not selected the initial format or confirmed its license boundary.
-- Why work cannot continue safely: choosing a source format or translating opaque candidate bytes without that decision would create an unauthorized parser/admission system and could misrepresent upstream licensing or signature semantics. Additional non-admission metadata checks would not reduce a material product risk.
-- Required authority: Customer Root selects and authorizes one initial offline signed definition-bundle format and its licensing scope. The recommended implementation boundary is a local, caller-supplied bundle adapter only; it must remain disabled by default and add no network, endpoint, credential, downloader, quarantine, remediation, or response authority.
-- Canonical owners preserved: `DefinitionSourceRegistry` / `DefinitionSourceCandidateReview` for offline review evidence; `FWKeysCatalogTrustRoot`, `TrustedSignatureCatalog`, and `DurableCatalogSequenceStore` for verification, catalog admission, and anti-rollback. No parallel trust, catalog, cache, or transport system may be created.
-- Checkpoint/evidence: `1915549` product proof; `09fc02c` status checkpoint. Focused FW-AV proof passed (20 tests); full Linux suite passed (665 passed, 1 skipped); default integrity gate passed every hard check and Golden Path.
-- First resume action: after Customer Root selects the format/license, define the smallest non-network adapter with malformed, unsigned/untrusted, wrong-provenance, stale/replayed, and Evidence-failure denials before canonical catalog mutation.
-
 ### B-002 — Independent Gemini review capacity unavailable
 
 - Related task/requirement: FWQ-0008 — Immutable accepted-work evidence bundle; D-004 and D-014 exact-commit review/evidence requirements
@@ -25,6 +15,11 @@ This file records only genuine blockers that require Customer Root authority, un
 - First resume action: obtain a valid Gemini payload for the exact candidate, validate its job ID and SHA, then resume FWQ-0008 acceptance.
 
 ## Resolved blockers
+
+### B-003 — FW-AV Stage 2 definition-intake scope (resolved)
+
+- Resolution: Customer Root authorized a ClamAV-compatible signed definition bundle under an appropriate non-commercial/testing license, with local caller-supplied input only. FW-AV-47 implemented the bounded adapter at `405503e` and accepted it after deterministic validation and exact Claude review.
+- Remaining boundaries: source transport, endpoints, credentials, network access, quarantine, remediation, deployment, and response authority remain disabled.
 
 ### B-001 — Required exact-commit review resources failed closed (resolved)
 
