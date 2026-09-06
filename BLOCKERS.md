@@ -4,6 +4,14 @@ This file records only genuine blockers that require Customer Root authority, un
 
 ## Current blockers
 
+### B-008 — Untracked user artifact blocks integrity gate
+
+- Related task/requirement: FW-AV-51 acceptance and clean-tree integrity proof
+- Exact condition: the user-created `Claude outputs/` directory is untracked inside the repository, so the integrity gate reports `repository` RED even though all tests and other hard checks pass.
+- Why work cannot complete safely: deleting or moving a user artifact is destructive/scope-expanding without Jeff's direction, and acceptance cannot ignore a RED clean-tree check.
+- Evidence: full suite passed (666 passed, 1 skipped); integrity report `.swarm-state/fw-av-51-integrity.json` records only the untracked directory as RED plus pre-existing YELLOW findings.
+- First resume action: Jeff moves `Claude outputs/` outside the repository or authorizes a safe alternative; then rerun the integrity gate once.
+
 ### B-007 — Exact Claude review pending for FW-AV-51
 
 - Related task/requirement: FW-AV-51 — exact seven-day approval freshness boundary regression; exact-commit review contract
