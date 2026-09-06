@@ -4,13 +4,12 @@ This file records only genuine blockers that require Customer Root authority, un
 
 ## Current blockers
 
-### B-004 — Exact Claude review unavailable for FW-AV-48
+### B-004 — Exact Claude review unavailable for FW-AV-48 (resolved)
 
 - Related task/requirement: FW-AV-48 Evidence-backed source-candidate approval before ClamAV admission; exact-commit review contract
-- Exact condition: canonical Claude verifier was present but timed out after its 180-second bounded review window for repair candidate `07842a614a5557b914946b065070e71199ce2f37`.
-- Why work cannot complete safely: deterministic tests and local inspection cannot substitute for the required exact external reviewer; no approval may be inferred from a timeout.
-- Evidence: focused FW-AV proof passed (21 tests) including direct approval/admission denial regressions; the user-provided predecessor review identified the gap, and local inspection found no code defect. The repair candidate has not received valid exact external approval.
-- First resume action: retry the canonical Claude verifier against repair candidate `07842a6` once responsive, then run full suite/integrity gate and checkpoint acceptance only on valid APPROVE/LOW.
+- Exact condition: canonical Claude verifier timed out after its 180-second bounded review window for repair candidate `07842a614a5557b914946b065070e71199ce2f37`.
+- Resolution: Jeff supplied an exact Claude Co-Work read-only review for `07842a6`; the payload was schema-valid, exact-commit bound, APPROVE/LOW, with no missing tests or blocking findings. Deterministic focused proof, full suite, and integrity gate passed.
+- First resume action: none; FW-AV-48 is accepted and work proceeds to FW-AV-49.
 
 ### B-002 — Independent Gemini review capacity unavailable
 
