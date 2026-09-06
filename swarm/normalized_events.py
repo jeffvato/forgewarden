@@ -74,16 +74,44 @@ class NormalizedEventStore:
             queue.append(observation)
             return observation
 
-    def dequeue(self, *, tenant_id: str, device_id: str) -> EndpointObservation | None:
-        """Remove and return the oldest admitted event for one tenant/device."""
+    def peek_next(self, *, tenant_id: str, device_id: str) -> EndpointObservation | None:
+        """Inspect the oldest event without removing it, for retry-safe recovery."""
         with self._lock:
             queue = self._queues.get((tenant_id, device_id))
             if not queue:
                 return None
-            observation = queue.popleft()
+            return queue[0]
+
+    def acknowledge(self, observation: EndpointObservation) -> EndpointObservation:
+        """Write completion Evidence, then remove the exact queue head."""
+        device_key = (observation.tenant_id, observation.device_id)
+        with self._lock:
+            queue = self._queues.get(device_key)
+            if not queue or queue[0] != observation:
+                raise EndpointFixtureDenied("EVENT_NOT_QUEUE_HEAD")
+            try:
+                self._audit("endpoint_event_acknowledged", {
+                    "event_id": observation.event_id,
+                    "tenant_id": observation.tenant_id,
+                    "device_id": observation.device_id,
+                    "observed_at_epoch": observation.observed_at_epoch,
+                    "event_type": observation.event_type,
+                    "source": observation.source,
+                    "evidence_ref": observation.evidence_ref,
+                    "mode": observation.mode,
+                    "action": observation.action,
+                })
+            except Exception as exc:
+                raise EndpointFixtureDenied("EVIDENCE_WRITE_FAILED") from exc
+            queue.popleft()
             if not queue:
-                self._queues.pop((tenant_id, device_id), None)
+                self._queues.pop(device_key, None)
             return observation
+
+    def dequeue(self, *, tenant_id: str, device_id: str) -> EndpointObservation | None:
+        """Compatibility helper that acknowledges the oldest event before removal."""
+        observation = self.peek_next(tenant_id=tenant_id, device_id=device_id)
+        return self.acknowledge(observation) if observation is not None else None
 
     def queued_count(self, *, tenant_id: str, device_id: str) -> int:
         with self._lock:

@@ -24,6 +24,16 @@ def test_normalized_event_store_writes_evidence_before_enqueue_and_is_tenant_bou
     assert store.queued_count(tenant_id="tenant-b", device_id="device-a") == 0
 
 
+def test_normalized_event_store_peek_is_retry_safe_and_acknowledges_before_removal():
+    events = []
+    store = NormalizedEventStore(lambda *args: events.append(args))
+    admitted = store.admit_fixture(_fixture(), tenant_id="tenant-a", device_id="device-a", source="LINUX_SENSOR", now_epoch=150)
+    assert store.peek_next(tenant_id="tenant-a", device_id="device-a") == admitted
+    assert store.acknowledge(admitted) == admitted
+    assert events[-1][0] == "endpoint_event_acknowledged"
+    assert store.peek_next(tenant_id="tenant-a", device_id="device-a") is None
+
+
 def test_normalized_event_store_denies_duplicate_event_ids_before_second_evidence():
     events = []
     store = NormalizedEventStore(lambda *args: events.append(args), max_queued_events_per_device=2)
@@ -50,6 +60,27 @@ def test_normalized_event_store_fails_closed_on_evidence_failure_without_enqueue
     with pytest.raises(EndpointFixtureDenied, match="EVIDENCE_WRITE_FAILED"):
         store.admit_fixture(_fixture(), tenant_id="tenant-a", device_id="device-a", source="LINUX_SENSOR", now_epoch=150)
     assert store.queued_count(tenant_id="tenant-a", device_id="device-a") == 0
+
+
+def test_normalized_event_store_ack_evidence_failure_retains_event_for_retry():
+    calls = []
+    def audit(*args):
+        calls.append(args)
+        if args[0] == "endpoint_event_acknowledged":
+            raise OSError("sink unavailable")
+
+    store = NormalizedEventStore(audit)
+    admitted = store.admit_fixture(_fixture(), tenant_id="tenant-a", device_id="device-a", source="LINUX_SENSOR", now_epoch=150)
+    with pytest.raises(EndpointFixtureDenied, match="EVIDENCE_WRITE_FAILED"):
+        store.acknowledge(admitted)
+    assert store.peek_next(tenant_id="tenant-a", device_id="device-a") == admitted
+
+
+def test_normalized_event_store_ack_requires_current_tenant_device_queue_head():
+    store = NormalizedEventStore(lambda *_args: None)
+    admitted = store.admit_fixture(_fixture(), tenant_id="tenant-a", device_id="device-a", source="LINUX_SENSOR", now_epoch=150)
+    with pytest.raises(EndpointFixtureDenied, match="EVENT_NOT_QUEUE_HEAD"):
+        store.acknowledge(type(admitted)(admitted.event_id, "tenant-b", admitted.device_id, admitted.observed_at_epoch, admitted.event_type, admitted.source, admitted.metadata, admitted.process_ancestry, admitted.related_indicators, admitted.evidence_ref))
 
 
 def test_normalized_event_store_caps_duplicate_tombstones_per_device():
