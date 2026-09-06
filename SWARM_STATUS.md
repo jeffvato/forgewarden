@@ -28,7 +28,7 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-AV-48 — Evidence-backed source-candidate approval before ClamAV admission
+- Task ID: FW-AV-51 — Prove the exact seven-day approval freshness boundary
 - Starting checkpoint: `518b113` (FW-AV-47 accepted)
 - Candidate commit: `807580245f74c1fd8e248ccd9fc088921f18f1be` (FW-AV-51 test-only boundary regression); FW-AV-50 `3060a0d` accepted.
 - Canonical owner: `DefinitionSourceRegistry.approve_candidate` owns explicit approval Evidence; `admit_clamav_signed_bundle` enforces exact approval/candidate binding. FW-KEYS, `TrustedSignatureCatalog`, `DurableCatalogSequenceStore`, and canonical audit remain the only verification/catalog/anti-rollback owners.
@@ -36,13 +36,15 @@ On every restart or continuation:
 - Negative paths: missing/direct/foreign approvals, candidate or payload mismatch, future approval, pre-review approval, malformed/unsigned/untrusted/stale/replayed bundle, and unavailable Evidence deny before unauthorized admission. No source transport, endpoint, credential, network, quarantine, remediation, or response authority is added.
 - Proof plan: focused exact-boundary regression, exact Claude review of candidate `8075802`, full suite, and integrity gate after review acceptance.
 - Exact first change: add a test proving an approval exactly at seven days remains valid while one second beyond is denied; production code remains unchanged.
-- Proof: FW-AV-50 focused proof passed (`21 passed`), exact Claude Co-Work review returned schema-valid APPROVE/LOW with no missing tests or blocking findings, the full Linux suite passed (`666 passed, 1 skipped`), and the integrity gate passed every hard check and its Golden Path. FW-AV-51 focused proof passed (`21 passed`) and exact Claude Co-Work review returned schema-valid APPROVE/LOW with no missing tests or blocking findings. The full suite passed (`666 passed, 1 skipped`), but the integrity gate returned RED solely because the user-created untracked `Claude outputs/` folder makes the working tree non-clean; no product defect was identified. Health remains YELLOW only for the pre-existing dependency and roadmap-owner gaps once the artifact is safely moved outside the repository.
+- Proof: FW-AV-50 focused proof passed (`21 passed`), exact Claude Co-Work review returned schema-valid APPROVE/LOW with no missing tests or blocking findings, the full Linux suite passed (`666 passed, 1 skipped`), and the integrity gate passed every hard check and its Golden Path. FW-AV-51 focused proof passed (`21 passed`), exact Claude Co-Work review returned schema-valid APPROVE/LOW with no missing tests or blocking findings, the full suite passed (`666 passed, 1 skipped`), and the clean integrity gate passed every hard check and its Golden Path after the user moved `Claude outputs/` outside the repository. Health remains YELLOW only for the pre-existing dependency and roadmap-owner gaps.
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
-- Blocker: B-008 — user-created untracked `Claude outputs/` folder prevents integrity-gate clean-tree proof for FW-AV-51.
-- Next action: Jeff moves the artifact outside the repository (or explicitly authorizes a safe non-destructive alternative); then rerun the integrity gate exactly once and checkpoint acceptance.
+- Blocker: none for FW-AV-51.
+- Next action: select and explicitly authorize the next bounded FW-AV, FW-ENDPOINT, or response-control slice; do not expand authority implicitly.
 - Platform delivery definition: Windows and Linux are the first endpoint targets; macOS, Android, and iOS are later platform-native releases. Detailed scope and required proof are in `docs/fw-av-windows-linux-delivery-plan.md`.
 
 ## Execution log
+
+- 2026-09-06: FW-AV-51 accepted at `8075802` with checkpoint `9443f24`: exact Claude Co-Work review returned APPROVE/LOW, full suite passed (666 passed, 1 skipped), and clean integrity gate passed all hard checks and Golden Path with only pre-existing YELLOW findings after the user moved `Claude outputs/` outside the repository.
 
 - 2026-09-06: FW-AV-51 exact review accepted and full suite passed (666 passed, 1 skipped), but integrity gate returned RED only for the untracked user-created `Claude outputs/` folder. No product defect was identified; do not delete or move the artifact without Jeff's direction.
 

@@ -4,21 +4,21 @@ This file records only genuine blockers that require Customer Root authority, un
 
 ## Current blockers
 
-### B-008 — Untracked user artifact blocks integrity gate
+### B-008 — Untracked user artifact blocks integrity gate (resolved)
 
 - Related task/requirement: FW-AV-51 acceptance and clean-tree integrity proof
 - Exact condition: the user-created `Claude outputs/` directory is untracked inside the repository, so the integrity gate reports `repository` RED even though all tests and other hard checks pass.
 - Why work cannot complete safely: deleting or moving a user artifact is destructive/scope-expanding without Jeff's direction, and acceptance cannot ignore a RED clean-tree check.
 - Evidence: full suite passed (666 passed, 1 skipped); integrity report `.swarm-state/fw-av-51-integrity.json` records only the untracked directory as RED plus pre-existing YELLOW findings.
-- First resume action: Jeff moves `Claude outputs/` outside the repository or authorizes a safe alternative; then rerun the integrity gate once.
+- Resolution: Jeff moved `Claude outputs/` outside the repository; the clean integrity rerun passed all hard checks and Golden Path.
 
-### B-007 — Exact Claude review pending for FW-AV-51
+### B-007 — Exact Claude review pending for FW-AV-51 (resolved)
 
 - Related task/requirement: FW-AV-51 — exact seven-day approval freshness boundary regression; exact-commit review contract
 - Exact condition: candidate `807580245f74c1fd8e248ccd9fc088921f18f1be` requires a valid exact Claude Co-Work review before broader acceptance validation.
 - Why work cannot complete safely: deterministic tests and local inspection cannot substitute for the required exact external reviewer; no acceptance may be inferred without exact APPROVE/LOW.
 - Evidence: focused FW-AV proof passed (21 tests); the candidate is test-only and narrow, but no valid exact external approval exists yet.
-- First resume action: obtain exact Claude APPROVE/LOW for `8075802`, then run full suite/integrity gate and checkpoint acceptance only on valid approval.
+- Resolution: Jeff supplied exact Claude Co-Work APPROVE/LOW for `8075802`; full suite and clean integrity gate passed.
 
 ### B-004 — Exact Claude review unavailable for FW-AV-48 (resolved)
 
