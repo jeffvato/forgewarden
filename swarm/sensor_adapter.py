@@ -34,6 +34,8 @@ def adapt_record(record: Mapping[str, Any], *, source: str) -> dict[str, Any]:
     metadata = record.get("metadata")
     if not isinstance(metadata, Mapping) or not metadata:
         raise SensorAdapterDenied("METADATA_INVALID")
+    if any(record.get(key) is None for key in ("process_ancestry", "related_indicators", "evidence_ref")):
+        raise SensorAdapterDenied("RECORD_INVALID")
     # The canonical fixture seam owns field-level bounds and tenant/device
     # validation; this mapper only selects the correct metadata branch.
     fixture: dict[str, Any] = {

@@ -28,6 +28,15 @@ def test_adapter_maps_explicit_process_and_artifact_records_to_canonical_owner()
     assert events[0][0] == "endpoint_event_admitted"
 
 
+def test_adapter_maps_and_admits_windows_record_through_same_canonical_owner():
+    record = _record(source="WINDOWS_SENSOR")
+    fixture = adapt_record(record, source="WINDOWS_SENSOR")
+    observation = NormalizedEventStore(lambda *_args: None).admit_fixture(
+        fixture, tenant_id="tenant-a", device_id="device-a", source="WINDOWS_SENSOR", now_epoch=150,
+    )
+    assert observation.source == "WINDOWS_SENSOR"
+
+
 @pytest.mark.parametrize("bad", [
     {"extra": "field"},
     {"source": "WINDOWS_SENSOR"},
@@ -44,6 +53,12 @@ def test_adapter_rejects_unknown_event_and_empty_metadata():
         adapt_record(_record(event_type="UNKNOWN"), source="LINUX_SENSOR")
     with pytest.raises(SensorAdapterDenied, match="METADATA_INVALID"):
         adapt_record(_record().copy() | {"metadata": {}}, source="LINUX_SENSOR")
+
+
+@pytest.mark.parametrize("record", [None, _record().copy() | {"evidence_ref": None}, _record().copy() | {"process_ancestry": None}])
+def test_adapter_rejects_non_mapping_or_missing_required_passthrough(record):
+    with pytest.raises(SensorAdapterDenied, match="RECORD_INVALID"):
+        adapt_record(record, source="LINUX_SENSOR")
 
 
 def test_adapter_preserves_canonical_fail_closed_validation():
