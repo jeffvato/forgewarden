@@ -4,7 +4,7 @@
 
 - Active phase: FW-AV — Native anti-malware
 - Current focus: FW-AV — publisher-signed detection-content trust
-- Current task: FW-AV-49 — Reject explicit negative source reviews before ClamAV admission approval (accepted).
+- Current task: FW-AV-50 — Enforce seven-day freshness for source approvals at ClamAV admission (review pending).
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -30,19 +30,21 @@ On every restart or continuation:
 
 - Task ID: FW-AV-48 — Evidence-backed source-candidate approval before ClamAV admission
 - Starting checkpoint: `518b113` (FW-AV-47 accepted)
-- Candidate commit: `d729ca450db1e37c19943a0212d477d000006862` (FW-AV-49 implementation and regression); FW-AV-48 repair `07842a6` accepted.
+- Candidate commit: `3060a0db6b049c4b67ac96c4626f14a83d48a4e1` (FW-AV-50 implementation and regressions); FW-AV-49 `d729ca4` accepted.
 - Canonical owner: `DefinitionSourceRegistry.approve_candidate` owns explicit approval Evidence; `admit_clamav_signed_bundle` enforces exact approval/candidate binding. FW-KEYS, `TrustedSignatureCatalog`, `DurableCatalogSequenceStore`, and canonical audit remain the only verification/catalog/anti-rollback owners.
 - Acceptance criteria: a ClamAV bundle can be admitted only with a registry-created approval bound to a reviewed candidate, exact payload bytes, source identity/license, and bounded chronology. Approval Evidence must succeed before canonical sequence/content mutation.
 - Negative paths: missing/direct/foreign approvals, candidate or payload mismatch, future approval, pre-review approval, malformed/unsigned/untrusted/stale/replayed bundle, and unavailable Evidence deny before unauthorized admission. No source transport, endpoint, credential, network, quarantine, remediation, or response authority is added.
-- Proof plan: focused rejection-disposition approval denial regression, exact Claude review of candidate `d729ca4`, full suite, and integrity gate after review acceptance.
-- Exact first change: reject an explicit `REJECTED` candidate review in `DefinitionSourceRegistry.approve_candidate` and add a denial regression; preserve all existing canonical admission boundaries.
-- Proof: FW-AV-48 focused proof passed (`21 passed`), the full Linux suite passed (`666 passed, 1 skipped`), and the integrity gate passed every hard check and its Golden Path. Exact Claude Co-Work review of `07842a6` returned schema-valid APPROVE/LOW with no missing tests or blocking findings. FW-AV-49 focused proof passed (`21 passed`), exact Claude Co-Work review returned schema-valid APPROVE/LOW with no missing tests or blocking findings, the full Linux suite passed (`666 passed, 1 skipped`), and the integrity gate passed every hard check and its Golden Path. Health remains YELLOW only for the pre-existing dependency and roadmap-owner gaps.
+- Proof plan: focused seven-day approval freshness regressions, exact Claude review of candidate `3060a0d`, full suite, and integrity gate after review acceptance.
+- Exact first change: enforce the approved seven-day source-approval freshness window at the existing ClamAV admission boundary, with future/expired denials and regressions; preserve all existing canonical admission boundaries.
+- Proof: FW-AV-48 focused proof passed (`21 passed`), the full Linux suite passed (`666 passed, 1 skipped`), and the integrity gate passed every hard check and its Golden Path. Exact Claude Co-Work review of `07842a6` returned schema-valid APPROVE/LOW with no missing tests or blocking findings. FW-AV-49 focused proof passed (`21 passed`), exact Claude Co-Work review returned schema-valid APPROVE/LOW with no missing tests or blocking findings, the full Linux suite passed (`666 passed, 1 skipped`), and the integrity gate passed every hard check and its Golden Path. FW-AV-50 focused proof passes (`21 passed`); exact review and full validation remain pending. Health remains YELLOW only for the pre-existing dependency and roadmap-owner gaps.
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
-- Blocker: none for FW-AV-49.
-- Next action: select the next explicitly approved FW-AV bounded control from the roadmap; do not add endpoint, network, quarantine, remediation, or deployment authority without a new bounded authorization.
+- Blocker: B-006 — exact Claude review pending for FW-AV-50 candidate `3060a0d`.
+- Next action: obtain a valid exact-commit Claude APPROVE/LOW for `3060a0d`; then run the full suite/integrity gate and checkpoint acceptance.
 - Platform delivery definition: Windows and Linux are the first endpoint targets; macOS, Android, and iOS are later platform-native releases. Detailed scope and required proof are in `docs/fw-av-windows-linux-delivery-plan.md`.
 
 ## Execution log
+
+- 2026-09-06: FW-AV-50 candidate `3060a0d` enforces the approved seven-day source-approval freshness window and denies future/expired approvals before parsing or mutation. Focused FW-AV proof passed (21 tests). Exact review and full validation remain pending.
 
 - 2026-09-06: FW-AV-49 accepted at `d729ca4` with status checkpoint `28562fd`: focused proof passed (21 tests), exact Claude Co-Work review returned APPROVE/LOW, full Linux suite passed (666 passed, 1 skipped), and integrity gate passed all hard checks and Golden Path with only pre-existing YELLOW findings.
 
