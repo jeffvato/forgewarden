@@ -30,13 +30,13 @@ On every restart or continuation:
 
 - Task ID: FW-ENDPOINT-02 — Normalize bounded Windows/Linux endpoint fixtures
 - Starting checkpoint: `160ba0c` (FW-ENDPOINT-01 accepted)
-- Candidate commit: `50857b7809a5e185820d46295ffe318a14ff5814` (canonical owner registration; includes `24ec120` implementation and `97fdb59` regression follow-up).
+- Candidate commit: `8cb7410e9883e4e4ab34e901755d554d8a46941a` (bounded deduplication-state repair; includes `24ec120`, `97fdb59`, and `50857b7`).
 - Canonical owner: `swarm.endpoint_fixtures.normalize_fixture` is only a caller-supplied fixture seam; canonical normalized-event ownership remains future FW-ENDPOINT work. Existing FW-KEYS, `TrustedSignatureCatalog`, `DurableCatalogSequenceStore`, and canonical audit remain the only verification/catalog/anti-rollback owners.
 - Acceptance criteria: bounded Windows/Linux fixture input is tenant/device/source-bound, rejected on malformed/future/oversized/unknown data, emits canonical Evidence before return, and is fixed to DRY_RUN/DETECT_ONLY without live endpoint authority.
 - Negative paths: tenant/device/source mismatch, unknown event, future timestamp, oversized input/ancestry/indicators, invalid evidence reference, and unavailable Evidence deny closed. No source transport, endpoint, credential, network, quarantine, remediation, or response authority is added.
 - Proof plan: focused fixture normalization and denial regressions, exact Claude review of candidate `a433368`, full suite, and integrity gate after review acceptance.
 - Exact first change: add an in-memory normalizer for caller-supplied Windows/Linux fixtures with bounded fields, tenant/device/source binding, Evidence-first return, and fixed DRY_RUN/DETECT_ONLY output; no live sensor or endpoint authority.
-- Proof: FW-ENDPOINT-02 focused proof passed (`8 passed`) and its exact Claude review returned APPROVE/LOW; follow-up key regression passed (`9 passed`) and was approved. FW-ENDPOINT-03 focused proof passed (`13 tests`, then `21` including integrity metadata); repaired candidate `50857b7` registered the canonical owner and exact Claude review returned APPROVED. Full Linux suite passed (`679 passed, 1 skipped`); integrity gate passed all hard checks and Golden Path, remaining YELLOW only for pre-existing dependency and roadmap-owner findings (`identity`, `soc_incidents`, `compliance`).
+- Proof: FW-ENDPOINT-02 focused proof passed (`8 passed`) and its exact Claude review returned APPROVE/LOW; follow-up key regression passed (`9 passed`) and was approved. FW-ENDPOINT-03 focused proof passed (`13 tests`, then `22` including integrity metadata); candidate `8cb7410` adds a hard 1,024-per-device deduplication-tombstone cap, exact Claude review returned APPROVED, full Linux suite passed (`680 passed, 1 skipped`), and integrity gate passed all hard checks and Golden Path. Health remains YELLOW only for pre-existing dependency and roadmap-owner findings (`identity`, `soc_incidents`, `compliance`).
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
 - Blocker: none for FW-ENDPOINT-03.
 - Next action: derive the next bounded control from the roadmap while preserving the canonical normalized-event owner and all no-live-endpoint boundaries.
@@ -55,6 +55,8 @@ On every restart or continuation:
 - 2026-09-06: FW-ENDPOINT-03 is blocked pending an explicit canonical normalized-event owner. The exact review identified cross-call deduplication and queue/backpressure as future stateful-owner work; no parallel event subsystem will be created.
 
 - 2026-09-06: FW-ENDPOINT-03 accepted at `50857b7`: bounded in-memory tenant/device deduplication and per-device queue/backpressure for caller-supplied fixtures, canonical owner registry update, focused proof passed (21 tests), exact Claude repair review returned APPROVED, full suite passed (679 passed, 1 skipped), and integrity gate passed all hard checks and Golden Path. Health remains YELLOW only for pre-existing dependency and roadmap-owner findings.
+
+- 2026-09-06: FW-ENDPOINT-03 bounded-state repair `8cb7410` accepted: duplicate tombstones are capped at 1,024 per tenant/device to prevent unbounded memory growth; focused proof passed (22 tests), exact Claude review returned APPROVED, full suite passed (680 passed, 1 skipped), and integrity gate passed all hard checks and Golden Path. No live endpoint or response authority was added.
 
 - 2026-09-06: FW-ENDPOINT-01 accepted at `160ba0c` with status checkpoint `0824f4a`: focused contract proof passed (1 test), exact Claude Co-Work review returned APPROVE/LOW, full suite passed (667 passed, 1 skipped), and integrity gate passed all hard checks and Golden Path with only pre-existing YELLOW findings.
 
