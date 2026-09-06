@@ -55,7 +55,7 @@ def test_adapter_rejects_unknown_event_and_empty_metadata():
         adapt_record(_record().copy() | {"metadata": {}}, source="LINUX_SENSOR")
 
 
-@pytest.mark.parametrize("record", [None, _record().copy() | {"evidence_ref": None}, _record().copy() | {"process_ancestry": None}])
+@pytest.mark.parametrize("record", [None, _record().copy() | {"evidence_ref": None}, _record().copy() | {"process_ancestry": None}, _record().copy() | {"related_indicators": None}])
 def test_adapter_rejects_non_mapping_or_missing_required_passthrough(record):
     with pytest.raises(SensorAdapterDenied, match="RECORD_INVALID"):
         adapt_record(record, source="LINUX_SENSOR")
