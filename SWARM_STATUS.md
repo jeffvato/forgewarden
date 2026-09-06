@@ -4,7 +4,7 @@
 
 - Active phase: FW-AV — Native anti-malware
 - Current focus: FW-AV — publisher-signed detection-content trust
-- Current task: FW-ENDPOINT-01 — Windows/Linux MicroSensor contract and fixture boundaries (review pending).
+- Current task: FW-ENDPOINT-01 — Windows/Linux MicroSensor contract and fixture boundaries (accepted).
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -36,13 +36,15 @@ On every restart or continuation:
 - Negative paths: missing/direct/foreign approvals, candidate or payload mismatch, future approval, pre-review approval, malformed/unsigned/untrusted/stale/replayed bundle, and unavailable Evidence deny before unauthorized admission. No source transport, endpoint, credential, network, quarantine, remediation, or response authority is added.
 - Proof plan: contract regression, exact Claude review of candidate `160ba0c`, full suite, and integrity gate after review acceptance.
 - Exact first change: add a design-only Windows/Linux MicroSensor contract and fixture-boundary regression; no service, filesystem hook, endpoint mutation, or deployment code.
-- Proof: FW-AV-50 and FW-AV-51 remain accepted with focused/full validation and clean integrity gates. FW-ENDPOINT-01 focused contract proof passed (`1 passed`); exact review and broader validation remain pending. Health remains YELLOW only for the pre-existing dependency and roadmap-owner gaps.
+- Proof: FW-AV-50 and FW-AV-51 remain accepted with focused/full validation and clean integrity gates. FW-ENDPOINT-01 focused contract proof passed (`1 passed`), exact Claude Co-Work review returned schema-valid APPROVE/LOW with no missing tests or blocking findings, the full suite passed (`667 passed, 1 skipped`), and the integrity gate passed every hard check and its Golden Path. Health remains YELLOW only for the pre-existing dependency and roadmap-owner gaps.
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
-- Blocker: B-009 — exact Claude review pending for FW-ENDPOINT-01 candidate `160ba0c`.
-- Next action: obtain exact Claude APPROVE/LOW for `160ba0c`; then run the full suite/integrity gate and checkpoint acceptance.
+- Blocker: none for FW-ENDPOINT-01.
+- Next action: select and explicitly authorize the next bounded fixture-normalization control; live endpoint APIs, services, filesystem hooks, quarantine, remediation, and deployment remain disabled.
 - Platform delivery definition: Windows and Linux are the first endpoint targets; macOS, Android, and iOS are later platform-native releases. Detailed scope and required proof are in `docs/fw-av-windows-linux-delivery-plan.md`.
 
 ## Execution log
+
+- 2026-09-06: FW-ENDPOINT-01 accepted at `160ba0c` with status checkpoint `0824f4a`: focused contract proof passed (1 test), exact Claude Co-Work review returned APPROVE/LOW, full suite passed (667 passed, 1 skipped), and integrity gate passed all hard checks and Golden Path with only pre-existing YELLOW findings.
 
 - 2026-09-06: FW-ENDPOINT-01 candidate `160ba0c` adds a design-only Windows/Linux MicroSensor contract and fixture-boundary regression. Focused proof passed (1 test); no endpoint authority or deployment behavior was added.
 

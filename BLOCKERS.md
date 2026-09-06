@@ -4,13 +4,13 @@ This file records only genuine blockers that require Customer Root authority, un
 
 ## Current blockers
 
-### B-009 — Exact Claude review pending for FW-ENDPOINT-01
+### B-009 — Exact Claude review pending for FW-ENDPOINT-01 (resolved)
 
 - Related task/requirement: FW-ENDPOINT-01 — Windows/Linux MicroSensor contract and fixture boundaries; exact-commit review contract
 - Exact condition: candidate `160ba0cffe696ec39392ff26dccf475192c55312` requires a valid exact Claude Co-Work review before broader acceptance validation.
 - Why work cannot complete safely: deterministic checks and local inspection cannot substitute for the required exact external reviewer; no acceptance may be inferred without exact APPROVE/LOW.
 - Evidence: focused contract proof passed (1 test); the candidate is design-only and explicitly denies live endpoint, filesystem, network, quarantine, remediation, and deployment authority.
-- First resume action: obtain exact Claude APPROVE/LOW for `160ba0c`, then run the full suite/integrity gate and checkpoint acceptance only on valid approval.
+- Resolution: Jeff supplied exact Claude Co-Work APPROVE/LOW for `160ba0c`; full suite and integrity gate passed at `0824f4a`.
 
 ### B-008 — Untracked user artifact blocks integrity gate (resolved)
 
