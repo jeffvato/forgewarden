@@ -4,7 +4,14 @@ This file records only genuine blockers that require Customer Root authority, un
 
 ## Current blockers
 
-None.
+### B-012 — Canonical normalized-event owner unavailable
+
+- Related task/requirement: FW-ENDPOINT-03 — stateful event deduplication and bounded queue/backpressure
+- Exact condition: `swarm.endpoint_fixtures` is intentionally stateless and the canonical normalized-event owner named by the roadmap is not implemented in this checkout.
+- Why work cannot continue safely: adding cross-call deduplication or a queue here would create a parallel event subsystem and expand authority beyond the approved fixture seam.
+- Required decision/resource: explicit roadmap ownership and bounded interface for normalized events before stateful implementation.
+- Evidence: FW-ENDPOINT-02 and its proof-only follow-up are accepted; Claude's exact review explicitly deferred deduplication and queue/backpressure to a future canonical event owner.
+- First resume action: obtain the owner/interface decision, then derive a minimal stateful fixture-to-event handoff with fail-closed tenant/device and Evidence boundaries.
 
 ### B-011 — Exact Claude review pending for FW-ENDPOINT-02 follow-up (resolved)
 

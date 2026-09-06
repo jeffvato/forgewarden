@@ -4,7 +4,7 @@
 
 - Active phase: FW-AV — Native anti-malware
 - Current focus: FW-AV — publisher-signed detection-content trust
-- Current task: derive next bounded FW-ENDPOINT control after accepted fixture proof.
+- Current task: FW-ENDPOINT-03 — canonical normalized-event owner and bounded deduplication/queue design (blocked).
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -38,8 +38,8 @@ On every restart or continuation:
 - Exact first change: add an in-memory normalizer for caller-supplied Windows/Linux fixtures with bounded fields, tenant/device/source binding, Evidence-first return, and fixed DRY_RUN/DETECT_ONLY output; no live sensor or endpoint authority.
 - Proof: FW-ENDPOINT-02 focused proof passed (`8 passed`); exact Claude review returned APPROVE/LOW with no blocking findings; full Linux suite passed (`674 passed, 1 skipped`); integrity gate passed all hard checks and Golden Path with only the pre-existing YELLOW dependency and roadmap-owner findings. Follow-up candidate `97fdb59` adds the dedicated ordinary-size unexpected top-level-key denial regression; focused proof passed (`9 passed`) and canonical Claude exact-commit review returned APPROVED. Cross-call deduplication and queue/backpressure remain deferred to a future canonical event owner.
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
-- Blocker: none for the accepted proof-only follow-up.
-- Next action: derive the next bounded FW-ENDPOINT control from the roadmap without adding a live sensor, transport, or response authority.
+- Blocker: B-012 — canonical normalized-event owner is not implemented in this checkout; creating stateful deduplication or queue/backpressure would risk a parallel event subsystem.
+- Next action: obtain explicit roadmap ownership/authority for FW-ENDPOINT normalized events, then design the bounded stateful seam before implementing deduplication or backpressure. No live sensor, transport, or response authority may be added meanwhile.
 - Platform delivery definition: Windows and Linux are the first endpoint targets; macOS, Android, and iOS are later platform-native releases. Detailed scope and required proof are in `docs/fw-av-windows-linux-delivery-plan.md`.
 
 ## Execution log
@@ -51,6 +51,8 @@ On every restart or continuation:
 - 2026-09-06: FW-ENDPOINT-02 follow-up adds the dedicated ordinary-size unexpected top-level-key denial regression identified in exact review; focused proof passed (9 tests). No production code or authority changed.
 
 - 2026-09-06: FW-ENDPOINT-02 proof-only follow-up `97fdb59` accepted after canonical Claude exact-commit review returned APPROVED. No production code or authority changed; prior full validation remains applicable to the unchanged implementation.
+
+- 2026-09-06: FW-ENDPOINT-03 is blocked pending an explicit canonical normalized-event owner. The exact review identified cross-call deduplication and queue/backpressure as future stateful-owner work; no parallel event subsystem will be created.
 
 - 2026-09-06: FW-ENDPOINT-01 accepted at `160ba0c` with status checkpoint `0824f4a`: focused contract proof passed (1 test), exact Claude Co-Work review returned APPROVE/LOW, full suite passed (667 passed, 1 skipped), and integrity gate passed all hard checks and Golden Path with only pre-existing YELLOW findings.
 
