@@ -1,4 +1,5 @@
 import pytest
+from concurrent.futures import ThreadPoolExecutor
 
 from swarm.endpoint_fixtures import EndpointFixtureDenied
 from swarm.normalized_events import NormalizedEventStore
@@ -81,6 +82,15 @@ def test_normalized_event_store_ack_requires_current_tenant_device_queue_head():
     admitted = store.admit_fixture(_fixture(), tenant_id="tenant-a", device_id="device-a", source="LINUX_SENSOR", now_epoch=150)
     with pytest.raises(EndpointFixtureDenied, match="EVENT_NOT_QUEUE_HEAD"):
         store.acknowledge(type(admitted)(admitted.event_id, "tenant-b", admitted.device_id, admitted.observed_at_epoch, admitted.event_type, admitted.source, admitted.metadata, admitted.process_ancestry, admitted.related_indicators, admitted.evidence_ref))
+
+
+def test_normalized_event_store_concurrent_dequeue_has_one_atomic_consumer():
+    store = NormalizedEventStore(lambda *_args: None)
+    admitted = store.admit_fixture(_fixture(), tenant_id="tenant-a", device_id="device-a", source="LINUX_SENSOR", now_epoch=150)
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        results = list(pool.map(lambda _index: store.dequeue(tenant_id="tenant-a", device_id="device-a"), (0, 1)))
+    assert [result for result in results if result is not None] == [admitted]
+    assert store.queued_count(tenant_id="tenant-a", device_id="device-a") == 0
 
 
 def test_normalized_event_store_caps_duplicate_tombstones_per_device():
