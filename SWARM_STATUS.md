@@ -4,7 +4,7 @@
 
 - Active phase: FW-AV — Native anti-malware
 - Current focus: FW-AV — publisher-signed detection-content trust
-- Current task: FW-AV-47 — bounded ClamAV-compatible signed-bundle admission.
+- Current task: FW-AV-48 — Evidence-backed source-candidate approval before ClamAV admission (review pending).
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -28,17 +28,17 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-AV-47 — bounded ClamAV-compatible signed-bundle admission
-- Starting checkpoint: `1915549` (FW-AV-46 accepted)
-- Canonical owner: `admit_clamav_signed_bundle` is a narrow local adapter; `FWKeysCatalogTrustRoot` / `verify_signed_catalog_bundle` own signature verification, `TrustedSignatureCatalog` owns canonical content validation, and `DurableCatalogSequenceStore` owns sequence acceptance and content persistence.
-- Acceptance criteria: caller-supplied bytes under 1 MiB parse only as the exact `FW-AV-CLAMAV-BUNDLE-1` envelope, bind source/category/license and candidate provenance in Evidence, verify the signed catalog snapshot through FW-KEYS, then delegate acceptance and caching to the existing durable owners. No source transport is enabled.
-- Negative paths: empty, oversized, malformed, duplicate-key, wrong-schema, wrong-source/license, future-captured, unsigned/untrusted, expired, stale/replayed, snapshot-mismatched, and Evidence-failure inputs fail closed before unauthorized catalog mutation. No endpoint, URL, credential, downloader, network, quarantine, remediation, or response authority is added.
-- Proof plan: focused parser/admission and denial regressions, exact Claude review of the candidate, full suite, and integrity gate.
-- Exact first change: add the strict bounded local ClamAV-compatible envelope adapter and route verified content through the canonical FW-KEYS, sequence, and cache boundaries.
-- Proof: focused FW-AV tests passed (`21 passed`); full Linux suite passed (`666 passed, 1 skipped`); the default FW-INTEGRITY gate passed every hard check and its Golden Path at clean checkpoint `65ce7b5`. Claude exact-commit review of repaired candidate `405503e` returned schema-valid APPROVE/LOW with no missing tests or blocking findings. Health remains YELLOW only for the pre-existing missing `tzdata` dependency and defined-but-unimplemented identity, normalized-events, SOC-incident, and compliance owners.
+- Task ID: FW-AV-48 — Evidence-backed source-candidate approval before ClamAV admission
+- Starting checkpoint: `518b113` (FW-AV-47 accepted)
+- Canonical owner: `DefinitionSourceRegistry.approve_candidate` owns explicit approval Evidence; `admit_clamav_signed_bundle` enforces exact approval/candidate binding. FW-KEYS, `TrustedSignatureCatalog`, `DurableCatalogSequenceStore`, and canonical audit remain the only verification/catalog/anti-rollback owners.
+- Acceptance criteria: a ClamAV bundle can be admitted only with a registry-created approval bound to a reviewed candidate, exact payload bytes, source identity/license, and bounded chronology. Approval Evidence must succeed before canonical sequence/content mutation.
+- Negative paths: missing/direct/foreign approvals, candidate or payload mismatch, future approval, pre-review approval, malformed/unsigned/untrusted/stale/replayed bundle, and unavailable Evidence deny before unauthorized admission. No source transport, endpoint, credential, network, quarantine, remediation, or response authority is added.
+- Proof plan: focused approval/admission denial regressions, exact Claude review of candidate `6a13826`, full suite, and integrity gate after review acceptance.
+- Exact first change: require `DefinitionSourceCandidateApproval` for the existing local ClamAV adapter and add approval-binding regressions.
+- Proof: focused FW-AV tests passed (`21 passed`). Exact local read-only review found no blocking issue. Claude exact-commit review of `6a13826` was attempted through the canonical verifier but timed out after 180 seconds; no provider approval is inferred. Full suite/integrity remain pending until valid exact review completes. Health remains YELLOW only for the pre-existing dependency and roadmap-owner gaps.
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
-- Blocker: none.
-- Next action: derive the next highest-risk bounded FW-AV control: require prior Evidence-backed source-candidate review approval before ClamAV bundle admission, without enabling transport or response authority.
+- Blocker: B-004 — exact Claude review unavailable for candidate `6a13826`.
+- Next action: retry the canonical exact-commit Claude review once the provider returns within its bounded timeout; then run the full suite/integrity gate and checkpoint acceptance.
 - Platform delivery definition: Windows and Linux are the first endpoint targets; macOS, Android, and iOS are later platform-native releases. Detailed scope and required proof are in `docs/fw-av-windows-linux-delivery-plan.md`.
 
 ## Execution log
@@ -141,12 +141,14 @@ On every restart or continuation:
 
 - 2026-09-06: FW-AV-47 complete at `405503e` (clean checkpoint `65ce7b5`, implementation `3ad27d5`): the authorized local ClamAV-compatible signed-bundle adapter now enforces a strict 1 MiB JSON envelope, duplicate-key rejection, source/license binding, FW-KEYS signature and snapshot verification, durable sequence acceptance, canonical content caching, and provenance-bound Evidence. Focused proof passed (21 tests), full Linux suite passed (666 passed, 1 skipped), and the default integrity gate passed every hard check and its Golden Path. Claude exact-commit review returned APPROVE/LOW after adding empty and oversized denial regressions. No network, endpoint, credential, quarantine, remediation, deployment, or response authority was added. The next bounded control is explicit prior review approval binding.
 
+- 2026-09-06: FW-AV-48 candidate `6a13826`: ClamAV admission now requires a registry-created, Evidence-backed candidate approval bound to the exact reviewed payload and capture timestamp. Focused proof passed (21 tests), and exact local review found no blocking defect. The canonical Claude verifier timed out after 180 seconds; no approval was inferred, so full suite/integrity validation and acceptance remain pending. No network, endpoint, credential, quarantine, remediation, deployment, or response authority was added.
+
 ## Stop conditions
 
 Do not stop merely because a task or review cycle finished. Stop only under the explicit conditions in `AGENTS.md`, and record the exact reason and first resume action here.
 
 ## Current stop condition
 
-- Reason: NONE
-- Exact condition: The explicitly authorized first ClamAV-compatible local signed-bundle adapter is accepted at `405503e`. It remains caller-supplied and disabled for transport; FW-KEYS verification, canonical Evidence, anti-rollback, DRY_RUN, deployment-disabled, kill-switch, and tenant-isolation boundaries remain intact.
-- First resume action: derive and implement prior Evidence-backed source-candidate review approval binding before admission; keep network, endpoint, credentials, quarantine, remediation, and response authority disabled.
+- Reason: REQUIRED_REVIEW_RESOURCE_UNAVAILABLE
+- Exact condition: Candidate `6a13826` has deterministic focused proof and local exact review, but the required canonical Claude exact-commit reviewer timed out after 180 seconds. Treating that as approval would violate the review contract.
+- First resume action: retry the canonical Claude verifier against exact candidate `6a13826` when it is responsive; if it returns valid APPROVE/LOW, run the full suite and integrity gate, then checkpoint acceptance. Preserve all current safety boundaries.
