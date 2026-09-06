@@ -4,6 +4,14 @@ This file records only genuine blockers that require Customer Root authority, un
 
 ## Current blockers
 
+### B-010 — Exact Claude review pending for FW-ENDPOINT-02
+
+- Related task/requirement: FW-ENDPOINT-02 — bounded Windows/Linux fixture normalization; exact-commit review contract
+- Exact condition: candidate `a4333680362544c2b0efa65437993944a832116d` requires a valid exact Claude Co-Work review before broader acceptance validation.
+- Why work cannot complete safely: deterministic checks and local inspection cannot substitute for the required exact external reviewer; no acceptance may be inferred without exact APPROVE/LOW.
+- Evidence: focused fixture proof passed (8 tests); the normalizer is in-memory, caller-supplied, Evidence-first, and explicitly has no live endpoint, filesystem, network, quarantine, remediation, or deployment authority.
+- First resume action: obtain exact Claude APPROVE/LOW for `a433368`, then run the full suite/integrity gate and checkpoint acceptance only on valid approval.
+
 ### B-009 — Exact Claude review pending for FW-ENDPOINT-01 (resolved)
 
 - Related task/requirement: FW-ENDPOINT-01 — Windows/Linux MicroSensor contract and fixture boundaries; exact-commit review contract
