@@ -41,3 +41,8 @@ def test_fixture_normalization_denies_oversized_ancestry_and_evidence_failure():
         normalize_fixture(_fixture(process_ancestry=["x"] * 33), tenant_id="tenant-a", device_id="device-a", source="LINUX_SENSOR", now_epoch=150, audit=lambda *_args: None)
     with pytest.raises(EndpointFixtureDenied, match="EVIDENCE_WRITE_FAILED"):
         normalize_fixture(_fixture(), tenant_id="tenant-a", device_id="device-a", source="LINUX_SENSOR", now_epoch=150, audit=lambda *_args: (_ for _ in ()).throw(OSError()))
+
+
+def test_fixture_normalization_denies_unexpected_top_level_key_at_normal_size():
+    with pytest.raises(EndpointFixtureDenied, match="FIXTURE_INVALID"):
+        normalize_fixture(_fixture(unexpected="ordinary-size"), tenant_id="tenant-a", device_id="device-a", source="LINUX_SENSOR", now_epoch=150, audit=lambda *_args: None)

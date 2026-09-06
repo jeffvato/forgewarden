@@ -4,7 +4,7 @@
 
 - Active phase: FW-AV — Native anti-malware
 - Current focus: FW-AV — publisher-signed detection-content trust
-- Current task: derive next bounded FW-ENDPOINT control after accepted fixture normalization.
+- Current task: FW-ENDPOINT-02 follow-up — close ordinary unexpected-key regression coverage (review pending).
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -30,16 +30,16 @@ On every restart or continuation:
 
 - Task ID: FW-ENDPOINT-02 — Normalize bounded Windows/Linux endpoint fixtures
 - Starting checkpoint: `160ba0c` (FW-ENDPOINT-01 accepted)
-- Candidate commit: `a4333680362544c2b0efa65437993944a832116d` (bounded fixture normalizer and regressions).
+- Candidate commit: `a4333680362544c2b0efa65437993944a832116d` plus the follow-up regression candidate recorded below.
 - Canonical owner: `swarm.endpoint_fixtures.normalize_fixture` is only a caller-supplied fixture seam; canonical normalized-event ownership remains future FW-ENDPOINT work. Existing FW-KEYS, `TrustedSignatureCatalog`, `DurableCatalogSequenceStore`, and canonical audit remain the only verification/catalog/anti-rollback owners.
 - Acceptance criteria: bounded Windows/Linux fixture input is tenant/device/source-bound, rejected on malformed/future/oversized/unknown data, emits canonical Evidence before return, and is fixed to DRY_RUN/DETECT_ONLY without live endpoint authority.
 - Negative paths: tenant/device/source mismatch, unknown event, future timestamp, oversized input/ancestry/indicators, invalid evidence reference, and unavailable Evidence deny closed. No source transport, endpoint, credential, network, quarantine, remediation, or response authority is added.
 - Proof plan: focused fixture normalization and denial regressions, exact Claude review of candidate `a433368`, full suite, and integrity gate after review acceptance.
 - Exact first change: add an in-memory normalizer for caller-supplied Windows/Linux fixtures with bounded fields, tenant/device/source binding, Evidence-first return, and fixed DRY_RUN/DETECT_ONLY output; no live sensor or endpoint authority.
-- Proof: FW-ENDPOINT-02 focused proof passed (`8 passed`); exact Claude review returned APPROVE/LOW with no blocking findings; full Linux suite passed (`674 passed, 1 skipped`); integrity gate passed all hard checks and Golden Path with only the pre-existing YELLOW dependency and roadmap-owner findings. Non-blocking review notes defer cross-call deduplication, queue/backpressure, and a dedicated extra-key regression to a future stateful canonical event owner.
+- Proof: FW-ENDPOINT-02 focused proof passed (`8 passed`); exact Claude review returned APPROVE/LOW with no blocking findings; full Linux suite passed (`674 passed, 1 skipped`); integrity gate passed all hard checks and Golden Path with only the pre-existing YELLOW dependency and roadmap-owner findings. A follow-up test now explicitly covers ordinary-size unexpected top-level keys; cross-call deduplication and queue/backpressure remain deferred to a future canonical event owner.
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
-- Blocker: none for the accepted FW-ENDPOINT-02 unit.
-- Next action: derive the next bounded FW-ENDPOINT control from the roadmap without adding a live sensor, transport, or response authority.
+- Blocker: exact Claude review pending for the follow-up test candidate.
+- Next action: obtain exact Claude APPROVE/LOW for the follow-up test candidate, then run focused validation and accept the proof-only update without rerunning unchanged full validation unless the review identifies a defect.
 - Platform delivery definition: Windows and Linux are the first endpoint targets; macOS, Android, and iOS are later platform-native releases. Detailed scope and required proof are in `docs/fw-av-windows-linux-delivery-plan.md`.
 
 ## Execution log
@@ -47,6 +47,8 @@ On every restart or continuation:
 - 2026-09-06: FW-ENDPOINT-02 candidate `a433368` adds bounded caller-supplied Windows/Linux fixture normalization with Evidence-first return and fixed DRY_RUN/DETECT_ONLY output. Focused proof passed (8 tests); no live endpoint authority was added.
 
 - 2026-09-06: FW-ENDPOINT-02 accepted at `a433368`: exact Claude read-only review returned APPROVE/LOW with no blocking findings; full Linux suite passed (674 passed, 1 skipped); integrity gate passed all hard checks and Golden Path, remaining YELLOW only for the pre-existing dependency and roadmap-owner findings. Review notes explicitly defer cross-call deduplication, queue/backpressure, and a dedicated ordinary extra-key regression to a future canonical event owner.
+
+- 2026-09-06: FW-ENDPOINT-02 follow-up adds the dedicated ordinary-size unexpected top-level-key denial regression identified in exact review; focused proof passed (9 tests). No production code or authority changed.
 
 - 2026-09-06: FW-ENDPOINT-01 accepted at `160ba0c` with status checkpoint `0824f4a`: focused contract proof passed (1 test), exact Claude Co-Work review returned APPROVE/LOW, full suite passed (667 passed, 1 skipped), and integrity gate passed all hard checks and Golden Path with only pre-existing YELLOW findings.
 
