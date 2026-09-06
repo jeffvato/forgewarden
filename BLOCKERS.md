@@ -4,14 +4,6 @@ This file records only genuine blockers that require Customer Root authority, un
 
 ## Current blockers
 
-### B-006 — Exact Claude review pending for FW-AV-50
-
-- Related task/requirement: FW-AV-50 — seven-day source-approval freshness at ClamAV admission; exact-commit review contract
-- Exact condition: candidate `3060a0db6b049c4b67ac96c4626f14a83d48a4e1` requires a valid exact Claude Co-Work review before full acceptance validation.
-- Why work cannot complete safely: deterministic tests and local inspection cannot substitute for the required exact external reviewer; no acceptance may be inferred without exact APPROVE/LOW.
-- Evidence: focused FW-AV proof passed (21 tests); implementation is narrow and fail-closed, but no valid exact external approval exists yet.
-- First resume action: obtain exact Claude APPROVE/LOW for `3060a0d`, then run the full suite/integrity gate and checkpoint acceptance only on valid approval.
-
 ### B-004 — Exact Claude review unavailable for FW-AV-48 (resolved)
 
 - Related task/requirement: FW-AV-48 Evidence-backed source-candidate approval before ClamAV admission; exact-commit review contract
@@ -30,6 +22,10 @@ This file records only genuine blockers that require Customer Root authority, un
 - First resume action: obtain a valid Gemini payload for the exact candidate, validate its job ID and SHA, then resume FWQ-0008 acceptance.
 
 ## Resolved blockers
+
+### B-006 — Exact Claude review pending for FW-AV-50 (resolved)
+
+- Resolution: Jeff supplied an exact Claude Co-Work read-only review for `3060a0d`; the payload was schema-valid, exact-commit bound, APPROVE/LOW, with no missing tests or blocking findings. Full validation passed at `464ffb8`.
 
 ### B-005 — Exact Claude review unavailable for FW-AV-49 (resolved)
 

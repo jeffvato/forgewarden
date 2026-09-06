@@ -4,7 +4,7 @@
 
 - Active phase: FW-AV — Native anti-malware
 - Current focus: FW-AV — publisher-signed detection-content trust
-- Current task: FW-AV-50 — Enforce seven-day freshness for source approvals at ClamAV admission (review pending).
+- Current task: FW-AV-50 — Enforce seven-day freshness for source approvals at ClamAV admission (accepted).
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -36,13 +36,15 @@ On every restart or continuation:
 - Negative paths: missing/direct/foreign approvals, candidate or payload mismatch, future approval, pre-review approval, malformed/unsigned/untrusted/stale/replayed bundle, and unavailable Evidence deny before unauthorized admission. No source transport, endpoint, credential, network, quarantine, remediation, or response authority is added.
 - Proof plan: focused seven-day approval freshness regressions, exact Claude review of candidate `3060a0d`, full suite, and integrity gate after review acceptance.
 - Exact first change: enforce the approved seven-day source-approval freshness window at the existing ClamAV admission boundary, with future/expired denials and regressions; preserve all existing canonical admission boundaries.
-- Proof: FW-AV-48 focused proof passed (`21 passed`), the full Linux suite passed (`666 passed, 1 skipped`), and the integrity gate passed every hard check and its Golden Path. Exact Claude Co-Work review of `07842a6` returned schema-valid APPROVE/LOW with no missing tests or blocking findings. FW-AV-49 focused proof passed (`21 passed`), exact Claude Co-Work review returned schema-valid APPROVE/LOW with no missing tests or blocking findings, the full Linux suite passed (`666 passed, 1 skipped`), and the integrity gate passed every hard check and its Golden Path. FW-AV-50 focused proof passes (`21 passed`); exact review and full validation remain pending. Health remains YELLOW only for the pre-existing dependency and roadmap-owner gaps.
+- Proof: FW-AV-48 focused proof passed (`21 passed`), the full Linux suite passed (`666 passed, 1 skipped`), and the integrity gate passed every hard check and its Golden Path. Exact Claude Co-Work review of `07842a6` returned schema-valid APPROVE/LOW with no missing tests or blocking findings. FW-AV-49 focused proof passed (`21 passed`), exact Claude Co-Work review returned schema-valid APPROVE/LOW with no missing tests or blocking findings, the full Linux suite passed (`666 passed, 1 skipped`), and the integrity gate passed every hard check and its Golden Path. FW-AV-50 focused proof passed (`21 passed`), exact Claude Co-Work review returned schema-valid APPROVE/LOW with no missing tests or blocking findings, the full Linux suite passed (`666 passed, 1 skipped`), and the integrity gate passed every hard check and its Golden Path. Health remains YELLOW only for the pre-existing dependency and roadmap-owner gaps.
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
-- Blocker: B-006 — exact Claude review pending for FW-AV-50 candidate `3060a0d`.
-- Next action: obtain a valid exact-commit Claude APPROVE/LOW for `3060a0d`; then run the full suite/integrity gate and checkpoint acceptance.
+- Blocker: none for FW-AV-50.
+- Next action: select and explicitly authorize the next bounded FW-AV or FW-ENDPOINT control; do not add endpoint, network, quarantine, remediation, or deployment authority without a new bounded authorization.
 - Platform delivery definition: Windows and Linux are the first endpoint targets; macOS, Android, and iOS are later platform-native releases. Detailed scope and required proof are in `docs/fw-av-windows-linux-delivery-plan.md`.
 
 ## Execution log
+
+- 2026-09-06: FW-AV-50 accepted at `3060a0d` with status checkpoint `464ffb8`: focused proof passed (21 tests), exact Claude Co-Work review returned APPROVE/LOW, full Linux suite passed (666 passed, 1 skipped), and integrity gate passed all hard checks and Golden Path with only pre-existing YELLOW findings.
 
 - 2026-09-06: FW-AV-50 candidate `3060a0d` enforces the approved seven-day source-approval freshness window and denies future/expired approvals before parsing or mutation. Focused FW-AV proof passed (21 tests). Exact review and full validation remain pending.
 
