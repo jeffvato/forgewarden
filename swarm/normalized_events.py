@@ -110,8 +110,9 @@ class NormalizedEventStore:
 
     def dequeue(self, *, tenant_id: str, device_id: str) -> EndpointObservation | None:
         """Compatibility helper that acknowledges the oldest event before removal."""
-        observation = self.peek_next(tenant_id=tenant_id, device_id=device_id)
-        return self.acknowledge(observation) if observation is not None else None
+        with self._lock:
+            observation = self.peek_next(tenant_id=tenant_id, device_id=device_id)
+            return self.acknowledge(observation) if observation is not None else None
 
     def queued_count(self, *, tenant_id: str, device_id: str) -> int:
         with self._lock:
