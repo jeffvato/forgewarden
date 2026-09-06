@@ -4,7 +4,7 @@
 
 - Active phase: FW-AV — Native anti-malware
 - Current focus: FW-AV — publisher-signed detection-content trust
-- Current task: FW-AV-51 — Prove the exact seven-day approval freshness boundary (validation blocked by untracked user artifact).
+- Current task: FW-ENDPOINT-01 — Windows/Linux MicroSensor contract and fixture boundaries (review pending).
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -30,19 +30,21 @@ On every restart or continuation:
 
 - Task ID: FW-AV-51 — Prove the exact seven-day approval freshness boundary
 - Starting checkpoint: `518b113` (FW-AV-47 accepted)
-- Candidate commit: `807580245f74c1fd8e248ccd9fc088921f18f1be` (FW-AV-51 test-only boundary regression); FW-AV-50 `3060a0d` accepted.
+- Candidate commit: `160ba0cffe696ec39392ff26dccf475192c55312` (design-only Windows/Linux sensor contract and regression); FW-AV-51 `8075802` accepted.
 - Canonical owner: `DefinitionSourceRegistry.approve_candidate` owns explicit approval Evidence; `admit_clamav_signed_bundle` enforces exact approval/candidate binding. FW-KEYS, `TrustedSignatureCatalog`, `DurableCatalogSequenceStore`, and canonical audit remain the only verification/catalog/anti-rollback owners.
 - Acceptance criteria: a ClamAV bundle can be admitted only with a registry-created approval bound to a reviewed candidate, exact payload bytes, source identity/license, and bounded chronology. Approval Evidence must succeed before canonical sequence/content mutation.
 - Negative paths: missing/direct/foreign approvals, candidate or payload mismatch, future approval, pre-review approval, malformed/unsigned/untrusted/stale/replayed bundle, and unavailable Evidence deny before unauthorized admission. No source transport, endpoint, credential, network, quarantine, remediation, or response authority is added.
-- Proof plan: focused exact-boundary regression, exact Claude review of candidate `8075802`, full suite, and integrity gate after review acceptance.
-- Exact first change: add a test proving an approval exactly at seven days remains valid while one second beyond is denied; production code remains unchanged.
-- Proof: FW-AV-50 focused proof passed (`21 passed`), exact Claude Co-Work review returned schema-valid APPROVE/LOW with no missing tests or blocking findings, the full Linux suite passed (`666 passed, 1 skipped`), and the integrity gate passed every hard check and its Golden Path. FW-AV-51 focused proof passed (`21 passed`), exact Claude Co-Work review returned schema-valid APPROVE/LOW with no missing tests or blocking findings, the full suite passed (`666 passed, 1 skipped`), and the clean integrity gate passed every hard check and its Golden Path after the user moved `Claude outputs/` outside the repository. Health remains YELLOW only for the pre-existing dependency and roadmap-owner gaps.
+- Proof plan: contract regression, exact Claude review of candidate `160ba0c`, full suite, and integrity gate after review acceptance.
+- Exact first change: add a design-only Windows/Linux MicroSensor contract and fixture-boundary regression; no service, filesystem hook, endpoint mutation, or deployment code.
+- Proof: FW-AV-50 and FW-AV-51 remain accepted with focused/full validation and clean integrity gates. FW-ENDPOINT-01 focused contract proof passed (`1 passed`); exact review and broader validation remain pending. Health remains YELLOW only for the pre-existing dependency and roadmap-owner gaps.
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
-- Blocker: none for FW-AV-51.
-- Next action: select and explicitly authorize the next bounded FW-AV, FW-ENDPOINT, or response-control slice; do not expand authority implicitly.
+- Blocker: B-009 — exact Claude review pending for FW-ENDPOINT-01 candidate `160ba0c`.
+- Next action: obtain exact Claude APPROVE/LOW for `160ba0c`; then run the full suite/integrity gate and checkpoint acceptance.
 - Platform delivery definition: Windows and Linux are the first endpoint targets; macOS, Android, and iOS are later platform-native releases. Detailed scope and required proof are in `docs/fw-av-windows-linux-delivery-plan.md`.
 
 ## Execution log
+
+- 2026-09-06: FW-ENDPOINT-01 candidate `160ba0c` adds a design-only Windows/Linux MicroSensor contract and fixture-boundary regression. Focused proof passed (1 test); no endpoint authority or deployment behavior was added.
 
 - 2026-09-06: FW-AV-51 accepted at `8075802` with checkpoint `9443f24`: exact Claude Co-Work review returned APPROVE/LOW, full suite passed (666 passed, 1 skipped), and clean integrity gate passed all hard checks and Golden Path with only pre-existing YELLOW findings after the user moved `Claude outputs/` outside the repository.
 
