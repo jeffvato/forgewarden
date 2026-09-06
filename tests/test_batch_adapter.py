@@ -59,3 +59,10 @@ def test_batch_admission_denies_cross_batch_duplicate_and_empty_direct_batch():
         store.admit_batch(fixtures, tenant_id="tenant-a", device_id="device-a", source="LINUX_SENSOR", now_epoch=150)
     with pytest.raises(EndpointFixtureDenied, match="BATCH_INVALID"):
         store.admit_batch([], tenant_id="tenant-a", device_id="device-a", source="LINUX_SENSOR", now_epoch=150)
+
+
+def test_batch_admission_enforces_direct_canonical_batch_cap():
+    store = NormalizedEventStore(lambda *_args: None, max_queued_events_per_device=1024)
+    fixtures = adapt_batch([_record(f"event-{index}") for index in range(128)], source="LINUX_SENSOR", tenant_id="tenant-a", device_id="device-a")
+    with pytest.raises(EndpointFixtureDenied, match="BATCH_INVALID"):
+        store.admit_batch(fixtures + [adapt_batch([_record("event-over")], source="LINUX_SENSOR", tenant_id="tenant-a", device_id="device-a")[0]], tenant_id="tenant-a", device_id="device-a", source="LINUX_SENSOR", now_epoch=150)

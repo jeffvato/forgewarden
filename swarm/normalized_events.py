@@ -15,6 +15,7 @@ from .endpoint_fixtures import EndpointFixtureDenied, EndpointObservation, norma
 
 
 MAX_QUEUED_EVENTS_PER_DEVICE = 1024
+MAX_EVENT_BATCH = 128
 
 
 class NormalizedEventStore:
@@ -82,7 +83,7 @@ class NormalizedEventStore:
         source: str, now_epoch: int,
     ) -> tuple[EndpointObservation, ...]:
         """Preflight and atomically admit a bounded batch through one Evidence write."""
-        if not isinstance(fixtures, list) or not fixtures:
+        if not isinstance(fixtures, list) or not 1 <= len(fixtures) <= MAX_EVENT_BATCH:
             raise EndpointFixtureDenied("BATCH_INVALID")
         observations = tuple(
             normalize_fixture(fixture, tenant_id=tenant_id, device_id=device_id, source=source,
