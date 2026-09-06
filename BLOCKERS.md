@@ -4,6 +4,14 @@ This file records only genuine blockers that require Customer Root authority, un
 
 ## Current blockers
 
+### B-007 — Exact Claude review pending for FW-AV-51
+
+- Related task/requirement: FW-AV-51 — exact seven-day approval freshness boundary regression; exact-commit review contract
+- Exact condition: candidate `807580245f74c1fd8e248ccd9fc088921f18f1be` requires a valid exact Claude Co-Work review before broader acceptance validation.
+- Why work cannot complete safely: deterministic tests and local inspection cannot substitute for the required exact external reviewer; no acceptance may be inferred without exact APPROVE/LOW.
+- Evidence: focused FW-AV proof passed (21 tests); the candidate is test-only and narrow, but no valid exact external approval exists yet.
+- First resume action: obtain exact Claude APPROVE/LOW for `8075802`, then run full suite/integrity gate and checkpoint acceptance only on valid approval.
+
 ### B-004 — Exact Claude review unavailable for FW-AV-48 (resolved)
 
 - Related task/requirement: FW-AV-48 Evidence-backed source-candidate approval before ClamAV admission; exact-commit review contract
