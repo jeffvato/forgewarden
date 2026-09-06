@@ -74,6 +74,44 @@ class NormalizedEventStore:
             queue.append(observation)
             return observation
 
+    def admit_batch(
+        self,
+        fixtures: list[Mapping[str, Any]], *, tenant_id: str, device_id: str,
+        source: str, now_epoch: int,
+    ) -> tuple[EndpointObservation, ...]:
+        """Preflight and atomically admit a bounded batch through one Evidence write."""
+        if not isinstance(fixtures, list) or not fixtures:
+            raise EndpointFixtureDenied("BATCH_INVALID")
+        observations = tuple(
+            normalize_fixture(fixture, tenant_id=tenant_id, device_id=device_id, source=source,
+                              now_epoch=now_epoch, audit=lambda *_args: None)
+            for fixture in fixtures
+        )
+        keys = [(item.tenant_id, item.device_id, item.event_id) for item in observations]
+        if len(set(keys)) != len(keys):
+            raise EndpointFixtureDenied("EVENT_ID_DUPLICATE")
+        device_key = (tenant_id, device_id)
+        with self._lock:
+            queue = self._queues.setdefault(device_key, deque())
+            if len(queue) + len(observations) > self._limit:
+                raise EndpointFixtureDenied("EVENT_QUEUE_FULL")
+            if any(key in self._seen for key in keys):
+                raise EndpointFixtureDenied("EVENT_ID_DUPLICATE")
+            if self._seen_counts.get(device_key, 0) + len(observations) > MAX_QUEUED_EVENTS_PER_DEVICE:
+                raise EndpointFixtureDenied("EVENT_ID_CAPACITY")
+            try:
+                self._audit("endpoint_events_batch_admitted", {
+                    "tenant_id": tenant_id, "device_id": device_id, "source": source,
+                    "event_ids": [item.event_id for item in observations],
+                    "count": len(observations), "mode": "DRY_RUN", "action": "DETECT_ONLY",
+                })
+            except Exception as exc:
+                raise EndpointFixtureDenied("EVIDENCE_WRITE_FAILED") from exc
+            self._seen.update(keys)
+            self._seen_counts[device_key] = self._seen_counts.get(device_key, 0) + len(observations)
+            queue.extend(observations)
+            return observations
+
     def peek_next(self, *, tenant_id: str, device_id: str) -> EndpointObservation | None:
         """Inspect the oldest event without removing it, for retry-safe recovery."""
         with self._lock:

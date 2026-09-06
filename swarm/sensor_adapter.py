@@ -14,6 +14,7 @@ _RECORD_KEYS = frozenset({
     "event_id", "tenant_id", "device_id", "observed_at_epoch", "event_type",
     "source", "metadata", "process_ancestry", "related_indicators", "evidence_ref",
 })
+MAX_ADAPTER_BATCH = 128
 
 
 class SensorAdapterDenied(ValueError):
@@ -52,3 +53,21 @@ def adapt_record(record: Mapping[str, Any], *, source: str) -> dict[str, Any]:
         "evidence_ref": record["evidence_ref"],
     }
     return {key: value for key, value in fixture.items() if value is not None}
+
+
+def adapt_batch(
+    records: list[Mapping[str, Any]], *, source: str, tenant_id: str, device_id: str,
+) -> list[dict[str, Any]]:
+    """Map one bounded, single-tenant/device caller-supplied batch."""
+    if not isinstance(records, list) or not 1 <= len(records) <= MAX_ADAPTER_BATCH:
+        raise SensorAdapterDenied("BATCH_INVALID")
+    mapped = [adapt_record(record, source=source) for record in records]
+    seen: set[str] = set()
+    for fixture in mapped:
+        if fixture.get("tenant_id") != tenant_id or fixture.get("device_id") != device_id:
+            raise SensorAdapterDenied("TENANT_OR_DEVICE_MISMATCH")
+        event_id = fixture["event_id"]
+        if event_id in seen:
+            raise SensorAdapterDenied("EVENT_ID_DUPLICATE")
+        seen.add(event_id)
+    return mapped
