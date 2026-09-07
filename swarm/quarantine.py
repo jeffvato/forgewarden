@@ -37,7 +37,7 @@ class QuarantineProposal:
 def propose_quarantine(
     content: bytes, *, tenant_id: str, device_id: str, detection_id: str,
     provenance: str, confidence: str, trusted_content: bool,
-    policy_decision: str, audit: AuditSink, kill_switch_state: str = "ENGAGED",
+    policy_decision: str, audit: AuditSink, kill_switch_state: str,
 ) -> QuarantineProposal:
     """Validate and Evidence-log a high-confidence proposal without containment."""
     if not isinstance(content, bytes) or not content or len(content) > MAX_QUARANTINE_PROPOSAL_BYTES:

@@ -9,7 +9,7 @@ def _kwargs(audit):
     return dict(
         tenant_id="tenant-a", device_id="device-a", detection_id="det-1",
         provenance="trusted-catalog:v1", confidence="HIGH", trusted_content=True,
-        policy_decision="ALLOW_QUARANTINE", audit=audit,
+        policy_decision="ALLOW_QUARANTINE", audit=audit, kill_switch_state="ENGAGED",
     )
 
 
@@ -46,7 +46,27 @@ def test_quarantine_proposal_fails_closed_when_evidence_is_unavailable():
 
 
 def test_quarantine_proposal_requires_engaged_kill_switch():
-    values = _kwargs(lambda *_args: None)
+    events = []
+    values = _kwargs(lambda *args: events.append(args))
     values["kill_switch_state"] = "CLEARED_FOR_DRY_RUN"
     with pytest.raises(QuarantineProposalDenied, match="KILL_SWITCH_BLOCKED"):
         propose_quarantine(b"fixture", **values)
+    assert events == []
+
+
+@pytest.mark.parametrize("content", [b"", b"x" * (1024 * 1024 + 1), "not-bytes"])
+def test_quarantine_proposal_rejects_invalid_content_before_evidence(content):
+    events = []
+    with pytest.raises(QuarantineProposalDenied, match="CONTENT_INVALID"):
+        propose_quarantine(content, **_kwargs(lambda *args: events.append(args)))
+    assert events == []
+
+
+@pytest.mark.parametrize("field", ["tenant_id", "device_id", "detection_id", "provenance"])
+def test_quarantine_proposal_rejects_invalid_identity_before_evidence(field):
+    events = []
+    values = _kwargs(lambda *args: events.append(args))
+    values[field] = " "
+    with pytest.raises(QuarantineProposalDenied, match="IDENTITY_INVALID"):
+        propose_quarantine(b"fixture", **values)
+    assert events == []
