@@ -6,6 +6,7 @@ from swarm.quarantine import (
     MAX_QUARANTINE_ENTRIES,
     MAX_QUARANTINE_TOTAL_BYTES,
     InMemoryQuarantineVault,
+    QuarantineEntry,
     QuarantineProposal,
     QuarantineProposalDenied,
     propose_quarantine,
@@ -240,6 +241,57 @@ def test_in_memory_vault_recovery_rejects_tampered_snapshot_without_replacement(
     with pytest.raises(QuarantineProposalDenied, match="RECOVERY_DIGEST_MISMATCH"):
         vault.recover((tampered,))
     assert vault.snapshot() == (entry,)
+
+
+def test_in_memory_vault_recovery_rejects_invalid_shape_policy_and_duplicates():
+    vault = InMemoryQuarantineVault(lambda *_args: None)
+    proposal = propose_quarantine(b"fixture", **_kwargs(lambda *_args: None))
+    entry = QuarantineEntry(
+        proposal.tenant_id, proposal.device_id, proposal.detection_id,
+        proposal.content_sha256, b"fixture", proposal.provenance,
+    )
+    for invalid, reason in [
+        ([], "RECOVERY_SNAPSHOT_INVALID"),
+        ((object(),), "RECOVERY_SNAPSHOT_INVALID"),
+        ((QuarantineEntry("tenant-a", "device-a", "det-1", proposal.content_sha256, b"", proposal.provenance),), "RECOVERY_SNAPSHOT_INVALID"),
+        ((QuarantineEntry("tenant-a", "device-a", "det-1", proposal.content_sha256, b"fixture", proposal.provenance, action="QUARANTINE"),), "RECOVERY_POLICY_INVALID"),
+        ((entry, entry), "RECOVERY_DUPLICATE"),
+    ]:
+        with pytest.raises(QuarantineProposalDenied, match=reason):
+            vault.recover(invalid)
+    assert vault.snapshot() == ()
+
+
+def test_in_memory_vault_recovery_rejects_total_capacity_and_is_atomic():
+    content = b"x" * (MAX_QUARANTINE_TOTAL_BYTES // 4)
+    entries = tuple(
+        QuarantineEntry(
+            "tenant-a", "device-a", f"det-{index}", hashlib.sha256(content).hexdigest(),
+            content, "fixture",
+        ) for index in range(5)
+    )
+    vault = InMemoryQuarantineVault(lambda *_args: None)
+    with pytest.raises(QuarantineProposalDenied, match="VAULT_CAPACITY"):
+        vault.recover(entries)
+    assert vault.snapshot() == ()
+
+
+def test_in_memory_vault_recovery_evidence_failure_preserves_existing_state():
+    proposal = propose_quarantine(b"old", **_kwargs(lambda *_args: None))
+    events = []
+    vault = InMemoryQuarantineVault(lambda *args: events.append(args))
+    existing = vault.admit(proposal, b"old")
+    replacement = QuarantineEntry(
+        "tenant-a", "device-a", "det-new", hashlib.sha256(b"new").hexdigest(), b"new", "fixture",
+    )
+    def fail_recovery(event, payload):
+        if event == "quarantine_vault_recovered":
+            raise OSError("sink unavailable")
+        events.append((event, payload))
+    vault._audit = fail_recovery
+    with pytest.raises(QuarantineProposalDenied, match="EVIDENCE_WRITE_FAILED"):
+        vault.recover((replacement,))
+    assert vault.snapshot() == (existing,)
 
 
 def test_in_memory_vault_rejects_mismatch_duplicate_and_evidence_failure_without_mutation():
