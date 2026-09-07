@@ -5,6 +5,8 @@ record into the fixture envelope consumed by ``NormalizedEventStore``.
 """
 from __future__ import annotations
 
+from dataclasses import dataclass
+from threading import Lock
 from typing import Any, Mapping
 
 from .endpoint_fixtures import EndpointObservation
@@ -24,6 +26,18 @@ class SensorAdapterDenied(ValueError):
     def __init__(self, reason: str):
         self.reason = reason
         super().__init__(reason)
+
+
+@dataclass(frozen=True)
+class SensorPipelineMetrics:
+    accepted_records: int
+    accepted_batches: int
+    rejected_records: int
+    rejected_batches: int
+    peak_batch_size: int
+    peak_queued_events: int
+    mode: str = "DRY_RUN"
+    action: str = "DETECT_ONLY"
 
 
 def adapt_record(record: Mapping[str, Any], *, source: str) -> dict[str, Any]:
@@ -83,23 +97,69 @@ class DryRunSensorPipeline:
         if not isinstance(store, NormalizedEventStore):
             raise ValueError("pipeline requires a NormalizedEventStore")
         self._store = store
+        self._metrics_lock = Lock()
+        self._accepted_records = 0
+        self._accepted_batches = 0
+        self._rejected_records = 0
+        self._rejected_batches = 0
+        self._peak_batch_size = 0
+        self._peak_queued_events = 0
 
     def ingest_record(
         self, record: Mapping[str, Any], *, source: str, tenant_id: str,
         device_id: str, now_epoch: int,
     ) -> EndpointObservation:
-        fixture = adapt_record(record, source=source)
-        return self._store.admit_fixture(
-            fixture, tenant_id=tenant_id, device_id=device_id,
-            source=source, now_epoch=now_epoch,
-        )
+        try:
+            fixture = adapt_record(record, source=source)
+            observation = self._store.admit_fixture(
+                fixture, tenant_id=tenant_id, device_id=device_id,
+                source=source, now_epoch=now_epoch,
+            )
+        except Exception:
+            with self._metrics_lock:
+                self._rejected_records += 1
+            raise
+        with self._metrics_lock:
+            self._accepted_records += 1
+            self._peak_batch_size = max(self._peak_batch_size, 1)
+            self._peak_queued_events = max(
+                self._peak_queued_events,
+                self._store.queued_count(tenant_id=tenant_id, device_id=device_id),
+            )
+        return observation
 
     def ingest_batch(
         self, records: list[Mapping[str, Any]], *, source: str, tenant_id: str,
         device_id: str, now_epoch: int,
     ) -> tuple[EndpointObservation, ...]:
-        fixtures = adapt_batch(records, source=source, tenant_id=tenant_id, device_id=device_id)
-        return self._store.admit_batch(
-            fixtures, tenant_id=tenant_id, device_id=device_id,
-            source=source, now_epoch=now_epoch,
-        )
+        try:
+            fixtures = adapt_batch(records, source=source, tenant_id=tenant_id, device_id=device_id)
+            observations = self._store.admit_batch(
+                fixtures, tenant_id=tenant_id, device_id=device_id,
+                source=source, now_epoch=now_epoch,
+            )
+        except Exception:
+            with self._metrics_lock:
+                self._rejected_batches += 1
+            raise
+        with self._metrics_lock:
+            self._accepted_batches += 1
+            self._accepted_records += len(observations)
+            self._peak_batch_size = max(self._peak_batch_size, len(observations))
+            self._peak_queued_events = max(
+                self._peak_queued_events,
+                self._store.queued_count(tenant_id=tenant_id, device_id=device_id),
+            )
+        return observations
+
+    def metrics(self) -> SensorPipelineMetrics:
+        """Return a bounded local snapshot; metrics never grant authority."""
+        with self._metrics_lock:
+            return SensorPipelineMetrics(
+                accepted_records=self._accepted_records,
+                accepted_batches=self._accepted_batches,
+                rejected_records=self._rejected_records,
+                rejected_batches=self._rejected_batches,
+                peak_batch_size=self._peak_batch_size,
+                peak_queued_events=self._peak_queued_events,
+            )

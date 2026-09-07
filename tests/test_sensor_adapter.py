@@ -98,9 +98,39 @@ def test_dry_run_pipeline_batch_is_atomic_on_adapter_or_store_denial():
             [_record() | {"event_id": "event-3"}], source="LINUX_SENSOR", tenant_id="tenant-a", device_id="device-a", now_epoch=150,
         )
     assert len(events) == 1
-
     with pytest.raises(SensorAdapterDenied, match="EVENT_ID_DUPLICATE"):
         pipeline.ingest_batch(
             [_record() | {"event_id": "event-4"}, _record() | {"event_id": "event-4"}], source="LINUX_SENSOR", tenant_id="tenant-a", device_id="device-a", now_epoch=150,
         )
     assert len(events) == 1
+
+
+def test_dry_run_pipeline_exposes_bounded_deterministic_resource_metrics():
+    pipeline = DryRunSensorPipeline(NormalizedEventStore(lambda *_args: None, max_queued_events_per_device=3))
+    pipeline.ingest_record(
+        _record(), source="LINUX_SENSOR", tenant_id="tenant-a", device_id="device-a", now_epoch=150,
+    )
+    pipeline.ingest_batch(
+        [_record() | {"event_id": "event-2"}, _record() | {"event_id": "event-3"}],
+        source="LINUX_SENSOR", tenant_id="tenant-a", device_id="device-a", now_epoch=150,
+    )
+    with pytest.raises(EndpointFixtureDenied, match="EVENT_QUEUE_FULL"):
+        pipeline.ingest_record(
+            _record() | {"event_id": "event-4"}, source="LINUX_SENSOR",
+            tenant_id="tenant-a", device_id="device-a", now_epoch=150,
+        )
+    with pytest.raises(SensorAdapterDenied, match="EVENT_TYPE_INVALID"):
+        pipeline.ingest_record(
+            _record() | {"event_id": "event-5", "event_type": "UNKNOWN"}, source="LINUX_SENSOR",
+            tenant_id="tenant-a", device_id="device-a", now_epoch=150,
+        )
+
+    metrics = pipeline.metrics()
+    assert metrics.accepted_records == 3
+    assert metrics.accepted_batches == 1
+    assert metrics.rejected_records == 2
+    assert metrics.rejected_batches == 0
+    assert metrics.peak_batch_size == 2
+    assert metrics.peak_queued_events == 3
+    assert metrics.mode == "DRY_RUN"
+    assert metrics.action == "DETECT_ONLY"
