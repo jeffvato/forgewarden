@@ -4,6 +4,13 @@ This file records only genuine blockers that require Customer Root authority, un
 
 ## Current blockers
 
+### B-023 — Exact Claude repair review unavailable for FW-AV-QUARANTINE-03
+
+- Related task/requirement: FW-AV-QUARANTINE-03 — bounded dry-run Action Ticket binding
+- Exact condition: repair candidate `c1042f51a3647a9d88da469cf738eec095eaf24b` passed focused proof (22 tests), but the required exact read-only Claude repair review did not return.
+- Why work cannot complete safely: acceptance and broad validation cannot be inferred without the exact-commit reviewer verdict.
+- First resume action: submit the unchanged repair to Claude when available; run the full suite and integrity gate only after APPROVE/LOW.
+
 ### B-022 — Exact Claude review unavailable for FW-AV-QUARANTINE-02 (resolved)
 
 - Related task/requirement: FW-AV-QUARANTINE-02 — bounded in-memory quarantine vault proof
