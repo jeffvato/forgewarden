@@ -332,6 +332,7 @@ def test_quarantine_recovery_proposal_is_ticket_bound_evidence_first_and_consumi
     assert isinstance(proposal, QuarantineRecoveryProposal)
     assert proposal.mode == "DRY_RUN" and proposal.action == "DETECT_ONLY"
     assert events[0][0] == "quarantine_recovery_proposed"
+    assert events[0][1]["kill_switch"] == "ENGAGED"
     with pytest.raises(QuarantineProposalDenied, match="RECOVERY_TICKET_DENIED"):
         propose_quarantine_recovery_with_ticket(
             entry, tickets=tickets, ticket_id="ticket-recover", subject_agent_id="agent-1",
