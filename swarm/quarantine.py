@@ -37,7 +37,7 @@ class QuarantineProposal:
 def propose_quarantine(
     content: bytes, *, tenant_id: str, device_id: str, detection_id: str,
     provenance: str, confidence: str, trusted_content: bool,
-    policy_decision: str, audit: AuditSink,
+    policy_decision: str, audit: AuditSink, kill_switch_state: str = "ENGAGED",
 ) -> QuarantineProposal:
     """Validate and Evidence-log a high-confidence proposal without containment."""
     if not isinstance(content, bytes) or not content or len(content) > MAX_QUARANTINE_PROPOSAL_BYTES:
@@ -49,6 +49,8 @@ def propose_quarantine(
         raise QuarantineProposalDenied("IDENTITY_INVALID")
     if confidence != "HIGH" or trusted_content is not True or policy_decision != "ALLOW_QUARANTINE":
         raise QuarantineProposalDenied("QUARANTINE_POLICY_DENIED")
+    if kill_switch_state != "ENGAGED":
+        raise QuarantineProposalDenied("KILL_SWITCH_BLOCKED")
     proposal = QuarantineProposal(
         tenant_id=tenant_id.strip(), device_id=device_id.strip(), detection_id=detection_id.strip(),
         content_sha256=hashlib.sha256(content).hexdigest(), content_bytes=len(content), provenance=provenance.strip(),
@@ -61,6 +63,7 @@ def propose_quarantine(
             "confidence": confidence, "trusted_content": trusted_content,
             "policy_decision": policy_decision, "mode": proposal.mode,
             "action": proposal.action, "disposition": proposal.disposition,
+            "deployment": "DISABLED", "kill_switch": kill_switch_state,
         })
     except Exception as exc:
         raise QuarantineProposalDenied("EVIDENCE_WRITE_FAILED") from exc

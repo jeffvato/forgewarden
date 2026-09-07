@@ -43,3 +43,10 @@ def test_quarantine_proposal_fails_closed_when_evidence_is_unavailable():
         raise OSError("sink unavailable")
     with pytest.raises(QuarantineProposalDenied, match="EVIDENCE_WRITE_FAILED"):
         propose_quarantine(b"fixture", **_kwargs(fail))
+
+
+def test_quarantine_proposal_requires_engaged_kill_switch():
+    values = _kwargs(lambda *_args: None)
+    values["kill_switch_state"] = "CLEARED_FOR_DRY_RUN"
+    with pytest.raises(QuarantineProposalDenied, match="KILL_SWITCH_BLOCKED"):
+        propose_quarantine(b"fixture", **values)
