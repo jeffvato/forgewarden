@@ -138,6 +138,35 @@ class NormalizedEventStore:
                 return ()
             return tuple(list(queue)[:limit])
 
+    def acknowledge_batch(
+        self, observations: tuple[EndpointObservation, ...],
+    ) -> tuple[EndpointObservation, ...]:
+        """Write one completion Evidence record before removing an exact FIFO prefix."""
+        if not isinstance(observations, tuple) or not 1 <= len(observations) <= MAX_EVENT_BATCH:
+            raise EndpointFixtureDenied("EVENT_ACK_BATCH_INVALID")
+        if any(not isinstance(item, EndpointObservation) for item in observations):
+            raise EndpointFixtureDenied("EVENT_ACK_BATCH_INVALID")
+        device_key = (observations[0].tenant_id, observations[0].device_id)
+        if any((item.tenant_id, item.device_id) != device_key for item in observations):
+            raise EndpointFixtureDenied("EVENT_ACK_TENANT_OR_DEVICE_MISMATCH")
+        with self._lock:
+            queue = self._queues.get(device_key)
+            if not queue or tuple(list(queue)[:len(observations)]) != observations:
+                raise EndpointFixtureDenied("EVENT_NOT_QUEUE_PREFIX")
+            try:
+                self._audit("endpoint_events_batch_acknowledged", {
+                    "event_ids": [item.event_id for item in observations],
+                    "tenant_id": device_key[0], "device_id": device_key[1],
+                    "count": len(observations), "mode": "DRY_RUN", "action": "DETECT_ONLY",
+                })
+            except Exception as exc:
+                raise EndpointFixtureDenied("EVIDENCE_WRITE_FAILED") from exc
+            for _ in observations:
+                queue.popleft()
+            if not queue:
+                self._queues.pop(device_key, None)
+            return observations
+
     def acknowledge(self, observation: EndpointObservation) -> EndpointObservation:
         """Write completion Evidence, then remove the exact queue head."""
         device_key = (observation.tenant_id, observation.device_id)

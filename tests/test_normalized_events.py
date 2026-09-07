@@ -47,6 +47,40 @@ def test_normalized_event_store_pending_snapshot_is_bounded_fifo_and_non_mutatin
     assert store.pending_events(tenant_id="tenant-a", device_id="device-a") == (second, third)
 
 
+def test_normalized_event_store_acknowledge_batch_replays_exact_fifo_prefix():
+    events = []
+    store = NormalizedEventStore(lambda *args: events.append(args), max_queued_events_per_device=3)
+    first = store.admit_fixture(_fixture("event-1"), tenant_id="tenant-a", device_id="device-a", source="LINUX_SENSOR", now_epoch=150)
+    second = store.admit_fixture(_fixture("event-2"), tenant_id="tenant-a", device_id="device-a", source="LINUX_SENSOR", now_epoch=150)
+    third = store.admit_fixture(_fixture("event-3"), tenant_id="tenant-a", device_id="device-a", source="LINUX_SENSOR", now_epoch=150)
+    assert store.acknowledge_batch((first, second)) == (first, second)
+    assert events[-1][0] == "endpoint_events_batch_acknowledged"
+    assert store.pending_events(tenant_id="tenant-a", device_id="device-a") == (third,)
+
+
+def test_normalized_event_store_acknowledge_batch_rejects_non_prefix_without_mutation():
+    store = NormalizedEventStore(lambda *_args: None)
+    first = store.admit_fixture(_fixture("event-1"), tenant_id="tenant-a", device_id="device-a", source="LINUX_SENSOR", now_epoch=150)
+    second = store.admit_fixture(_fixture("event-2"), tenant_id="tenant-a", device_id="device-a", source="LINUX_SENSOR", now_epoch=150)
+    with pytest.raises(EndpointFixtureDenied, match="EVENT_NOT_QUEUE_PREFIX"):
+        store.acknowledge_batch((second,))
+    assert store.pending_events(tenant_id="tenant-a", device_id="device-a") == (first, second)
+
+
+def test_normalized_event_store_acknowledge_batch_evidence_failure_retains_prefix():
+    calls = []
+    def audit(*args):
+        calls.append(args)
+        if args[0] == "endpoint_events_batch_acknowledged":
+            raise OSError("sink unavailable")
+    store = NormalizedEventStore(audit)
+    first = store.admit_fixture(_fixture("event-1"), tenant_id="tenant-a", device_id="device-a", source="LINUX_SENSOR", now_epoch=150)
+    second = store.admit_fixture(_fixture("event-2"), tenant_id="tenant-a", device_id="device-a", source="LINUX_SENSOR", now_epoch=150)
+    with pytest.raises(EndpointFixtureDenied, match="EVIDENCE_WRITE_FAILED"):
+        store.acknowledge_batch((first, second))
+    assert store.pending_events(tenant_id="tenant-a", device_id="device-a") == (first, second)
+
+
 @pytest.mark.parametrize("limit", [0, -1, MAX_QUEUED_EVENTS_PER_DEVICE + 1, True, "2"])
 def test_normalized_event_store_rejects_unbounded_pending_snapshot_limit(limit):
     store = NormalizedEventStore(lambda *_args: None)
