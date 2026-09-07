@@ -7,12 +7,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import hashlib
+from threading import RLock
 from typing import Any, Mapping
 
 from .asoc import AuditSink
 
 
 MAX_QUARANTINE_PROPOSAL_BYTES = 1024 * 1024
+MAX_QUARANTINE_ENTRIES = 128
+MAX_QUARANTINE_TOTAL_BYTES = 4 * 1024 * 1024
 
 
 class QuarantineProposalDenied(PermissionError):
@@ -32,6 +35,72 @@ class QuarantineProposal:
     mode: str = "DRY_RUN"
     action: str = "DETECT_ONLY"
     disposition: str = "PROPOSED"
+
+
+@dataclass(frozen=True)
+class QuarantineEntry:
+    tenant_id: str
+    device_id: str
+    detection_id: str
+    content_sha256: str
+    content_bytes: bytes
+    provenance: str
+    mode: str = "DRY_RUN"
+    action: str = "DETECT_ONLY"
+
+
+class InMemoryQuarantineVault:
+    """Bounded fixture-only vault; never touches a filesystem or endpoint."""
+
+    def __init__(self, audit: AuditSink) -> None:
+        if not callable(audit):
+            raise ValueError("vault requires an audit sink")
+        self._audit = audit
+        self._lock = RLock()
+        self._entries: dict[tuple[str, str, str], QuarantineEntry] = {}
+        self._total_bytes = 0
+
+    def admit(self, proposal: QuarantineProposal, content: bytes) -> QuarantineEntry:
+        """Evidence-log then retain one exact proposal-bound fixture in memory."""
+        if not isinstance(proposal, QuarantineProposal) or not isinstance(content, bytes):
+            raise QuarantineProposalDenied("VAULT_INPUT_INVALID")
+        if not content or len(content) > MAX_QUARANTINE_PROPOSAL_BYTES:
+            raise QuarantineProposalDenied("CONTENT_INVALID")
+        digest = hashlib.sha256(content).hexdigest()
+        if digest != proposal.content_sha256 or len(content) != proposal.content_bytes:
+            raise QuarantineProposalDenied("CONTENT_PROPOSAL_MISMATCH")
+        key = (proposal.tenant_id, proposal.device_id, proposal.detection_id)
+        with self._lock:
+            if key in self._entries:
+                raise QuarantineProposalDenied("VAULT_ENTRY_DUPLICATE")
+            if len(self._entries) >= MAX_QUARANTINE_ENTRIES or self._total_bytes + len(content) > MAX_QUARANTINE_TOTAL_BYTES:
+                raise QuarantineProposalDenied("VAULT_CAPACITY")
+            entry = QuarantineEntry(
+                tenant_id=proposal.tenant_id, device_id=proposal.device_id,
+                detection_id=proposal.detection_id, content_sha256=digest,
+                content_bytes=bytes(content), provenance=proposal.provenance,
+            )
+            try:
+                self._audit("quarantine_fixture_stored", {
+                    "tenant_id": entry.tenant_id, "device_id": entry.device_id,
+                    "detection_id": entry.detection_id, "content_sha256": entry.content_sha256,
+                    "content_bytes": len(entry.content_bytes), "provenance": entry.provenance,
+                    "mode": entry.mode, "action": entry.action, "disposition": "STORED_IN_MEMORY",
+                })
+            except Exception as exc:
+                raise QuarantineProposalDenied("EVIDENCE_WRITE_FAILED") from exc
+            self._entries[key] = entry
+            self._total_bytes += len(content)
+            return entry
+
+    def inspect(self, *, tenant_id: str, device_id: str, detection_id: str) -> QuarantineEntry | None:
+        """Inspect one tenant/device-bound fixture without mutating vault state."""
+        with self._lock:
+            return self._entries.get((tenant_id, device_id, detection_id))
+
+    def count(self) -> int:
+        with self._lock:
+            return len(self._entries)
 
 
 def propose_quarantine(

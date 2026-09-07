@@ -2,7 +2,7 @@ import hashlib
 
 import pytest
 
-from swarm.quarantine import QuarantineProposalDenied, propose_quarantine
+from swarm.quarantine import InMemoryQuarantineVault, QuarantineProposalDenied, propose_quarantine
 
 
 def _kwargs(audit):
@@ -52,6 +52,33 @@ def test_quarantine_proposal_requires_engaged_kill_switch():
     with pytest.raises(QuarantineProposalDenied, match="KILL_SWITCH_BLOCKED"):
         propose_quarantine(b"fixture", **values)
     assert events == []
+
+
+def test_in_memory_vault_stores_exact_fixture_after_evidence_and_is_tenant_bound():
+    events = []
+    proposal = propose_quarantine(b"fixture", **_kwargs(lambda *args: events.append(args)))
+    vault = InMemoryQuarantineVault(lambda *args: events.append(args))
+    entry = vault.admit(proposal, b"fixture")
+    assert entry.content_bytes == b"fixture"
+    assert vault.inspect(tenant_id="tenant-a", device_id="device-a", detection_id="det-1") == entry
+    assert vault.inspect(tenant_id="tenant-b", device_id="device-a", detection_id="det-1") is None
+    assert events[-1][0] == "quarantine_fixture_stored"
+    assert vault.count() == 1
+
+
+def test_in_memory_vault_rejects_mismatch_duplicate_and_evidence_failure_without_mutation():
+    proposal = propose_quarantine(b"fixture", **_kwargs(lambda *_args: None))
+    vault = InMemoryQuarantineVault(lambda *_args: None)
+    with pytest.raises(QuarantineProposalDenied, match="CONTENT_PROPOSAL_MISMATCH"):
+        vault.admit(proposal, b"tampered")
+    vault.admit(proposal, b"fixture")
+    with pytest.raises(QuarantineProposalDenied, match="VAULT_ENTRY_DUPLICATE"):
+        vault.admit(proposal, b"fixture")
+    failing = InMemoryQuarantineVault(lambda *_args: (_ for _ in ()).throw(OSError("sink unavailable")))
+    proposal2 = propose_quarantine(b"other", **_kwargs(lambda *_args: None) | {"detection_id": "det-2"})
+    with pytest.raises(QuarantineProposalDenied, match="EVIDENCE_WRITE_FAILED"):
+        failing.admit(proposal2, b"other")
+    assert failing.count() == 0
 
 
 @pytest.mark.parametrize("content", [b"", b"x" * (1024 * 1024 + 1), "not-bytes"])
