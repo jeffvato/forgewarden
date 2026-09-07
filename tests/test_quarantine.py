@@ -2,7 +2,13 @@ import hashlib
 
 import pytest
 
-from swarm.quarantine import InMemoryQuarantineVault, QuarantineProposalDenied, propose_quarantine
+from swarm.quarantine import (
+    MAX_QUARANTINE_ENTRIES,
+    InMemoryQuarantineVault,
+    QuarantineProposal,
+    QuarantineProposalDenied,
+    propose_quarantine,
+)
 
 
 def _kwargs(audit):
@@ -64,6 +70,39 @@ def test_in_memory_vault_stores_exact_fixture_after_evidence_and_is_tenant_bound
     assert vault.inspect(tenant_id="tenant-b", device_id="device-a", detection_id="det-1") is None
     assert events[-1][0] == "quarantine_fixture_stored"
     assert vault.count() == 1
+
+
+def test_in_memory_vault_inspection_is_isolated_by_device_and_detection_and_empty_is_safe():
+    vault = InMemoryQuarantineVault(lambda *_args: None)
+    assert vault.inspect(tenant_id="tenant-a", device_id="device-a", detection_id="det-1") is None
+    proposal = propose_quarantine(b"fixture", **_kwargs(lambda *_args: None))
+    vault.admit(proposal, b"fixture")
+    assert vault.inspect(tenant_id="tenant-a", device_id="device-b", detection_id="det-1") is None
+    assert vault.inspect(tenant_id="tenant-a", device_id="device-a", detection_id="det-2") is None
+
+
+def test_in_memory_vault_rejects_invalid_admission_inputs_without_mutation():
+    vault = InMemoryQuarantineVault(lambda *_args: None)
+    with pytest.raises(QuarantineProposalDenied, match="VAULT_INPUT_INVALID"):
+        vault.admit(object(), b"fixture")
+    with pytest.raises(QuarantineProposalDenied, match="VAULT_INPUT_INVALID"):
+        vault.admit(QuarantineProposal("tenant-a", "device-a", "det-1", "0" * 64, 1, "fixture"), "fixture")
+    assert vault.count() == 0
+
+
+def test_in_memory_vault_enforces_entry_capacity():
+    vault = InMemoryQuarantineVault(lambda *_args: None)
+    for index in range(MAX_QUARANTINE_ENTRIES):
+        values = _kwargs(lambda *_args: None)
+        values["detection_id"] = f"det-{index}"
+        proposal = propose_quarantine(b"x", **values)
+        vault.admit(proposal, b"x")
+    values = _kwargs(lambda *_args: None)
+    values["detection_id"] = "det-over-cap"
+    proposal = propose_quarantine(b"x", **values)
+    with pytest.raises(QuarantineProposalDenied, match="VAULT_CAPACITY"):
+        vault.admit(proposal, b"x")
+    assert vault.count() == MAX_QUARANTINE_ENTRIES
 
 
 def test_in_memory_vault_rejects_mismatch_duplicate_and_evidence_failure_without_mutation():
