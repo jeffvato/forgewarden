@@ -25,6 +25,13 @@ This file records only genuine blockers that require Customer Root authority, un
 - Evidence: focused endpoint proof passed (45 tests); no live sensor, service, filesystem/process, network, credential, deployment, quarantine, remediation, cleanup, repair, or response authority was added.
 - Resolution: final full suite passed (726 passed, 1 skipped), and the integrity gate passed all hard checks and Golden Path.
 
+### B-019 — Final validation pending for FW-ENDPOINT-11
+
+- Related task/requirement: FW-ENDPOINT-11 — bounded dry-run sensor resource baseline
+- Exact condition: repair candidate `439cfe2d24c65499f7e644506e13cf4e37909c5f` has focused proof and exact Claude APPROVE/LOW; full suite and integrity gate remain.
+- Evidence: focused endpoint proof passed (46 tests); rejected-batch metrics coverage closes the only concrete review gap; no live endpoint or response authority was added.
+- First resume action: run the full suite and integrity gate once, then accept only if all hard checks pass.
+
 ### B-015 — Exact Claude review pending for FW-AV-DETECTOR-02 (resolved)
 
 - Related task/requirement: FW-AV-DETECTOR-02 — bounded detector byte-budget robustness proof
