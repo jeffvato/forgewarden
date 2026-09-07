@@ -4,7 +4,7 @@
 
 - Active phase: FW-AV — Native anti-malware
 - Current focus: FW-AV — publisher-signed detection-content trust
-- Current task: derive next bounded endpoint or anti-malware control after accepted FW-ENDPOINT-07.
+- Current task: derive next bounded endpoint or anti-malware control after accepted FW-ENDPOINT-08.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -28,17 +28,17 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-ENDPOINT-02 — Normalize bounded Windows/Linux endpoint fixtures
+- Task ID: FW-ENDPOINT-08 — Bounded pending-event recovery snapshot
 - Starting checkpoint: `160ba0c` (FW-ENDPOINT-01 accepted)
-- Candidate commit: `8ad33d104f905f524e8150193e34a469a01d21b4` (exact-128 batch boundary regression; parent `acad2ad`).
-- Canonical owner: `swarm.endpoint_fixtures.normalize_fixture` is only a caller-supplied fixture seam; canonical normalized-event ownership remains future FW-ENDPOINT work. Existing FW-KEYS, `TrustedSignatureCatalog`, `DurableCatalogSequenceStore`, and canonical audit remain the only verification/catalog/anti-rollback owners.
-- Acceptance criteria: bounded Windows/Linux fixture input is tenant/device/source-bound, rejected on malformed/future/oversized/unknown data, emits canonical Evidence before return, and is fixed to DRY_RUN/DETECT_ONLY without live endpoint authority.
-- Negative paths: tenant/device/source mismatch, unknown event, future timestamp, oversized input/ancestry/indicators, invalid evidence reference, and unavailable Evidence deny closed. No source transport, endpoint, credential, network, quarantine, remediation, or response authority is added.
-- Proof plan: focused fixture normalization and denial regressions, exact Claude review of candidate `a433368`, full suite, and integrity gate after review acceptance.
-- Exact first change: add an in-memory normalizer for caller-supplied Windows/Linux fixtures with bounded fields, tenant/device/source binding, Evidence-first return, and fixed DRY_RUN/DETECT_ONLY output; no live sensor or endpoint authority.
+- Candidate commit: `881f62c8d2d3900a5fece920449404db07bde285` (bounded pending-event FIFO snapshot; parent `23d0005`).
+- Canonical owner: `swarm.normalized_events.NormalizedEventStore.pending_events` is the read-only recovery snapshot seam for caller-supplied Windows/Linux fixtures. Existing FW-KEYS, `TrustedSignatureCatalog`, `DurableCatalogSequenceStore`, and canonical audit remain the only verification/catalog/anti-rollback owners.
+- Acceptance criteria: pending events are returned only for the requested tenant/device, in FIFO order, through an immutable bounded snapshot; invalid limits fail closed and no queue state is mutated.
+- Negative paths: zero, negative, over-cap, boolean, and non-integer snapshot limits deny closed; empty or other-tenant queues return no events. No source transport, endpoint, credential, network, quarantine, remediation, or response authority is added.
+- Proof plan: focused normalized-event and batch-adapter regressions, exact Claude review of candidate `881f62c`, full suite, and integrity gate after review acceptance.
+- Exact first change: add a bounded `pending_events` FIFO snapshot under the canonical store lock, preserving tenant/device isolation and non-mutating recovery inspection.
 - Proof: FW-ENDPOINT-02 through FW-ENDPOINT-06 are accepted with their recorded focused/full proofs. FW-ENDPOINT-07 cap repair `acad2ad` was accepted with exact Claude APPROVE/LOW and full validation (`702 passed, 1 skipped`). Follow-up candidate `8ad33d1` adds the exact-128 positive boundary regression; focused proof passed (`27 tests`), exact Claude review returned APPROVE/LOW, and the final full suite passed (`703 passed, 1 skipped`) with integrity gate passing all hard checks and Golden Path. Health remains YELLOW only for pre-existing dependency and roadmap-owner findings (`identity`, `soc_incidents`, `compliance`).
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
-- Blocker: none for FW-ENDPOINT-07.
+- Blocker: none for FW-ENDPOINT-08.
 - Next action: derive the next bounded endpoint or anti-malware control without adding unapproved live sensor or response authority.
 - Platform delivery definition: Windows and Linux are the first endpoint targets; macOS, Android, and iOS are later platform-native releases. Detailed scope and required proof are in `docs/fw-av-windows-linux-delivery-plan.md`.
 
@@ -69,6 +69,8 @@ On every restart or continuation:
 - 2026-09-06: FW-ENDPOINT-07 cap repair `acad2ad` accepted: the canonical store enforces the same 128-record batch bound as the mapper, with denial before Evidence or state mutation. Focused proof passed (35 tests), exact Claude review returned APPROVE/LOW, full Linux suite passed (702 passed, 1 skipped), and integrity gate passed all hard checks and Golden Path. No platform access or live endpoint authority was added.
 
 - 2026-09-06: FW-ENDPOINT-07 follow-up candidate `8ad33d1` adds an exact-128 positive batch-boundary regression. Focused proof passed (27 tests); exact Claude review returned APPROVE/LOW; final full suite passed (703 passed, 1 skipped); and integrity gate passed all hard checks and Golden Path. No production code changed.
+
+- 2026-09-07: FW-ENDPOINT-08 accepted at `881f62c`: canonical `NormalizedEventStore.pending_events` provides a tenant/device-scoped, FIFO, immutable bounded snapshot for recovery inspection without queue mutation. Focused proof passed (23 tests); exact Claude review returned APPROVE/LOW with no blocking findings; full Linux suite passed (709 passed, 1 skipped); and the integrity checks passed all hard checks and Golden Path, with health remaining YELLOW only for pre-existing dependency and roadmap-owner findings. No live endpoint or response authority was added.
 
 - 2026-09-06: FW-ENDPOINT-01 accepted at `160ba0c` with status checkpoint `0824f4a`: focused contract proof passed (1 test), exact Claude Co-Work review returned APPROVE/LOW, full suite passed (667 passed, 1 skipped), and integrity gate passed all hard checks and Golden Path with only pre-existing YELLOW findings.
 
