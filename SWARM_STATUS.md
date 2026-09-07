@@ -4,7 +4,7 @@
 
 - Active phase: FW-AV — Native anti-malware
 - Current focus: FW-AV — publisher-signed detection-content trust
-- Current task: derive next meaningful FW-AV detector-core milestone after accepted FW-AV-DETECTOR-01.
+- Current task: FW-AV-DETECTOR-02 — bounded detector byte-budget robustness proof.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -28,18 +28,18 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-AV-DETECTOR-01 — Accepted-catalog-bound detect-only scanner
+- Task ID: FW-AV-DETECTOR-02 — Bounded detector byte-budget robustness proof
 - Starting checkpoint: `160ba0c` (FW-ENDPOINT-01 accepted)
-- Candidate commit: `c9fa820eefeaa8be9080538a4fa5331951dd1eab` (streaming-proof repair for accepted-catalog-bound scanner; parent `0c88ded`).
+- Candidate commit: `69e344d600de55b94ae53e08b11ffa43ae7545c7` (exact byte-budget acceptance and first-over-budget stop proof; parent `3a519bd`).
 - Canonical owner: `swarm.anti_malware.AcceptedCatalogScanner` is the detect-only facade over the existing `AcceptedCatalogCache`, `TrustedSignatureCatalog`, and `HashSignatureScanner`. FW-KEYS, `DurableCatalogSequenceStore`, and canonical audit remain the only trust, anti-rollback, and Evidence owners.
-- Acceptance criteria: scans require the currently accepted fresh catalog cache entry, inherit bounded byte-stream/hash/literal limits, emit canonical Evidence before returning, and remain tenant-bound DRY_RUN/DETECT_ONLY.
+- Acceptance criteria: exact MAX_SCAN_BYTES input is accepted deterministically; the first over-budget chunk is denied without consuming later input or emitting partial Evidence; existing accepted-catalog, tenant-bound DRY_RUN/DETECT_ONLY and Evidence-first boundaries remain unchanged.
 - Negative paths: cache miss and expired catalog deny before scanning; malformed, oversized, over-work, stream-failure, match-overflow, and Evidence-failure paths remain fail closed. No network, endpoint, credential, quarantine, remediation, or response authority is added.
-- Proof plan: focused anti-malware proof, exact Claude review of candidates `0c88ded` and repair `c9fa820`, then one full suite and integrity gate after review acceptance.
+- Proof plan: focused anti-malware proof, exact Claude review of `69e344d`, then one full suite and integrity gate after review acceptance.
 - Exact first change: bind scanner entry points to a fresh `AcceptedCatalogCache` slot without changing the underlying bounded scanner.
 - Proof: FW-ENDPOINT-02 through FW-ENDPOINT-06 are accepted with their recorded focused/full proofs. FW-ENDPOINT-07 cap repair `acad2ad` was accepted with exact Claude APPROVE/LOW and full validation (`702 passed, 1 skipped`). Follow-up candidate `8ad33d1` adds the exact-128 positive boundary regression; focused proof passed (`27 tests`), exact Claude review returned APPROVE/LOW, and the final full suite passed (`703 passed, 1 skipped`) with integrity gate passing all hard checks and Golden Path. Health remains YELLOW only for pre-existing dependency and roadmap-owner findings (`identity`, `soc_incidents`, `compliance`).
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
-- Blocker: none for FW-AV-DETECTOR-01.
-- Next action: derive the next meaningful FW-AV detector-core milestone without adding live endpoint or response authority.
+- Blocker: exact Claude review pending for `69e344d`; no acceptance or broader validation is inferred without APPROVE/LOW.
+- Next action: submit exact `69e344d` for read-only review; run full suite and integrity gate once only on APPROVE/LOW.
 - Platform delivery definition: Windows and Linux are the first endpoint targets; macOS, Android, and iOS are later platform-native releases. Detailed scope and required proof are in `docs/fw-av-windows-linux-delivery-plan.md`.
 
 ## Execution log
@@ -77,6 +77,8 @@ On every restart or continuation:
 - 2026-09-07: FW-AV-DETECTOR-01 candidate `0c88ded` added `AcceptedCatalogScanner` to require a fresh accepted catalog cache before bounded scanning. Focused proof passed (21 tests); Claude APPROVE/LOW found one missing streaming-path regression. Repair `c9fa820` added that regression and focused proof remains green (21 tests), but the exact Claude repair review was unavailable/max-turns and returned no verdict; no acceptance or full validation is inferred.
 
 - 2026-09-07: FW-AV-DETECTOR-01 accepted at `c9fa820`: accepted-catalog-bound scanning now has direct streaming-path proof. Exact Claude review returned APPROVE/LOW with no missing tests; final full suite passed (719 passed, 1 skipped); and integrity gate passed all hard checks and Golden Path. Health remains YELLOW only for pre-existing dependency and roadmap-owner findings. No live endpoint or response authority was added.
+
+- 2026-09-07: FW-AV-DETECTOR-02 candidate `69e344d` adds one grouped robustness proof: exact 1 MiB input is accepted with deterministic digest/Evidence, while the first over-budget chunk denies before later iterator input is consumed and without partial Evidence. Focused proof passed (22 tests); exact review and broader validation remain pending.
 
 - 2026-09-06: FW-ENDPOINT-01 accepted at `160ba0c` with status checkpoint `0824f4a`: focused contract proof passed (1 test), exact Claude Co-Work review returned APPROVE/LOW, full suite passed (667 passed, 1 skipped), and integrity gate passed all hard checks and Golden Path with only pre-existing YELLOW findings.
 
