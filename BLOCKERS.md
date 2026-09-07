@@ -4,12 +4,12 @@ This file records only genuine blockers that require Customer Root authority, un
 
 ## Current blockers
 
-### B-022 — Exact Claude review unavailable for FW-AV-QUARANTINE-02
+### B-022 — Exact Claude review unavailable for FW-AV-QUARANTINE-02 (resolved)
 
 - Related task/requirement: FW-AV-QUARANTINE-02 — bounded in-memory quarantine vault proof
-- Exact condition: candidate `c841a27a2558a6b9d4583f53e981c473e7040a69` passed focused proof (15 tests), but the required exact read-only Claude review did not return.
+- Exact condition: candidate `c841a27a2558a6b9d4583f53e981c473e7040a69` and repair `700d9724cdece15dc9447432fa6ccdf78ca77c20` passed focused proof (19 tests), but the required exact read-only review was initially unavailable.
 - Why work cannot complete safely: acceptance and broad validation cannot be inferred without the exact-commit reviewer verdict.
-- First resume action: submit the unchanged candidate to Claude when available; run the full suite and integrity gate only after APPROVE/LOW.
+- Resolution: exact Claude reviews returned APPROVE/LOW with no blocking findings; final full suite passed (749 passed, 1 skipped), and the integrity gate passed all hard checks and Golden Path.
 
 ### B-021 — Exact Claude review unavailable for FW-AV-QUARANTINE-01 (resolved)
 

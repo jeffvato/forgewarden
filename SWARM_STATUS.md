@@ -4,7 +4,7 @@
 
 - Active phase: FW-AV — Native anti-malware
 - Current focus: FW-AV — publisher-signed detection-content trust
-- Current task: FW-AV-QUARANTINE-02 — bounded in-memory quarantine vault proof.
+- Current task: derive the next grouped ForgeWarden milestone after accepted FW-AV-QUARANTINE-02.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -30,16 +30,16 @@ On every restart or continuation:
 
 - Task ID: FW-AV-QUARANTINE-02 — Bounded in-memory quarantine vault proof
 - Starting checkpoint: `160ba0c` (FW-ENDPOINT-01 accepted)
-- Candidate commit: `c841a27a2558a6b9d4583f53e981c473e7040a69` (bounded in-memory vault admission and inspection; parent `494a016`).
+- Candidate commit: `700d9724cdece15dc9447432fa6ccdf78ca77c20` (accepted byte-capacity proof repair; parent `c841a27`).
 - Canonical owner: `swarm.anti_malware.AcceptedCatalogScanner` is the detect-only facade over the existing `AcceptedCatalogCache`, `TrustedSignatureCatalog`, and `HashSignatureScanner`. FW-KEYS, `DurableCatalogSequenceStore`, and canonical audit remain the only trust, anti-rollback, and Evidence owners.
 - Acceptance criteria: vault retains only exact proposal-bound caller-supplied fixture bytes within bounded entry/byte caps, writes Evidence before storage, and exposes tenant/device-bound non-mutating inspection.
 - Negative paths: cache miss and expired catalog deny before scanning; malformed, oversized, over-work, stream-failure, match-overflow, and Evidence-failure paths remain fail closed. No network, endpoint, credential, quarantine, remediation, or response authority is added.
-- Proof plan: focused vault proof, exact Claude review of `c841a27`, then one full suite and integrity gate only after APPROVE/LOW.
+- Proof plan: focused vault proof, exact Claude review of `c841a27` and repair `700d972`, one full suite, and one integrity gate after approval (complete).
 - Exact first change: bind scanner entry points to a fresh `AcceptedCatalogCache` slot without changing the underlying bounded scanner.
 - Proof: FW-ENDPOINT-02 through FW-ENDPOINT-06 are accepted with their recorded focused/full proofs. FW-ENDPOINT-07 cap repair `acad2ad` was accepted with exact Claude APPROVE/LOW and full validation (`702 passed, 1 skipped`). Follow-up candidate `8ad33d1` adds the exact-128 positive boundary regression; focused proof passed (`27 tests`), exact Claude review returned APPROVE/LOW, and the final full suite passed (`703 passed, 1 skipped`) with integrity gate passing all hard checks and Golden Path. Health remains YELLOW only for pre-existing dependency and roadmap-owner findings (`identity`, `soc_incidents`, `compliance`).
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
-- Blocker: B-022 — exact Claude review unavailable for FW-AV-QUARANTINE-02.
-- Next action: resubmit unchanged `c841a27` to Claude when available; do not infer acceptance or run broad validation before review.
+- Blocker: none for FW-AV-QUARANTINE-02.
+- Next action: derive the next grouped milestone; actual filesystem containment and recovery mutation remain disabled.
 - Platform delivery definition: Windows and Linux are the first endpoint targets; macOS, Android, and iOS are later platform-native releases. Detailed scope and required proof are in `docs/fw-av-windows-linux-delivery-plan.md`.
 
 ## Execution log
@@ -107,6 +107,8 @@ On every restart or continuation:
 - 2026-09-07: FW-AV-QUARANTINE-01 accepted at repair `9f5b920`: independent Claude reviews returned APPROVE/LOW with no blocking findings; final full Linux suite passed (743 passed, 1 skipped), and integrity gate passed all hard checks and Golden Path. Health remains YELLOW only for pre-existing dependency and roadmap-owner findings. This milestone is proposal-only; no containment mutation was added.
 
 - 2026-09-07: FW-AV-QUARANTINE-02 candidate `c841a27` adds a bounded in-memory fixture vault with exact proposal/content binding, tenant/device-scoped inspection, duplicate/capacity denial, and Evidence-first storage. Focused proof passed (15 tests); exact Claude review did not return. No filesystem or endpoint containment authority was added.
+
+- 2026-09-07: FW-AV-QUARANTINE-02 accepted at repair `700d972`: exact Claude reviews returned APPROVE/LOW with no blocking findings; final full Linux suite passed (749 passed, 1 skipped), and integrity gate passed all hard checks and Golden Path. Capacity, isolation, and invalid-input coverage are complete; health remains YELLOW only for pre-existing dependency and roadmap-owner findings. The vault remains in-memory and non-deploying.
 
 - 2026-09-06: FW-ENDPOINT-01 accepted at `160ba0c` with status checkpoint `0824f4a`: focused contract proof passed (1 test), exact Claude Co-Work review returned APPROVE/LOW, full suite passed (667 passed, 1 skipped), and integrity gate passed all hard checks and Golden Path with only pre-existing YELLOW findings.
 
