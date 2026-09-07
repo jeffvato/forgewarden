@@ -4,13 +4,13 @@ This file records only genuine blockers that require Customer Root authority, un
 
 ## Current blockers
 
-### B-015 — Exact Claude review pending for FW-AV-DETECTOR-02
+### B-015 — Exact Claude review pending for FW-AV-DETECTOR-02 (resolved)
 
 - Related task/requirement: FW-AV-DETECTOR-02 — bounded detector byte-budget robustness proof
-- Exact condition: candidate `69e344d600de55b94ae53e08b11ffa43ae7545c7` has focused proof but requires exact read-only Claude review before acceptance.
-- Why work cannot complete safely: deterministic tests cannot substitute for exact external review; no acceptance or full-suite/integrity result may be inferred without APPROVE/LOW.
+- Exact condition: candidate `69e344d600de55b94ae53e08b11ffa43ae7545c7` required exact read-only Claude review before acceptance.
+- Why work cannot complete safely: deterministic tests could not substitute for exact external review; no acceptance or full-suite/integrity result was inferred without APPROVE/LOW.
 - Evidence: focused anti-malware proof passed (22 tests); the candidate is test-only and adds no endpoint, parser, network, credential, quarantine, remediation, deployment, or response authority.
-- First resume action: submit exact candidate `69e344d` to Claude; run the full suite and integrity gate exactly once only if the review returns APPROVE/LOW.
+- Resolution: exact Claude review returned APPROVE/LOW with no blocking findings. Two low-priority combination tests were noted as outside this bounded milestone; run the full suite and integrity gate once, then accept only if hard checks pass.
 
 ### B-014 — Exact Claude repair review unavailable for FW-AV-DETECTOR-01 (resolved)
 
