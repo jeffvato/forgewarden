@@ -4,7 +4,7 @@
 
 - Active phase: FW-AV — Native anti-malware
 - Current focus: FW-AV — publisher-signed detection-content trust
-- Current task: derive the next grouped ForgeWarden milestone after accepted FW-ENDPOINT-11.
+- Current task: FW-ENDPOINT-12 — bounded fixture event correlation proof.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -28,18 +28,18 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-ENDPOINT-11 — Bounded dry-run sensor resource baseline
+- Task ID: FW-ENDPOINT-12 — Bounded fixture event correlation proof
 - Starting checkpoint: `160ba0c` (FW-ENDPOINT-01 accepted)
-- Candidate commit: `439cfe2d24c65499f7e644506e13cf4e37909c5f` (bounded pipeline metrics and batch-rejection proof; parent `d8dd920`).
+- Candidate commit: `dd8b6355f8a07f02919b8cbacdb0042523a507e2` (tenant/device-bound shared-indicator correlation snapshot and Evidence proof).
 - Canonical owner: `swarm.anti_malware.AcceptedCatalogScanner` is the detect-only facade over the existing `AcceptedCatalogCache`, `TrustedSignatureCatalog`, and `HashSignatureScanner`. FW-KEYS, `DurableCatalogSequenceStore`, and canonical audit remain the only trust, anti-rollback, and Evidence owners.
-- Acceptance criteria: pipeline exposes a bounded deterministic metrics snapshot for accepted/rejected records and batches, peak batch size, and peak queue depth; counters are thread-safe, failures propagate unchanged, and no endpoint authority is added.
+- Acceptance criteria: canonical store exposes a bounded deterministic correlation snapshot over pending caller-supplied fixture events, grouped by shared indicators, with Evidence written before return and no queue mutation or endpoint authority.
 - Negative paths: cache miss and expired catalog deny before scanning; malformed, oversized, over-work, stream-failure, match-overflow, and Evidence-failure paths remain fail closed. No network, endpoint, credential, quarantine, remediation, or response authority is added.
-- Proof plan: focused endpoint pipeline proof, exact Claude review of `d8dd920` and repair `439cfe2`, then one full suite and integrity gate after repair acceptance.
+- Proof plan: focused normalized-event correlation proof, exact Claude review of `dd8b635`, then one full suite and integrity gate only after APPROVE/LOW.
 - Exact first change: bind scanner entry points to a fresh `AcceptedCatalogCache` slot without changing the underlying bounded scanner.
 - Proof: FW-ENDPOINT-02 through FW-ENDPOINT-06 are accepted with their recorded focused/full proofs. FW-ENDPOINT-07 cap repair `acad2ad` was accepted with exact Claude APPROVE/LOW and full validation (`702 passed, 1 skipped`). Follow-up candidate `8ad33d1` adds the exact-128 positive boundary regression; focused proof passed (`27 tests`), exact Claude review returned APPROVE/LOW, and the final full suite passed (`703 passed, 1 skipped`) with integrity gate passing all hard checks and Golden Path. Health remains YELLOW only for pre-existing dependency and roadmap-owner findings (`identity`, `soc_incidents`, `compliance`).
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
-- Blocker: none for FW-ENDPOINT-11.
-- Next action: derive the next grouped milestone; live sensors and response actions remain disabled.
+- Blocker: B-020 — exact Claude review unavailable for FW-ENDPOINT-12.
+- Next action: resubmit unchanged `dd8b635` to Claude when available; do not infer acceptance or run broad validation before review.
 - Platform delivery definition: Windows and Linux are the first endpoint targets; macOS, Android, and iOS are later platform-native releases. Detailed scope and required proof are in `docs/fw-av-windows-linux-delivery-plan.md`.
 
 ## Execution log
@@ -97,6 +97,8 @@ On every restart or continuation:
 - 2026-09-07: FW-ENDPOINT-11 candidate `d8dd920` adds bounded `SensorPipelineMetrics` counters and peak queue/batch snapshots to the dry-run pipeline. Focused endpoint proof passed (46 tests); exact Claude requested direct rejected-batch coverage; repair `439cfe2` adds it and exact Claude repair review returned APPROVE/LOW with no missing tests. Final full validation remains pending.
 
 - 2026-09-07: FW-ENDPOINT-11 accepted at repair `439cfe2`: final full Linux suite passed (727 passed, 1 skipped), and the integrity gate passed all hard checks and Golden Path. Health remains YELLOW only for pre-existing dependency and roadmap-owner findings. Metrics are advisory bounded state only; no live sensor or response authority was added.
+
+- 2026-09-07: FW-ENDPOINT-12 candidate `dd8b635` adds bounded tenant/device-scoped shared-indicator correlation over pending fixture events. Focused proof passed (48 tests); exact Claude review is pending because the reviewer process was unavailable. No live endpoint or response authority was added.
 
 - 2026-09-06: FW-ENDPOINT-01 accepted at `160ba0c` with status checkpoint `0824f4a`: focused contract proof passed (1 test), exact Claude Co-Work review returned APPROVE/LOW, full suite passed (667 passed, 1 skipped), and integrity gate passed all hard checks and Golden Path with only pre-existing YELLOW findings.
 
