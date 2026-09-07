@@ -30,16 +30,16 @@ On every restart or continuation:
 
 - Task ID: FW-AV-QUARANTINE-01 — Bounded dry-run quarantine proposal boundary
 - Starting checkpoint: `160ba0c` (FW-ENDPOINT-01 accepted)
-- Candidate commit: `cb65966a886466f5f3e0662f338e52360707fe5d` (kill-switch-bound non-executing quarantine proposal; parent `98420cd`).
+- Candidate commit: `9f5b9208a019d1b7ed2e11edec83963ccc4e41c5` (repair requiring explicit kill-switch state and denial-boundary coverage; parent `cb65966`).
 - Canonical owner: `swarm.anti_malware.AcceptedCatalogScanner` is the detect-only facade over the existing `AcceptedCatalogCache`, `TrustedSignatureCatalog`, and `HashSignatureScanner`. FW-KEYS, `DurableCatalogSequenceStore`, and canonical audit remain the only trust, anti-rollback, and Evidence owners.
 - Acceptance criteria: caller-supplied bytes produce only an immutable high-confidence quarantine proposal with digest/provenance, explicit engaged kill switch, canonical Evidence before return, and no containment mutation.
 - Negative paths: cache miss and expired catalog deny before scanning; malformed, oversized, over-work, stream-failure, match-overflow, and Evidence-failure paths remain fail closed. No network, endpoint, credential, quarantine, remediation, or response authority is added.
-- Proof plan: focused quarantine-boundary proof, exact Claude review of `cb65966`, then one full suite and integrity gate only after APPROVE/LOW.
+- Proof plan: focused quarantine-boundary proof, exact Claude review of `9f5b920`, then one full suite and integrity gate only after APPROVE/LOW.
 - Exact first change: bind scanner entry points to a fresh `AcceptedCatalogCache` slot without changing the underlying bounded scanner.
 - Proof: FW-ENDPOINT-02 through FW-ENDPOINT-06 are accepted with their recorded focused/full proofs. FW-ENDPOINT-07 cap repair `acad2ad` was accepted with exact Claude APPROVE/LOW and full validation (`702 passed, 1 skipped`). Follow-up candidate `8ad33d1` adds the exact-128 positive boundary regression; focused proof passed (`27 tests`), exact Claude review returned APPROVE/LOW, and the final full suite passed (`703 passed, 1 skipped`) with integrity gate passing all hard checks and Golden Path. Health remains YELLOW only for pre-existing dependency and roadmap-owner findings (`identity`, `soc_incidents`, `compliance`).
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
 - Blocker: B-021 — exact Claude review unavailable for FW-AV-QUARANTINE-01.
-- Next action: resubmit unchanged `cb65966` to Claude when available; do not infer acceptance or run broad validation before review.
+- Next action: submit unchanged repair `9f5b920` to Claude; do not infer acceptance or run broad validation before review.
 - Platform delivery definition: Windows and Linux are the first endpoint targets; macOS, Android, and iOS are later platform-native releases. Detailed scope and required proof are in `docs/fw-av-windows-linux-delivery-plan.md`.
 
 ## Execution log
@@ -102,7 +102,7 @@ On every restart or continuation:
 
 - 2026-09-07: FW-ENDPOINT-12 accepted at repair `d2b4580`: exact Claude reviews returned APPROVE/LOW with no blocking findings; final full Linux suite passed (730 passed, 1 skipped), and integrity gate passed all hard checks and Golden Path. The optional combined-scenario test was not added because existing tests cover both independent behaviors and no security gap remained. Health remains YELLOW only for pre-existing dependency and roadmap-owner findings.
 
-- 2026-09-07: FW-AV-QUARANTINE-01 candidate `98420cd` adds a non-executing caller-supplied quarantine proposal with bounded SHA-256/provenance and Evidence-first policy checks. Repair `cb65966` requires the engaged kill switch and adds cleared-switch denial coverage; focused proof passes (6 tests), exact Claude review remains pending because the CLI process did not return. No containment or endpoint authority was added.
+- 2026-09-07: FW-AV-QUARANTINE-01 candidate `98420cd` adds a non-executing caller-supplied quarantine proposal with bounded SHA-256/provenance and Evidence-first policy checks. Repair `cb65966` requires the engaged kill switch; repair `9f5b920` removes the unsafe default and adds content/identity/no-Evidence denial coverage; focused proof passes (13 tests), exact Claude repair review remains pending. No containment or endpoint authority was added.
 
 - 2026-09-06: FW-ENDPOINT-01 accepted at `160ba0c` with status checkpoint `0824f4a`: focused contract proof passed (1 test), exact Claude Co-Work review returned APPROVE/LOW, full suite passed (667 passed, 1 skipped), and integrity gate passed all hard checks and Golden Path with only pre-existing YELLOW findings.
 

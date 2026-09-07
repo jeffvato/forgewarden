@@ -7,7 +7,7 @@ This file records only genuine blockers that require Customer Root authority, un
 ### B-021 — Exact Claude review unavailable for FW-AV-QUARANTINE-01
 
 - Related task/requirement: FW-AV-QUARANTINE-01 — bounded dry-run quarantine proposal boundary
-- Exact condition: repair candidate `cb65966a886466f5f3e0662f338e52360707fe5d` passed focused proof (6 tests), but the required exact read-only Claude review did not return.
+- Exact condition: repair candidate `9f5b9208a019d1b7ed2e11edec83963ccc4e41c5` passed focused proof (13 tests), but the required exact read-only Claude repair review did not return.
 - Why work cannot complete safely: acceptance and broad validation cannot be inferred without the exact-commit reviewer verdict.
 - First resume action: submit the unchanged repair to Claude when available; run the full suite and integrity gate only after APPROVE/LOW.
 
