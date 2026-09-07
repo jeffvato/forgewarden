@@ -7,6 +7,9 @@ from __future__ import annotations
 
 from typing import Any, Mapping
 
+from .endpoint_fixtures import EndpointObservation
+from .normalized_events import NormalizedEventStore
+
 
 _SOURCES = frozenset({"WINDOWS_SENSOR", "LINUX_SENSOR"})
 _EVENT_TYPES = frozenset({"FILE_LIFECYCLE", "PROCESS_START", "PROCESS_EXIT", "NETWORK_CONNECT", "RUNTIME_INDICATOR"})
@@ -71,3 +74,32 @@ def adapt_batch(
             raise SensorAdapterDenied("EVENT_ID_DUPLICATE")
         seen.add(event_id)
     return mapped
+
+
+class DryRunSensorPipeline:
+    """Canonical caller-supplied Windows/Linux adapter-to-event-store seam."""
+
+    def __init__(self, store: NormalizedEventStore) -> None:
+        if not isinstance(store, NormalizedEventStore):
+            raise ValueError("pipeline requires a NormalizedEventStore")
+        self._store = store
+
+    def ingest_record(
+        self, record: Mapping[str, Any], *, source: str, tenant_id: str,
+        device_id: str, now_epoch: int,
+    ) -> EndpointObservation:
+        fixture = adapt_record(record, source=source)
+        return self._store.admit_fixture(
+            fixture, tenant_id=tenant_id, device_id=device_id,
+            source=source, now_epoch=now_epoch,
+        )
+
+    def ingest_batch(
+        self, records: list[Mapping[str, Any]], *, source: str, tenant_id: str,
+        device_id: str, now_epoch: int,
+    ) -> tuple[EndpointObservation, ...]:
+        fixtures = adapt_batch(records, source=source, tenant_id=tenant_id, device_id=device_id)
+        return self._store.admit_batch(
+            fixtures, tenant_id=tenant_id, device_id=device_id,
+            source=source, now_epoch=now_epoch,
+        )

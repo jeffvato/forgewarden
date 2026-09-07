@@ -2,7 +2,7 @@ import pytest
 
 from swarm.endpoint_fixtures import EndpointFixtureDenied
 from swarm.normalized_events import NormalizedEventStore
-from swarm.sensor_adapter import SensorAdapterDenied, adapt_record
+from swarm.sensor_adapter import DryRunSensorPipeline, SensorAdapterDenied, adapt_record
 
 
 def _record(source="LINUX_SENSOR", event_type="PROCESS_START"):
@@ -66,3 +66,41 @@ def test_adapter_preserves_canonical_fail_closed_validation():
     value["tenant_id"] = "tenant-b"
     with pytest.raises(EndpointFixtureDenied, match="TENANT_OR_DEVICE_MISMATCH"):
         NormalizedEventStore(lambda *_args: None).admit_fixture(value, tenant_id="tenant-a", device_id="device-a", source="LINUX_SENSOR", now_epoch=150)
+
+
+def test_dry_run_pipeline_composes_adapter_and_canonical_store_for_windows_and_linux():
+    events = []
+    pipeline = DryRunSensorPipeline(NormalizedEventStore(lambda *args: events.append(args)))
+    linux = pipeline.ingest_record(
+        _record(event_type="PROCESS_START"), source="LINUX_SENSOR",
+        tenant_id="tenant-a", device_id="device-a", now_epoch=150,
+    )
+    windows_record = _record(source="WINDOWS_SENSOR", event_type="FILE_LIFECYCLE") | {"event_id": "event-2"}
+    windows = pipeline.ingest_record(
+        windows_record, source="WINDOWS_SENSOR",
+        tenant_id="tenant-a", device_id="device-a", now_epoch=150,
+    )
+    assert [item.source for item in (linux, windows)] == ["LINUX_SENSOR", "WINDOWS_SENSOR"]
+    assert all(item.mode == "DRY_RUN" and item.action == "DETECT_ONLY" for item in (linux, windows))
+    assert [event[0] for event in events] == ["endpoint_event_admitted", "endpoint_event_admitted"]
+
+
+def test_dry_run_pipeline_batch_is_atomic_on_adapter_or_store_denial():
+    events = []
+    pipeline = DryRunSensorPipeline(NormalizedEventStore(lambda *args: events.append(args), max_queued_events_per_device=2))
+    records = [_record(), _record() | {"event_id": "event-2"}]
+    admitted = pipeline.ingest_batch(
+        records, source="LINUX_SENSOR", tenant_id="tenant-a", device_id="device-a", now_epoch=150,
+    )
+    assert [item.event_id for item in admitted] == ["event-1", "event-2"]
+    with pytest.raises(EndpointFixtureDenied, match="EVENT_QUEUE_FULL"):
+        pipeline.ingest_batch(
+            [_record() | {"event_id": "event-3"}], source="LINUX_SENSOR", tenant_id="tenant-a", device_id="device-a", now_epoch=150,
+        )
+    assert len(events) == 1
+
+    with pytest.raises(SensorAdapterDenied, match="EVENT_ID_DUPLICATE"):
+        pipeline.ingest_batch(
+            [_record() | {"event_id": "event-4"}, _record() | {"event_id": "event-4"}], source="LINUX_SENSOR", tenant_id="tenant-a", device_id="device-a", now_epoch=150,
+        )
+    assert len(events) == 1
