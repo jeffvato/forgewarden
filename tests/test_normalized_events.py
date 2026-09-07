@@ -62,6 +62,15 @@ def test_normalized_event_store_correlates_shared_fixture_indicators_determinist
     assert store.pending_events(tenant_id="tenant-a", device_id="device-a")
 
 
+def test_normalized_event_store_does_not_self_correlate_duplicate_fixture_indicator():
+    store = NormalizedEventStore(lambda *_args: None)
+    store.admit_fixture(
+        _fixture("event-1") | {"related_indicators": ["shared", "shared"]},
+        tenant_id="tenant-a", device_id="device-a", source="LINUX_SENSOR", now_epoch=150,
+    )
+    assert store.correlate_pending(tenant_id="tenant-a", device_id="device-a") == ()
+
+
 def test_normalized_event_store_correlation_is_tenant_bound_and_fail_closed_on_evidence_failure():
     calls = []
     def audit(*args):

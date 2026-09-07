@@ -165,7 +165,7 @@ class NormalizedEventStore:
             queue = tuple(self._queues.get((tenant_id, device_id), ()))
             by_indicator: dict[str, list[EndpointObservation]] = {}
             for observation in queue:
-                for indicator in observation.related_indicators:
+                for indicator in set(observation.related_indicators):
                     by_indicator.setdefault(indicator, []).append(observation)
             grouped: dict[tuple[str, ...], list[str]] = {}
             for indicator in sorted(by_indicator):
