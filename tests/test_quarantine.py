@@ -5,6 +5,7 @@ import pytest
 from swarm.quarantine import (
     MAX_QUARANTINE_ENTRIES,
     MAX_QUARANTINE_TOTAL_BYTES,
+    MAX_QUARANTINE_PROPOSAL_BYTES,
     InMemoryQuarantineVault,
     QuarantineEntry,
     QuarantineRecoveryProposal,
@@ -366,6 +367,59 @@ def test_quarantine_recovery_proposal_denies_tamper_scope_and_evidence_failure()
         capability="endpoint.quarantine.recover", resource="device-a:det-1", action_class="QUARANTINE_RECOVERY",
         policy_version="policy-1", now=150,
     ).consumed_at is None
+
+
+def test_quarantine_recovery_proposal_denies_kill_switch_and_invalid_inputs_before_evidence():
+    signer = HMACLeaseSigner({"key-1": b"test-only-key-material"})
+    tickets = ActionTicketRegistry(signer)
+    tickets.issue(ActionTicket(
+        "ticket-recover", "tenant-a", "agent-1", "lease-1", "endpoint.quarantine.recover",
+        "device-a:det-1", "QUARANTINE_RECOVERY", "human-1", "approval-1", "policy-1", 100, 200, "key-1",
+    ))
+    valid = QuarantineEntry("tenant-a", "device-a", "det-1", hashlib.sha256(b"fixture").hexdigest(), b"fixture", "fixture")
+    events = []
+    call = lambda **kwargs: propose_quarantine_recovery_with_ticket(
+        valid, tickets=tickets, ticket_id="ticket-recover", subject_agent_id="agent-1",
+        lease_id="lease-1", policy_version="policy-1", now=150, audit=lambda *args: events.append(args), **kwargs,
+    )
+    with pytest.raises(QuarantineProposalDenied, match="KILL_SWITCH_BLOCKED"):
+        call(kill_switch_state="CLEARED")
+    with pytest.raises(QuarantineProposalDenied, match="RECOVERY_INPUT_INVALID"):
+        propose_quarantine_recovery_with_ticket(
+            object(), tickets=tickets, ticket_id="ticket-recover", subject_agent_id="agent-1",
+            lease_id="lease-1", policy_version="policy-1", now=150, audit=lambda *args: events.append(args), kill_switch_state="ENGAGED",
+        )
+    oversized = QuarantineEntry("tenant-a", "device-a", "det-1", "0" * 64, b"x" * (MAX_QUARANTINE_PROPOSAL_BYTES + 1), "fixture")
+    with pytest.raises(QuarantineProposalDenied, match="RECOVERY_INPUT_INVALID"):
+        propose_quarantine_recovery_with_ticket(
+            oversized, tickets=tickets, ticket_id="ticket-recover", subject_agent_id="agent-1",
+            lease_id="lease-1", policy_version="policy-1", now=150, audit=lambda *args: events.append(args), kill_switch_state="ENGAGED",
+        )
+    assert events == []
+
+
+def test_quarantine_recovery_proposal_denies_ticket_binding_and_expiry():
+    signer = HMACLeaseSigner({"key-1": b"test-only-key-material"})
+    tickets = ActionTicketRegistry(signer)
+    for ticket_id, tenant, resource, issued, expires in [
+        ("wrong-tenant", "tenant-b", "device-a:det-1", 100, 200),
+        ("expired", "tenant-a", "device-a:det-1", 100, 120),
+        ("future", "tenant-a", "device-a:det-1", 160, 200),
+        ("revoked", "tenant-a", "device-a:det-1", 100, 200),
+    ]:
+        tickets.issue(ActionTicket(
+            ticket_id, tenant, "agent-1", "lease-1", "endpoint.quarantine.recover", resource,
+            "QUARANTINE_RECOVERY", "human-1", "approval-1", "policy-1", issued, expires, "key-1",
+        ))
+    tickets.revoke_matching(tenant_id="tenant-a", subject_agent_id="agent-1")
+    entry = QuarantineEntry("tenant-a", "device-a", "det-1", hashlib.sha256(b"fixture").hexdigest(), b"fixture", "fixture")
+    for ticket_id, now in [("wrong-tenant", 150), ("expired", 150), ("future", 150), ("revoked", 150)]:
+        with pytest.raises(QuarantineProposalDenied, match="RECOVERY_TICKET_DENIED"):
+            propose_quarantine_recovery_with_ticket(
+                entry, tickets=tickets, ticket_id=ticket_id, subject_agent_id="agent-1",
+                lease_id="lease-1", policy_version="policy-1", now=now,
+                audit=lambda *_args: None, kill_switch_state="ENGAGED",
+            )
 
 
 def test_in_memory_vault_rejects_mismatch_duplicate_and_evidence_failure_without_mutation():

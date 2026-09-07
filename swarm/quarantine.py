@@ -276,6 +276,7 @@ def propose_quarantine_recovery_with_ticket(
             "content_bytes": proposal.content_bytes, "provenance": proposal.provenance,
             "mode": proposal.mode, "action": proposal.action,
             "disposition": proposal.disposition, "deployment": "DISABLED",
+            "kill_switch": kill_switch_state,
         })
     except Exception as exc:
         raise QuarantineProposalDenied("EVIDENCE_WRITE_FAILED") from exc
