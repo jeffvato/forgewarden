@@ -11,6 +11,12 @@ This file records only genuine blockers that require Customer Root authority, un
 - Why work cannot complete safely: acceptance and broad validation cannot be inferred without the exact-commit reviewer verdict.
 - Resolution: exact Claude repair review returned APPROVE/LOW with no missing tests; final full suite passed (752 passed, 1 skipped), and the integrity gate passed all hard checks and Golden Path.
 
+### B-024 — Final validation pending for FW-AV-QUARANTINE-04 (resolved)
+
+- Related task/requirement: FW-AV-QUARANTINE-04 — bounded ticket-bound vault admission
+- Exact condition: candidate `48c5256bd93273a3c7ddc799565fdccfe948cbc0` passed focused proof (24 tests) and exact Claude APPROVE/LOW review; final validation remained pending.
+- Resolution: final full suite passed (754 passed, 1 skipped), and the integrity gate passed all hard checks and Golden Path.
+
 ### B-022 — Exact Claude review unavailable for FW-AV-QUARANTINE-02 (resolved)
 
 - Related task/requirement: FW-AV-QUARANTINE-02 — bounded in-memory quarantine vault proof

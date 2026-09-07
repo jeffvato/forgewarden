@@ -4,7 +4,7 @@
 
 - Active phase: FW-AV — Native anti-malware
 - Current focus: FW-AV — publisher-signed detection-content trust
-- Current task: derive the next grouped ForgeWarden milestone after accepted FW-AV-QUARANTINE-03.
+- Current task: derive the next grouped ForgeWarden milestone after accepted FW-AV-QUARANTINE-04.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -28,18 +28,18 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-AV-QUARANTINE-03 — Bounded dry-run Action Ticket binding
+- Task ID: FW-AV-QUARANTINE-04 — Bounded ticket-bound vault admission
 - Starting checkpoint: `160ba0c` (FW-ENDPOINT-01 accepted)
-- Candidate commit: `c1042f51a3647a9d88da469cf738eec095eaf24b` (accepted repair proving invalid-ticket denial precedes Evidence; parent `639584a`).
+- Candidate commit: `48c5256bd93273a3c7ddc799565fdccfe948cbc0` (accepted ticket-bound simulated vault admission; parent `dfb555d`).
 - Canonical owner: `swarm.anti_malware.AcceptedCatalogScanner` is the detect-only facade over the existing `AcceptedCatalogCache`, `TrustedSignatureCatalog`, and `HashSignatureScanner`. FW-KEYS, `DurableCatalogSequenceStore`, and canonical audit remain the only trust, anti-rollback, and Evidence owners.
-- Acceptance criteria: proposal admission validates the existing signed Action Ticket's exact tenant/agent/lease/capability/resource/action/policy/time bindings before Evidence, without consuming the ticket or adding containment authority.
+- Acceptance criteria: simulated vault admission validates the existing signed Action Ticket's exact bindings before Evidence and storage, preserves proposal/content digest binding and bounded tenant/device state, and leaves tickets non-consuming.
 - Negative paths: cache miss and expired catalog deny before scanning; malformed, oversized, over-work, stream-failure, match-overflow, and Evidence-failure paths remain fail closed. No network, endpoint, credential, quarantine, remediation, or response authority is added.
-- Proof plan: focused ticket-binding proof, exact Claude review of `11bc4f6` and repair `c1042f5`, one full suite, and one integrity gate after approval (complete).
+- Proof plan: focused ticket-bound vault proof, exact Claude review of `48c5256` (and repair if needed), one full suite, and one integrity gate after approval (complete).
 - Exact first change: bind scanner entry points to a fresh `AcceptedCatalogCache` slot without changing the underlying bounded scanner.
 - Proof: FW-ENDPOINT-02 through FW-ENDPOINT-06 are accepted with their recorded focused/full proofs. FW-ENDPOINT-07 cap repair `acad2ad` was accepted with exact Claude APPROVE/LOW and full validation (`702 passed, 1 skipped`). Follow-up candidate `8ad33d1` adds the exact-128 positive boundary regression; focused proof passed (`27 tests`), exact Claude review returned APPROVE/LOW, and the final full suite passed (`703 passed, 1 skipped`) with integrity gate passing all hard checks and Golden Path. Health remains YELLOW only for pre-existing dependency and roadmap-owner findings (`identity`, `soc_incidents`, `compliance`).
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
-- Blocker: none for FW-AV-QUARANTINE-03.
-- Next action: derive the next grouped milestone; actual containment and endpoint mutation remain disabled.
+- Blocker: none for FW-AV-QUARANTINE-04.
+- Next action: derive the next grouped milestone; actual containment, ticket consumption, and endpoint mutation remain disabled.
 - Platform delivery definition: Windows and Linux are the first endpoint targets; macOS, Android, and iOS are later platform-native releases. Detailed scope and required proof are in `docs/fw-av-windows-linux-delivery-plan.md`.
 
 ## Execution log
@@ -113,6 +113,8 @@ On every restart or continuation:
 - 2026-09-07: FW-AV-QUARANTINE-03 candidate `11bc4f6` binds proposal admission to the existing signed Action Ticket registry without consuming tickets or adding containment authority. Focused proof passed (21 tests); Claude requested direct non-consumption and invalid-registry/no-Evidence tests. Repair `c1042f5` adds them and focused proof passes (22 tests); exact repair review returned APPROVE/LOW with no missing tests, but final validation remains pending.
 
 - 2026-09-07: FW-AV-QUARANTINE-03 accepted at repair `c1042f5`: exact Claude repair review returned APPROVE/LOW with no missing tests; final full Linux suite passed (752 passed, 1 skipped), and integrity gate passed all hard checks and Golden Path. Health remains YELLOW only for pre-existing dependency and roadmap-owner findings. Ticket binding remains proposal-only and non-consuming.
+
+- 2026-09-07: FW-AV-QUARANTINE-04 accepted at `48c5256`: exact Claude review returned APPROVE/LOW with no blocking findings; focused proof passed (24 tests) and final full Linux suite passed (754 passed, 1 skipped); integrity gate passed all hard checks and Golden Path. Shared Action Ticket replay/expiry/revocation coverage remains canonical in `tests/test_action_ticket.py`; no duplicate micro-controls were added. Simulated vault admission remains non-consuming and non-executing.
 
 - 2026-09-06: FW-ENDPOINT-01 accepted at `160ba0c` with status checkpoint `0824f4a`: focused contract proof passed (1 test), exact Claude Co-Work review returned APPROVE/LOW, full suite passed (667 passed, 1 skipped), and integrity gate passed all hard checks and Golden Path with only pre-existing YELLOW findings.
 
