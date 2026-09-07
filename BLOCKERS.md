@@ -166,17 +166,11 @@ This file records only genuine blockers that require Customer Root authority, un
 - Current candidate/checkpoint: `9feb4ee68d91c8e2936459228d31082c50b2655e` / FWQ-0008.
 - First resume action: obtain a valid Gemini payload for the exact candidate, validate its job ID and SHA, then resume FWQ-0008 acceptance.
 
-### B-026 — Exact Claude review pending for FW-AV-QUARANTINE-06
-
-- Related task/requirement: FW-AV-QUARANTINE-06 — ticket-bound recovery proposal; exact-commit review contract
-- Exact condition: candidate `2a24fd55e7c45ffe0879c985973e7bf98baaa0ef` has focused quarantine proof passing (31 tests), but no exact Claude review has been obtained.
-- Why work cannot complete safely: local inspection and focused tests cannot substitute for the required read-only reviewer; no acceptance or full validation may be inferred.
-- Required resource: a fresh Claude CLI review session with capacity, read-only and bound to the exact 40-character candidate SHA.
-- Independent READY work still available: none within the active quarantine sequence without stacking unreviewed authority-sensitive controls.
-- Current commit/checkpoint: `2a24fd55e7c45ffe0879c985973e7bf98baaa0ef`; prerequisite QUARANTINE-05 repair `5e6fc1f55f12bd8d6eed154ef957c3157452062e` is accepted.
-- First action to resume: review QUARANTINE-05 repair first, then review QUARANTINE-06; run each milestone's full suite and integrity gate once after approval.
-
 ## Resolved blockers
+
+### B-026 — Exact Claude review pending for FW-AV-QUARANTINE-06 (resolved)
+
+- Resolution: exact Claude read-only reviews of `04f05a6` and final repair `0626604` returned APPROVE/LOW; focused proof passed (34 tests), full suite passed (764 passed, 1 skipped), and integrity gate passed all hard checks and Golden Path. Remaining YELLOW findings are pre-existing dependency and roadmap-owner issues.
 
 ### B-025 — Exact Claude repair review pending for FW-AV-QUARANTINE-05 (resolved)
 
