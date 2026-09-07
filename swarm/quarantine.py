@@ -11,6 +11,7 @@ from threading import RLock
 from typing import Any, Mapping
 
 from .asoc import AuditSink
+from .action_ticket import ActionTicketRegistry, ActionTicketError
 
 
 MAX_QUARANTINE_PROPOSAL_BYTES = 1024 * 1024
@@ -137,3 +138,29 @@ def propose_quarantine(
     except Exception as exc:
         raise QuarantineProposalDenied("EVIDENCE_WRITE_FAILED") from exc
     return proposal
+
+
+def propose_quarantine_with_ticket(
+    content: bytes, *, tenant_id: str, device_id: str, detection_id: str,
+    provenance: str, confidence: str, trusted_content: bool,
+    policy_decision: str, audit: AuditSink, kill_switch_state: str,
+    tickets: ActionTicketRegistry, ticket_id: str, subject_agent_id: str,
+    lease_id: str, policy_version: str, now: int,
+) -> QuarantineProposal:
+    """Validate a canonical ticket before recording a dry-run proposal."""
+    if not isinstance(tickets, ActionTicketRegistry):
+        raise QuarantineProposalDenied("ACTION_TICKET_INVALID")
+    try:
+        tickets.validate(
+            ticket_id, tenant_id=tenant_id, subject_agent_id=subject_agent_id,
+            lease_id=lease_id, capability="endpoint.quarantine.propose",
+            resource=detection_id, action_class="QUARANTINE_PROPOSAL",
+            policy_version=policy_version, now=now,
+        )
+    except ActionTicketError as exc:
+        raise QuarantineProposalDenied("ACTION_TICKET_DENIED") from exc
+    return propose_quarantine(
+        content, tenant_id=tenant_id, device_id=device_id, detection_id=detection_id,
+        provenance=provenance, confidence=confidence, trusted_content=trusted_content,
+        policy_decision=policy_decision, audit=audit, kill_switch_state=kill_switch_state,
+    )

@@ -9,7 +9,10 @@ from swarm.quarantine import (
     QuarantineProposal,
     QuarantineProposalDenied,
     propose_quarantine,
+    propose_quarantine_with_ticket,
 )
+from swarm.action_ticket import ActionTicket, ActionTicketRegistry
+from swarm.asoc import HMACLeaseSigner
 
 
 def _kwargs(audit):
@@ -120,6 +123,43 @@ def test_in_memory_vault_enforces_total_byte_capacity():
     with pytest.raises(QuarantineProposalDenied, match="VAULT_CAPACITY"):
         vault.admit(proposal, b"x")
     assert vault.count() == 4
+
+
+def test_quarantine_proposal_can_bind_to_existing_signed_action_ticket():
+    signer = HMACLeaseSigner({"key-1": b"test-only-key-material"})
+    tickets = ActionTicketRegistry(signer)
+    tickets.issue(ActionTicket(
+        "ticket-1", "tenant-a", "agent-1", "lease-1", "endpoint.quarantine.propose",
+        "det-1", "QUARANTINE_PROPOSAL", "human-1", "approval-1", "policy-1",
+        100, 200, "key-1",
+    ))
+    events = []
+    proposal = propose_quarantine_with_ticket(
+        b"fixture", **_kwargs(lambda *args: events.append(args)),
+        tickets=tickets, ticket_id="ticket-1", subject_agent_id="agent-1",
+        lease_id="lease-1", policy_version="policy-1", now=150,
+    )
+    assert proposal.detection_id == "det-1"
+    assert events[-1][0] == "quarantine_proposed"
+
+
+def test_quarantine_proposal_denies_ticket_scope_or_replay_without_evidence():
+    signer = HMACLeaseSigner({"key-1": b"test-only-key-material"})
+    tickets = ActionTicketRegistry(signer)
+    tickets.issue(ActionTicket(
+        "ticket-1", "tenant-a", "agent-1", "lease-1", "endpoint.quarantine.propose",
+        "det-1", "QUARANTINE_PROPOSAL", "human-1", "approval-1", "policy-1",
+        100, 200, "key-1",
+    ))
+    events = []
+    values = _kwargs(lambda *args: events.append(args))
+    values["detection_id"] = "det-other"
+    with pytest.raises(QuarantineProposalDenied, match="ACTION_TICKET_DENIED"):
+        propose_quarantine_with_ticket(
+            b"fixture", **values, tickets=tickets, ticket_id="ticket-1",
+            subject_agent_id="agent-1", lease_id="lease-1", policy_version="policy-1", now=150,
+        )
+    assert events == []
 
 
 def test_in_memory_vault_rejects_mismatch_duplicate_and_evidence_failure_without_mutation():
