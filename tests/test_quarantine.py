@@ -169,12 +169,14 @@ def test_quarantine_proposal_denies_ticket_scope_or_replay_without_evidence():
 
 
 def test_quarantine_proposal_rejects_invalid_ticket_registry():
-    values = _kwargs(lambda *_args: None)
+    events = []
+    values = _kwargs(lambda *args: events.append(args))
     with pytest.raises(QuarantineProposalDenied, match="ACTION_TICKET_INVALID"):
         propose_quarantine_with_ticket(
             b"fixture", **values, tickets=object(), ticket_id="ticket-1",
             subject_agent_id="agent-1", lease_id="lease-1", policy_version="policy-1", now=150,
         )
+    assert events == []
 
 
 def test_in_memory_vault_rejects_mismatch_duplicate_and_evidence_failure_without_mutation():
