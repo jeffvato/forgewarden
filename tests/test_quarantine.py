@@ -141,6 +141,12 @@ def test_quarantine_proposal_can_bind_to_existing_signed_action_ticket():
     )
     assert proposal.detection_id == "det-1"
     assert events[-1][0] == "quarantine_proposed"
+    validated = tickets.validate(
+        "ticket-1", tenant_id="tenant-a", subject_agent_id="agent-1", lease_id="lease-1",
+        capability="endpoint.quarantine.propose", resource="det-1",
+        action_class="QUARANTINE_PROPOSAL", policy_version="policy-1", now=150,
+    )
+    assert validated.consumed_at is None
 
 
 def test_quarantine_proposal_denies_ticket_scope_or_replay_without_evidence():
@@ -160,6 +166,15 @@ def test_quarantine_proposal_denies_ticket_scope_or_replay_without_evidence():
             subject_agent_id="agent-1", lease_id="lease-1", policy_version="policy-1", now=150,
         )
     assert events == []
+
+
+def test_quarantine_proposal_rejects_invalid_ticket_registry():
+    values = _kwargs(lambda *_args: None)
+    with pytest.raises(QuarantineProposalDenied, match="ACTION_TICKET_INVALID"):
+        propose_quarantine_with_ticket(
+            b"fixture", **values, tickets=object(), ticket_id="ticket-1",
+            subject_agent_id="agent-1", lease_id="lease-1", policy_version="policy-1", now=150,
+        )
 
 
 def test_in_memory_vault_rejects_mismatch_duplicate_and_evidence_failure_without_mutation():
