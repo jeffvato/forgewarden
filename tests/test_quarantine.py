@@ -4,6 +4,7 @@ import pytest
 
 from swarm.quarantine import (
     MAX_QUARANTINE_ENTRIES,
+    MAX_QUARANTINE_TOTAL_BYTES,
     InMemoryQuarantineVault,
     QuarantineProposal,
     QuarantineProposalDenied,
@@ -103,6 +104,22 @@ def test_in_memory_vault_enforces_entry_capacity():
     with pytest.raises(QuarantineProposalDenied, match="VAULT_CAPACITY"):
         vault.admit(proposal, b"x")
     assert vault.count() == MAX_QUARANTINE_ENTRIES
+
+
+def test_in_memory_vault_enforces_total_byte_capacity():
+    vault = InMemoryQuarantineVault(lambda *_args: None)
+    content = b"x" * (MAX_QUARANTINE_TOTAL_BYTES // 4)
+    for index in range(4):
+        values = _kwargs(lambda *_args: None)
+        values["detection_id"] = f"bytes-{index}"
+        proposal = propose_quarantine(content, **values)
+        vault.admit(proposal, content)
+    values = _kwargs(lambda *_args: None)
+    values["detection_id"] = "bytes-over-cap"
+    proposal = propose_quarantine(b"x", **values)
+    with pytest.raises(QuarantineProposalDenied, match="VAULT_CAPACITY"):
+        vault.admit(proposal, b"x")
+    assert vault.count() == 4
 
 
 def test_in_memory_vault_rejects_mismatch_duplicate_and_evidence_failure_without_mutation():
