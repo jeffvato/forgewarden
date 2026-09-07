@@ -124,12 +124,17 @@ def test_dry_run_pipeline_exposes_bounded_deterministic_resource_metrics():
             _record() | {"event_id": "event-5", "event_type": "UNKNOWN"}, source="LINUX_SENSOR",
             tenant_id="tenant-a", device_id="device-a", now_epoch=150,
         )
+    with pytest.raises(SensorAdapterDenied, match="EVENT_ID_DUPLICATE"):
+        pipeline.ingest_batch(
+            [_record() | {"event_id": "event-6"}, _record() | {"event_id": "event-6"}],
+            source="LINUX_SENSOR", tenant_id="tenant-a", device_id="device-a", now_epoch=150,
+        )
 
     metrics = pipeline.metrics()
     assert metrics.accepted_records == 3
     assert metrics.accepted_batches == 1
     assert metrics.rejected_records == 2
-    assert metrics.rejected_batches == 0
+    assert metrics.rejected_batches == 1
     assert metrics.peak_batch_size == 2
     assert metrics.peak_queued_events == 3
     assert metrics.mode == "DRY_RUN"
