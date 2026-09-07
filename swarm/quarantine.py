@@ -50,6 +50,19 @@ class QuarantineEntry:
     action: str = "DETECT_ONLY"
 
 
+@dataclass(frozen=True)
+class QuarantineRecoveryProposal:
+    tenant_id: str
+    device_id: str
+    detection_id: str
+    content_sha256: str
+    content_bytes: int
+    provenance: str
+    mode: str = "DRY_RUN"
+    action: str = "DETECT_ONLY"
+    disposition: str = "PROPOSED"
+
+
 class InMemoryQuarantineVault:
     """Bounded fixture-only vault; never touches a filesystem or endpoint."""
 
@@ -220,3 +233,59 @@ def propose_quarantine_with_ticket(
         provenance=provenance, confidence=confidence, trusted_content=trusted_content,
         policy_decision=policy_decision, audit=audit, kill_switch_state=kill_switch_state,
     )
+
+
+def propose_quarantine_recovery_with_ticket(
+    entry: QuarantineEntry, *, tickets: ActionTicketRegistry, ticket_id: str,
+    subject_agent_id: str, lease_id: str, policy_version: str, now: int,
+    audit: AuditSink, kill_switch_state: str,
+) -> QuarantineRecoveryProposal:
+    """Record a ticket-bound recovery proposal without restoring or deleting content."""
+    if not isinstance(entry, QuarantineEntry):
+        raise QuarantineProposalDenied("RECOVERY_INPUT_INVALID")
+    if not isinstance(entry.content_bytes, bytes) or not entry.content_bytes:
+        raise QuarantineProposalDenied("RECOVERY_INPUT_INVALID")
+    if len(entry.content_bytes) > MAX_QUARANTINE_PROPOSAL_BYTES:
+        raise QuarantineProposalDenied("RECOVERY_INPUT_INVALID")
+    if hashlib.sha256(entry.content_bytes).hexdigest() != entry.content_sha256:
+        raise QuarantineProposalDenied("RECOVERY_DIGEST_MISMATCH")
+    if entry.mode != "DRY_RUN" or entry.action != "DETECT_ONLY":
+        raise QuarantineProposalDenied("RECOVERY_POLICY_INVALID")
+    if kill_switch_state != "ENGAGED":
+        raise QuarantineProposalDenied("KILL_SWITCH_BLOCKED")
+    if not isinstance(tickets, ActionTicketRegistry) or not callable(audit):
+        raise QuarantineProposalDenied("RECOVERY_AUTH_INVALID")
+    try:
+        tickets.validate(
+            ticket_id, tenant_id=entry.tenant_id, subject_agent_id=subject_agent_id,
+            lease_id=lease_id, capability="endpoint.quarantine.recover",
+            resource=f"{entry.device_id}:{entry.detection_id}", action_class="QUARANTINE_RECOVERY",
+            policy_version=policy_version, now=now,
+        )
+    except ActionTicketError as exc:
+        raise QuarantineProposalDenied("RECOVERY_TICKET_DENIED") from exc
+    proposal = QuarantineRecoveryProposal(
+        tenant_id=entry.tenant_id, device_id=entry.device_id,
+        detection_id=entry.detection_id, content_sha256=entry.content_sha256,
+        content_bytes=len(entry.content_bytes), provenance=entry.provenance,
+    )
+    try:
+        audit("quarantine_recovery_proposed", {
+            "tenant_id": proposal.tenant_id, "device_id": proposal.device_id,
+            "detection_id": proposal.detection_id, "content_sha256": proposal.content_sha256,
+            "content_bytes": proposal.content_bytes, "provenance": proposal.provenance,
+            "mode": proposal.mode, "action": proposal.action,
+            "disposition": proposal.disposition, "deployment": "DISABLED",
+        })
+    except Exception as exc:
+        raise QuarantineProposalDenied("EVIDENCE_WRITE_FAILED") from exc
+    try:
+        tickets.validate_and_consume(
+            ticket_id, tenant_id=entry.tenant_id, subject_agent_id=subject_agent_id,
+            lease_id=lease_id, capability="endpoint.quarantine.recover",
+            resource=f"{entry.device_id}:{entry.detection_id}", action_class="QUARANTINE_RECOVERY",
+            policy_version=policy_version, now=now,
+        )
+    except ActionTicketError as exc:
+        raise QuarantineProposalDenied("RECOVERY_TICKET_DENIED") from exc
+    return proposal
