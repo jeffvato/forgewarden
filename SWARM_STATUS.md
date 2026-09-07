@@ -80,7 +80,7 @@ On every restart or continuation:
 
 - 2026-09-07: FW-AV-DETECTOR-02 candidate `69e344d` adds one grouped robustness proof: exact 1 MiB input is accepted with deterministic digest/Evidence, while the first over-budget chunk denies before later iterator input is consumed and without partial Evidence. Focused proof passed (22 tests); exact review and broader validation remain pending.
 
-- 2026-09-07: FW-AV-DETECTOR-02 accepted at `69e344d`: exact Claude read-only review returned APPROVE/LOW with no blocking findings; the full Linux suite and integrity gate remain the only final validation actions for this grouped proof. Claude noted only low-priority combination coverage outside the bounded scope.
+- 2026-09-07: FW-AV-DETECTOR-02 accepted at `69e344d`: exact Claude read-only review returned APPROVE/LOW with no blocking findings; final full Linux suite passed (720 passed, 1 skipped); and the integrity gate passed all hard checks and Golden Path. Health remains YELLOW only for pre-existing dependency and roadmap-owner findings. Claude noted only low-priority combination coverage outside the bounded scope; no repetitive follow-up was added.
 
 - 2026-09-06: FW-ENDPOINT-01 accepted at `160ba0c` with status checkpoint `0824f4a`: focused contract proof passed (1 test), exact Claude Co-Work review returned APPROVE/LOW, full suite passed (667 passed, 1 skipped), and integrity gate passed all hard checks and Golden Path with only pre-existing YELLOW findings.
 
