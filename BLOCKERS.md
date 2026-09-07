@@ -4,12 +4,12 @@ This file records only genuine blockers that require Customer Root authority, un
 
 ## Current blockers
 
-### B-020 — Exact Claude review unavailable for FW-ENDPOINT-12
+### B-020 — Exact Claude repair review unavailable for FW-ENDPOINT-12
 
 - Related task/requirement: FW-ENDPOINT-12 — bounded fixture event correlation proof
-- Exact condition: candidate `dd8b6355f8a07f02919b8cbacdb0042523a507e2` passed focused proof (48 tests), but the required exact read-only Claude review did not return before the reviewer process was interrupted.
+- Exact condition: repair candidate `d2b4580520c226b203fb72c33b50d0184c9ecb85` passed focused proof (49 tests), but the required exact read-only Claude repair review did not return before the reviewer process was interrupted.
 - Why work cannot complete safely: acceptance and broad validation cannot be inferred without the exact-commit reviewer verdict.
-- First resume action: submit the unchanged candidate to Claude when available; run the full suite and integrity gate only after APPROVE/LOW.
+- First resume action: submit the unchanged repair to Claude when available; run the full suite and integrity gate only after APPROVE/LOW.
 
 ### B-016 — Final validation pending for FW-AV-WARN-01 (resolved)
 
