@@ -2,7 +2,7 @@ import pytest
 from concurrent.futures import ThreadPoolExecutor
 
 from swarm.endpoint_fixtures import EndpointFixtureDenied
-from swarm.normalized_events import NormalizedEventStore
+from swarm.normalized_events import MAX_QUEUED_EVENTS_PER_DEVICE, NormalizedEventStore
 
 
 def _fixture(event_id="event-1", tenant_id="tenant-a", device_id="device-a"):
@@ -33,6 +33,25 @@ def test_normalized_event_store_peek_is_retry_safe_and_acknowledges_before_remov
     assert store.acknowledge(admitted) == admitted
     assert events[-1][0] == "endpoint_event_acknowledged"
     assert store.peek_next(tenant_id="tenant-a", device_id="device-a") is None
+
+
+def test_normalized_event_store_pending_snapshot_is_bounded_fifo_and_non_mutating():
+    store = NormalizedEventStore(lambda *_args: None, max_queued_events_per_device=3)
+    first = store.admit_fixture(_fixture("event-1"), tenant_id="tenant-a", device_id="device-a", source="LINUX_SENSOR", now_epoch=150)
+    second = store.admit_fixture(_fixture("event-2"), tenant_id="tenant-a", device_id="device-a", source="LINUX_SENSOR", now_epoch=150)
+    third = store.admit_fixture(_fixture("event-3"), tenant_id="tenant-a", device_id="device-a", source="LINUX_SENSOR", now_epoch=150)
+    assert store.pending_events(tenant_id="tenant-a", device_id="device-a", limit=2) == (first, second)
+    assert store.queued_count(tenant_id="tenant-a", device_id="device-a") == 3
+    assert store.pending_events(tenant_id="tenant-b", device_id="device-a") == ()
+    assert store.dequeue(tenant_id="tenant-a", device_id="device-a") == first
+    assert store.pending_events(tenant_id="tenant-a", device_id="device-a") == (second, third)
+
+
+@pytest.mark.parametrize("limit", [0, -1, MAX_QUEUED_EVENTS_PER_DEVICE + 1, True, "2"])
+def test_normalized_event_store_rejects_unbounded_pending_snapshot_limit(limit):
+    store = NormalizedEventStore(lambda *_args: None)
+    with pytest.raises(EndpointFixtureDenied, match="EVENT_SNAPSHOT_LIMIT_INVALID"):
+        store.pending_events(tenant_id="tenant-a", device_id="device-a", limit=limit)
 
 
 def test_normalized_event_store_denies_duplicate_event_ids_before_second_evidence():

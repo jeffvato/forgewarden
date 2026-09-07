@@ -125,6 +125,19 @@ class NormalizedEventStore:
                 return None
             return queue[0]
 
+    def pending_events(
+        self, *, tenant_id: str, device_id: str,
+        limit: int = MAX_QUEUED_EVENTS_PER_DEVICE,
+    ) -> tuple[EndpointObservation, ...]:
+        """Return a bounded FIFO snapshot without acknowledging any event."""
+        if not isinstance(limit, int) or isinstance(limit, bool) or not 1 <= limit <= MAX_QUEUED_EVENTS_PER_DEVICE:
+            raise EndpointFixtureDenied("EVENT_SNAPSHOT_LIMIT_INVALID")
+        with self._lock:
+            queue = self._queues.get((tenant_id, device_id))
+            if not queue:
+                return ()
+            return tuple(list(queue)[:limit])
+
     def acknowledge(self, observation: EndpointObservation) -> EndpointObservation:
         """Write completion Evidence, then remove the exact queue head."""
         device_key = (observation.tenant_id, observation.device_id)
