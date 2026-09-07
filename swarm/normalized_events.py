@@ -157,7 +157,7 @@ class NormalizedEventStore:
                 self._audit("endpoint_events_batch_acknowledged", {
                     "event_ids": [item.event_id for item in observations],
                     "tenant_id": device_key[0], "device_id": device_key[1],
-                    "count": len(observations), "mode": "DRY_RUN", "action": "DETECT_ONLY",
+                    "count": len(observations), "mode": observations[0].mode, "action": observations[0].action,
                 })
             except Exception as exc:
                 raise EndpointFixtureDenied("EVIDENCE_WRITE_FAILED") from exc

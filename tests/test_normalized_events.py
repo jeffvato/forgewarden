@@ -2,7 +2,7 @@ import pytest
 from concurrent.futures import ThreadPoolExecutor
 
 from swarm.endpoint_fixtures import EndpointFixtureDenied
-from swarm.normalized_events import MAX_QUEUED_EVENTS_PER_DEVICE, NormalizedEventStore
+from swarm.normalized_events import MAX_EVENT_BATCH, MAX_QUEUED_EVENTS_PER_DEVICE, NormalizedEventStore
 
 
 def _fixture(event_id="event-1", tenant_id="tenant-a", device_id="device-a"):
@@ -79,6 +79,37 @@ def test_normalized_event_store_acknowledge_batch_evidence_failure_retains_prefi
     with pytest.raises(EndpointFixtureDenied, match="EVIDENCE_WRITE_FAILED"):
         store.acknowledge_batch((first, second))
     assert store.pending_events(tenant_id="tenant-a", device_id="device-a") == (first, second)
+
+
+@pytest.mark.parametrize("observations", [([],), ("not-a-tuple",), (tuple([None]),), (tuple([object()]),)])
+def test_normalized_event_store_acknowledge_batch_rejects_invalid_input(observations):
+    store = NormalizedEventStore(lambda *_args: None)
+    value = observations[0]
+    with pytest.raises(EndpointFixtureDenied, match="EVENT_ACK_BATCH_INVALID"):
+        store.acknowledge_batch(value)
+
+
+def test_normalized_event_store_acknowledge_batch_rejects_over_cap_input():
+    store = NormalizedEventStore(lambda *_args: None)
+    with pytest.raises(EndpointFixtureDenied, match="EVENT_ACK_BATCH_INVALID"):
+        store.acknowledge_batch(tuple(object() for _ in range(MAX_EVENT_BATCH + 1)))
+
+
+def test_normalized_event_store_acknowledge_batch_rejects_mixed_tenant_or_device():
+    store = NormalizedEventStore(lambda *_args: None)
+    first = store.admit_fixture(_fixture("event-1"), tenant_id="tenant-a", device_id="device-a", source="LINUX_SENSOR", now_epoch=150)
+    foreign = type(first)(first.event_id, "tenant-b", first.device_id, first.observed_at_epoch, first.event_type, first.source, first.metadata, first.process_ancestry, first.related_indicators, first.evidence_ref)
+    with pytest.raises(EndpointFixtureDenied, match="EVENT_ACK_TENANT_OR_DEVICE_MISMATCH"):
+        store.acknowledge_batch((first, foreign))
+    assert store.pending_events(tenant_id="tenant-a", device_id="device-a") == (first,)
+
+
+def test_normalized_event_store_acknowledge_batch_cleans_up_empty_queue():
+    store = NormalizedEventStore(lambda *_args: None)
+    first = store.admit_fixture(_fixture("event-1"), tenant_id="tenant-a", device_id="device-a", source="LINUX_SENSOR", now_epoch=150)
+    assert store.acknowledge_batch((first,)) == (first,)
+    assert store.pending_events(tenant_id="tenant-a", device_id="device-a") == ()
+    assert store.queued_count(tenant_id="tenant-a", device_id="device-a") == 0
 
 
 @pytest.mark.parametrize("limit", [0, -1, MAX_QUEUED_EVENTS_PER_DEVICE + 1, True, "2"])
