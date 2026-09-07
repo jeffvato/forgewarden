@@ -4,6 +4,13 @@ This file records only genuine blockers that require Customer Root authority, un
 
 ## Current blockers
 
+### B-016 — Final validation pending for FW-AV-WARN-01
+
+- Related task/requirement: FW-AV-WARN-01 — detect-and-warn Evidence seam
+- Exact condition: candidate `758e76bb3886ee25539cfe9302625d75ccb42117` has focused proof and exact Claude APPROVE/LOW review; full suite and integrity gate remain.
+- Evidence: focused anti-malware proof passed (24 tests); no blocking findings; warning output remains DRY_RUN/DETECT_ONLY and no endpoint or response authority was added.
+- First resume action: run the full suite and integrity gate once, then accept only if all hard checks pass.
+
 ### B-015 — Exact Claude review pending for FW-AV-DETECTOR-02 (resolved)
 
 - Related task/requirement: FW-AV-DETECTOR-02 — bounded detector byte-budget robustness proof
