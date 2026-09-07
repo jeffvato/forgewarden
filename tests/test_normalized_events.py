@@ -47,6 +47,37 @@ def test_normalized_event_store_pending_snapshot_is_bounded_fifo_and_non_mutatin
     assert store.pending_events(tenant_id="tenant-a", device_id="device-a") == (second, third)
 
 
+def test_normalized_event_store_correlates_shared_fixture_indicators_deterministically():
+    events = []
+    store = NormalizedEventStore(lambda *args: events.append(args))
+    first = _fixture("event-1") | {"related_indicators": ["proc-42", "shared"]}
+    second = _fixture("event-2") | {"event_type": "FILE_LIFECYCLE", "related_indicators": ["shared"]}
+    store.admit_batch([first, second], tenant_id="tenant-a", device_id="device-a", source="LINUX_SENSOR", now_epoch=150)
+    groups = store.correlate_pending(tenant_id="tenant-a", device_id="device-a")
+    assert len(groups) == 1
+    assert groups[0].event_ids == ("event-1", "event-2")
+    assert groups[0].indicators == ("shared",)
+    assert groups[0].mode == "DRY_RUN" and groups[0].action == "DETECT_ONLY"
+    assert events[-1][0] == "endpoint_events_correlated"
+    assert store.pending_events(tenant_id="tenant-a", device_id="device-a")
+
+
+def test_normalized_event_store_correlation_is_tenant_bound_and_fail_closed_on_evidence_failure():
+    calls = []
+    def audit(*args):
+        calls.append(args)
+        if args[0] == "endpoint_events_correlated":
+            raise OSError("sink unavailable")
+    store = NormalizedEventStore(audit)
+    first = _fixture("event-1") | {"related_indicators": ["shared"]}
+    second = _fixture("event-2") | {"related_indicators": ["shared"]}
+    store.admit_batch([first, second], tenant_id="tenant-a", device_id="device-a", source="LINUX_SENSOR", now_epoch=150)
+    with pytest.raises(EndpointFixtureDenied, match="EVIDENCE_WRITE_FAILED"):
+        store.correlate_pending(tenant_id="tenant-a", device_id="device-a")
+    assert store.pending_events(tenant_id="tenant-a", device_id="device-a")
+    assert store.pending_events(tenant_id="tenant-b", device_id="device-a") == ()
+
+
 def test_normalized_event_store_acknowledge_batch_replays_exact_fifo_prefix():
     events = []
     store = NormalizedEventStore(lambda *args: events.append(args), max_queued_events_per_device=3)

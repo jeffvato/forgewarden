@@ -7,6 +7,7 @@ credential, deployment, quarantine, remediation, or response access.
 from __future__ import annotations
 
 from collections import deque
+from dataclasses import dataclass
 from threading import RLock
 from typing import Any, Mapping
 
@@ -16,6 +17,17 @@ from .endpoint_fixtures import EndpointFixtureDenied, EndpointObservation, norma
 
 MAX_QUEUED_EVENTS_PER_DEVICE = 1024
 MAX_EVENT_BATCH = 128
+MAX_CORRELATION_GROUPS = 64
+
+
+@dataclass(frozen=True)
+class CorrelatedEventGroup:
+    tenant_id: str
+    device_id: str
+    event_ids: tuple[str, ...]
+    indicators: tuple[str, ...]
+    mode: str = "DRY_RUN"
+    action: str = "DETECT_ONLY"
 
 
 class NormalizedEventStore:
@@ -137,6 +149,49 @@ class NormalizedEventStore:
             if not queue:
                 return ()
             return tuple(list(queue)[:limit])
+
+    def correlate_pending(
+        self, *, tenant_id: str, device_id: str,
+        limit: int = MAX_CORRELATION_GROUPS,
+    ) -> tuple[CorrelatedEventGroup, ...]:
+        """Return bounded deterministic groups for shared fixture indicators.
+
+        This is an in-memory observation over one tenant/device queue. It does
+        not acknowledge, reorder, or otherwise mutate events.
+        """
+        if not isinstance(limit, int) or isinstance(limit, bool) or not 1 <= limit <= MAX_CORRELATION_GROUPS:
+            raise EndpointFixtureDenied("CORRELATION_LIMIT_INVALID")
+        with self._lock:
+            queue = tuple(self._queues.get((tenant_id, device_id), ()))
+            by_indicator: dict[str, list[EndpointObservation]] = {}
+            for observation in queue:
+                for indicator in observation.related_indicators:
+                    by_indicator.setdefault(indicator, []).append(observation)
+            grouped: dict[tuple[str, ...], list[str]] = {}
+            for indicator in sorted(by_indicator):
+                observations = by_indicator[indicator]
+                if len(observations) < 2:
+                    continue
+                event_ids = tuple(item.event_id for item in observations)
+                grouped.setdefault(event_ids, []).append(indicator)
+            groups = [
+                CorrelatedEventGroup(
+                    tenant_id=tenant_id, device_id=device_id,
+                    event_ids=event_ids, indicators=tuple(indicators),
+                )
+                for event_ids, indicators in sorted(grouped.items())
+            ][:limit]
+            try:
+                self._audit("endpoint_events_correlated", {
+                    "tenant_id": tenant_id, "device_id": device_id,
+                    "groups": [
+                        {"event_ids": list(group.event_ids), "indicators": list(group.indicators)}
+                        for group in groups
+                    ], "count": len(groups), "mode": "DRY_RUN", "action": "DETECT_ONLY",
+                })
+            except Exception as exc:
+                raise EndpointFixtureDenied("EVIDENCE_WRITE_FAILED") from exc
+            return tuple(groups)
 
     def acknowledge_batch(
         self, observations: tuple[EndpointObservation, ...],
