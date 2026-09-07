@@ -39,7 +39,7 @@ On every restart or continuation:
 - Proof: FW-ENDPOINT-02 through FW-ENDPOINT-06 are accepted with their recorded focused/full proofs. FW-ENDPOINT-07 cap repair `acad2ad` was accepted with exact Claude APPROVE/LOW and full validation (`702 passed, 1 skipped`). Follow-up candidate `8ad33d1` adds the exact-128 positive boundary regression; focused proof passed (`27 tests`), exact Claude review returned APPROVE/LOW, and the final full suite passed (`703 passed, 1 skipped`) with integrity gate passing all hard checks and Golden Path. Health remains YELLOW only for pre-existing dependency and roadmap-owner findings (`identity`, `soc_incidents`, `compliance`).
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
 - Blocker: none for FW-ENDPOINT-08.
-- Next action: derive the next bounded endpoint or anti-malware control without adding unapproved live sensor or response authority.
+- Next action: derive one meaningful grouped fixture-only recovery/replay milestone; do not split unchanged queue behavior into micro-controls or rerun unchanged validations.
 - Platform delivery definition: Windows and Linux are the first endpoint targets; macOS, Android, and iOS are later platform-native releases. Detailed scope and required proof are in `docs/fw-av-windows-linux-delivery-plan.md`.
 
 ## Execution log
