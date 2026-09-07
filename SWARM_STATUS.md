@@ -4,7 +4,7 @@
 
 - Active phase: FW-AV — Native anti-malware
 - Current focus: FW-AV — publisher-signed detection-content trust
-- Current task: FW-ENDPOINT-07 boundary proof follow-up (Claude review pending).
+- Current task: derive next bounded endpoint or anti-malware control after accepted FW-ENDPOINT-07.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -36,10 +36,10 @@ On every restart or continuation:
 - Negative paths: tenant/device/source mismatch, unknown event, future timestamp, oversized input/ancestry/indicators, invalid evidence reference, and unavailable Evidence deny closed. No source transport, endpoint, credential, network, quarantine, remediation, or response authority is added.
 - Proof plan: focused fixture normalization and denial regressions, exact Claude review of candidate `a433368`, full suite, and integrity gate after review acceptance.
 - Exact first change: add an in-memory normalizer for caller-supplied Windows/Linux fixtures with bounded fields, tenant/device/source binding, Evidence-first return, and fixed DRY_RUN/DETECT_ONLY output; no live sensor or endpoint authority.
-- Proof: FW-ENDPOINT-02 through FW-ENDPOINT-06 are accepted with their recorded focused/full proofs. FW-ENDPOINT-07 cap repair `acad2ad` was accepted with exact Claude APPROVE/LOW and full validation (`702 passed, 1 skipped`). Follow-up candidate `8ad33d1` adds the exact-128 positive boundary regression; focused proof passed (`27 tests`), but exact Claude review is pending until reviewer capacity resets. Health remains YELLOW only for pre-existing dependency and roadmap-owner findings (`identity`, `soc_incidents`, `compliance`).
+- Proof: FW-ENDPOINT-02 through FW-ENDPOINT-06 are accepted with their recorded focused/full proofs. FW-ENDPOINT-07 cap repair `acad2ad` was accepted with exact Claude APPROVE/LOW and full validation (`702 passed, 1 skipped`). Follow-up candidate `8ad33d1` adds the exact-128 positive boundary regression; focused proof passed (`27 tests`), exact Claude review returned APPROVE/LOW, and the final full suite passed (`703 passed, 1 skipped`) with integrity gate passing all hard checks and Golden Path. Health remains YELLOW only for pre-existing dependency and roadmap-owner findings (`identity`, `soc_incidents`, `compliance`).
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
-- Blocker: B-013 — exact Claude review pending for proof-only candidate `8ad33d1` (review capacity reset expected at 7:00 PM CST).
-- Next action: when Claude is available, review exact candidate `8ad33d1`; if APPROVE/LOW, checkpoint this proof-only update. No acceptance or final gate is inferred while review is unavailable.
+- Blocker: none for FW-ENDPOINT-07.
+- Next action: derive the next bounded endpoint or anti-malware control without adding unapproved live sensor or response authority.
 - Platform delivery definition: Windows and Linux are the first endpoint targets; macOS, Android, and iOS are later platform-native releases. Detailed scope and required proof are in `docs/fw-av-windows-linux-delivery-plan.md`.
 
 ## Execution log
@@ -68,7 +68,7 @@ On every restart or continuation:
 
 - 2026-09-06: FW-ENDPOINT-07 cap repair `acad2ad` accepted: the canonical store enforces the same 128-record batch bound as the mapper, with denial before Evidence or state mutation. Focused proof passed (35 tests), exact Claude review returned APPROVE/LOW, full Linux suite passed (702 passed, 1 skipped), and integrity gate passed all hard checks and Golden Path. No platform access or live endpoint authority was added.
 
-- 2026-09-06: FW-ENDPOINT-07 follow-up candidate `8ad33d1` adds an exact-128 positive batch-boundary regression. Focused proof passed (27 tests); no production code changed. Exact Claude review is intentionally pending until reviewer capacity resets.
+- 2026-09-06: FW-ENDPOINT-07 follow-up candidate `8ad33d1` adds an exact-128 positive batch-boundary regression. Focused proof passed (27 tests); exact Claude review returned APPROVE/LOW; final full suite passed (703 passed, 1 skipped); and integrity gate passed all hard checks and Golden Path. No production code changed.
 
 - 2026-09-06: FW-ENDPOINT-01 accepted at `160ba0c` with status checkpoint `0824f4a`: focused contract proof passed (1 test), exact Claude Co-Work review returned APPROVE/LOW, full suite passed (667 passed, 1 skipped), and integrity gate passed all hard checks and Golden Path with only pre-existing YELLOW findings.
 
