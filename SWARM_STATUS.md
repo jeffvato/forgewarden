@@ -4,7 +4,7 @@
 
 - Active phase: FW-AV — Native anti-malware
 - Current focus: FW-AV — publisher-signed detection-content trust
-- Current task: FW-AV-DETECTOR-01 accepted-catalog-bound detector facade (Claude review pending).
+- Current task: derive next meaningful FW-AV detector-core milestone after accepted FW-AV-DETECTOR-01.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -38,8 +38,8 @@ On every restart or continuation:
 - Exact first change: bind scanner entry points to a fresh `AcceptedCatalogCache` slot without changing the underlying bounded scanner.
 - Proof: FW-ENDPOINT-02 through FW-ENDPOINT-06 are accepted with their recorded focused/full proofs. FW-ENDPOINT-07 cap repair `acad2ad` was accepted with exact Claude APPROVE/LOW and full validation (`702 passed, 1 skipped`). Follow-up candidate `8ad33d1` adds the exact-128 positive boundary regression; focused proof passed (`27 tests`), exact Claude review returned APPROVE/LOW, and the final full suite passed (`703 passed, 1 skipped`) with integrity gate passing all hard checks and Golden Path. Health remains YELLOW only for pre-existing dependency and roadmap-owner findings (`identity`, `soc_incidents`, `compliance`).
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
-- Blocker: B-014 — exact Claude review unavailable for `c9fa820`; no approval inferred.
-- Next action: derive one meaningful grouped fixture-only recovery/replay milestone; do not split unchanged queue behavior into micro-controls or rerun unchanged validations.
+- Blocker: none for FW-AV-DETECTOR-01.
+- Next action: derive the next meaningful FW-AV detector-core milestone without adding live endpoint or response authority.
 - Platform delivery definition: Windows and Linux are the first endpoint targets; macOS, Android, and iOS are later platform-native releases. Detailed scope and required proof are in `docs/fw-av-windows-linux-delivery-plan.md`.
 
 ## Execution log
@@ -75,6 +75,8 @@ On every restart or continuation:
 - 2026-09-07: FW-ENDPOINT-09 grouped recovery replay accepted at `25eb051`: canonical `NormalizedEventStore.acknowledge_batch` validates and acknowledges an exact tenant/device FIFO prefix only after one completion Evidence record succeeds; invalid, mixed, non-prefix, and over-cap inputs fail closed without mutation. Focused proof passed (33 tests); exact Claude repair review returned APPROVE/LOW with no missing tests; full Linux suite passed (719 passed, 1 skipped); and integrity gate passed all hard checks and Golden Path, with health remaining YELLOW only for pre-existing dependency and roadmap-owner findings. No live endpoint or response authority was added.
 
 - 2026-09-07: FW-AV-DETECTOR-01 candidate `0c88ded` added `AcceptedCatalogScanner` to require a fresh accepted catalog cache before bounded scanning. Focused proof passed (21 tests); Claude APPROVE/LOW found one missing streaming-path regression. Repair `c9fa820` added that regression and focused proof remains green (21 tests), but the exact Claude repair review was unavailable/max-turns and returned no verdict; no acceptance or full validation is inferred.
+
+- 2026-09-07: FW-AV-DETECTOR-01 accepted at `c9fa820`: accepted-catalog-bound scanning now has direct streaming-path proof. Exact Claude review returned APPROVE/LOW with no missing tests; final full suite passed (719 passed, 1 skipped); and integrity gate passed all hard checks and Golden Path. Health remains YELLOW only for pre-existing dependency and roadmap-owner findings. No live endpoint or response authority was added.
 
 - 2026-09-06: FW-ENDPOINT-01 accepted at `160ba0c` with status checkpoint `0824f4a`: focused contract proof passed (1 test), exact Claude Co-Work review returned APPROVE/LOW, full suite passed (667 passed, 1 skipped), and integrity gate passed all hard checks and Golden Path with only pre-existing YELLOW findings.
 
