@@ -4,7 +4,7 @@
 
 - Active phase: FW-AV — Native anti-malware
 - Current focus: FW-AV — publisher-signed detection-content trust
-- Current task: derive the next grouped ForgeWarden milestone after accepted FW-AV-QUARANTINE-04.
+- Current task: FW-AV-QUARANTINE-05 — recovery-safe in-memory quarantine snapshots; exact Claude repair review pending.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -28,18 +28,18 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-AV-QUARANTINE-04 — Bounded ticket-bound vault admission
+- Task ID: FW-AV-QUARANTINE-05 — Recovery-safe in-memory quarantine snapshots
 - Starting checkpoint: `160ba0c` (FW-ENDPOINT-01 accepted)
-- Candidate commit: `48c5256bd93273a3c7ddc799565fdccfe948cbc0` (accepted ticket-bound simulated vault admission; parent `dfb555d`).
+- Candidate commit: `39cb3a9719c8c45722980e2f7183064ae1936035` (test repair for recovery-safe snapshot validation; production candidate `cb108d43b36966b559cda337e482358e7996b3f5`).
 - Canonical owner: `swarm.anti_malware.AcceptedCatalogScanner` is the detect-only facade over the existing `AcceptedCatalogCache`, `TrustedSignatureCatalog`, and `HashSignatureScanner`. FW-KEYS, `DurableCatalogSequenceStore`, and canonical audit remain the only trust, anti-rollback, and Evidence owners.
-- Acceptance criteria: simulated vault admission validates the existing signed Action Ticket's exact bindings before Evidence and storage, preserves proposal/content digest binding and bounded tenant/device state, and leaves tickets non-consuming.
+- Acceptance criteria: deterministic immutable snapshots; recovery validates entry type, digest, policy, duplicate keys, and item/total caps; canonical Evidence precedes replacement; Evidence failure leaves prior state untouched; no disk or endpoint authority.
 - Negative paths: cache miss and expired catalog deny before scanning; malformed, oversized, over-work, stream-failure, match-overflow, and Evidence-failure paths remain fail closed. No network, endpoint, credential, quarantine, remediation, or response authority is added.
 - Proof plan: focused ticket-bound vault proof, exact Claude review of `48c5256` (and repair if needed), one full suite, and one integrity gate after approval (complete).
 - Exact first change: bind scanner entry points to a fresh `AcceptedCatalogCache` slot without changing the underlying bounded scanner.
 - Proof: FW-ENDPOINT-02 through FW-ENDPOINT-06 are accepted with their recorded focused/full proofs. FW-ENDPOINT-07 cap repair `acad2ad` was accepted with exact Claude APPROVE/LOW and full validation (`702 passed, 1 skipped`). Follow-up candidate `8ad33d1` adds the exact-128 positive boundary regression; focused proof passed (`27 tests`), exact Claude review returned APPROVE/LOW, and the final full suite passed (`703 passed, 1 skipped`) with integrity gate passing all hard checks and Golden Path. Health remains YELLOW only for pre-existing dependency and roadmap-owner findings (`identity`, `soc_incidents`, `compliance`).
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
-- Blocker: none for FW-AV-QUARANTINE-04.
-- Next action: derive the next grouped milestone; actual containment, ticket consumption, and endpoint mutation remain disabled.
+- Blocker: B-025 — exact Claude repair verdict pending due reviewer session limit.
+- Next action: obtain exact APPROVE/LOW for `39cb3a9`, then run one full suite and one integrity gate; actual containment, ticket consumption, and endpoint mutation remain disabled.
 - Platform delivery definition: Windows and Linux are the first endpoint targets; macOS, Android, and iOS are later platform-native releases. Detailed scope and required proof are in `docs/fw-av-windows-linux-delivery-plan.md`.
 
 ## Execution log
@@ -77,6 +77,8 @@ On every restart or continuation:
 - 2026-09-07: FW-AV-DETECTOR-01 candidate `0c88ded` added `AcceptedCatalogScanner` to require a fresh accepted catalog cache before bounded scanning. Focused proof passed (21 tests); Claude APPROVE/LOW found one missing streaming-path regression. Repair `c9fa820` added that regression and focused proof remains green (21 tests), but the exact Claude repair review was unavailable/max-turns and returned no verdict; no acceptance or full validation is inferred.
 
 - 2026-09-07: FW-AV-DETECTOR-01 accepted at `c9fa820`: accepted-catalog-bound scanning now has direct streaming-path proof. Exact Claude review returned APPROVE/LOW with no missing tests; final full suite passed (719 passed, 1 skipped); and integrity gate passed all hard checks and Golden Path. Health remains YELLOW only for pre-existing dependency and roadmap-owner findings. No live endpoint or response authority was added.
+
+- 2026-09-07: FW-AV-QUARANTINE-05 candidate `cb108d4` added deterministic immutable in-memory quarantine snapshots and Evidence-first recovery. Focused proof passed (26 tests). Claude identified missing recovery-branch coverage; test-only repair `39cb3a9` adds invalid-shape/policy/duplicate, total-capacity atomicity, and Evidence-failure preservation tests; focused proof passes (29 tests). Exact Claude repair verdict is pending reviewer capacity; no acceptance or full validation is inferred.
 
 - 2026-09-07: FW-AV-DETECTOR-02 candidate `69e344d` adds one grouped robustness proof: exact 1 MiB input is accepted with deterministic digest/Evidence, while the first over-budget chunk denies before later iterator input is consumed and without partial Evidence. Focused proof passed (22 tests); exact review and broader validation remain pending.
 
