@@ -166,16 +166,6 @@ This file records only genuine blockers that require Customer Root authority, un
 - Current candidate/checkpoint: `9feb4ee68d91c8e2936459228d31082c50b2655e` / FWQ-0008.
 - First resume action: obtain a valid Gemini payload for the exact candidate, validate its job ID and SHA, then resume FWQ-0008 acceptance.
 
-### B-025 — Exact Claude repair review pending for FW-AV-QUARANTINE-05
-
-- Related task/requirement: FW-AV-QUARANTINE-05 — recovery-safe in-memory quarantine snapshots; exact-commit review contract
-- Exact condition: candidate `39cb3a9719c8c45722980e2f7183064ae1936035` has focused proof passing (29 tests), but the bounded WSL Claude review ended with a session-capacity error before returning a valid exact-commit verdict.
-- Why work cannot complete safely: the required exact Claude APPROVE/LOW evidence cannot be inferred from local inspection or a failed reviewer session; full suite and integrity acceptance must wait.
-- Required resource: a fresh Claude CLI review session with capacity, read-only and bound to the exact 40-character candidate SHA.
-- Independent READY work still available: none within the active grouped quarantine sequence without risking duplicate controls or scope expansion.
-- Current commit/checkpoint: `39cb3a9719c8c45722980e2f7183064ae1936035`; parent production candidate `cb108d43b36966b559cda337e482358e7996b3f5`.
-- First action to resume: rerun the exact Claude review, then run the one required full Linux suite and integrity gate only after APPROVE/LOW.
-
 ### B-026 — Exact Claude review pending for FW-AV-QUARANTINE-06
 
 - Related task/requirement: FW-AV-QUARANTINE-06 — ticket-bound recovery proposal; exact-commit review contract
@@ -183,10 +173,14 @@ This file records only genuine blockers that require Customer Root authority, un
 - Why work cannot complete safely: local inspection and focused tests cannot substitute for the required read-only reviewer; no acceptance or full validation may be inferred.
 - Required resource: a fresh Claude CLI review session with capacity, read-only and bound to the exact 40-character candidate SHA.
 - Independent READY work still available: none within the active quarantine sequence without stacking unreviewed authority-sensitive controls.
-- Current commit/checkpoint: `2a24fd55e7c45ffe0879c985973e7bf98baaa0ef`; prerequisite QUARANTINE-05 repair `39cb3a9719c8c45722980e2f7183064ae1936035` is also pending Claude review.
+- Current commit/checkpoint: `2a24fd55e7c45ffe0879c985973e7bf98baaa0ef`; prerequisite QUARANTINE-05 repair `5e6fc1f55f12bd8d6eed154ef957c3157452062e` is accepted.
 - First action to resume: review QUARANTINE-05 repair first, then review QUARANTINE-06; run each milestone's full suite and integrity gate once after approval.
 
 ## Resolved blockers
+
+### B-025 — Exact Claude repair review pending for FW-AV-QUARANTINE-05 (resolved)
+
+- Resolution: exact Claude read-only review of `5e6fc1f` returned APPROVE/LOW; focused proof passed (32 tests), full suite passed (762 passed, 1 skipped), and integrity gate passed all hard checks and Golden Path. Remaining YELLOW findings are pre-existing dependency and roadmap-owner issues.
 
 ### B-006 — Exact Claude review pending for FW-AV-50 (resolved)
 

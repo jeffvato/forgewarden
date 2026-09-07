@@ -4,7 +4,7 @@
 
 - Active phase: FW-AV — Native anti-malware
 - Current focus: FW-AV — publisher-signed detection-content trust
-- Current task: FW-AV-QUARANTINE-06 — ticket-bound recovery proposal; exact Claude review pending for QUARANTINE-05 and QUARANTINE-06.
+- Current task: FW-AV-QUARANTINE-06 — ticket-bound recovery proposal; exact Claude review pending.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -38,7 +38,7 @@ On every restart or continuation:
 - Exact first change: bind scanner entry points to a fresh `AcceptedCatalogCache` slot without changing the underlying bounded scanner.
 - Proof: FW-ENDPOINT-02 through FW-ENDPOINT-06 are accepted with their recorded focused/full proofs. FW-ENDPOINT-07 cap repair `acad2ad` was accepted with exact Claude APPROVE/LOW and full validation (`702 passed, 1 skipped`). Follow-up candidate `8ad33d1` adds the exact-128 positive boundary regression; focused proof passed (`27 tests`), exact Claude review returned APPROVE/LOW, and the final full suite passed (`703 passed, 1 skipped`) with integrity gate passing all hard checks and Golden Path. Health remains YELLOW only for pre-existing dependency and roadmap-owner findings (`identity`, `soc_incidents`, `compliance`).
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
-- Blocker: B-026 — exact Claude reviews pending for QUARANTINE-05 repair and QUARANTINE-06 candidate.
+- Blocker: B-026 — exact Claude review pending for QUARANTINE-06.
 - Next action: obtain exact APPROVE/LOW reviews in order, then run one full suite and one integrity gate per grouped milestone; actual containment, restore, deletion, and endpoint mutation remain disabled.
 - Platform delivery definition: Windows and Linux are the first endpoint targets; macOS, Android, and iOS are later platform-native releases. Detailed scope and required proof are in `docs/fw-av-windows-linux-delivery-plan.md`.
 
@@ -81,6 +81,8 @@ On every restart or continuation:
 - 2026-09-07: FW-AV-QUARANTINE-05 candidate `cb108d4` added deterministic immutable in-memory quarantine snapshots and Evidence-first recovery. Focused proof passed (26 tests). Claude identified missing recovery-branch coverage; test-only repair `39cb3a9` adds invalid-shape/policy/duplicate, total-capacity atomicity, and Evidence-failure preservation tests; focused proof passes (29 tests). Exact Claude repair verdict is pending reviewer capacity; no acceptance or full validation is inferred.
 
 - 2026-09-07: FW-AV-QUARANTINE-06 candidate `2a24fd5` adds a caller-supplied, ticket-bound recovery proposal with tenant/device resource binding, replay protection, Evidence-first return, fixed DRY_RUN/DETECT_ONLY, and no restore/delete authority. Focused quarantine proof remains green (31 tests). Exact Claude review is pending; no acceptance or broad validation is inferred.
+
+- 2026-09-07: FW-AV-QUARANTINE-05 accepted at `5e6fc1f`: exact Claude repair review returned APPROVE/LOW; focused quarantine proof passed (32 tests); full Linux suite passed (762 passed, 1 skipped); and integrity gate passed all hard checks and Golden Path. Health remains YELLOW only for pre-existing dependency and roadmap-owner findings. No disk or endpoint authority was added.
 
 - 2026-09-07: FW-AV-DETECTOR-02 candidate `69e344d` adds one grouped robustness proof: exact 1 MiB input is accepted with deterministic digest/Evidence, while the first over-budget chunk denies before later iterator input is consumed and without partial Evidence. Focused proof passed (22 tests); exact review and broader validation remain pending.
 
