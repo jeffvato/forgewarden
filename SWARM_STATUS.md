@@ -4,7 +4,7 @@
 
 - Active phase: FW-AV — Native anti-malware
 - Current focus: FW-AV — publisher-signed detection-content trust
-- Current task: FW-ENDPOINT-12 — bounded fixture event correlation proof.
+- Current task: derive the next grouped ForgeWarden milestone after accepted FW-ENDPOINT-12.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -30,16 +30,16 @@ On every restart or continuation:
 
 - Task ID: FW-ENDPOINT-12 — Bounded fixture event correlation proof
 - Starting checkpoint: `160ba0c` (FW-ENDPOINT-01 accepted)
-- Candidate commit: `d2b4580520c226b203fb72c33b50d0184c9ecb85` (repair for duplicate-indicator self-correlation; parent `dd8b635`).
+- Candidate commit: `d2b4580520c226b203fb72c33b50d0184c9ecb85` (accepted repair for duplicate-indicator self-correlation; parent `dd8b635`).
 - Canonical owner: `swarm.anti_malware.AcceptedCatalogScanner` is the detect-only facade over the existing `AcceptedCatalogCache`, `TrustedSignatureCatalog`, and `HashSignatureScanner`. FW-KEYS, `DurableCatalogSequenceStore`, and canonical audit remain the only trust, anti-rollback, and Evidence owners.
 - Acceptance criteria: canonical store exposes a bounded deterministic correlation snapshot over pending caller-supplied fixture events, grouped by shared indicators, with Evidence written before return and no queue mutation or endpoint authority.
 - Negative paths: cache miss and expired catalog deny before scanning; malformed, oversized, over-work, stream-failure, match-overflow, and Evidence-failure paths remain fail closed. No network, endpoint, credential, quarantine, remediation, or response authority is added.
-- Proof plan: focused normalized-event correlation proof, exact Claude review of `d2b4580`, then one full suite and integrity gate only after APPROVE/LOW.
+- Proof plan: focused normalized-event correlation proof, exact Claude review of `d2b4580`, one full suite, and one integrity gate after approval (complete).
 - Exact first change: bind scanner entry points to a fresh `AcceptedCatalogCache` slot without changing the underlying bounded scanner.
 - Proof: FW-ENDPOINT-02 through FW-ENDPOINT-06 are accepted with their recorded focused/full proofs. FW-ENDPOINT-07 cap repair `acad2ad` was accepted with exact Claude APPROVE/LOW and full validation (`702 passed, 1 skipped`). Follow-up candidate `8ad33d1` adds the exact-128 positive boundary regression; focused proof passed (`27 tests`), exact Claude review returned APPROVE/LOW, and the final full suite passed (`703 passed, 1 skipped`) with integrity gate passing all hard checks and Golden Path. Health remains YELLOW only for pre-existing dependency and roadmap-owner findings (`identity`, `soc_incidents`, `compliance`).
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
-- Blocker: B-020 — exact Claude repair review unavailable for FW-ENDPOINT-12.
-- Next action: resubmit unchanged `d2b4580` to Claude when available; do not infer acceptance or run broad validation before review.
+- Blocker: none for FW-ENDPOINT-12.
+- Next action: derive the next grouped milestone; live sensors and response actions remain disabled.
 - Platform delivery definition: Windows and Linux are the first endpoint targets; macOS, Android, and iOS are later platform-native releases. Detailed scope and required proof are in `docs/fw-av-windows-linux-delivery-plan.md`.
 
 ## Execution log
@@ -99,6 +99,8 @@ On every restart or continuation:
 - 2026-09-07: FW-ENDPOINT-11 accepted at repair `439cfe2`: final full Linux suite passed (727 passed, 1 skipped), and the integrity gate passed all hard checks and Golden Path. Health remains YELLOW only for pre-existing dependency and roadmap-owner findings. Metrics are advisory bounded state only; no live sensor or response authority was added.
 
 - 2026-09-07: FW-ENDPOINT-12 candidate `dd8b635` adds bounded tenant/device-scoped shared-indicator correlation over pending fixture events. Focused proof passed (48 tests); exact Claude review requested a duplicate-indicator self-correlation regression. Repair `d2b4580` deduplicates each observation's indicators and adds the regression; focused proof passes (49 tests), exact repair review remains pending.
+
+- 2026-09-07: FW-ENDPOINT-12 accepted at repair `d2b4580`: exact Claude reviews returned APPROVE/LOW with no blocking findings; final full Linux suite passed (730 passed, 1 skipped), and integrity gate passed all hard checks and Golden Path. The optional combined-scenario test was not added because existing tests cover both independent behaviors and no security gap remained. Health remains YELLOW only for pre-existing dependency and roadmap-owner findings.
 
 - 2026-09-06: FW-ENDPOINT-01 accepted at `160ba0c` with status checkpoint `0824f4a`: focused contract proof passed (1 test), exact Claude Co-Work review returned APPROVE/LOW, full suite passed (667 passed, 1 skipped), and integrity gate passed all hard checks and Golden Path with only pre-existing YELLOW findings.
 
