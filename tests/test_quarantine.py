@@ -219,6 +219,29 @@ def test_in_memory_vault_ticket_denial_precedes_storage_and_evidence():
     assert events == []
 
 
+def test_in_memory_vault_snapshot_and_recovery_are_deterministic_and_evidence_first():
+    events = []
+    proposal = propose_quarantine(b"fixture", **_kwargs(lambda *_args: None))
+    vault = InMemoryQuarantineVault(lambda *args: events.append(args))
+    entry = vault.admit(proposal, b"fixture")
+    snapshot = vault.snapshot()
+    recovered = InMemoryQuarantineVault(lambda *args: events.append(args))
+    assert recovered.recover(snapshot) == snapshot
+    assert recovered.inspect(tenant_id="tenant-a", device_id="device-a", detection_id="det-1") == entry
+    assert events[-1][0] == "quarantine_vault_recovered"
+
+
+def test_in_memory_vault_recovery_rejects_tampered_snapshot_without_replacement():
+    events = []
+    proposal = propose_quarantine(b"fixture", **_kwargs(lambda *_args: None))
+    vault = InMemoryQuarantineVault(lambda *args: events.append(args))
+    entry = vault.admit(proposal, b"fixture")
+    tampered = type(entry)(entry.tenant_id, entry.device_id, entry.detection_id, "0" * 64, entry.content_bytes, entry.provenance)
+    with pytest.raises(QuarantineProposalDenied, match="RECOVERY_DIGEST_MISMATCH"):
+        vault.recover((tampered,))
+    assert vault.snapshot() == (entry,)
+
+
 def test_in_memory_vault_rejects_mismatch_duplicate_and_evidence_failure_without_mutation():
     proposal = propose_quarantine(b"fixture", **_kwargs(lambda *_args: None))
     vault = InMemoryQuarantineVault(lambda *_args: None)

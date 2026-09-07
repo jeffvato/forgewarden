@@ -118,6 +118,43 @@ class InMemoryQuarantineVault:
         with self._lock:
             return self._entries.get((tenant_id, device_id, detection_id))
 
+    def snapshot(self) -> tuple[QuarantineEntry, ...]:
+        """Return a deterministic immutable snapshot for simulated recovery."""
+        with self._lock:
+            return tuple(self._entries[key] for key in sorted(self._entries))
+
+    def recover(self, entries: tuple[QuarantineEntry, ...]) -> tuple[QuarantineEntry, ...]:
+        """Replace in-memory state from a validated snapshot after Evidence."""
+        if not isinstance(entries, tuple) or len(entries) > MAX_QUARANTINE_ENTRIES:
+            raise QuarantineProposalDenied("RECOVERY_SNAPSHOT_INVALID")
+        total = 0
+        rebuilt: dict[tuple[str, str, str], QuarantineEntry] = {}
+        for entry in entries:
+            if not isinstance(entry, QuarantineEntry) or not isinstance(entry.content_bytes, bytes) or not entry.content_bytes:
+                raise QuarantineProposalDenied("RECOVERY_SNAPSHOT_INVALID")
+            if len(entry.content_bytes) > MAX_QUARANTINE_PROPOSAL_BYTES or hashlib.sha256(entry.content_bytes).hexdigest() != entry.content_sha256:
+                raise QuarantineProposalDenied("RECOVERY_DIGEST_MISMATCH")
+            if entry.mode != "DRY_RUN" or entry.action != "DETECT_ONLY":
+                raise QuarantineProposalDenied("RECOVERY_POLICY_INVALID")
+            key = (entry.tenant_id, entry.device_id, entry.detection_id)
+            if key in rebuilt:
+                raise QuarantineProposalDenied("RECOVERY_DUPLICATE")
+            total += len(entry.content_bytes)
+            if total > MAX_QUARANTINE_TOTAL_BYTES:
+                raise QuarantineProposalDenied("VAULT_CAPACITY")
+            rebuilt[key] = entry
+        with self._lock:
+            try:
+                self._audit("quarantine_vault_recovered", {
+                    "count": len(rebuilt), "total_bytes": total,
+                    "mode": "DRY_RUN", "action": "DETECT_ONLY", "deployment": "DISABLED",
+                })
+            except Exception as exc:
+                raise QuarantineProposalDenied("EVIDENCE_WRITE_FAILED") from exc
+            self._entries = rebuilt
+            self._total_bytes = total
+            return self.snapshot()
+
     def count(self) -> int:
         with self._lock:
             return len(self._entries)
