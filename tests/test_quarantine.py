@@ -179,6 +179,46 @@ def test_quarantine_proposal_rejects_invalid_ticket_registry():
     assert events == []
 
 
+def test_in_memory_vault_admission_requires_signed_ticket_and_preserves_ticket():
+    signer = HMACLeaseSigner({"key-1": b"test-only-key-material"})
+    tickets = ActionTicketRegistry(signer)
+    tickets.issue(ActionTicket(
+        "ticket-vault", "tenant-a", "agent-1", "lease-1", "endpoint.quarantine.propose",
+        "det-1", "QUARANTINE_PROPOSAL", "human-1", "approval-1", "policy-1", 100, 200, "key-1",
+    ))
+    proposal = propose_quarantine(b"fixture", **_kwargs(lambda *_args: None))
+    vault = InMemoryQuarantineVault(lambda *_args: None)
+    entry = vault.admit_with_ticket(
+        proposal, b"fixture", tickets=tickets, ticket_id="ticket-vault",
+        subject_agent_id="agent-1", lease_id="lease-1", policy_version="policy-1", now=150,
+    )
+    assert entry.detection_id == "det-1"
+    assert tickets.validate(
+        "ticket-vault", tenant_id="tenant-a", subject_agent_id="agent-1", lease_id="lease-1",
+        capability="endpoint.quarantine.propose", resource="det-1", action_class="QUARANTINE_PROPOSAL",
+        policy_version="policy-1", now=150,
+    ).consumed_at is None
+
+
+def test_in_memory_vault_ticket_denial_precedes_storage_and_evidence():
+    signer = HMACLeaseSigner({"key-1": b"test-only-key-material"})
+    tickets = ActionTicketRegistry(signer)
+    tickets.issue(ActionTicket(
+        "ticket-vault", "tenant-a", "agent-1", "lease-1", "endpoint.quarantine.propose",
+        "det-1", "QUARANTINE_PROPOSAL", "human-1", "approval-1", "policy-1", 100, 200, "key-1",
+    ))
+    proposal = propose_quarantine(b"fixture", **_kwargs(lambda *_args: None))
+    events = []
+    vault = InMemoryQuarantineVault(lambda *args: events.append(args))
+    with pytest.raises(QuarantineProposalDenied, match="ACTION_TICKET_DENIED"):
+        vault.admit_with_ticket(
+            proposal, b"fixture", tickets=tickets, ticket_id="ticket-vault",
+            subject_agent_id="agent-1", lease_id="lease-1", policy_version="policy-wrong", now=150,
+        )
+    assert vault.count() == 0
+    assert events == []
+
+
 def test_in_memory_vault_rejects_mismatch_duplicate_and_evidence_failure_without_mutation():
     proposal = propose_quarantine(b"fixture", **_kwargs(lambda *_args: None))
     vault = InMemoryQuarantineVault(lambda *_args: None)

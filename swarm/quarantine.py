@@ -94,6 +94,25 @@ class InMemoryQuarantineVault:
             self._total_bytes += len(content)
             return entry
 
+    def admit_with_ticket(
+        self, proposal: QuarantineProposal, content: bytes, *,
+        tickets: ActionTicketRegistry, ticket_id: str, subject_agent_id: str,
+        lease_id: str, policy_version: str, now: int,
+    ) -> QuarantineEntry:
+        """Validate an existing signed ticket before simulated vault storage."""
+        if not isinstance(tickets, ActionTicketRegistry):
+            raise QuarantineProposalDenied("ACTION_TICKET_INVALID")
+        try:
+            tickets.validate(
+                ticket_id, tenant_id=proposal.tenant_id, subject_agent_id=subject_agent_id,
+                lease_id=lease_id, capability="endpoint.quarantine.propose",
+                resource=proposal.detection_id, action_class="QUARANTINE_PROPOSAL",
+                policy_version=policy_version, now=now,
+            )
+        except ActionTicketError as exc:
+            raise QuarantineProposalDenied("ACTION_TICKET_DENIED") from exc
+        return self.admit(proposal, content)
+
     def inspect(self, *, tenant_id: str, device_id: str, detection_id: str) -> QuarantineEntry | None:
         """Inspect one tenant/device-bound fixture without mutating vault state."""
         with self._lock:
