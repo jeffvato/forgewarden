@@ -278,6 +278,22 @@ def test_in_memory_vault_recovery_rejects_total_capacity_and_is_atomic():
     assert vault.snapshot() == ()
 
 
+def test_in_memory_vault_recovery_covers_entry_cap_content_type_and_mode():
+    digest = hashlib.sha256(b"x").hexdigest()
+    too_many = tuple(
+        QuarantineEntry("tenant-a", "device-a", f"det-{index}", digest, b"x", "fixture")
+        for index in range(MAX_QUARANTINE_ENTRIES + 1)
+    )
+    vault = InMemoryQuarantineVault(lambda *_args: None)
+    with pytest.raises(QuarantineProposalDenied, match="RECOVERY_SNAPSHOT_INVALID"):
+        vault.recover(too_many)
+    with pytest.raises(QuarantineProposalDenied, match="RECOVERY_SNAPSHOT_INVALID"):
+        vault.recover((QuarantineEntry("tenant-a", "device-a", "det-type", digest, "not-bytes", "fixture"),))
+    with pytest.raises(QuarantineProposalDenied, match="RECOVERY_POLICY_INVALID"):
+        vault.recover((QuarantineEntry("tenant-a", "device-a", "det-mode", digest, b"x", "fixture", mode="LIVE"),))
+    assert vault.snapshot() == ()
+
+
 def test_in_memory_vault_recovery_evidence_failure_preserves_existing_state():
     proposal = propose_quarantine(b"old", **_kwargs(lambda *_args: None))
     events = []
