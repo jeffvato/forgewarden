@@ -4,6 +4,14 @@ This file records only genuine blockers that require Customer Root authority, un
 
 ## Current blockers
 
+### B-014 — Exact Claude repair review unavailable for FW-AV-DETECTOR-01
+
+- Related task/requirement: FW-AV-DETECTOR-01 — accepted-catalog-bound detect-only scanner
+- Exact condition: repair candidate `c9fa820eefeaa8be9080538a4fa5331951dd1eab` has focused proof but the required exact Claude review returned an unavailable/max-turns error without a verdict.
+- Why work cannot complete safely: no acceptance or full-suite/integrity result may be inferred from an unavailable reviewer.
+- Evidence: focused anti-malware proof passed (21 tests); prior candidate `0c88ded` received Claude APPROVE/LOW with one streaming-path test gap; repair adds only that regression.
+- First resume action: submit the unchanged exact repair candidate to Claude when the reviewer resource is available, then run the full suite and integrity gate only on APPROVE/LOW.
+
 ### B-013 — Exact Claude review pending for FW-ENDPOINT-07 boundary proof (resolved)
 
 - Related task/requirement: FW-ENDPOINT-07 — exact-128 positive batch boundary regression
