@@ -4,7 +4,7 @@
 
 - Active phase: FW-AV — Native anti-malware
 - Current focus: FW-AV — publisher-signed detection-content trust
-- Current task: derive the next grouped FW-ENDPOINT milestone after accepted FW-AV-QUARANTINE-08.
+- Current task: derive the next grouped FW-AV-CONTENT milestone after accepted FW-ENDPOINT-13.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -28,18 +28,18 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-AV-QUARANTINE-08 — Signed release/restore proposal boundary
+- Task ID: FW-ENDPOINT-13 — Grouped dry-run pipeline recovery proof
 - Starting checkpoint: `160ba0c` (FW-ENDPOINT-01 accepted)
-- Candidate commit: `4e518dea6c43b3c17a94eb4263a602df3724665f` (accepted signed release/restore proposal boundary; no execution authority).
+- Candidate commit: `6410a5e4f14e79711a30ec00c0908f6940fbfea1` (accepted grouped Windows/Linux dry-run pipeline recovery proof; no live endpoint authority).
 - Canonical owner: `swarm.anti_malware.AcceptedCatalogScanner` is the detect-only facade over the existing `AcceptedCatalogCache`, `TrustedSignatureCatalog`, and `HashSignatureScanner`. FW-KEYS, `DurableCatalogSequenceStore`, and canonical audit remain the only trust, anti-rollback, and Evidence owners.
-- Acceptance criteria: bounded caller-supplied entry validates digest, fixed policy, metadata, explicit kill switch, and a signed tenant/device-bound single-use release ticket; canonical Evidence precedes return; only a proposal object is produced, with no restore/delete/filesystem/endpoint authority.
+- Acceptance criteria: grouped Windows/Linux caller-supplied pipeline proof validates adapter mapping, canonical FIFO pending inspection, exact batch acknowledgment, Evidence before removal, fixed DRY_RUN/DETECT_ONLY, and tenant isolation without live hooks or endpoint authority.
 - Negative paths: cache miss and expired catalog deny before scanning; malformed, oversized, over-work, stream-failure, match-overflow, and Evidence-failure paths remain fail closed. No network, endpoint, credential, quarantine, remediation, or response authority is added.
 - Proof plan: focused ticket-bound vault proof, exact Claude review of `48c5256` (and repair if needed), one full suite, and one integrity gate after approval (complete).
 - Exact first change: bind scanner entry points to a fresh `AcceptedCatalogCache` slot without changing the underlying bounded scanner.
 - Proof: FW-ENDPOINT-02 through FW-ENDPOINT-06 are accepted with their recorded focused/full proofs. FW-ENDPOINT-07 cap repair `acad2ad` was accepted with exact Claude APPROVE/LOW and full validation (`702 passed, 1 skipped`). Follow-up candidate `8ad33d1` adds the exact-128 positive boundary regression; focused proof passed (`27 tests`), exact Claude review returned APPROVE/LOW, and the final full suite passed (`703 passed, 1 skipped`) with integrity gate passing all hard checks and Golden Path. Health remains YELLOW only for pre-existing dependency and roadmap-owner findings (`identity`, `soc_incidents`, `compliance`).
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
-- Blocker: none for QUARANTINE-08.
-- Next action: derive the next grouped FW-ENDPOINT milestone; actual containment, restore, deletion, and endpoint mutation remain disabled.
+- Blocker: none for FW-ENDPOINT-13.
+- Next action: derive the next grouped FW-AV-CONTENT milestone; actual containment, restore, deletion, and endpoint mutation remain disabled.
 - Platform delivery definition: Windows and Linux are the first endpoint targets; macOS, Android, and iOS are later platform-native releases. Detailed scope and required proof are in `docs/fw-av-windows-linux-delivery-plan.md`.
 
 ## Execution log
@@ -89,6 +89,8 @@ On every restart or continuation:
 - 2026-09-07: FW-AV-QUARANTINE-07 accepted at `958b820`: grouped end-to-end dry-run proof composes accepted signed detection, warning, proposal, signed ticket, simulated vault admission, ticketed recovery proposal, replay denial, and tenant isolation. Focused proof passed (61 tests); exact Claude review returned APPROVE/LOW; full Linux suite passed (765 passed, 1 skipped); and integrity gate passed all hard checks and Golden Path. Health remains YELLOW only for pre-existing dependency and roadmap-owner findings. No live containment, restore, deletion, or endpoint authority was added.
 
 - 2026-09-07: FW-AV-QUARANTINE-08 accepted at `4e518de`: signed tenant/device-bound release/restore proposal validates digest, bounded validation/rollback metadata, explicit engaged kill switch, fixed DRY_RUN/DETECT_ONLY, Evidence-first return, and single-use Action Ticket replay protection while performing no restore, deletion, filesystem, endpoint, service, or deployment action. Focused quarantine proof passed (40 tests); exact Claude repair review returned APPROVE/LOW; full Linux suite passed (771 passed, 1 skipped); and integrity gate passed all hard checks and Golden Path. Health remains YELLOW only for pre-existing dependency and roadmap-owner findings.
+
+- 2026-09-07: FW-ENDPOINT-13 accepted at `6410a5e`: grouped Windows/Linux dry-run pipeline proof covers canonical adapter mapping, FIFO pending inspection, exact batch acknowledgment, Evidence before removal, fixed DRY_RUN/DETECT_ONLY, and tenant isolation. Focused endpoint proof passed (42 tests); exact Claude review returned APPROVE/LOW; full Linux suite passed (772 passed, 1 skipped); and integrity gate passed all hard checks and Golden Path. Health remains YELLOW only for pre-existing dependency and roadmap-owner findings. No live sensor or endpoint authority was added.
 
 - 2026-09-07: FW-AV-DETECTOR-02 candidate `69e344d` adds one grouped robustness proof: exact 1 MiB input is accepted with deterministic digest/Evidence, while the first over-budget chunk denies before later iterator input is consumed and without partial Evidence. Focused proof passed (22 tests); exact review and broader validation remain pending.
 
