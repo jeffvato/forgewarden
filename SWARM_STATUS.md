@@ -265,5 +265,5 @@ Do not stop merely because a task or review cycle finished. Stop only under the 
 ## Current stop condition
 
 - Reason: none
-- Exact condition: FW-AV-CONTENT-03 is accepted; no safety, integrity, authority, destructive-operation, or human-decision blocker is active.
+- Exact condition: FW-AV-CONTENT-04 is accepted; no safety, integrity, authority, destructive-operation, or human-decision blocker is active.
 - First resume action: derive the next grouped endpoint/content milestone while preserving all current safety boundaries.
