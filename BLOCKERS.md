@@ -4,6 +4,13 @@ This file records only genuine blockers that require Customer Root authority, un
 
 ## Current blockers
 
+### B-027 — FW-AV YARA-compatible rule contract decision required (active)
+
+- Related task/requirement: next grouped FW-AV content milestone after CONTENT-04.
+- Exact condition: the roadmap names YARA-compatible content, but this checkout has no approved rule grammar, feature subset, or licensing boundary. Implementing one now would create a parallel unreviewed trust format.
+- Why work cannot complete safely: definitions must remain under the canonical FW-KEYS and TrustedSignatureCatalog boundaries; a rule parser or schema cannot be admitted without an explicit contract.
+- First resume action: authorize the rule grammar/subset and license, then implement the bounded in-memory seam and review it before broad validation.
+
 ### B-023 — Exact Claude repair review unavailable for FW-AV-QUARANTINE-03 (resolved)
 
 - Related task/requirement: FW-AV-QUARANTINE-03 — bounded dry-run Action Ticket binding

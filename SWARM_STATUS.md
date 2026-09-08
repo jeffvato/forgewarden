@@ -264,6 +264,6 @@ Do not stop merely because a task or review cycle finished. Stop only under the 
 
 ## Current stop condition
 
-- Reason: none
-- Exact condition: FW-AV-CONTENT-04 is accepted; no safety, integrity, authority, destructive-operation, or human-decision blocker is active.
-- First resume action: derive the next grouped endpoint/content milestone while preserving all current safety boundaries.
+- Reason: HUMAN_REQUIRED_RULE_FORMAT
+- Exact condition: FW-AV-CONTENT-04 is accepted, but the next meaningful YARA-compatible rule milestone lacks an approved grammar and licensing boundary; implementing a new rule format would create an unapproved parallel trust surface.
+- First resume action: obtain the rule-format/licensing decision, then implement one bounded rule seam through the existing trusted catalog and Evidence boundaries.
