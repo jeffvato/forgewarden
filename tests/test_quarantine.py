@@ -9,11 +9,13 @@ from swarm.quarantine import (
     InMemoryQuarantineVault,
     QuarantineEntry,
     QuarantineRecoveryProposal,
+    QuarantineReleaseProposal,
     QuarantineProposal,
     QuarantineProposalDenied,
     propose_quarantine,
     propose_quarantine_with_ticket,
     propose_quarantine_recovery_with_ticket,
+    propose_quarantine_release_with_ticket,
 )
 from swarm.action_ticket import ActionTicket, ActionTicketRegistry
 from swarm.asoc import HMACLeaseSigner
@@ -421,6 +423,52 @@ def test_quarantine_recovery_proposal_denies_ticket_binding_and_expiry():
                 lease_id="lease-1", policy_version="policy-1", now=now,
                 audit=lambda *_args: None, kill_switch_state="ENGAGED",
             )
+
+
+def test_quarantine_release_proposal_is_validated_ticket_bound_and_non_executing():
+    signer = HMACLeaseSigner({"key-1": b"test-only-key-material"})
+    tickets = ActionTicketRegistry(signer)
+    tickets.issue(ActionTicket(
+        "ticket-release", "tenant-a", "agent-1", "lease-1", "endpoint.quarantine.release",
+        "device-a:det-1", "QUARANTINE_RELEASE", "human-1", "approval-1", "policy-1", 100, 200, "key-1",
+    ))
+    entry = QuarantineEntry("tenant-a", "device-a", "det-1", hashlib.sha256(b"fixture").hexdigest(), b"fixture", "fixture")
+    events = []
+    proposal = propose_quarantine_release_with_ticket(
+        entry, restore_target="fixture-target", validation_reference="validation-1", rollback_reference="rollback-1",
+        tickets=tickets, ticket_id="ticket-release", subject_agent_id="agent-1", lease_id="lease-1",
+        policy_version="policy-1", now=150, audit=lambda *args: events.append(args), kill_switch_state="ENGAGED",
+    )
+    assert isinstance(proposal, QuarantineReleaseProposal)
+    assert proposal.mode == "DRY_RUN" and proposal.action == "DETECT_ONLY"
+    assert events[0][0] == "quarantine_release_proposed"
+    assert events[0][1]["kill_switch"] == "ENGAGED"
+    with pytest.raises(QuarantineProposalDenied, match="RELEASE_TICKET_DENIED"):
+        propose_quarantine_release_with_ticket(
+            entry, restore_target="fixture-target", validation_reference="validation-1", rollback_reference="rollback-1",
+            tickets=tickets, ticket_id="ticket-release", subject_agent_id="agent-1", lease_id="lease-1",
+            policy_version="policy-1", now=150, audit=lambda *_args: None, kill_switch_state="ENGAGED",
+        )
+
+
+def test_quarantine_release_proposal_denies_unsafe_metadata_before_evidence():
+    signer = HMACLeaseSigner({"key-1": b"test-only-key-material"})
+    tickets = ActionTicketRegistry(signer)
+    tickets.issue(ActionTicket(
+        "ticket-release", "tenant-a", "agent-1", "lease-1", "endpoint.quarantine.release",
+        "device-a:det-1", "QUARANTINE_RELEASE", "human-1", "approval-1", "policy-1", 100, 200, "key-1",
+    ))
+    entry = QuarantineEntry("tenant-a", "device-a", "det-1", hashlib.sha256(b"fixture").hexdigest(), b"fixture", "fixture")
+    events = []
+    base = dict(
+        entry=entry, tickets=tickets, ticket_id="ticket-release", subject_agent_id="agent-1", lease_id="lease-1",
+        policy_version="policy-1", now=150, audit=lambda *args: events.append(args),
+    )
+    with pytest.raises(QuarantineProposalDenied, match="KILL_SWITCH_BLOCKED"):
+        propose_quarantine_release_with_ticket(**base, restore_target="target", validation_reference="v", rollback_reference="r", kill_switch_state="CLEARED")
+    with pytest.raises(QuarantineProposalDenied, match="RELEASE_METADATA_INVALID"):
+        propose_quarantine_release_with_ticket(**base, restore_target=" ", validation_reference="v", rollback_reference="r", kill_switch_state="ENGAGED")
+    assert events == []
 
 
 def test_in_memory_vault_rejects_mismatch_duplicate_and_evidence_failure_without_mutation():

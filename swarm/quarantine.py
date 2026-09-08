@@ -63,6 +63,21 @@ class QuarantineRecoveryProposal:
     disposition: str = "PROPOSED"
 
 
+@dataclass(frozen=True)
+class QuarantineReleaseProposal:
+    tenant_id: str
+    device_id: str
+    detection_id: str
+    content_sha256: str
+    content_bytes: int
+    restore_target: str
+    validation_reference: str
+    rollback_reference: str
+    mode: str = "DRY_RUN"
+    action: str = "DETECT_ONLY"
+    disposition: str = "PROPOSED"
+
+
 class InMemoryQuarantineVault:
     """Bounded fixture-only vault; never touches a filesystem or endpoint."""
 
@@ -289,4 +304,63 @@ def propose_quarantine_recovery_with_ticket(
         )
     except ActionTicketError as exc:
         raise QuarantineProposalDenied("RECOVERY_TICKET_DENIED") from exc
+    return proposal
+
+
+def propose_quarantine_release_with_ticket(
+    entry: QuarantineEntry, *, restore_target: str, validation_reference: str,
+    rollback_reference: str, tickets: ActionTicketRegistry, ticket_id: str,
+    subject_agent_id: str, lease_id: str, policy_version: str, now: int,
+    audit: AuditSink, kill_switch_state: str,
+) -> QuarantineReleaseProposal:
+    """Record a ticket-bound release/restore proposal; never perform restoration."""
+    if not isinstance(entry, QuarantineEntry) or not isinstance(entry.content_bytes, bytes) or not entry.content_bytes:
+        raise QuarantineProposalDenied("RELEASE_INPUT_INVALID")
+    if len(entry.content_bytes) > MAX_QUARANTINE_PROPOSAL_BYTES:
+        raise QuarantineProposalDenied("RELEASE_INPUT_INVALID")
+    if hashlib.sha256(entry.content_bytes).hexdigest() != entry.content_sha256:
+        raise QuarantineProposalDenied("RELEASE_DIGEST_MISMATCH")
+    if entry.mode != "DRY_RUN" or entry.action != "DETECT_ONLY":
+        raise QuarantineProposalDenied("RELEASE_POLICY_INVALID")
+    if kill_switch_state != "ENGAGED":
+        raise QuarantineProposalDenied("KILL_SWITCH_BLOCKED")
+    refs = (restore_target, validation_reference, rollback_reference)
+    if any(not isinstance(value, str) or not value.strip() or len(value.encode("utf-8")) > 256 for value in refs):
+        raise QuarantineProposalDenied("RELEASE_METADATA_INVALID")
+    if not isinstance(tickets, ActionTicketRegistry) or not callable(audit):
+        raise QuarantineProposalDenied("RELEASE_AUTH_INVALID")
+    resource = f"{entry.device_id}:{entry.detection_id}"
+    try:
+        tickets.validate(
+            ticket_id, tenant_id=entry.tenant_id, subject_agent_id=subject_agent_id,
+            lease_id=lease_id, capability="endpoint.quarantine.release", resource=resource,
+            action_class="QUARANTINE_RELEASE", policy_version=policy_version, now=now,
+        )
+    except ActionTicketError as exc:
+        raise QuarantineProposalDenied("RELEASE_TICKET_DENIED") from exc
+    proposal = QuarantineReleaseProposal(
+        tenant_id=entry.tenant_id, device_id=entry.device_id, detection_id=entry.detection_id,
+        content_sha256=entry.content_sha256, content_bytes=len(entry.content_bytes),
+        restore_target=restore_target.strip(), validation_reference=validation_reference.strip(),
+        rollback_reference=rollback_reference.strip(),
+    )
+    try:
+        audit("quarantine_release_proposed", {
+            "tenant_id": proposal.tenant_id, "device_id": proposal.device_id,
+            "detection_id": proposal.detection_id, "content_sha256": proposal.content_sha256,
+            "content_bytes": proposal.content_bytes, "restore_target": proposal.restore_target,
+            "validation_reference": proposal.validation_reference, "rollback_reference": proposal.rollback_reference,
+            "mode": proposal.mode, "action": proposal.action, "disposition": proposal.disposition,
+            "deployment": "DISABLED", "kill_switch": kill_switch_state,
+        })
+    except Exception as exc:
+        raise QuarantineProposalDenied("EVIDENCE_WRITE_FAILED") from exc
+    try:
+        tickets.validate_and_consume(
+            ticket_id, tenant_id=entry.tenant_id, subject_agent_id=subject_agent_id,
+            lease_id=lease_id, capability="endpoint.quarantine.release", resource=resource,
+            action_class="QUARANTINE_RELEASE", policy_version=policy_version, now=now,
+        )
+    except ActionTicketError as exc:
+        raise QuarantineProposalDenied("RELEASE_TICKET_DENIED") from exc
     return proposal
