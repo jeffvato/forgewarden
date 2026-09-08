@@ -4,7 +4,7 @@
 
 - Active phase: FW-AV — Native anti-malware
 - Current focus: FW-AV — publisher-signed detection-content trust
-- Current task: derive the next grouped ForgeWarden milestone after accepted FW-AV-CONTENT-02.
+- Current task: derive the next grouped ForgeWarden milestone after accepted FW-AV-CONTENT-03.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -28,17 +28,17 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-AV-CONTENT-02 — Bounded document/script content inspection
+- Task ID: FW-AV-CONTENT-03 — Bounded document/script structure inspection
 - Starting checkpoint: `160ba0c` (FW-ENDPOINT-01 accepted)
-- Candidate commit: `bb3bb29b0d222f8d3afdff21d032e08bf6706666` (accepted bounded document/script inspector over trusted catalog scanner; no parser or execution authority).
+- Candidate commit: `c88cdd6fbc6b4b9529b988b689f7be86517b2ae9` (accepted bounded in-memory JSON/Python structure inspection over the trusted catalog scanner; no execution or external authority).
 - Canonical owner: `swarm.anti_malware.AcceptedCatalogScanner` is the detect-only facade over the existing `AcceptedCatalogCache`, `TrustedSignatureCatalog`, and `HashSignatureScanner`. FW-KEYS, `DurableCatalogSequenceStore`, and canonical audit remain the only trust, anti-rollback, and Evidence owners.
 - Acceptance criteria: caller-supplied DOCUMENT/SCRIPT bytes only, strict size and metadata bounds, reuse of TrustedSignatureCatalog/HashSignatureScanner, content-kind Evidence before return, fixed DRY_RUN/DETECT_ONLY, and fail-closed behavior without parsing or execution.
 - Negative paths: cache miss and expired catalog deny before scanning; malformed, oversized, over-work, stream-failure, match-overflow, and Evidence-failure paths remain fail closed. No network, endpoint, credential, quarantine, remediation, or response authority is added.
-- Proof plan: focused ticket-bound vault proof, exact Claude review of `48c5256` (and repair if needed), one full suite, and one integrity gate after approval (complete).
+- Proof plan: focused structure proof, exact Claude review of `c88cdd6`, one full suite, and one integrity gate after approval (complete).
 - Exact first change: bind scanner entry points to a fresh `AcceptedCatalogCache` slot without changing the underlying bounded scanner.
 - Proof: FW-ENDPOINT-02 through FW-ENDPOINT-06 are accepted with their recorded focused/full proofs. FW-ENDPOINT-07 cap repair `acad2ad` was accepted with exact Claude APPROVE/LOW and full validation (`702 passed, 1 skipped`). Follow-up candidate `8ad33d1` adds the exact-128 positive boundary regression; focused proof passed (`27 tests`), exact Claude review returned APPROVE/LOW, and the final full suite passed (`703 passed, 1 skipped`) with integrity gate passing all hard checks and Golden Path. Health remains YELLOW only for pre-existing dependency and roadmap-owner findings (`identity`, `soc_incidents`, `compliance`).
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
-- Blocker: none for FW-AV-CONTENT-02.
+- Blocker: none for FW-AV-CONTENT-03.
 - Next action: derive the next grouped milestone; actual containment, restore, deletion, filesystem, endpoint, and execution authority remain disabled.
 - Platform delivery definition: Windows and Linux are the first endpoint targets; macOS, Android, and iOS are later platform-native releases. Detailed scope and required proof are in `docs/fw-av-windows-linux-delivery-plan.md`.
 
@@ -254,12 +254,14 @@ On every restart or continuation:
 
 - 2026-09-06: FW-AV-48 candidate `6a13826`: ClamAV admission now requires a registry-created, Evidence-backed candidate approval bound to the exact reviewed payload and capture timestamp. Focused proof passed (21 tests), and exact local review found no blocking defect. The canonical Claude verifier timed out after 180 seconds; no approval was inferred, so full suite/integrity validation and acceptance remain pending. No network, endpoint, credential, quarantine, remediation, deployment, or response authority was added.
 
+- 2026-09-08: FW-AV-CONTENT-03 complete at `c88cdd6`: bounded document/script structure inspection now parses caller-supplied JSON and UTF-8 Python bytes only in memory, with pre-parse size gating plus iterative node/depth/member limits. Structure summaries require canonical Evidence before returning the existing hash/literal finding; malformed, over-bound, oversized, and Evidence-failure paths remain fail closed. Focused proof passed (44 tests); exact Claude review returned APPROVE/LOW after the pre-parse size-gate repair; full Linux suite passed (789 passed, 1 skipped); integrity gate passed all hard checks and Golden Path. No execution, filesystem, network, endpoint, credential, deployment, quarantine, remediation, cleanup, repair, or response authority was added.
+
 ## Stop conditions
 
 Do not stop merely because a task or review cycle finished. Stop only under the explicit conditions in `AGENTS.md`, and record the exact reason and first resume action here.
 
 ## Current stop condition
 
-- Reason: REQUIRED_REVIEW_RESOURCE_UNAVAILABLE
-- Exact condition: Candidate `6a13826` has deterministic focused proof and local exact review, but the required canonical Claude exact-commit reviewer timed out after 180 seconds. Treating that as approval would violate the review contract.
-- First resume action: retry the canonical Claude verifier against exact candidate `6a13826` when it is responsive; if it returns valid APPROVE/LOW, run the full suite and integrity gate, then checkpoint acceptance. Preserve all current safety boundaries.
+- Reason: none
+- Exact condition: FW-AV-CONTENT-03 is accepted; no safety, integrity, authority, destructive-operation, or human-decision blocker is active.
+- First resume action: derive the next grouped endpoint/content milestone while preserving all current safety boundaries.
