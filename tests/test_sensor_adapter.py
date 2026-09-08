@@ -139,3 +139,22 @@ def test_dry_run_pipeline_exposes_bounded_deterministic_resource_metrics():
     assert metrics.peak_queued_events == 3
     assert metrics.mode == "DRY_RUN"
     assert metrics.action == "DETECT_ONLY"
+
+
+def test_windows_linux_pipeline_recovery_replay_is_fifo_evidence_first_and_tenant_bound():
+    events = []
+    store = NormalizedEventStore(lambda *args: events.append(args), max_queued_events_per_device=3)
+    pipeline = DryRunSensorPipeline(store)
+    first = pipeline.ingest_batch(
+        [_record() | {"event_id": "event-1"}, _record() | {"event_id": "event-2"}],
+        source="LINUX_SENSOR", tenant_id="tenant-a", device_id="device-a", now_epoch=150,
+    )
+    pending = store.pending_events(tenant_id="tenant-a", device_id="device-a", limit=3)
+    assert pending == first
+    acknowledged = store.acknowledge_batch(first)
+    assert acknowledged == first
+    assert store.pending_events(tenant_id="tenant-a", device_id="device-a") == ()
+    assert store.pending_events(tenant_id="tenant-b", device_id="device-a") == ()
+    assert events[-1][0] == "endpoint_events_batch_acknowledged"
+    assert events[-1][1]["mode"] == "DRY_RUN"
+    assert events[-1][1]["action"] == "DETECT_ONLY"
