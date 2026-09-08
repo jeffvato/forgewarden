@@ -4,7 +4,7 @@
 
 - Active phase: FW-AV — Native anti-malware
 - Current focus: FW-AV — publisher-signed detection-content trust
-- Current task: derive the next grouped ForgeWarden milestone after accepted FW-AV-CONTENT-04.
+- Current task: FW-AV-YARA-01 — bounded YARA-compatible trusted-catalog rules, followed by the authorized Android design-and-fixture milestone.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -264,6 +264,6 @@ Do not stop merely because a task or review cycle finished. Stop only under the 
 
 ## Current stop condition
 
-- Reason: HUMAN_REQUIRED_RULE_FORMAT
-- Exact condition: FW-AV-CONTENT-04 is accepted, but the next meaningful YARA-compatible rule milestone lacks an approved grammar and licensing boundary; implementing a new rule format would create an unapproved parallel trust surface.
-- First resume action: obtain the rule-format/licensing decision, then implement one bounded rule seam through the existing trusted catalog and Evidence boundaries.
+- Reason: none
+- Exact condition: the YARA rule grammar, limits, and source/licensing boundary are authorized; implementation is the active bounded milestone.
+- First resume action: implement FW-AV-YARA-01 through the existing trusted catalog and Evidence boundaries, then proceed to the authorized Android design-only milestone.
