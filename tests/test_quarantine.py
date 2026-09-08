@@ -471,6 +471,52 @@ def test_quarantine_release_proposal_denies_unsafe_metadata_before_evidence():
     assert events == []
 
 
+@pytest.mark.parametrize("entry, reason", [
+    (QuarantineEntry("tenant-a", "device-a", "det-1", "0" * 64, b"fixture", "fixture"), "RELEASE_DIGEST_MISMATCH"),
+    (QuarantineEntry("tenant-a", "device-a", "det-1", "0" * 64, b"", "fixture"), "RELEASE_INPUT_INVALID"),
+    (QuarantineEntry("tenant-a", "device-a", "det-1", hashlib.sha256(b"fixture").hexdigest(), b"fixture", "fixture", action="QUARANTINE"), "RELEASE_POLICY_INVALID"),
+])
+def test_quarantine_release_proposal_rejects_entry_integrity_and_policy(entry, reason):
+    signer = HMACLeaseSigner({"key-1": b"test-only-key-material"})
+    tickets = ActionTicketRegistry(signer)
+    tickets.issue(ActionTicket(
+        "ticket-release", "tenant-a", "agent-1", "lease-1", "endpoint.quarantine.release",
+        "device-a:det-1", "QUARANTINE_RELEASE", "human-1", "approval-1", "policy-1", 100, 200, "key-1",
+    ))
+    events = []
+    with pytest.raises(QuarantineProposalDenied, match=reason):
+        propose_quarantine_release_with_ticket(
+            entry, restore_target="target", validation_reference="v", rollback_reference="r",
+            tickets=tickets, ticket_id="ticket-release", subject_agent_id="agent-1", lease_id="lease-1",
+            policy_version="policy-1", now=150, audit=lambda *args: events.append(args), kill_switch_state="ENGAGED",
+        )
+    assert events == []
+
+
+def test_quarantine_release_proposal_rejects_oversized_metadata_and_wrong_ticket_scope():
+    signer = HMACLeaseSigner({"key-1": b"test-only-key-material"})
+    tickets = ActionTicketRegistry(signer)
+    tickets.issue(ActionTicket(
+        "ticket-release", "tenant-b", "agent-1", "lease-1", "endpoint.quarantine.release",
+        "device-b:det-1", "QUARANTINE_RELEASE", "human-1", "approval-1", "policy-1", 100, 200, "key-1",
+    ))
+    entry = QuarantineEntry("tenant-a", "device-a", "det-1", hashlib.sha256(b"fixture").hexdigest(), b"fixture", "fixture")
+    events = []
+    with pytest.raises(QuarantineProposalDenied, match="RELEASE_METADATA_INVALID"):
+        propose_quarantine_release_with_ticket(
+            entry, restore_target="x" * 257, validation_reference="v", rollback_reference="r",
+            tickets=tickets, ticket_id="ticket-release", subject_agent_id="agent-1", lease_id="lease-1",
+            policy_version="policy-1", now=150, audit=lambda *args: events.append(args), kill_switch_state="ENGAGED",
+        )
+    with pytest.raises(QuarantineProposalDenied, match="RELEASE_TICKET_DENIED"):
+        propose_quarantine_release_with_ticket(
+            entry, restore_target="target", validation_reference="v", rollback_reference="r",
+            tickets=tickets, ticket_id="ticket-release", subject_agent_id="agent-1", lease_id="lease-1",
+            policy_version="policy-1", now=150, audit=lambda *args: events.append(args), kill_switch_state="ENGAGED",
+        )
+    assert events == []
+
+
 def test_in_memory_vault_rejects_mismatch_duplicate_and_evidence_failure_without_mutation():
     proposal = propose_quarantine(b"fixture", **_kwargs(lambda *_args: None))
     vault = InMemoryQuarantineVault(lambda *_args: None)
