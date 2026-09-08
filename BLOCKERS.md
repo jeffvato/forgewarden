@@ -4,6 +4,13 @@ This file records only genuine blockers that require Customer Root authority, un
 
 ## Current blockers
 
+### B-028 — Exact Claude review pending for FW-AV-YARA-01 catalog binding (active)
+
+- Related task/requirement: FW-AV-YARA-01 — bind YARA rules into trusted catalog snapshots, signed local admission, and accepted-cache recovery.
+- Exact condition: candidate `7ef123dddf265f4ff239ae0305393f789d1d0f93` passed focused proof and is pushed, but the required exact read-only Claude review timed out without a verdict.
+- Why work cannot complete safely: acceptance and the next evaluator sub-unit cannot be inferred without exact external review of the trust-boundary change.
+- First resume action: submit unchanged exact candidate `7ef123d` to Claude/Gemini when reviewer capacity is available; accept only on APPROVE/LOW, then continue to the bounded evaluator.
+
 ### B-027 — FW-AV YARA-compatible rule contract decision required (active)
 
 - Related task/requirement: next grouped FW-AV content milestone after CONTENT-04.

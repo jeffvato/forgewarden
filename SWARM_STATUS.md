@@ -30,7 +30,7 @@ On every restart or continuation:
 
 - Task ID: FW-AV-YARA-01 — Bounded YARA-compatible trusted-catalog rules
 - Starting checkpoint: `160ba0c` (FW-ENDPOINT-01 accepted)
-- Candidate commit: `2d7bb816bfc561a750ba8c3f61aff052a18c8d36` (parser/model sub-unit accepted by exact Claude review; catalog binding and evaluation remain pending).
+- Candidate commit: `7ef123dddf265f4ff239ae0305393f789d1d0f93` (catalog snapshot/signed-admission/cache binding sub-unit; focused proof passed, exact Claude review pending; evaluator remains pending).
 - Canonical owner: `swarm.anti_malware.AcceptedCatalogScanner` is the detect-only facade over the existing `AcceptedCatalogCache`, `TrustedSignatureCatalog`, and `HashSignatureScanner`. FW-KEYS, `DurableCatalogSequenceStore`, and canonical audit remain the only trust, anti-rollback, and Evidence owners.
 - Acceptance criteria: bounded declarative byte/hex-literal rules joined by AND/OR and parentheses only, strict rule-size/atom/depth/literal limits, trusted-catalog and signed-bundle binding, Evidence-first/fail-closed, tenant isolation, fixed DRY_RUN/DETECT_ONLY, and no execution or external authority.
 - Negative paths: cache miss and expired catalog deny before scanning; malformed, oversized, over-work, stream-failure, match-overflow, and Evidence-failure paths remain fail closed. No network, endpoint, credential, quarantine, remediation, or response authority is added.
@@ -39,10 +39,12 @@ On every restart or continuation:
 - Proof: FW-ENDPOINT-02 through FW-ENDPOINT-06 are accepted with their recorded focused/full proofs. FW-ENDPOINT-07 cap repair `acad2ad` was accepted with exact Claude APPROVE/LOW and full validation (`702 passed, 1 skipped`). Follow-up candidate `8ad33d1` adds the exact-128 positive boundary regression; focused proof passed (`27 tests`), exact Claude review returned APPROVE/LOW, and the final full suite passed (`703 passed, 1 skipped`) with integrity gate passing all hard checks and Golden Path. Health remains YELLOW only for pre-existing dependency and roadmap-owner findings (`identity`, `soc_incidents`, `compliance`).
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
 - Blocker: none; the YARA grammar, limits, and source/licensing boundaries are authorized.
-- Next action: bind the accepted rule model into TrustedSignatureCatalog snapshots and accepted signed-bundle/cache paths; actual containment, restore, deletion, filesystem, endpoint, and execution authority remain disabled.
+- Next action: obtain exact Claude/Gemini review for `7ef123d`, then implement the bounded YARA evaluator; actual containment, restore, deletion, filesystem, endpoint, and execution authority remain disabled.
 - Platform delivery definition: Windows and Linux are the first endpoint targets; macOS, Android, and iOS are later platform-native releases. Detailed scope and required proof are in `docs/fw-av-windows-linux-delivery-plan.md`.
 
 ## Execution log
+
+- 2026-09-08: FW-AV-YARA-01 catalog-binding sub-unit candidate `7ef123d` binds bounded YARA rules into deterministic catalog snapshot hashing, FW-KEYS-verified signed local bundle admission, and accepted-cache encoding/recovery. Focused proof passed (55 tests; targeted post-repair proof 2 tests). Exact Claude review is pending because the WSL reviewer process timed out; no acceptance or evaluator work is inferred.
 
 - 2026-09-08: FW-AV-YARA-01 parser sub-unit accepted at `2d7bb81`: `YaraCompatibleRule` validates a parse-only declarative literal grammar with strict rule, metadata, literal, atom, and expression-depth bounds. Exact Claude review returned APPROVE/LOW after the atom-count repair; focused anti-malware proof passed (54 tests). Catalog binding, signed admission, cache recovery, and evaluation remain separate sub-units; no broad validation was run.
 
