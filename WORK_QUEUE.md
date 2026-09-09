@@ -20,6 +20,46 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 
 Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical implementation is not new work. FWQ-0008 VALIDATED preserves a provenance caveat, not a request to rebuild or automatically repeat review. FWQ-0012–0016 are reconciled DONE from existing implementation and recorded proof.
 
+### FWQ-0069 — Swarm execution-boundary hardening
+- Requirement: FW-HARNESS-005 swarm resilience and isolation
+- State: BLOCKED
+- Priority: P0
+- Dependencies: FWQ-0068
+- Approval: architecture is approved under D-023; implementation awaits worker-interface prerequisites.
+- Description: Harden the single-controller, coding-worker, read-only-reviewer topology against crash, replay, stale lease, path escape, identity substitution, malformed output, resource exhaustion, and unsafe interruption using deterministic controls and adversarial fixtures.
+- Target path: swarm/autonomous_loop.py
+- Allowed paths: swarm/autonomous_loop.py, swarm/autonomous_adapters.py, swarm/harness_worker.py, tests/test_autonomous_loop.py, tests/test_autonomous_adapters.py, tests/test_harness_worker.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_autonomous_loop.py tests/test_autonomous_adapters.py tests/test_harness_worker.py
+- Acceptance criteria:
+  - exact controller/worker/reviewer identity and configuration binding;
+  - atomic stage checkpoints and deterministic restart reconciliation;
+  - replay, stale leases, unexpected processes, scope escape, malformed output, and resource exhaustion deny safely;
+  - active work checkpoints or terminates safely when the kill switch requires it;
+  - denied actions and recovery decisions produce bounded evidence;
+  - no provider activation, credential issuance, deployment, or response authority.
+- Expected validation: focused adversarial Linux proof, exact Claude review, then full suite/integrity once.
+- Security considerations: hostile model output and interrupted processes are untrusted inputs.
+
+### FWQ-0068 — Governed CLI and API worker interface
+- Requirement: FW-HARNESS-004 model worker transport
+- State: BLOCKED
+- Priority: P0
+- Dependencies: FWQ-0067
+- Approval: interface architecture is approved under D-023; any provider/model/credential/network activation remains separately approval-gated.
+- Description: Define one generic worker interface supporting registered local CLI and approved API adapters with identical scoped tasks, context, capabilities, budgets, and output contracts.
+- Target path: swarm/harness_worker.py
+- Allowed paths: swarm/harness_worker.py, tests/test_harness_worker.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_harness_worker.py tests/test_harness_task.py tests/test_harness_context.py
+- Acceptance criteria:
+  - exact worker/provider/model/transport registration and role binding;
+  - CLI execution contract uses registered executables and sanitized bounded process configuration;
+  - API contract accepts only FW-KEYS secret references, never raw keys in model-visible or persisted data;
+  - provider/model/credential/network activation is denied without explicit approval evidence;
+  - transport cannot expand task authority or bypass validation, review, Git, audit, budgets, or kill switch;
+  - no live provider connection or credential material is introduced in this milestone.
+- Expected validation: focused Linux proof, exact Claude review, then full suite/integrity once.
+- Security considerations: adapters mediate hostile output and never expose credentials to models.
+
 ### FWQ-0067 — Auditable targeted context packets and task budgets
 - Requirement: FW-HARNESS-003 context and budget controls
 - State: READY

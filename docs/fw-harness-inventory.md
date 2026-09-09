@@ -54,4 +54,6 @@ Model output enters this path only as untrusted worker or reviewer input. It doe
 4. **FW-HARNESS-005:** add explicit worktree lifecycle and stage-level crash reconciliation around the existing trusted Git controller.
 5. **FW-HARNESS-006:** integrate existing FW-ID/FW-ROOT leases, Action Tickets, FW-EVID, FW-KEYS and Approved Model Registry interfaces after their contracts are stable.
 
+The worker interface must cover two governed transports: registered local CLIs and approved APIs. API credentials are FW-KEYS-managed secret references resolved only inside trusted adapter code and are never task/context/audit payloads. Provider activation, credential classes, and network routes remain approval-gated. Swarm hardening is a standing requirement across every milestone, with adversarial proof for replay, crash recovery, stale leases, path escape, identity substitution, malformed model output, resource exhaustion, and fail-closed interruption.
+
 Each item is a bounded milestone. None enables production deployment or grants models authority.

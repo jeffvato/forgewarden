@@ -22,6 +22,10 @@ Permanent Core subsystem for persistent task execution, deterministic scheduling
 
 FW-HARNESS has two permanent roles within the same Core architecture: it is a ForgeWarden product subsystem for governed AI workflows, and it is ForgeWarden's default engineering controller for development of ForgeWarden itself from FW-HARNESS activation onward. Self-hosted development uses the same persistent queue, bounded Codex worker, deterministic validation, independent exact-commit review, trusted Git/evidence path, budgets, approval gates, and kill switch. This role does not create a separate development harness and does not let a model approve, commit, deploy, change policy, or expand its own authority.
 
+Worker access must support both approved local CLI adapters and approved API-backed adapters. CLI adapters use explicitly registered executables and bounded sanitized processes. API adapters obtain credentials only through FW-KEYS secret handles and deterministic provider policy; raw API keys must never appear in prompts, context packets, task state, command arguments, logs, review bundles, or Evidence. Adding or activating a provider, model, credential class, or network route remains an explicit approval gate. The initial topology remains one controller, one coding worker, and one independent read-only reviewer.
+
+The swarm path is a Core security boundary. It must fail closed under crashes, timeouts, partial writes, stale leases, replay, scope escape, unexpected processes, model or executable substitution, malformed output, validation failure, review mismatch, resource exhaustion, and kill-switch activation. Hardening must use isolated workspaces, exact identity/configuration binding, bounded processes and resources, deterministic transition ownership, checkpoint reconciliation, denied-action evidence, and adversarial regression tests.
+
 ### FW-ROOT — Root authority and deterministic policy
 Customer Root, Z3 Policy Engine/Action Broker, signed policies, bounded leases/capabilities, single-use Action Tickets, dual control, kill-switch enforcement, immutable prohibitions, and machine-checkable invariants.
 

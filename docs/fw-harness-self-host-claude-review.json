@@ -1,0 +1,26 @@
+{
+  "adjudication": null,
+  "candidate_commit": "d8894f9cdd47d15a26e0a3850f8b555802662933",
+  "deployment": "DISABLED",
+  "job_id": "phase2a-d8894f9cdd47d15a26e0a385",
+  "kill_switch": "ENGAGED",
+  "mutation_allowed": false,
+  "reviews": [
+    {
+      "provider": "CLAUDE",
+      "result": {
+        "blocking_findings": [],
+        "job_id": "phase2a-d8894f9cdd47d15a26e0a385",
+        "non_blocking_notes": [],
+        "proposed_rules": [],
+        "reasoning_summary": "Documentation-only commit clarifying FW-HARNESS's permanent dual role as ForgeWarden Core subsystem and default development controller. All deterministic authority, approval boundaries, review gates, DRY_RUN, disabled deployment, kill-switch, Git/evidence architecture, and budget controls are explicitly preserved. AI remains untrusted advisory input with no approval, commit, policy, or authority expansion. Incremental migration path unchanged. Narrow patch (4 files, 9 insertions) faithfully records the decision with no claimed finished runtime behavior or new authority. Deterministic checks passed; no blocking findings.",
+        "reviewed_commit": "d8894f9cdd47d15a26e0a3850f8b555802662933",
+        "risk": "LOW",
+        "tests_missing": [],
+        "verdict": "APPROVE"
+      },
+      "state": "APPROVED"
+    }
+  ],
+  "state": "APPROVED"
+}
