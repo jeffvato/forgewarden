@@ -1,0 +1,26 @@
+{
+  "adjudication": null,
+  "candidate_commit": "5d2cf3e2c6520b72e722d456c5c3df8a31b74658",
+  "deployment": "DISABLED",
+  "job_id": "phase2a-0070aabbccddeeff00112233",
+  "kill_switch": "ENGAGED",
+  "mutation_allowed": false,
+  "reviews": [
+    {
+      "provider": "CLAUDE",
+      "result": {
+        "blocking_findings": [],
+        "job_id": "phase2a-0070aabbccddeeff00112233",
+        "non_blocking_notes": [],
+        "proposed_rules": [],
+        "reasoning_summary": "Commit implements provider-authentication metadata contract (FWQ-0070/FW-HARNESS-006) with strict enforcement of credential binding and secret rejection. ProviderAuthProfile declares provider-specific classes without activation; CredentialRecord persists metadata with opaque fwkeys:// handles only; CredentialBroker enforces deterministic admission gate validating provider/model/tenant/identity/method/scope/expiry/approval/revocation binding without resolving secrets or calling providers. Secret-detection regexes reject raw credentials and secret-like material in persistent form. Gemini CLI explicitly \"agy\". Broker exposes no mutation/refresh/exchange/revoke/resolve methods. All 102 tests pass, covering profile validation, identity binding, approval/revocation/expiry, secret rejection, round-tripping, and scope enforcement. Patch is narrow (2 new files, 279 lines), deterministic (frozen dataclasses, no I/O), and isolated with no integration points.",
+        "reviewed_commit": "5d2cf3e2c6520b72e722d456c5c3df8a31b74658",
+        "risk": "LOW",
+        "tests_missing": [],
+        "verdict": "APPROVE"
+      },
+      "state": "APPROVED"
+    }
+  ],
+  "state": "APPROVED"
+}

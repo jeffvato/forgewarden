@@ -62,9 +62,27 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 - Blocking reason: the cached Azure CLI identity is present, but Entra security defaults require an interactive management-scope login before resource/deployment and credit-protection evidence can be inspected without keys.
 - Completion evidence: exact candidate `05843269712abd1952a90c1f1aac96c2b3209eaf`; focused 29 passed; Claude APPROVE/LOW with no blockers/missing tests; combined full 968 passed/1 skipped and integrity hard checks/4 Golden Paths pass with unchanged YELLOW findings. Live Azure activation remains safely disabled pending interactive Entra login and credit/deployment verification. Evidence: `docs/fw-harness-007-claude-review.json`, `docs/fw-harness-004-007-integrity.json`.
 
+### FWQ-0073 — Harness Mission Control projection
+- Requirement: FW-HARNESS-008 operator visibility
+- State: READY
+- Priority: P0
+- Dependencies: FWQ-0070
+- Approval: read-only Mission Control integration is approved by the FW-HARNESS master requirement; new control authority or deployment remains prohibited.
+- Description: Project canonical harness task, dependency, worker, validation, review, retry, budget, commit, decision, next-task, and kill-switch state into a bounded read-only Mission Control view using existing state owners.
+- Target path: swarm/mission_control.py
+- Allowed paths: swarm/mission_control.py, tests/test_mission_control.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_mission_control.py tests/test_harness_task.py tests/test_harness_context.py tests/test_autonomous_loop.py
+- Acceptance criteria:
+  - operator view exposes the current phase/requirement/task, queue/dependencies/blockers, exact worker/model, relevant files, commit, validation/review, retries, budget usage, recent decisions, next task, and kill-switch state;
+  - projection consumes canonical task/context/budget/controller records without creating a second mutable state owner;
+  - malformed, cross-tenant, inconsistent, oversized, or secret-bearing state denies safely;
+  - view is deterministic, bounded, read-only, and grants no task, Git, credential, policy, approval, deployment, or kill-switch authority.
+- Expected validation: focused adversarial Linux proof, exact Claude review, then full suite/integrity once.
+- Security considerations: raw logs, prompts, credentials, and model output are not operator-state authority and are excluded from the projection.
+
 ### FWQ-0070 — Provider OAuth and credential-broker contract
 - Requirement: FW-HARNESS-006 provider authentication
-- State: READY
+- State: DONE
 - Priority: P0
 - Dependencies: FWQ-0069
 - Approval: credential architecture is approved under D-023; provider activation and credential creation remain explicit approval gates.
@@ -81,6 +99,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no live OAuth exchange, credential creation, provider connection, network transport, or deployment authority.
 - Expected validation: focused adversarial Linux proof, exact Claude review, then full suite/integrity once.
 - Security considerations: credential material is isolated at the trusted adapter boundary and models cannot request broader scopes.
+- Completion evidence: exact candidate `5d2cf3e2c6520b72e722d456c5c3df8a31b74658`; focused 133 passed; exact Claude APPROVE/LOW with no blockers/missing tests; full 991 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with unchanged YELLOW findings. Evidence: `docs/fw-harness-006-claude-review.json`, `docs/fw-harness-006-integrity-full.json`.
 
 ### FWQ-0069 — Swarm execution-boundary hardening
 - Requirement: FW-HARNESS-005 swarm resilience and isolation

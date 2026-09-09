@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: FW-HARNESS-005 accepted; FW-HARNESS-006 provider credential contract is next
-- Next task: claim FWQ-0070 for the provider-specific OAuth/API-key metadata contract; no live exchange or credential creation.
+- Current focus: FW-HARNESS-006 accepted; FW-HARNESS-008 Mission Control projection is next
+- Next task: claim FWQ-0073 for a bounded read-only operator view over canonical harness state.
 - Harness role: permanent ForgeWarden Core subsystem and default controller for ForgeWarden's own development; one governed architecture serves both roles under D-023.
 - Worker transport direction: registered local CLIs and explicitly approved API-backed workers; API keys are resolved only through FW-KEYS secret handles inside trusted adapters and never enter model context or lifecycle evidence.
 - Provider authentication direction: deterministic OpenAI, Anthropic, and Google/Gemini profiles with provider-specific official OAuth where available and approved API-key classes otherwise; Gemini CLI is registered as `agy` for read-only roles, FW-ID owns delegated identity, and FW-KEYS owns all credential material.
@@ -54,6 +54,8 @@ On every restart or continuation:
 - Latest broad Core closure: FWQ-0064, 833 passed/1 skipped, all hard checks/Golden Path passing, YELLOW pre-existing findings.
 
 ## Execution log
+
+- 2026-09-09: FW-HARNESS-006 accepted at `5d2cf3e2c6520b72e722d456c5c3df8a31b74658`. Explicit OpenAI, Anthropic, and Google API-key/CLI-managed OAuth profiles bind provider, model, tenant, FW-ID identity, method, scope, expiry, approval, revocation, and opaque FW-KEYS handles. The broker performs no exchange, refresh, resolution, creation, discovery, or provider call; Gemini CLI remains exactly `agy`. Focused 133 passed; exact Claude APPROVE/LOW with no blockers/missing tests; full 991 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with unchanged YELLOW findings. FW-HARNESS-008 Mission Control visibility is next.
 
 - 2026-09-09: FW-HARNESS-005 accepted at `6ef3c6522187f9a11e805dbee19858c1bbed2dcf`. Strict controller digests bind persisted leases to session/task/worker/repository/path/safety configuration; consumed lease IDs reject replay; every stage is durably checkpointed and rechecks supervisor authorization; safe interruption requeues work; audit symlinks deny. Focused 87 passed; exact Claude APPROVE/LOW with no blockers/missing tests; full 972 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with unchanged YELLOW findings. FW-HARNESS-006 is next as a metadata-only credential contract with live activation still gated.
 
