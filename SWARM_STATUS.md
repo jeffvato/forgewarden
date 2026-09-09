@@ -2,9 +2,9 @@
 
 ## Current state
 
-- Active phase: FW-AV — Native anti-malware
-- Current focus: FW-AV — publisher-signed detection-content trust
-- Current task: FW-ENDPOINT-ANDROID-02 — bounded Android fixture batch ingestion (accepted); next milestone to be derived from the platform roadmap.
+- Active phase: ForgeWarden Core
+- Current focus: Core supervisor and deterministic queue reconciliation
+- Current task: FWQ-0012 — Deterministic Core queue-state reconciliation (already implemented; evidence reconciliation recorded).
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -43,6 +43,8 @@ On every restart or continuation:
 - Platform delivery definition: Windows and Linux are the first endpoint targets; macOS, Android, and iOS are later platform-native releases. Detailed scope and required proof are in `docs/fw-av-windows-linux-delivery-plan.md`.
 
 ## Execution log
+
+- 2026-09-09: Authorized transition from completed FW-AV Android work to Core FWQ-0012. Existing `progress_queue` implementation already reconciles completed repair/recovery successors, promotes only one deterministic dependency-complete READY task, and avoids duplicate work; regression coverage is present in `tests/test_autonomous_loop.py`. No duplicate product code or unchanged validation was added.
 
 - 2026-09-09: FW-ENDPOINT-ANDROID-02 accepted at `122c1e5`: bounded Android fixture batches are deterministically ordered and admitted atomically through NormalizedEventStore with duplicate rejection, queue backpressure, tenant binding, Evidence-first behavior, and fixed DRY_RUN/DETECT_ONLY. Focused proof passed (9 tests), exact Claude review APPROVE/LOW with no missing tests, full suite passed (810 passed, 1 skipped), and integrity gate returned YELLOW with all hard checks and Golden Path passing. Remaining YELLOW findings are pre-existing dependency and roadmap-owner items.
 
