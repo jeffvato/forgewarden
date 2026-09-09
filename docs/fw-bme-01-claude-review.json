@@ -1,0 +1,24 @@
+{
+  "adjudication": null,
+  "candidate_commit": "dea7ca0d90924888556783aa3b3e98c1615ce324",
+  "deployment": "DISABLED",
+  "job_id": "phase2a-llllllllllllllllllllllll",
+  "kill_switch": "ENGAGED",
+  "mutation_allowed": false,
+  "reviews": [{
+    "provider": "CLAUDE",
+    "result": {
+      "blocking_findings": [],
+      "job_id": "phase2a-llllllllllllllllllllllll",
+      "non_blocking_notes": [],
+      "proposed_rules": [],
+      "reasoning_summary": "FW-BME-01 implementation meets all deterministic security and design checks. Bounded schema: fixtures limited to 64KB total, 1KB per string, 32 max URLs, and 32 max indicators; the fixture-key allow-list is enforced. Source/event pairing is canonical. Tenant/time binding is exact. Authentication and indicator tokens enforce exact membership. BrowserEmailObservation is immutable and marked UNTRUSTED_DATA. All validation precedes Evidence and Evidence failures deny. Evidence logs counts rather than raw URLs or sender data. Prompt-injection content remains untrusted strings without interpretation. Code inspection confirms no prohibited authority. Focused 11 tests and git diff --check passed.",
+      "reviewed_commit": "dea7ca0d90924888556783aa3b3e98c1615ce324",
+      "risk": "LOW",
+      "tests_missing": [],
+      "verdict": "APPROVE"
+    },
+    "state": "APPROVED"
+  }],
+  "state": "APPROVED"
+}
