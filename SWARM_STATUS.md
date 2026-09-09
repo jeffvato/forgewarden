@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: FW-RANSOM (then FW-MCP, FW-BME, FW-SOC under D-022)
-- Current focus: FW-RANSOM-03 accepted; FW-RANSOM-04 SMB propagation correlation is next
-- Next task: implement FW-RANSOM-04 over bounded caller-supplied events only.
+- Current focus: FW-RANSOM-04 bounded SMB propagation correlation
+- Next task: validate and exact-review FW-RANSOM-04 over caller-supplied events only.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled

@@ -22,7 +22,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-RANSOM-04 — Bounded SMB propagation correlation
 - Requirement: FW-RANSOM deterministic lateral-propagation signal
-- State: READY
+- State: IN_PROGRESS
 - Priority: P0
 - Dependencies: FW-RANSOM-03
 - Approval: FW-RANSOM is active first under D-022.

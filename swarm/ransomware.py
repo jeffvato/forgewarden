@@ -19,6 +19,7 @@ MAX_RANSOM_EVENTS = 128
 MAX_RANSOM_WINDOW_SECONDS = 300
 MAX_CANARIES_PER_DEVICE = 64
 MAX_CANARY_IDENTIFIER_BYTES = 256
+MAX_PROPAGATION_DEVICES = 16
 _FILE_OPERATIONS = frozenset({"WRITE", "RENAME", "DELETE"})
 _STRONG_INDICATORS = frozenset({"EXTENSION_CHANGE", "HIGH_ENTROPY", "RANSOM_NOTE", "SHADOW_COPY_TAMPER"})
 
@@ -58,6 +59,18 @@ class RansomwareIsolationProposal:
     event_ids: tuple[str, ...]
     ticket_id: str
     confidence: str = "HIGH"
+    mode: str = "DRY_RUN"
+    action: str = "DETECT_ONLY"
+
+
+@dataclass(frozen=True)
+class RansomwarePropagationFinding:
+    tenant_id: str
+    device_ids: tuple[str, ...]
+    event_ids: tuple[str, ...]
+    signals: tuple[str, ...]
+    confidence: str
+    recommendations: tuple[str, ...] = ("WARN",)
     mode: str = "DRY_RUN"
     action: str = "DETECT_ONLY"
 
@@ -126,6 +139,54 @@ class RansomwareCanaryRegistry:
                 tenant_id, device_id, (observation.event_id,), ("CANARY_TOUCHED",),
                 "HIGH", ("WARN",),
             )
+
+
+def evaluate_smb_propagation(
+    observations: Iterable[EndpointObservation], *, tenant_id: str,
+    audit: AuditSink,
+) -> RansomwarePropagationFinding | None:
+    """Correlate exact SMB lateral signals across a bounded tenant window."""
+    if not isinstance(observations, (list, tuple)) or not callable(audit):
+        raise RansomwareEvaluationDenied("INPUT_INVALID")
+    _bounded_scope(tenant_id, "TENANT_INVALID")
+    if not 1 <= len(observations) <= MAX_RANSOM_EVENTS:
+        raise RansomwareEvaluationDenied("EVENT_COUNT_INVALID")
+    if any(not isinstance(item, EndpointObservation) for item in observations):
+        raise RansomwareEvaluationDenied("EVENT_INVALID")
+    if any(item.tenant_id != tenant_id for item in observations):
+        raise RansomwareEvaluationDenied("TENANT_MISMATCH")
+    if any(item.mode != "DRY_RUN" or item.action != "DETECT_ONLY" for item in observations):
+        raise RansomwareEvaluationDenied("EVENT_AUTHORITY_INVALID")
+    ordered = tuple(sorted(observations, key=lambda item: (item.observed_at_epoch, item.device_id, item.event_id)))
+    keys = tuple((item.device_id, item.event_id) for item in ordered)
+    if len(set(keys)) != len(keys):
+        raise RansomwareEvaluationDenied("EVENT_ID_DUPLICATE")
+    if ordered[-1].observed_at_epoch - ordered[0].observed_at_epoch > MAX_RANSOM_WINDOW_SECONDS:
+        raise RansomwareEvaluationDenied("EVENT_WINDOW_EXCEEDED")
+    all_devices = {item.device_id for item in ordered}
+    if len(all_devices) > MAX_PROPAGATION_DEVICES:
+        raise RansomwareEvaluationDenied("DEVICE_COUNT_EXCEEDED")
+
+    smb_devices = {
+        item.device_id for item in ordered
+        if item.event_type == "NETWORK_CONNECT" and "SMB_WRITE" in item.related_indicators
+    }
+    lateral = any("LATERAL_MOVEMENT" in item.related_indicators for item in ordered)
+    if len(smb_devices) < 2 or not lateral:
+        return None
+    device_ids = tuple(sorted(smb_devices))
+    event_ids = tuple(item.event_id for item in ordered if item.device_id in smb_devices)
+    signals = ("LATERAL_MOVEMENT", "SMB_PROPAGATION")
+    try:
+        audit("ransomware_smb_propagation_detected", {
+            "tenant_id": tenant_id, "device_ids": list(device_ids),
+            "event_ids": list(event_ids), "signals": list(signals),
+            "confidence": "HIGH", "recommendations": ["WARN"],
+            "mode": "DRY_RUN", "action": "DETECT_ONLY", "deployment": "DISABLED",
+        })
+    except Exception as exc:
+        raise RansomwareEvaluationDenied("EVIDENCE_WRITE_FAILED") from exc
+    return RansomwarePropagationFinding(tenant_id, device_ids, event_ids, signals, "HIGH")
 
 
 def evaluate_ransomware_activity(

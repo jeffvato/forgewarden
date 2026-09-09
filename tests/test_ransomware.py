@@ -3,7 +3,7 @@ import pytest
 from swarm.action_ticket import ActionTicket, ActionTicketRegistry
 from swarm.asoc import HMACLeaseSigner
 from swarm.endpoint_fixtures import EndpointObservation
-from swarm.ransomware import RansomwareCanaryRegistry, RansomwareEvaluationDenied, evaluate_ransomware_activity, propose_ransomware_isolation
+from swarm.ransomware import RansomwareCanaryRegistry, RansomwareEvaluationDenied, evaluate_ransomware_activity, evaluate_smb_propagation, propose_ransomware_isolation
 
 
 def observation(event_id, observed, operation="WRITE", indicators=(), tenant="tenant-a", device="device-a"):
@@ -206,3 +206,73 @@ def test_canary_evidence_failures_do_not_register_or_return_findings():
     )
     with pytest.raises(RansomwareEvaluationDenied, match="EVIDENCE_WRITE_FAILED"):
         registry.evaluate_touch(touched, tenant_id="tenant-a", device_id="device-a")
+
+
+def network_observation(event_id, device, observed, indicators):
+    return EndpointObservation(
+        event_id, "tenant-a", device, observed, "NETWORK_CONNECT", "WINDOWS_SENSOR",
+        (("destination", "fixture-smb"),), (), tuple(indicators), f"evidence-{event_id}",
+    )
+
+
+def test_smb_propagation_is_deterministic_evidence_first_and_warn_only():
+    evidence = []
+    items = [
+        network_observation("e2", "device-b", 102, ("SMB_WRITE",)),
+        network_observation("e1", "device-a", 100, ("SMB_WRITE", "LATERAL_MOVEMENT")),
+    ]
+    finding = evaluate_smb_propagation(
+        items, tenant_id="tenant-a", audit=lambda *args: evidence.append(args),
+    )
+    assert finding.device_ids == ("device-a", "device-b")
+    assert finding.event_ids == ("e1", "e2")
+    assert finding.signals == ("LATERAL_MOVEMENT", "SMB_PROPAGATION")
+    assert finding.confidence == "HIGH" and finding.recommendations == ("WARN",)
+    assert finding.mode == "DRY_RUN" and finding.action == "DETECT_ONLY"
+    assert evidence[0][0] == "ransomware_smb_propagation_detected"
+    assert evidence[0][1]["deployment"] == "DISABLED"
+
+
+def test_smb_propagation_requires_exact_tokens_and_multiple_devices():
+    assert evaluate_smb_propagation([
+        network_observation("e1", "device-a", 100, ("smb_write", "lateral_movement")),
+        network_observation("e2", "device-b", 101, ("smb_write",)),
+    ], tenant_id="tenant-a", audit=lambda *_args: None) is None
+    assert evaluate_smb_propagation([
+        network_observation("e1", "device-a", 100, ("SMB_WRITE", "LATERAL_MOVEMENT")),
+        network_observation("e2", "device-a", 101, ("SMB_WRITE",)),
+    ], tenant_id="tenant-a", audit=lambda *_args: None) is None
+
+
+def test_smb_propagation_rejects_cross_tenant_duplicates_and_evidence_failure():
+    cross = network_observation("e1", "device-a", 100, ("SMB_WRITE", "LATERAL_MOVEMENT"))
+    cross = EndpointObservation(
+        cross.event_id, "tenant-b", cross.device_id, cross.observed_at_epoch,
+        cross.event_type, cross.source, cross.metadata, (), cross.related_indicators, cross.evidence_ref,
+    )
+    with pytest.raises(RansomwareEvaluationDenied, match="TENANT_MISMATCH"):
+        evaluate_smb_propagation([cross], tenant_id="tenant-a", audit=lambda *_args: None)
+    duplicate = network_observation("e1", "device-a", 100, ("SMB_WRITE",))
+    with pytest.raises(RansomwareEvaluationDenied, match="EVENT_ID_DUPLICATE"):
+        evaluate_smb_propagation([duplicate, duplicate], tenant_id="tenant-a", audit=lambda *_args: None)
+    items = [
+        network_observation("e1", "device-a", 100, ("SMB_WRITE", "LATERAL_MOVEMENT")),
+        network_observation("e2", "device-b", 101, ("SMB_WRITE",)),
+    ]
+    with pytest.raises(RansomwareEvaluationDenied, match="EVIDENCE_WRITE_FAILED"):
+        evaluate_smb_propagation(items, tenant_id="tenant-a", audit=lambda *_args: (_ for _ in ()).throw(RuntimeError("offline")))
+
+
+def test_smb_propagation_enforces_window_and_device_bounds_before_evidence():
+    evidence = []
+    with pytest.raises(RansomwareEvaluationDenied, match="EVENT_WINDOW_EXCEEDED"):
+        evaluate_smb_propagation([
+            network_observation("e1", "device-a", 100, ("SMB_WRITE", "LATERAL_MOVEMENT")),
+            network_observation("e2", "device-b", 401, ("SMB_WRITE",)),
+        ], tenant_id="tenant-a", audit=lambda *args: evidence.append(args))
+    with pytest.raises(RansomwareEvaluationDenied, match="DEVICE_COUNT_EXCEEDED"):
+        evaluate_smb_propagation([
+            network_observation(f"e{i}", f"device-{i}", 100 + i, ("SMB_WRITE", "LATERAL_MOVEMENT"))
+            for i in range(17)
+        ], tenant_id="tenant-a", audit=lambda *args: evidence.append(args))
+    assert evidence == []
