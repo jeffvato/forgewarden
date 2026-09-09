@@ -20,9 +20,28 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 
 Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical implementation is not new work. FWQ-0008 VALIDATED preserves a provenance caveat, not a request to rebuild or automatically repeat review. FWQ-0012–0016 are reconciled DONE from existing implementation and recorded proof.
 
+### FW-MCP-03 — Bounded untrusted MCP result envelope
+- Requirement: FW-MCP output sanitization and Evidence
+- State: READY
+- Priority: P0
+- Dependencies: FW-MCP-02
+- Approval: FW-MCP is active under D-022.
+- Description: Validate and wrap caller-supplied MCP tool-result data in a bounded immutable untrusted-data envelope, with exact request/admission binding and Evidence before return.
+- Target path: swarm/mcp_gateway.py
+- Allowed paths: swarm/mcp_gateway.py, tests/test_mcp_gateway.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_mcp_gateway.py tests/test_asoc.py
+- Acceptance criteria:
+  - only results for an exact admitted request can be wrapped once;
+  - payload size, shape, depth, keys, strings and collection counts are bounded;
+  - result content remains explicitly untrusted data and cannot become instructions or authority;
+  - replay, mismatch, malformed data, or Evidence failure denies safely;
+  - no tool invocation, network transport, credentials, filesystem, shell, or response authority is added.
+- Expected validation: focused Linux proof, exact Claude review, then full suite/integrity once.
+- Security considerations: MCP output may contain prompt injection; the envelope never interprets or executes it.
+
 ### FW-MCP-02 — Bounded MCP admission budgets
 - Requirement: FW-MCP gateway resource limits
-- State: IN_PROGRESS
+- State: DONE
 - Priority: P0
 - Dependencies: FW-MCP-01
 - Approval: FW-MCP is active under D-022.
@@ -38,6 +57,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no tool execution, transport, credentials, or response authority is added.
 - Expected validation: focused Linux proof, exact Claude review, then full suite/integrity once.
 - Security considerations: admission budgets are deterministic resource controls, not grants or authority.
+- Completion evidence: exact candidate `a6d1232e841861b41da00c49b95c82ef6ffe6c5e`; focused 119 passed; Claude APPROVE/LOW with no blockers/missing tests; full 868 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with pre-existing YELLOW findings. Evidence: `docs/fw-mcp-02-claude-review.json`, `docs/fw-mcp-02-integrity.json`.
 
 ### FW-MCP-01 — Replay-protected exact tool-request admission
 - Requirement: FW-MCP canonical gateway request admission

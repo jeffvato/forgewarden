@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: FW-MCP (then FW-BME, FW-SOC under D-022)
-- Current focus: FW-MCP-02 bounded admission budgets
-- Next task: validate and exact-review FW-MCP-02 in the canonical MCPGateway.
+- Current focus: FW-MCP-02 accepted; FW-MCP-03 untrusted result envelopes are next
+- Next task: implement FW-MCP-03 without interpreting or executing tool output.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -29,17 +29,17 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-MCP-01
-- Starting commit: 16db5d8900f4737f1ae42fe8dac84d5599bf4c65
-- Candidate commit: 87dda89c410ec0d563719476b7564a833b1c7177
-- Accepted commit: 87dda89c410ec0d563719476b7564a833b1c7177
+- Task ID: FW-MCP-02
+- Starting commit: ffe00c05c0b7f3f42080f10ca47a5a169fea3030
+- Candidate commit: a6d1232e841861b41da00c49b95c82ef6ffe6c5e
+- Accepted commit: a6d1232e841861b41da00c49b95c82ef6ffe6c5e
 - Files changed: swarm/mcp_gateway.py, tests/test_mcp_gateway.py, WORK_QUEUE.md, SWARM_STATUS.md
-- Deterministic validation: focused 110 passed; full 859 passed/1 skipped; integrity all hard checks and 4 Golden Paths pass, YELLOW pre-existing findings
-- Claude review: 87dda89c410ec0d563719476b7564a833b1c7177 APPROVE/LOW, no blockers or missing tests
+- Deterministic validation: focused 119 passed; full 868 passed/1 skipped; integrity all hard checks and 4 Golden Paths pass, YELLOW pre-existing findings
+- Claude review: a6d1232e841861b41da00c49b95c82ef6ffe6c5e APPROVE/LOW, no blockers or missing tests
 - Gemini review: disabled and not required under D-020
-- Unresolved findings: none for FW-RANSOM-01 through 05 or FW-MCP-01; historical caveats and pre-existing YELLOW findings remain
+- Unresolved findings: none for FW-RANSOM-01 through 05 or FW-MCP-01/02; historical caveats and pre-existing YELLOW findings remain
 - Blocker: none for bounded FW-RANSOM fixture/proposal work; broader live/response authority stays disabled
-- Next action: claim FW-MCP-02
+- Next action: claim FW-MCP-03
 
 - Completion inventory: `docs/completion-audit-2026-09-09.md` (baseline `0afcbdd`).
 - FWQ-0008 implementation and binding hardening exist; VALIDATED retains a historical provenance caveat, not an implementation assignment. FWQ-0009 is recorded accepted and unchanged at source/test level from its reviewed candidate.
@@ -49,6 +49,8 @@ On every restart or continuation:
 - Latest broad Core closure: FWQ-0064, 833 passed/1 skipped, all hard checks/Golden Path passing, YELLOW pre-existing findings.
 
 ## Execution log
+
+- 2026-09-09: FW-MCP-02 accepted at `a6d1232e841861b41da00c49b95c82ef6ffe6c5e`. Exact tenant/agent/tool scopes now have bounded deterministic admission budgets; concurrent requests cannot exceed the cap, Evidence failures consume neither budget nor request IDs, and audit records include usage/limit. Focused 119 passed; exact Claude APPROVE/LOW; full 868 passed/1 skipped; integrity hard checks and Golden Paths pass with unchanged YELLOW findings. FW-MCP-03 is next.
 
 - 2026-09-09: FW-MCP-01 accepted at `87dda89c410ec0d563719476b7564a833b1c7177`. Canonical MCPGateway now Evidence-logs exact granted request admission, rejects concurrent and reentrant replay, rolls back pending IDs on Evidence failure, and never invokes tools. Focused 110 passed; exact Claude APPROVE/LOW; full 859 passed/1 skipped; integrity hard checks and Golden Paths pass with unchanged YELLOW findings. FW-MCP-02 is next.
 
