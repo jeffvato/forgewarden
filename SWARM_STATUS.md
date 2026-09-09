@@ -45,6 +45,8 @@ On every restart or continuation:
 
 ## Execution log
 
+- 2026-09-09: Jeff authorized AnythingLLM with `qwen/qwen3.8-27b` as an independent reviewer in place of Gemini and reports Groq rate limits. The initial authorization `ce2919c49da46dcafbadc44d9947998c83c99158` received exact Claude APPROVE/LOW with no missing tests. D-021 now explicitly bounds rate-limit handling; no AnythingLLM connection or approval has been claimed. URL/workspace and configured model remain unverified.
+
 - 2026-09-09: Reviewer-policy change accepted at `f8cb9e07ab4f45f8ba1ac8a6dd4ba8da279965bb`: exact Claude Code review returned validated APPROVE/LOW with no blocking findings or missing tests (job `phase2a-dfea9076a28641c58a46036a`). `git diff --check` passed; no product tests or integrity gate were rerun for this documentation-only change. Claude also approved historical `9feb4ee68d91c8e2936459228d31082c50b2655e` (job `phase2a-c27e7d193ca64d8e8389a2ee`); its rationale covers the adapter repair. FWQ-0008 closure still requires reconciling the accumulated evidence implementation and subsequent changes, without applying the historical approval to current code.
 
 - 2026-09-09: Jeff explicitly removed Gemini from the review requirement and directed checking through Claude Code (D-020). B-002 is resolved by this policy change, not by provider approval. FWQ-0008 remains in REVIEW; historical evidence is unchanged and no acceptance or validation is inferred.
