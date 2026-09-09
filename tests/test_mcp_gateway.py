@@ -3,7 +3,7 @@ from concurrent.futures import ThreadPoolExecutor
 import pytest
 
 import swarm.mcp_gateway as mcp_gateway
-from swarm.mcp_gateway import MCPGateway, MCPGatewayError, MCPToolAdmission, MCPToolCatalogEntry, MCPToolGrant
+from swarm.mcp_gateway import MCPGateway, MCPGatewayError, MCPGatewaySafetyState, MCPToolAdmission, MCPToolCatalogEntry, MCPToolGrant
 
 
 def grant(tenant_id: str = "tenant-a", agent_id: str = "agent-a") -> MCPToolGrant:
@@ -49,6 +49,7 @@ def test_exact_request_admission_is_evidence_first_and_does_not_execute_tool():
         "tool": "mcp.telemetry.status", "policy_version": "FW-ASOC-01-v1",
         "mode": "DRY_RUN", "action": "ADMIT_ONLY", "tool_executed": False,
         "deployment": "DISABLED", "budget_used": 1, "budget_limit": 1024,
+        "health_state": "NOT_REQUIRED", "kill_switch_state": "NOT_REQUIRED",
     })]
 
 
@@ -352,3 +353,45 @@ def test_reentrant_catalog_evidence_cannot_register_same_entry_twice():
     gateway = MCPGateway(audit)
     assert gateway.register_tool(entry) == entry
     assert outcomes == ["MCP catalog entry already exists"]
+
+
+def test_strict_safe_state_admits_only_healthy_with_engaged_kill_switch():
+    evidence = []
+    gateway = MCPGateway(
+        lambda *args: evidence.append(args), require_safe_state=True,
+        safety_state=MCPGatewaySafetyState("HEALTHY", "ENGAGED"),
+    )
+    gateway.register(grant())
+    assert request(gateway).request_id == "request-1"
+    assert evidence[-1][1]["health_state"] == "HEALTHY"
+    assert evidence[-1][1]["kill_switch_state"] == "ENGAGED"
+
+
+@pytest.mark.parametrize("state", [
+    None,
+    MCPGatewaySafetyState("UNKNOWN", "ENGAGED"),
+    MCPGatewaySafetyState("UNHEALTHY", "ENGAGED"),
+    MCPGatewaySafetyState("HEALTHY", "UNKNOWN"),
+    MCPGatewaySafetyState("HEALTHY", "DISENGAGED"),
+])
+def test_strict_unsafe_states_deny_before_evidence_quota_or_request_mutation(state):
+    evidence = []
+    gateway = MCPGateway(lambda *args: evidence.append(args), require_safe_state=True, safety_state=state)
+    gateway.register(grant())
+    with pytest.raises(MCPGatewayError, match="safety state denied"):
+        request(gateway)
+    assert evidence == []
+    assert gateway._admitted_request_ids == set()
+    assert gateway._admission_counts == {}
+
+
+@pytest.mark.parametrize("health, kill", [("healthy", "ENGAGED"), ("HEALTHY", "CLEARED")])
+def test_malformed_safety_states_fail_closed(health, kill):
+    with pytest.raises(MCPGatewayError, match="invalid MCP"):
+        MCPGatewaySafetyState(health, kill)
+
+
+def test_legacy_mode_remains_compatible_without_safety_state():
+    gateway = MCPGateway(lambda *_args: None)
+    gateway.register(grant())
+    assert request(gateway).request_id == "request-1"

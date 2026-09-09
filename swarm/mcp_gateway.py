@@ -22,6 +22,8 @@ MAX_RESULT_STRING_BYTES = 4096
 MAX_CATALOG_ENTRIES_PER_TENANT = 128
 _MCP_TRUST_LEVELS = frozenset({"TRUSTED_READ_ONLY", "TRUSTED_BOUNDED", "UNTRUSTED"})
 _ADMISSIBLE_TRUST_LEVELS = frozenset({"TRUSTED_READ_ONLY", "TRUSTED_BOUNDED"})
+_GATEWAY_HEALTH_STATES = frozenset({"HEALTHY", "UNHEALTHY", "UNKNOWN"})
+_KILL_SWITCH_STATES = frozenset({"ENGAGED", "DISENGAGED", "UNKNOWN"})
 
 
 def _text(value: Any, field: str) -> str:
@@ -85,6 +87,18 @@ class MCPToolCatalogEntry:
             raise MCPGatewayError("invalid MCP catalog trust or enabled state")
 
 
+@dataclass(frozen=True)
+class MCPGatewaySafetyState:
+    health_state: str
+    kill_switch_state: str
+
+    def __post_init__(self) -> None:
+        if self.health_state not in _GATEWAY_HEALTH_STATES:
+            raise MCPGatewayError("invalid MCP gateway health state")
+        if self.kill_switch_state not in _KILL_SWITCH_STATES:
+            raise MCPGatewayError("invalid MCP kill-switch state")
+
+
 def _validate_result_value(value: Any, *, depth: int = 0, ancestors: frozenset[int] = frozenset()) -> None:
     if depth > MAX_RESULT_DEPTH:
         raise MCPGatewayError("MCP result depth exceeded")
@@ -124,6 +138,8 @@ class MCPGateway:
         self, audit: Callable[[str, dict[str, Any]], None] | None = None, *,
         max_admissions_per_scope: int = MAX_ADMISSIONS_PER_SCOPE,
         require_catalog: bool = False,
+        require_safe_state: bool = False,
+        safety_state: MCPGatewaySafetyState | None = None,
     ) -> None:
         if audit is not None and not callable(audit):
             raise MCPGatewayError("audit must be callable")
@@ -131,9 +147,15 @@ class MCPGateway:
             raise MCPGatewayError("max admissions per scope must be a positive bounded integer")
         if not isinstance(require_catalog, bool):
             raise MCPGatewayError("require_catalog must be boolean")
+        if not isinstance(require_safe_state, bool):
+            raise MCPGatewayError("require_safe_state must be boolean")
+        if safety_state is not None and not isinstance(safety_state, MCPGatewaySafetyState):
+            raise MCPGatewayError("safety_state must be an MCPGatewaySafetyState")
         self._audit = audit
         self._max_admissions_per_scope = max_admissions_per_scope
         self._require_catalog = require_catalog
+        self._require_safe_state = require_safe_state
+        self._safety_state = safety_state
         self._lock = RLock()
         self._grants: set[MCPToolGrant] = set()
         self._revoked: set[MCPToolGrant] = set()
@@ -233,6 +255,12 @@ class MCPGateway:
         )
         with self._lock:
             budget_scope = (grant.tenant_id, grant.subject_agent_id, grant.tool)
+            if self._require_safe_state and (
+                self._safety_state is None
+                or self._safety_state.health_state != "HEALTHY"
+                or self._safety_state.kill_switch_state != "ENGAGED"
+            ):
+                raise MCPGatewayError("MCP gateway safety state denied")
             if request_id in self._pending_request_ids or request_id in self._admitted_request_ids:
                 raise MCPGatewayError("MCP request replay detected")
             if grant not in self._grants or grant in self._revoked:
@@ -256,6 +284,8 @@ class MCPGateway:
                     "tool_executed": False, "deployment": "DISABLED",
                     "budget_used": self._admission_counts.get(budget_scope, 0) + 1,
                     "budget_limit": self._max_admissions_per_scope,
+                    "health_state": self._safety_state.health_state if self._safety_state else "NOT_REQUIRED",
+                    "kill_switch_state": self._safety_state.kill_switch_state if self._safety_state else "NOT_REQUIRED",
                 })
             except Exception as exc:
                 self._pending_request_ids.remove(request_id)

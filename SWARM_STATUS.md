@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: FW-MCP (then FW-BME, FW-SOC under D-022)
-- Current focus: FW-MCP-04 accepted; FW-MCP-05 health and kill-switch prerequisites are next
-- Next task: implement FW-MCP-05 as strict dry-run admission configuration.
+- Current focus: FW-MCP-05 fail-closed health and kill-switch admission
+- Next task: validate and exact-review FW-MCP-05 strict dry-run prerequisites.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled

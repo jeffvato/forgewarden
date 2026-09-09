@@ -22,7 +22,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-MCP-05 — Fail-closed MCP health and kill-switch admission
 - Requirement: FW-MCP gateway health and kill-switch enforcement
-- State: READY
+- State: IN_PROGRESS
 - Priority: P0
 - Dependencies: FW-MCP-04
 - Approval: FW-MCP is active under D-022.
