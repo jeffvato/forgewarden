@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: FW-MCP (then FW-BME, FW-SOC under D-022)
-- Current focus: FW-MCP-01 replay-protected exact request admission
-- Next task: validate and exact-review FW-MCP-01 without tool execution.
+- Current focus: FW-MCP-01 accepted; FW-MCP-02 bounded admission budgets are next
+- Next task: implement FW-MCP-02 in the canonical MCPGateway.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -29,17 +29,17 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-RANSOM-05
-- Starting commit: dc2b2afbbc88284ffc4fbcd819b825e57805e76e
-- Candidate commit: 05e7b34b0cadd28d58adc094b1c9264f50276f42
-- Accepted commit: 05e7b34b0cadd28d58adc094b1c9264f50276f42
-- Files changed: swarm/ransomware.py, tests/test_ransomware.py, WORK_QUEUE.md, SWARM_STATUS.md, DECISIONS.md
-- Deterministic validation: focused 20 passed; full 853 passed/1 skipped; integrity all hard checks and 4 Golden Paths pass, YELLOW pre-existing findings
-- Claude review: 05e7b34b0cadd28d58adc094b1c9264f50276f42 APPROVE/LOW, no blockers or missing tests
+- Task ID: FW-MCP-01
+- Starting commit: 16db5d8900f4737f1ae42fe8dac84d5599bf4c65
+- Candidate commit: 87dda89c410ec0d563719476b7564a833b1c7177
+- Accepted commit: 87dda89c410ec0d563719476b7564a833b1c7177
+- Files changed: swarm/mcp_gateway.py, tests/test_mcp_gateway.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Deterministic validation: focused 110 passed; full 859 passed/1 skipped; integrity all hard checks and 4 Golden Paths pass, YELLOW pre-existing findings
+- Claude review: 87dda89c410ec0d563719476b7564a833b1c7177 APPROVE/LOW, no blockers or missing tests
 - Gemini review: disabled and not required under D-020
-- Unresolved findings: none for FW-RANSOM-01 through 05; historical caveats and pre-existing YELLOW findings remain
+- Unresolved findings: none for FW-RANSOM-01 through 05 or FW-MCP-01; historical caveats and pre-existing YELLOW findings remain
 - Blocker: none for bounded FW-RANSOM fixture/proposal work; broader live/response authority stays disabled
-- Next action: claim FW-MCP-01
+- Next action: claim FW-MCP-02
 
 - Completion inventory: `docs/completion-audit-2026-09-09.md` (baseline `0afcbdd`).
 - FWQ-0008 implementation and binding hardening exist; VALIDATED retains a historical provenance caveat, not an implementation assignment. FWQ-0009 is recorded accepted and unchanged at source/test level from its reviewed candidate.
@@ -49,6 +49,8 @@ On every restart or continuation:
 - Latest broad Core closure: FWQ-0064, 833 passed/1 skipped, all hard checks/Golden Path passing, YELLOW pre-existing findings.
 
 ## Execution log
+
+- 2026-09-09: FW-MCP-01 accepted at `87dda89c410ec0d563719476b7564a833b1c7177`. Canonical MCPGateway now Evidence-logs exact granted request admission, rejects concurrent and reentrant replay, rolls back pending IDs on Evidence failure, and never invokes tools. Focused 110 passed; exact Claude APPROVE/LOW; full 859 passed/1 skipped; integrity hard checks and Golden Paths pass with unchanged YELLOW findings. FW-MCP-02 is next.
 
 - 2026-09-09: FW-RANSOM-05 accepted at `05e7b34b0cadd28d58adc094b1c9264f50276f42`. Exact credential and service tamper indicators join shadow-copy tamper in the bounded evaluator; case variants remain ignored, Evidence failures deny, and outputs remain warn-only unless existing HIGH policy recommends a proposal. Focused 20 passed; exact Claude APPROVE/LOW; full 853 passed/1 skipped; integrity hard checks and Golden Paths pass with unchanged YELLOW findings. The bounded FW-RANSOM phase is complete; FW-MCP-01 is next under D-022.
 

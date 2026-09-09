@@ -20,9 +20,28 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 
 Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical implementation is not new work. FWQ-0008 VALIDATED preserves a provenance caveat, not a request to rebuild or automatically repeat review. FWQ-0012–0016 are reconciled DONE from existing implementation and recorded proof.
 
+### FW-MCP-02 — Bounded MCP admission budgets
+- Requirement: FW-MCP gateway resource limits
+- State: READY
+- Priority: P0
+- Dependencies: FW-MCP-01
+- Approval: FW-MCP is active under D-022.
+- Description: Apply a deterministic bounded admission budget per exact tenant/agent/tool scope inside the canonical MCPGateway, without invoking tools or adding transport.
+- Target path: swarm/mcp_gateway.py
+- Allowed paths: swarm/mcp_gateway.py, tests/test_mcp_gateway.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_mcp_gateway.py tests/test_asoc.py
+- Acceptance criteria:
+  - configured limits are positive, bounded, and deny safely when exhausted;
+  - budgets are isolated by exact tenant, agent, and tool;
+  - denied and Evidence-failed requests do not consume quota or request IDs;
+  - concurrent admission cannot exceed the configured limit;
+  - no tool execution, transport, credentials, or response authority is added.
+- Expected validation: focused Linux proof, exact Claude review, then full suite/integrity once.
+- Security considerations: admission budgets are deterministic resource controls, not grants or authority.
+
 ### FW-MCP-01 — Replay-protected exact tool-request admission
 - Requirement: FW-MCP canonical gateway request admission
-- State: IN_PROGRESS
+- State: DONE
 - Priority: P0
 - Dependencies: FW-RANSOM-05 and existing MCPGateway grant registry
 - Approval: FW-MCP follows completed FW-RANSOM under D-022.
@@ -38,6 +57,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no tool execution, network transport, credentials, filesystem, shell, or response authority is added.
 - Expected validation: focused Linux proof, exact Claude review, then full suite/integrity once.
 - Security considerations: MCP request metadata and tool output remain untrusted; admission is policy evidence, not execution authority.
+- Completion evidence: exact candidate `87dda89c410ec0d563719476b7564a833b1c7177`; focused 110 passed; Claude APPROVE/LOW with no blockers/missing tests; full 859 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with pre-existing YELLOW findings. Evidence: `docs/fw-mcp-01-claude-review.json`, `docs/fw-mcp-01-integrity.json`.
 
 ### FW-RANSOM-05 — Defensive-control tamper signal correlation
 - Requirement: FW-RANSOM deterministic credential/service/recovery tamper detection

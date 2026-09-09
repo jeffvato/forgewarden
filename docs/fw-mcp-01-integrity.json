@@ -1,0 +1,192 @@
+{
+  "canonical_ownership": {
+    "agent_authority": {
+      "implementation": "swarm.asoc.CapabilityAuthorizer",
+      "owner": "FW-ASOC",
+      "status": "IMPLEMENTED"
+    },
+    "compliance": {
+      "implementation": "roadmap only",
+      "owner": "FW-COMP",
+      "status": "DEFINED"
+    },
+    "cryptographic_authority": {
+      "implementation": "swarm.asoc.HMACLeaseSigner",
+      "owner": "FW-KEYS / FW-ROOT",
+      "status": "IMPLEMENTED_PARTIAL"
+    },
+    "evidence": {
+      "implementation": "swarm.core.AuditLog / evidence modules",
+      "owner": "FW-EVID",
+      "status": "IMPLEMENTED_PARTIAL"
+    },
+    "identity": {
+      "implementation": "not_yet_present_in_checkout",
+      "owner": "FW-ID",
+      "status": "DEFINED"
+    },
+    "mcp_access": {
+      "implementation": "swarm.mcp_gateway.MCPGateway",
+      "owner": "MCP Gateway",
+      "status": "IMPLEMENTED"
+    },
+    "model_selection": {
+      "implementation": "swarm.model_broker.ModelBroker",
+      "owner": "Model Broker",
+      "status": "IMPLEMENTED"
+    },
+    "normalized_events": {
+      "implementation": "swarm.normalized_events.NormalizedEventStore",
+      "owner": "canonical ForgeWarden Event Schema",
+      "status": "IMPLEMENTED_PARTIAL"
+    },
+    "policy_decisions": {
+      "implementation": "swarm.policy_gate.DeterministicPolicy",
+      "owner": "FW-ROOT/Z3",
+      "status": "IMPLEMENTED_PARTIAL"
+    },
+    "recovery": {
+      "implementation": "swarm.autonomous_loop recovery sequencing",
+      "owner": "FW-REC",
+      "status": "IMPLEMENTED_PARTIAL"
+    },
+    "soc_incidents": {
+      "implementation": "not_yet_present_in_checkout",
+      "owner": "FW-SOC",
+      "status": "DEFINED"
+    }
+  },
+  "checks": {
+    "build": true,
+    "configuration": true,
+    "golden_path": true,
+    "repository": true,
+    "startup": true,
+    "tests": true
+  },
+  "commands": {
+    "golden_path": {
+      "command": [
+        "bash",
+        "scripts/run-asoc-golden-path.sh"
+      ],
+      "output": "....                                                                     [100%]\n4 passed in 0.15s\n",
+      "passed": true,
+      "returncode": 0
+    },
+    "tests": {
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q"
+      ],
+      "output": "........................................................................ [  8%]\n........................................................................ [ 16%]\n........................................................................ [ 25%]\n........................................................................ [ 33%]\n........................................................................ [ 41%]\n....................................................................s... [ 50%]\n........................................................................ [ 58%]\n........................................................................ [ 66%]\n........................................................................ [ 75%]\n........................................................................ [ 83%]\n........................................................................ [ 92%]\n....................................................................     [100%]\n859 passed, 1 skipped in 51.29s\n",
+      "passed": true,
+      "returncode": 0
+    }
+  },
+  "decision": "YELLOW",
+  "dependency_check": {
+    "command": [
+      "/usr/bin/python3",
+      "-m",
+      "pip",
+      "check"
+    ],
+    "output": "oslo-serialization 5.4.0 requires tzdata, which is not installed.\noslo-utils 7.1.0 requires tzdata, which is not installed.\n",
+    "passed": false,
+    "returncode": 1
+  },
+  "findings": [
+    {
+      "area": "dependencies",
+      "reason": "pip check reports missing or incompatible packages",
+      "severity": "YELLOW"
+    },
+    {
+      "area": "architecture",
+      "reason": "roadmap ownership has no concrete module: identity, soc_incidents, compliance",
+      "severity": "YELLOW"
+    }
+  ],
+  "functionality": [
+    {
+      "component": "swarm.core / swarm.autonomous_loop",
+      "dependencies": [
+        "policy_gate",
+        "AuditLog",
+        "Git"
+      ],
+      "golden_path": "A partial monitor/review dry-run path",
+      "integration_tests": "PASS",
+      "last_validated_commit": "729bea83752aba88e0cf4d15452564138b63797b",
+      "limitations": "no production deployment; live mutation disabled",
+      "requirement_id": "FW-CORE",
+      "state": "Proven",
+      "unit_tests": "PASS",
+      "user_surface": "local runner and console"
+    },
+    {
+      "component": "swarm.asoc",
+      "dependencies": [
+        "FW-ID reference",
+        "FW-ROOT deterministic policy",
+        "Action Tickets",
+        "Model Broker",
+        "MCP Gateway",
+        "Audit sink"
+      ],
+      "golden_path": "PASS: canonical authorization plus replay, kill-switch, recovery, and cross-tenant denials",
+      "integration_tests": "PASS",
+      "last_validated_commit": "729bea83752aba88e0cf4d15452564138b63797b",
+      "limitations": "in-memory single-process dry-run registries; external service adapters and a full Z3 solver remain future work",
+      "requirement_id": "FW-ASOC-01",
+      "state": "Proven",
+      "unit_tests": "PASS",
+      "user_surface": "internal authorization interface"
+    },
+    {
+      "component": "swarm.asoc.AggregateBlastRadiusLedger / WorkBudgetLedger / LeaseRegistry",
+      "dependencies": [
+        "DeterministicPolicy",
+        "Action Tickets",
+        "CapabilityAuthorizer",
+        "Audit sink",
+        "recovery controls"
+      ],
+      "golden_path": "PASS: aggregate caps, bounded delegation, and lease/tenant work budgets with recovery and concurrency denials",
+      "integration_tests": "PASS",
+      "last_validated_commit": "729bea83752aba88e0cf4d15452564138b63797b",
+      "limitations": "in-memory single-process DRY_RUN scope; broader ASOC orchestration remains future work",
+      "requirement_id": "FW-ASOC-02",
+      "state": "Proven",
+      "unit_tests": "PASS",
+      "user_surface": "internal authorization interface"
+    },
+    {
+      "component": "swarm.integrity",
+      "dependencies": [
+        "Git",
+        "Python",
+        "pytest",
+        "documentation registry"
+      ],
+      "golden_path": "first baseline path established",
+      "integration_tests": "IN_PROGRESS",
+      "last_validated_commit": "729bea83752aba88e0cf4d15452564138b63797b",
+      "limitations": "database migration checks are not applicable to this repository yet",
+      "requirement_id": "FW-INTEGRITY",
+      "state": "Implemented",
+      "unit_tests": "PASS",
+      "user_surface": "integrity gate report"
+    }
+  ],
+  "head": "729bea83752aba88e0cf4d15452564138b63797b",
+  "missing_canonical_owners": [
+    "identity",
+    "soc_incidents",
+    "compliance"
+  ],
+  "schema_version": "1"
+}
