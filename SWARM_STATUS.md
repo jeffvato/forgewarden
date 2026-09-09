@@ -3,12 +3,13 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: FW-HARNESS-004 governed CLI/API worker interface under exact review
-- Next task: accept or repair FWQ-0068 from deterministic proof and read-only review.
+- Current focus: FW-HARNESS-007 Azure Foundry independent review adapter; FW-HARNESS-004 remains exact-review pending
+- Next task: finish deterministic Azure adapter validation, then perform interactive Entra/resource/credit verification before one live exact-commit review.
 - Harness role: permanent ForgeWarden Core subsystem and default controller for ForgeWarden's own development; one governed architecture serves both roles under D-023.
 - Worker transport direction: registered local CLIs and explicitly approved API-backed workers; API keys are resolved only through FW-KEYS secret handles inside trusted adapters and never enter model context or lifecycle evidence.
 - Provider authentication direction: deterministic OpenAI, Anthropic, and Google/Gemini profiles with provider-specific official OAuth where available and approved API-key classes otherwise; Gemini CLI is registered as `agy` for read-only roles, FW-ID owns delegated identity, and FW-KEYS owns all credential material.
 - Swarm assurance direction: fail-closed isolation, identity binding, crash/replay recovery, resource bounds, malformed-output rejection, and adversarial proof are required before broader autonomy.
+- Azure cost boundary: live Foundry review is denied unless recent credit-only and spending-protection evidence, remaining unexpired balance, worst-case per-call reservation, retained reserve, token cap, and daily limit all pass.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -33,17 +34,17 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FWQ-0068
-- Starting commit: 0a7befaa7d63aff4b0d2fe1bb5e89bb704f9763b
+- Task ID: FWQ-0071
+- Starting commit: 005afed5525a5308a66c3eb387ef2a49e81724df
 - Candidate commit: pending exact commit creation
 - Accepted commit: none
-- Files changed: swarm/harness_worker.py, tests/test_harness_worker.py, WORK_QUEUE.md, SWARM_STATUS.md
-- Deterministic validation: focused 38 passed; git diff --check passed
-- Claude review: pending exact-candidate review; prior `agy` documentation review remains deferred after bounded verifier exhaustion
+- Files changed: swarm/azure_foundry_adapter.py, swarm/review_runner.py, tests/test_azure_foundry_adapter.py, tests/test_review_runner.py, docs/azure-foundry-reviewer.md, DECISIONS.md, WORK_QUEUE.md, SWARM_STATUS.md
+- Deterministic validation: focused 29 passed; git diff --check passed; live proof pending credit-safe Azure configuration
+- Claude review: FW-HARNESS-007 candidate pending; FW-HARNESS-004 exact review remains deferred after bounded verifier exhaustion
 - Gemini review: disabled and not required under D-020
 - Unresolved findings: none for bounded FW-RANSOM/FW-MCP or FW-BME-01/02; historical caveats and pre-existing YELLOW findings remain
-- Blocker: none for implementation; provider activation remains approval-gated and FW-BME-03 remains deferred under D-023
-- Next action: create and review exact FWQ-0068 candidate
+- Blocker: interactive Entra login is required to inspect Azure resource/deployment and credit protection; no live call is allowed before cost evidence passes
+- Next action: create the FWQ-0071 candidate, complete interactive Azure login, verify credit-only protection and deployment, then run one bounded exact review
 
 - Completion inventory: `docs/completion-audit-2026-09-09.md` (baseline `0afcbdd`).
 - FWQ-0008 implementation and binding hardening exist; VALIDATED retains a historical provenance caveat, not an implementation assignment. FWQ-0009 is recorded accepted and unchanged at source/test level from its reviewed candidate.
@@ -53,6 +54,8 @@ On every restart or continuation:
 - Latest broad Core closure: FWQ-0064, 833 passed/1 skipped, all hard checks/Golden Path passing, YELLOW pre-existing findings.
 
 ## Execution log
+
+- 2026-09-09: Jeff explicitly activated Azure Foundry for independent code checking using startup credits and prohibited unexpected billing. FW-HARNESS-007 extends the existing exact-commit review runner with transient Entra authentication and a fail-closed atomic credit guard. Azure resource discovery is blocked pending interactive Entra login; no resource, key, deployment, or paid call has been created.
 
 - 2026-09-09: Jeff identified `agy` as the Gemini CLI invocation. FW-HARNESS-004/006 now require exact Gemini/`agy` registration. Gemini begins read-only and does not replace required Claude review under D-020 or Codex's sole source-writing role.
 

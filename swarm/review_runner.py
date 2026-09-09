@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import subprocess
 import tarfile
@@ -15,6 +16,7 @@ from . import claude_verifier
 from .adapters import GeminiAdapter, ResourceLimits
 from .core import SwarmError, read_restricted_bytes, redact, validate_contract, validate_snapshot_symlinks
 from .verification_adapters import nvidia_adapter, openrouter_adapter
+from .azure_foundry_adapter import AzureFoundryConfig, AzureFoundryReviewer, azure_cli_token, default_azure_credit_guard
 
 _FULL_SHA = re.compile(r"^[0-9a-fA-F]{40,64}$")
 _JOB_ID = re.compile(r"^phase2a-[a-z0-9]{24}$")
@@ -96,6 +98,7 @@ def run_review_cycle(
     gemini_runner: Callable[..., dict[str, Any]] | None = None,
     openrouter_runner: Callable[..., dict[str, Any]] | None = None,
     nvidia_runner: Callable[..., dict[str, Any]] | None = None,
+    azure_runner: Callable[..., dict[str, Any]] | None = None,
     reviewers: tuple[str, ...] = ("CLAUDE", "GEMINI"),
     adjudicate_disagreements: bool = False,
     required_reviewers: tuple[str, ...] | None = None,
@@ -115,7 +118,7 @@ def run_review_cycle(
     patch_file_mode = len(inline_context.encode("utf-8")) > 24_000 or "FULL_SNAPSHOT_READ_ONLY_REVIEW" in context
     review_context = (context + "\n\nExact candidate patch is available at EXACT_CANDIDATE.patch. Use only the read-only file viewer to inspect that exact patch.") if patch_file_mode else inline_context
     requested = tuple(dict.fromkeys(reviewers))
-    supported = {"CLAUDE", "GEMINI", "OPENROUTER", "NVIDIA"}
+    supported = {"CLAUDE", "GEMINI", "OPENROUTER", "NVIDIA", "AZURE"}
     if not requested or any(provider not in supported for provider in requested):
         raise ReviewRunnerError("reviewers must contain supported read-only providers")
     required = requested if required_reviewers is None else tuple(dict.fromkeys(required_reviewers))
@@ -142,8 +145,25 @@ def run_review_cycle(
             gemini = adapter.run
         openrouter = openrouter_runner or (openrouter_adapter().run if "OPENROUTER" in requested else None)
         nvidia = nvidia_runner or (nvidia_adapter().run if "NVIDIA" in requested else None)
+        azure = azure_runner
+        if "AZURE" in requested and azure is None:
+            endpoint = os.environ.get("FORGEWARDEN_AZURE_FOUNDRY_ENDPOINT", "")
+            deployment = os.environ.get("FORGEWARDEN_AZURE_FOUNDRY_DEPLOYMENT", "")
+            if not endpoint or not deployment:
+                def azure_unavailable(*_args: object, **_kwargs: object) -> dict[str, Any]:
+                    raise ReviewRunnerError("Azure Foundry endpoint and deployment are not configured")
+                azure = azure_unavailable
+            else:
+                try:
+                    credit_guard = default_azure_credit_guard()
+                    azure = AzureFoundryReviewer(AzureFoundryConfig(endpoint, deployment), azure_cli_token, credit_guard).run
+                except Exception as exc:
+                    detail = redact(str(exc))[:500]
+                    def azure_cost_unavailable(*_args: object, **_kwargs: object) -> dict[str, Any]:
+                        raise ReviewRunnerError("Azure Foundry cost guard unavailable: " + detail)
+                    azure = azure_cost_unavailable
 
-        provider_map = {"CLAUDE": claude, "GEMINI": gemini, "OPENROUTER": openrouter, "NVIDIA": nvidia}
+        provider_map = {"CLAUDE": claude, "GEMINI": gemini, "OPENROUTER": openrouter, "NVIDIA": nvidia, "AZURE": azure}
         providers = tuple((provider, provider_map[provider]) for provider in requested)
 
         def invoke_provider(provider: str, invoke: Callable[..., dict[str, Any]]) -> dict[str, Any]:

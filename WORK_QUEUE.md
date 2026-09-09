@@ -20,6 +20,27 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 
 Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical implementation is not new work. FWQ-0008 VALIDATED preserves a provenance caveat, not a request to rebuild or automatically repeat review. FWQ-0012–0016 are reconciled DONE from existing implementation and recorded proof.
 
+### FWQ-0071 — Azure Foundry exact-commit review adapter
+- Requirement: FW-HARNESS-007 Azure independent review
+- State: BLOCKED
+- Priority: P0
+- Dependencies: FWQ-0067
+- Approval: Azure read-only review is explicitly approved under D-019; live calls require verified credit-only spending protection and bounded cost evidence.
+- Description: Add Microsoft Foundry as a read-only exact-commit reviewer in the existing review runner using the OpenAI v1-compatible route, transient Entra credentials, strict schema/SHA binding, and a fail-closed credit guard.
+- Target path: swarm/azure_foundry_adapter.py
+- Allowed paths: swarm/azure_foundry_adapter.py, swarm/review_runner.py, tests/test_azure_foundry_adapter.py, tests/test_review_runner.py, docs/azure-foundry-reviewer.md, DECISIONS.md, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_azure_foundry_adapter.py tests/test_review_runner.py tests/test_verification_adapters.py
+- Acceptance criteria:
+  - exact approved Azure HTTPS host, deployment, job ID, candidate SHA, and review schema binding;
+  - transient Entra or approved API-key transport with credentials excluded from prompt, output, errors, Git, and evidence;
+  - recent credit-only/spending-protection/remaining-balance evidence required before calls;
+  - atomic worst-case cost reservation, retained credit reserve, completion-token cap, and daily-call limit;
+  - missing/stale/expired/exhausted/pay-as-you-go evidence denies before credential resolution or network access;
+  - provider output remains advisory and cannot accept, mutate, deploy, or expand authority.
+- Expected validation: focused Linux proof, exact read-only review when available, then full suite/integrity once.
+- Security considerations: no live call occurs until interactive Entra login, exact deployment discovery, and credit protection verification complete.
+- Blocking reason: the cached Azure CLI identity is present, but Entra security defaults require an interactive management-scope login before resource/deployment and credit-protection evidence can be inspected without keys.
+
 ### FWQ-0070 — Provider OAuth and credential-broker contract
 - Requirement: FW-HARNESS-006 provider authentication
 - State: BLOCKED

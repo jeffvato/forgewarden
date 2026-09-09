@@ -288,3 +288,18 @@ def test_adjudication_retains_exact_snapshot_until_finished(repo_fixture, outcom
         assert result["state"] == "REVIEW_REQUIRED"
         assert result["adjudication"]["state"] == "UNAVAILABLE"
         assert "after inspection" in result["adjudication"]["error"]
+
+
+def test_review_cycle_supports_exact_bound_azure_reviewer(repo_fixture):
+    sha = (repo_fixture / ".candidate-sha").read_text().strip()
+    seen = {}
+
+    def azure(snapshot, job_id, commit, context):
+        seen.update(snapshot=snapshot, commit=commit, context=context)
+        return {"job_id": job_id, "reviewed_commit": commit, "verdict": "APPROVE", "risk": "LOW", "blocking_findings": [], "non_blocking_notes": [], "tests_missing": [], "reasoning_summary": "Azure reviewed exact commit", "proposed_rules": []}
+
+    result = run_review_cycle(repo_fixture, sha, "phase2a-" + "7" * 24, "Azure review", reviewers=("AZURE",), required_reviewers=("AZURE",), azure_runner=azure)
+    assert result["state"] == "APPROVED"
+    assert result["reviews"][0]["provider"] == "AZURE"
+    assert seen["commit"] == sha and "Exact candidate patch" in seen["context"]
+    assert not seen["snapshot"].exists()
