@@ -1,0 +1,30 @@
+{
+  "adjudication": null,
+  "candidate_commit": "05e7b34b0cadd28d58adc094b1c9264f50276f42",
+  "deployment": "DISABLED",
+  "job_id": "phase2a-eeeeeeeeeeeeeeeeeeeeeeee",
+  "kill_switch": "ENGAGED",
+  "mutation_allowed": false,
+  "reviews": [{
+    "provider": "CLAUDE",
+    "result": {
+      "blocking_findings": [],
+      "job_id": "phase2a-eeeeeeeeeeeeeeeeeeeeeeee",
+      "non_blocking_notes": [
+        "Defensive tamper signals (CREDENTIAL_TAMPER, SERVICE_TAMPER) added only to detection indicator set _STRONG_INDICATORS; no execution capability or recovery authority granted",
+        "Case-sensitive signal matching is enforced (lowercase variants return None), meeting exact matching requirement",
+        "Evidence-first failure behavior validated: audit failures raise RansomwareEvaluationDenied with EVIDENCE_WRITE_FAILED, maintaining failure safety",
+        "DRY_RUN and DETECT_ONLY modes preserved (signals only used for detection classification, no state mutation or response logic)",
+        "Test coverage includes distinct signal correlation (MEDIUM confidence, WARN recommendation), case sensitivity validation, and evidence failure semantics"
+      ],
+      "proposed_rules": [],
+      "reasoning_summary": "Patch implements FW-RANSOM-05 defensive-control tamper signal correlation by adding CREDENTIAL_TAMPER and SERVICE_TAMPER tokens to the _STRONG_INDICATORS frozenset. Scope is appropriately narrow: two signals, two comprehensive tests, documentation updates only. Deterministic confidence: signals are immutable (frozenset), case matching is exact (test validates lowercase rejection), and correlation logic is pure. Evidence-first failure semantics are correct—when audit callback fails, RansomwareEvaluationDenied(EVIDENCE_WRITE_FAILED) is raised rather than silently omitting findings. No process authority, service control, credential access, recovery mechanism, or response action is introduced. DRY_RUN/DETECT_ONLY modes remain operative. Tests validate: (1) multi-source distinct signals produce MEDIUM confidence with WARN recommendation, (2) case sensitivity (lowercase variants return None), (3) evidence failure propagates as exception. All 20 tests pass; git diff --check passed. Patch is deterministic, safe, and meets defensive-control requirement.",
+      "reviewed_commit": "05e7b34b0cadd28d58adc094b1c9264f50276f42",
+      "risk": "LOW",
+      "tests_missing": [],
+      "verdict": "APPROVE"
+    },
+    "state": "APPROVED"
+  }],
+  "state": "APPROVED"
+}
