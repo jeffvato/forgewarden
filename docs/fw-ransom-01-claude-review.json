@@ -1,0 +1,28 @@
+{
+  "adjudication": null,
+  "candidate_commit": "41e4655ad9178cc77166d3ac73220ca4ccbc0721",
+  "deployment": "DISABLED",
+  "job_id": "phase2a-aaaaaaaaaaaaaaaaaaaaaaaa",
+  "kill_switch": "ENGAGED",
+  "mutation_allowed": false,
+  "reviews": [
+    {
+      "provider": "CLAUDE",
+      "result": {
+        "blocking_findings": [],
+        "job_id": "phase2a-aaaaaaaaaaaaaaaaaaaaaaaa",
+        "non_blocking_notes": [
+          "MEDIUM confidence path not explicitly tested by dedicated case (HIGH + LOW + NONE covered; logic correct; not blocking)"
+        ],
+        "proposed_rules": [],
+        "reasoning_summary": "FW-RANSOM-01 bounded ransomware evaluator meets all deterministic, isolation, fail-closed, and no-authority criteria. Ordering is deterministic (epoch+event_id sort). Input validation is fail-closed before Evidence write. Tenant/device binding enforced. Exact-token matching via frozensets (case-sensitive). Confidence levels correct: HIGH requires MASS_FILE_CHANGE+2+ indicators, all levels recommend WARN, only HIGH adds PROPOSE_ISOLATION. Evidence written before result returned and failure denies result. DRY_RUN/DETECT_ONLY preserved in Finding and payload. Deployment disabled in Evidence. No execution, quarantine, or remediation authority. Eight tests passed: one happy HIGH path, one LOW+NONE path, one case-sensitivity check, four fail-closed scenarios (no Evidence on invalid), one Evidence-failure check. Patch narrow and focused. git diff --check passed per context.\"",
+        "reviewed_commit": "41e4655ad9178cc77166d3ac73220ca4ccbc0721",
+        "risk": "LOW",
+        "tests_missing": [],
+        "verdict": "APPROVE"
+      },
+      "state": "APPROVED"
+    }
+  ],
+  "state": "APPROVED"
+}
