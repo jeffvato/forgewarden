@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: Core supervisor and deterministic queue reconciliation
-- Current task: FWQ-0008 — Immutable accepted-work evidence bundle (pending Claude Code exact-commit review under D-020).
+- Current focus: prevent repeated work and enforce the current autonomous reviewer policy
+- Next task: FWQ-0063 — Enforce the current reviewer policy in autonomous execution.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -13,7 +13,7 @@
 - Codex role: sole application-code writer
 - Claude role: architecture/requirements/adversarial reviewer
 - Gemini role: disabled for the active workflow; no longer a required reviewer (D-020).
-- AnythingLLM/Qwen role: authorized independent read-only reviewer using user-specified `qwen/qwen3.8-27b` (D-021); endpoint/workspace and model verification are pending.
+- AnythingLLM/Qwen role: authorized independent read-only reviewer using user-specified `qwen/qwen3.8-27b` (D-021); Windows API docs verified at `http://127.0.0.1:57307/api/docs`; user named workspace `n8n`. Exact slug, WSL connectivity and configured model remain unverified.
 
 ## Resume protocol
 
@@ -29,21 +29,30 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-ENDPOINT-ANDROID-01 — Bounded Android caller-supplied fixture adapter
-- Starting checkpoint: `160ba0c` (FW-ENDPOINT-01 accepted)
-- Candidate commit: `3bb8053d5c707a8892d5a628e8206fa22174eb07` (Android fixture batch ingestion; exact Claude APPROVE/LOW; focused proof 9 passed; full suite 810 passed, 1 skipped; integrity YELLOW with hard checks and Golden Path passing).
-- Canonical owner: `swarm.anti_malware.AcceptedCatalogScanner` is the detect-only facade over the existing `AcceptedCatalogCache`, `TrustedSignatureCatalog`, and `HashSignatureScanner`. FW-KEYS, `DurableCatalogSequenceStore`, and canonical audit remain the only trust, anti-rollback, and Evidence owners.
-- Acceptance criteria: bounded declarative byte/hex-literal rules joined by AND/OR and parentheses only, strict rule-size/atom/depth/literal limits, trusted-catalog and signed-bundle binding, Evidence-first/fail-closed, tenant isolation, fixed DRY_RUN/DETECT_ONLY, and no execution or external authority.
-- Negative paths: cache miss and expired catalog deny before scanning; malformed, oversized, over-work, stream-failure, match-overflow, and Evidence-failure paths remain fail closed. No network, endpoint, credential, quarantine, remediation, or response authority is added.
-- Proof plan: one focused YARA-rule proof, exact Claude/Gemini review of the implementation commit, one full suite, and one integrity gate after approval.
-- Exact first change: bind scanner entry points to a fresh `AcceptedCatalogCache` slot without changing the underlying bounded scanner.
-- Proof: FW-ENDPOINT-02 through FW-ENDPOINT-06 are accepted with their recorded focused/full proofs. FW-ENDPOINT-07 cap repair `acad2ad` was accepted with exact Claude APPROVE/LOW and full validation (`702 passed, 1 skipped`). Follow-up candidate `8ad33d1` adds the exact-128 positive boundary regression; focused proof passed (`27 tests`), exact Claude review returned APPROVE/LOW, and the final full suite passed (`703 passed, 1 skipped`) with integrity gate passing all hard checks and Golden Path. Health remains YELLOW only for pre-existing dependency and roadmap-owner findings (`identity`, `soc_incidents`, `compliance`).
-- Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
-- Blocker: none for the Android fixture milestone. The core WSL Claude exact-commit verifier is repaired and proven; no provider approval is inferred without a valid exact payload.
-- Next action: derive the next grouped platform milestone from the roadmap; do not replay Android batch validation. No platform APIs or response authority are enabled.
-- Platform delivery definition: Windows and Linux are the first endpoint targets; macOS, Android, and iOS are later platform-native releases. Detailed scope and required proof are in `docs/fw-av-windows-linux-delivery-plan.md`.
+- Task ID: none
+- Starting commit: none
+- Candidate commit: none
+- Accepted commit: none
+- Files changed: completion-audit documentation and persistent queue reconciliation only
+- Deterministic validation: read-only control-file parser and selector verification; no product tests rerun
+- Claude review: audit candidate review pending; no new product acceptance inferred
+- Gemini review: disabled and not required under D-020
+- Unresolved findings: legacy autonomous Gemini selection/fallback scoped as FWQ-0063
+- Blocker: none for bounded FWQ-0063; historical evidence caveats are in the audit
+- Next action: claim FWQ-0063 only after audit review/checkpoint; do not replay completed milestones
+
+- Completion inventory: `docs/completion-audit-2026-09-09.md` (baseline `0afcbdd`).
+- FWQ-0008 implementation and binding hardening exist; VALIDATED retains a historical provenance caveat, not an implementation assignment. FWQ-0009 is recorded accepted and unchanged at source/test level from its reviewed candidate.
+- FWQ-0012–0016 stale READY labels are reconciled DONE; FWQ-0017/0018 and retired successor placeholders must not be repeated.
+- ASOC-01/02, offline signed/ClamAV/YARA controls, Windows/Linux fixtures through recovery replay, Android batches, and dry-run quarantine/recovery milestones already exist with recorded proof.
+- Next bounded new work: FWQ-0063, synchronize autonomous reviewer selection/fallback with D-020. Do not restart the evidence bundle.
+- Latest historical broad Core closure: FWQ-0016, 812 passed/8 skipped and YELLOW gate; no product validation rerun by this audit.
 
 ## Execution log
+
+Entries below are historical observations, not a resume queue. Later acceptance supersedes earlier pending entries. Use the audited resume point and current queue.
+
+- 2026-09-09: Completion audit found stale FWQ-0012–0016 READY states, implemented FWQ-0008/0009, retired successor references and an obsolete handoff. Reconciled documentation without product changes or test reruns. Identified the actual D-020 CLI/adapter mismatch as bounded FWQ-0063.
 
 - 2026-09-09: Jeff authorized AnythingLLM with `qwen/qwen3.8-27b` as an independent reviewer in place of Gemini and reports Groq rate limits. The initial authorization `ce2919c49da46dcafbadc44d9947998c83c99158` received exact Claude APPROVE/LOW with no missing tests. D-021 now explicitly bounds rate-limit handling; no AnythingLLM connection or approval has been claimed. URL/workspace and configured model remain unverified.
 

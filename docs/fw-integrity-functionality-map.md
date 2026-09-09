@@ -10,8 +10,9 @@ This summary is intentionally conservative:
 | FW-ASOC-02 | Proven | `swarm.asoc.AggregateBlastRadiusLedger`, `WorkBudgetLedger`, and `LeaseRegistry` | Aggregate caps, bounded delegation, and lease/tenant work budgets with recovery and concurrency denials | In-memory single-process DRY_RUN scope; broader ASOC orchestration remains future work |
 | FW-INTEGRITY | Implemented | `swarm.integrity` | Baseline Core path | Dependency lock, clean-build packaging, and broader end-to-end paths remain |
 
-Defined-but-not-yet-concrete ownership includes FW-ID, normalized events,
-FW-SOC, and FW-COMP. This is not a claim that those requirements are broken;
+Defined-but-not-yet-concrete ownership includes FW-ID, FW-SOC, and FW-COMP.
+Normalized events now have the partial canonical implementation
+`swarm.normalized_events.NormalizedEventStore`; see the completion audit. This is not a claim that those requirements are broken;
 they are not yet Proven in this checkout. Every meaningful checkpoint must add
 the exact commit, unit/integration/Golden Path evidence, limitations, and
 health color to this map and its machine-readable source.

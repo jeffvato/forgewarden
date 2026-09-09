@@ -115,9 +115,6 @@ repair are recovery operations, not scanner operations.
 
 ## Current implementation status
 
-The checkout currently contains only the beginning of step 1: deterministic,
-in-memory, trusted hash and literal-content indicators with canonical durable
-Evidence. It does not yet contain endpoint agents, file hooks, scheduled
-scans, signed bundle transport, YARA, archive/script analysis, reputation,
-process or memory sensors, sandboxing, quarantine, cleanup, repair, packages,
-or deployment capability.
+The bounded offline controls now include signed catalogs, ClamAV-compatible admission, YARA-compatible rules and evaluation, bounded content inspection, Windows/Linux caller-supplied fixtures through NormalizedEventStore recovery replay, Android fixture batches, and dry-run quarantine/recovery/release proposals with an in-memory vault. See `completion-audit-2026-09-09.md` for source and historical proof.
+
+These are fixture/offline controls, not installed endpoint services or a deployable AV release. Live sensors, hooks, transport, actual containment/restore/cleanup/repair and deployment remain disabled and outside current authorization. Do not reimplement completed offline controls from earlier versions of this status paragraph.

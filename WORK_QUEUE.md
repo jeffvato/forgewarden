@@ -18,6 +18,8 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 
 ## Active queue
 
+Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical implementation is not new work. FWQ-0008 VALIDATED preserves a provenance caveat, not a request to rebuild or automatically repeat review. FWQ-0012–0016 are reconciled DONE from existing implementation and recorded proof.
+
 ### FWQ-0001 — Supervisor persistent-state bootstrap
 - Requirement: Core supervisor/control-plane
 - State: DONE
@@ -131,7 +133,7 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 
 ### FWQ-0008 — Immutable accepted-work evidence bundle
 - Requirement: Core trust model and immutable evidence (FW-EVID)
-- State: REVIEW
+- State: VALIDATED
 - Priority: P1
 - Dependencies: FWQ-0003, FWQ-0005, FWQ-0007
 - Description: Define and implement a deterministic, redacted evidence bundle for an accepted dry-run work unit, binding its job ID, exact candidate and accepted commits, changed files, deterministic validation, Claude/Gemini review outcomes, policy state, and evidence hash without creating execution authority.
@@ -151,11 +153,11 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
   - DRY_RUN, deployment-disabled, kill-switch, sole-writer, and human-authority constraints remain unchanged.
 - Expected validation: focused evidence-contract tests, repository suite, schema validation, secret/redaction checks, and exact-commit review.
 - Security considerations: evidence is untrusted input and audit data, never authority; no reviewer or evidence record may authorize deployment, clear a kill switch, access credentials, or expand filesystem, Git, network, or remote-host scope.
-- Candidate evidence: Final candidate `9feb4ee68d91c8e2936459228d31082c50b2655e` includes the strict schema, create-once redacted evidence builder/reader, concurrent independent-review runner, and hardened agy JSON-envelope/error handling. Focused validation passed (14 review tests); full Linux-style suite passed (414 passed, 1 skipped). Exact Claude Code APPROVE/LOW with no blocking findings or missing tests is required before acceptance under D-020. No Gemini approval is required or inferred. Historical bundle fields remain compatibility data; any schema change requires its own bounded implementation and review.
+- Candidate evidence: Final candidate `9feb4ee68d91c8e2936459228d31082c50b2655e` includes the strict schema, create-once redacted evidence builder/reader, concurrent independent-review runner, and hardened agy JSON-envelope/error handling. Focused validation passed (14 review tests); full Linux-style suite passed (414 passed, 1 skipped). This August candidate record is historical. Later implementation/binding/compatibility commits include `a774676`, `7cf28ea`, `6100b0f` and `bc19eb0`. Current implementation and tests exist; no duplicate work is authorized. Original complete acceptance provenance was not recovered in the bounded audit, so VALIDATED preserves that caveat without fabricating acceptance. D-020 removes Gemini as a requirement. Reopen only for a concrete defect or newly required behavior, not this stale candidate record.
 
 ### FWQ-0009 — Deterministic audit-event integrity reader
 - Requirement: Core trust model and immutable evidence (FW-EVID)
-- State: REVIEW
+- State: DONE
 - Priority: P1
 - Dependencies: FWQ-0003, FWQ-0007
 - Description: Implement a read-only, bounded audit-event reader that validates local audit JSONL structure, event integrity, job binding, redaction, and safe path handling without treating audit data as authority.
@@ -208,7 +210,7 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 
 ### FWQ-0012 — Deterministic Core queue-state reconciliation
 - Requirement: Core supervisor/roadmap
-- State: READY
+- State: DONE
 - Priority: P2
 - Dependencies: FWQ-0011
 - Approval: Explicitly authorized by the active Core queue-population plan.
@@ -225,10 +227,11 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
   - broader security families remain parked until their phase is explicitly activated.
 - Expected validation: focused autonomous-loop tests, queue/state inspection, task-selection validation, and `git diff --check`.
 - Security considerations: queue metadata is untrusted evidence, not authority; reconciliation cannot authorize deployment, clear a kill switch, or expand agent scope.
+- Completion reconciliation (2026-09-09): 3d76b31; progress_queue and completed-successor regressions. Existing evidence reused; no unchanged validation rerun.
 
 ### FWQ-0013 — Deterministic Core resume-plan validation
 - Requirement: Core supervisor/roadmap
-- State: READY
+- State: DONE
 - Priority: P2
 - Dependencies: FWQ-0011
 - Approval: Explicitly authorized by the active Core queue-population plan.
@@ -245,10 +248,11 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
   - broader security families remain parked until their phase is explicitly activated.
 - Expected validation: queue/state inspection and `git diff --check`.
 - Security considerations: queue metadata is untrusted evidence, not authority; resume-plan validation cannot authorize deployment, clear a kill switch, or expand agent scope.
+- Completion reconciliation (2026-09-09): 16b32da; derive_next_core_task and duplicate-ID/dependency regressions. Existing evidence reused; no unchanged validation rerun.
 
 ### FWQ-0014 — Deterministic Core continuation transition record
 - Requirement: Core supervisor/control-plane
-- State: READY
+- State: DONE
 - Priority: P2
 - Dependencies: FWQ-0013
 - Approval: Explicitly authorized by the active Core queue-population plan.
@@ -265,10 +269,11 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
   - broader security families remain parked until their phase is explicitly activated.
 - Expected validation: focused continuation-transition tests, repository suite, schema validation, and `git diff --check`.
 - Security considerations: transition records are untrusted evidence, not authority; recording a queue advance cannot authorize deployment, clear a kill switch, or expand agent scope.
+- Completion reconciliation (2026-09-09): 7d47595; run_bounded_work_unit/plan_continuation and continuation regressions. Existing evidence reused; no unchanged validation rerun.
 
 ### FWQ-0015 — Deterministic Core continuation replay guard
 - Requirement: Core supervisor/control-plane
-- State: READY
+- State: DONE
 - Priority: P2
 - Dependencies: FWQ-0014
 - Approval: Explicitly authorized by the active Core queue-population plan.
@@ -285,10 +290,11 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
   - broader security families remain parked until their phase is explicitly activated.
 - Expected validation: focused continuation-replay tests, repository suite, schema validation, and `git diff --check`.
 - Security considerations: continuation records are untrusted evidence, not authority; replay protection cannot authorize deployment, clear a kill switch, or expand agent scope.
+- Completion reconciliation (2026-09-09): 7aa31fb / 582af73; focused 12 passed, full 813 passed/1 skipped, exact Claude approval and gate recorded. Existing evidence reused; no unchanged validation rerun.
 
 ### FWQ-0016 — Deterministic Core continuation admission validation
 - Requirement: Core supervisor/control-plane
-- State: READY
+- State: DONE
 - Priority: P2
 - Dependencies: FWQ-0015
 - Approval: Explicitly authorized by Jeff for bounded job `codex-fwq-0016`.
@@ -305,6 +311,7 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
   - broader security families remain parked until their phase is explicitly activated.
 - Expected validation: focused continuation-admission tests, repository suite, schema validation, and `git diff --check`.
 - Security considerations: continuation metadata is untrusted evidence, not authority; admission validation cannot authorize deployment, clear a kill switch, or expand agent scope.
+- Completion reconciliation (2026-09-09): 6b6ab25 / ed469e9; focused 18 passed, full 812 passed/8 skipped, exact Claude approval and gate recorded. Existing evidence reused; no unchanged validation rerun.
 
 ### FWQ-0017 — Deterministic Core successor queue declaration
 - Requirement: Core supervisor/roadmap
@@ -346,9 +353,31 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 - Security considerations: queue metadata is untrusted evidence, not authority; successor declaration cannot authorize deployment, clear a kill switch, or expand agent scope.
 - Completion evidence: Reconciled against the existing queue after FWQ-0017 acceptance. FWQ-0019 is explicitly declared as the next bounded dependency-complete READY Core successor; no duplicate behavior or product validation was needed.
 
+### FWQ-0063 — Enforce the current reviewer policy in autonomous execution
+- Requirement: Core deterministic review policy (D-020)
+- State: READY
+- Priority: P1
+- Dependencies: FWQ-0016
+- Approval: Jeff explicitly removed Gemini from the requirement and authorized autonomous Core continuation; this unit implements that existing policy without expanding authority.
+- Description: Remove legacy automatic Gemini selection/fallback from the autonomous CLI and adapter path; retain required exact Claude Code validation and truthful provider evidence.
+- Target path: swarm/autonomous_adapters.py
+- Allowed paths: swarm/autonomous_adapters.py, swarm/cli.py, tests/test_autonomous_loop.py
+- Test command: python3 -m pytest -q tests/test_autonomous_loop.py
+- Expected behavior: autonomous execution uses required Claude review and never invokes or accepts Gemini fallback under D-020.
+- Failing assertion: the current autonomous CLI selects CLAUDE/GEMINI and the adapter can return Gemini-only approval after Claude is unavailable.
+- Acceptance criteria:
+  - no autonomous Gemini invocation or fallback approval under D-020;
+  - Claude failure remains unavailable, never approval; rejection remains actionable findings;
+  - exact SHA/job-ID/schema and APPROVE/LOW/no-blockers/no-missing-tests controls remain intact;
+  - explicit optional historical provider adapters and evidence are not relabeled or removed;
+  - tests cover required-reviewer unavailability, rejection and approved exact evidence;
+  - DRY_RUN, disabled deployment, kill switch and no-authority boundaries remain unchanged.
+- Expected validation: focused Linux tests once, exact Claude candidate review, full suite/integrity once after approval; reuse unchanged evidence.
+- Security considerations: reviewer output remains untrusted evidence; no credentials, transport, live actions or tool authority added.
+
 ## Queue cleanup
 
-FWQ-0019 through FWQ-0062 were repetitive successor/population placeholders. They are retired rather than treated as executable work. The next substantive Core item remains FWQ-0008 (immutable accepted-work evidence bundle), pending required Claude Code exact-commit review under D-020; FWQ-0009 remains the independent audit-reader record with existing implementation evidence.
+FWQ-0019 through FWQ-0062 were repetitive successor/population placeholders. They are retired rather than treated as executable work. FWQ-0008 already has implementation and follow-up hardening; FWQ-0009 has recorded acceptance and unchanged source/tests. Neither is a new implementation task. FWQ-0017/0018 successor references are historical and do not authorize recreating FWQ-0019. The completion audit supersedes stale next-task prose.
 ## Future queue population
 
 After the supervisor/control-plane work is validated, populate subsequent Core tasks from the active phase of `ROADMAP.md` and existing repository requirements. FW-ASOC is an approved cross-cutting requirement family: register/map it and add bounded primitives/tests incrementally after Core sequencing permits; do not duplicate existing subsystems or activate broad implementation from roadmap presence alone. Broader FW-BME/FW-SOC/FW-SAAS/FW-SUPPLY/FW-NET/FW-ASM/FW-DSPM implementation remains parked until its phase is explicitly activated.

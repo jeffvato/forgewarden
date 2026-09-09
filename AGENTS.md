@@ -27,6 +27,10 @@ At the start of every continuation session, read this file and then read, if pre
 
 Inspect Git status and current HEAD. Reconcile persistent state against repository contents and tests. Repository evidence and deterministic state are authoritative over conversational memory.
 
+## Prevent repeated work
+
+Read `docs/completion-audit-2026-09-09.md` before selecting work. Before any implementation, identify the concrete missing behavior, canonical owner, existing source/tests and prior commit/review/validation evidence. Reconcile stale READY/REVIEW labels against evidence; never replay a completed milestone or derive another successor merely because no new work is available. A provenance gap is not missing implementation. Reopen completed work only for a specific defect, legitimate new finding, changed validation inputs or explicit new requirement. Do not rerun unchanged tests/reviews or generate status-only commits. Keep a single active heartbeat; no eligible substantive work is a valid stop.
+
 ## Continuous work loop
 
 While approved READY work remains, the orchestrator must not stop merely because one task, patch, test suite, or review cycle is complete.

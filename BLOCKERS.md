@@ -4,6 +4,8 @@ This file records only genuine blockers that require Customer Root authority, un
 
 ## Current blockers
 
+Audit reconciliation (2026-09-09): entries with a Resolution are historical, even if their headings omit “resolved”. Do not reopen them from the earlier Exact condition text. B-002 is resolved by D-020. FWQ-0008's missing original acceptance payload in the bounded search is a provenance caveat, not a mandate to reimplement/review it repeatedly. See `docs/completion-audit-2026-09-09.md`. The current concrete policy/code mismatch is scoped as FWQ-0063 and is executable work, not an external blocker. Optional AnythingLLM connectivity does not block Claude review.
+
 ### B-032 — Queue cleanup candidate exceeds exact-review patch bound (resolved)
 
 - Related task: authorized cleanup of repetitive FWQ-0019+ placeholders.
