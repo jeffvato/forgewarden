@@ -29,17 +29,17 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FWQ-0065
-- Starting commit: 09442959fe64c3c33e01e23d1e60c2e32df13ba8
-- Candidate commit: 0d0585dbb37fc6f062ac9f66eaed3440da889d00
-- Accepted commit: 0d0585dbb37fc6f062ac9f66eaed3440da889d00
-- Files changed: docs/fw-harness-inventory.md, ROADMAP.md, DECISIONS.md, WORK_QUEUE.md, SWARM_STATUS.md
-- Deterministic validation: focused 32 passed; git diff --check passed; documentation/control milestone required no product-suite rerun
-- Claude review: 0d0585dbb37fc6f062ac9f66eaed3440da889d00 APPROVE/LOW, no blockers or missing tests
+- Task ID: FWQ-0066
+- Starting commit: 6fd1b41d376b0cb912dd1e89d1e7954f9071473c
+- Candidate commit: pending exact commit creation
+- Accepted commit: none
+- Files changed: swarm/harness_task.py, tests/test_harness_task.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Deterministic validation: focused 96 passed; git diff --check passed
+- Claude review: pending exact-candidate review
 - Gemini review: disabled and not required under D-020
 - Unresolved findings: none for bounded FW-RANSOM/FW-MCP or FW-BME-01/02; historical caveats and pre-existing YELLOW findings remain
 - Blocker: none for FW-HARNESS-001; FW-BME-03 is deferred under D-023
-- Next action: claim FWQ-0066
+- Next action: obtain exact Claude review for FWQ-0066
 
 - Completion inventory: `docs/completion-audit-2026-09-09.md` (baseline `0afcbdd`).
 - FWQ-0008 implementation and binding hardening exist; VALIDATED retains a historical provenance caveat, not an implementation assignment. FWQ-0009 is recorded accepted and unchanged at source/test level from its reviewed candidate.

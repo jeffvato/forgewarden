@@ -22,7 +22,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FWQ-0066 — Canonical FW-HARNESS task and transition contract
 - Requirement: FW-HARNESS-002 persistent task engine
-- State: READY
+- State: REVIEW
 - Priority: P0
 - Dependencies: FWQ-0065
 - Approval: FW-HARNESS is permanent Core under D-023.
