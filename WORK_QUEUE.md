@@ -20,9 +20,28 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 
 Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical implementation is not new work. FWQ-0008 VALIDATED preserves a provenance caveat, not a request to rebuild or automatically repeat review. FWQ-0012–0016 are reconciled DONE from existing implementation and recorded proof.
 
+### FW-RANSOM-04 — Bounded SMB propagation correlation
+- Requirement: FW-RANSOM deterministic lateral-propagation signal
+- State: READY
+- Priority: P0
+- Dependencies: FW-RANSOM-03
+- Approval: FW-RANSOM is active first under D-022.
+- Description: Correlate a bounded caller-supplied tenant event window across devices for exact SMB propagation indicators, with deterministic Evidence-first warn-only findings.
+- Target path: swarm/ransomware.py
+- Allowed paths: swarm/ransomware.py, tests/test_ransomware.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_ransomware.py
+- Acceptance criteria:
+  - one tenant only, bounded events/devices/window, deterministic ordering;
+  - exact SMB and lateral-movement tokens only;
+  - duplicate, cross-tenant, malformed, over-limit and Evidence-failure paths deny safely;
+  - no network access, containment, or response behavior;
+  - outputs remain DRY_RUN/DETECT_ONLY and recommend WARN only.
+- Expected validation: focused Linux proof, exact Claude review, then full suite/integrity once.
+- Security considerations: event metadata is caller-supplied untrusted data; correlation grants no response authority.
+
 ### FW-RANSOM-03 — Bounded ransomware canary registry and touch detection
 - Requirement: FW-RANSOM deterministic canary signal
-- State: IN_PROGRESS
+- State: DONE
 - Priority: P0
 - Dependencies: FW-RANSOM-02
 - Approval: FW-RANSOM is active first under D-022.
@@ -38,6 +57,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - outputs remain DRY_RUN/DETECT_ONLY and recommend WARN only.
 - Expected validation: focused Linux proof, exact Claude review, then full suite/integrity once.
 - Security considerations: canaries and event metadata are untrusted fixture data; detection grants no response authority.
+- Completion evidence: exact candidate `55edcd4c98b2e05f493fa3bd79162daa72c10654`; focused 14 passed; Claude APPROVE/LOW with no blockers/missing tests; full 847 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with pre-existing YELLOW findings. Evidence: `docs/fw-ransom-03-claude-review.json`, `docs/fw-ransom-03-integrity.json`.
 
 ### FW-RANSOM-02 — Ticket-bound ransomware isolation proposal
 - Requirement: FW-RANSOM deterministic response proposal boundary
