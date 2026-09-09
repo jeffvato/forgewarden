@@ -22,7 +22,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-MCP-03 — Bounded untrusted MCP result envelope
 - Requirement: FW-MCP output sanitization and Evidence
-- State: READY
+- State: IN_PROGRESS
 - Priority: P0
 - Dependencies: FW-MCP-02
 - Approval: FW-MCP is active under D-022.

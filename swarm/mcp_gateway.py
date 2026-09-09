@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from hashlib import sha256
+import json
+import math
 from threading import RLock
 from typing import Any, Callable
 
@@ -12,6 +15,10 @@ class MCPGatewayError(ValueError):
 
 
 MAX_ADMISSIONS_PER_SCOPE = 1024
+MAX_RESULT_BYTES = 64 * 1024
+MAX_RESULT_DEPTH = 8
+MAX_RESULT_COLLECTION_ITEMS = 128
+MAX_RESULT_STRING_BYTES = 4096
 
 
 def _text(value: Any, field: str) -> str:
@@ -47,6 +54,51 @@ class MCPToolAdmission:
     action: str = "ADMIT_ONLY"
 
 
+@dataclass(frozen=True)
+class MCPToolResultEnvelope:
+    request_id: str
+    tenant_id: str
+    subject_agent_id: str
+    tool: str
+    payload_json: str
+    payload_sha256: str
+    trust: str = "UNTRUSTED_DATA"
+    mode: str = "DRY_RUN"
+    action: str = "ENVELOPE_ONLY"
+
+
+def _validate_result_value(value: Any, *, depth: int = 0, ancestors: frozenset[int] = frozenset()) -> None:
+    if depth > MAX_RESULT_DEPTH:
+        raise MCPGatewayError("MCP result depth exceeded")
+    if value is None or isinstance(value, (bool, int)):
+        return
+    if isinstance(value, float):
+        if not math.isfinite(value):
+            raise MCPGatewayError("MCP result contains a non-finite number")
+        return
+    if isinstance(value, str):
+        if len(value.encode("utf-8")) > MAX_RESULT_STRING_BYTES:
+            raise MCPGatewayError("MCP result string exceeds bound")
+        return
+    if isinstance(value, (list, tuple)):
+        if len(value) > MAX_RESULT_COLLECTION_ITEMS or id(value) in ancestors:
+            raise MCPGatewayError("MCP result collection invalid")
+        nested = ancestors | {id(value)}
+        for item in value:
+            _validate_result_value(item, depth=depth + 1, ancestors=nested)
+        return
+    if isinstance(value, dict):
+        if len(value) > MAX_RESULT_COLLECTION_ITEMS or id(value) in ancestors:
+            raise MCPGatewayError("MCP result collection invalid")
+        nested = ancestors | {id(value)}
+        for key, item in value.items():
+            if not isinstance(key, str) or not key or len(key.encode("utf-8")) > 256:
+                raise MCPGatewayError("MCP result key invalid")
+            _validate_result_value(item, depth=depth + 1, ancestors=nested)
+        return
+    raise MCPGatewayError("MCP result type invalid")
+
+
 class MCPGateway:
     """Fail-closed registry for exact MCP tool requests; no wildcard grants."""
 
@@ -66,6 +118,9 @@ class MCPGateway:
         self._pending_request_ids: set[str] = set()
         self._admitted_request_ids: set[str] = set()
         self._admission_counts: dict[tuple[str, str, str], int] = {}
+        self._admissions: dict[str, MCPToolAdmission] = {}
+        self._pending_result_ids: set[str] = set()
+        self._completed_request_ids: set[str] = set()
 
     def register(self, grant: MCPToolGrant) -> MCPToolGrant:
         if not isinstance(grant, MCPToolGrant):
@@ -142,7 +197,55 @@ class MCPGateway:
             self._pending_request_ids.remove(request_id)
             self._admitted_request_ids.add(request_id)
             self._admission_counts[budget_scope] = self._admission_counts.get(budget_scope, 0) + 1
-            return MCPToolAdmission(
+            admission = MCPToolAdmission(
                 request_id, grant.tenant_id, grant.subject_agent_id, grant.capability,
                 grant.resource, grant.tool, grant.policy_version,
+            )
+            self._admissions[request_id] = admission
+            return admission
+
+    def wrap_result(self, admission: MCPToolAdmission, payload: Any) -> MCPToolResultEnvelope:
+        """Wrap one admitted caller-supplied result as untrusted data without interpreting it."""
+        if not isinstance(admission, MCPToolAdmission):
+            raise MCPGatewayError("MCP admission invalid")
+        _validate_result_value(payload)
+        try:
+            payload_json = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+        except (TypeError, ValueError, OverflowError) as exc:
+            raise MCPGatewayError("MCP result serialization failed") from exc
+        encoded = payload_json.encode("utf-8")
+        if len(encoded) > MAX_RESULT_BYTES:
+            raise MCPGatewayError("MCP result exceeds byte bound")
+        digest = sha256(encoded).hexdigest()
+        with self._lock:
+            if self._admissions.get(admission.request_id) != admission:
+                raise MCPGatewayError("MCP result admission mismatch")
+            if admission.request_id in self._pending_result_ids or admission.request_id in self._completed_request_ids:
+                raise MCPGatewayError("MCP result replay detected")
+            grant = MCPToolGrant(
+                admission.tenant_id, admission.subject_agent_id, admission.capability,
+                admission.resource, admission.tool, admission.policy_version,
+            )
+            if grant in self._revoked:
+                raise MCPGatewayError("MCP result grant revoked")
+            if self._audit is None:
+                raise MCPGatewayError("MCP result Evidence unavailable")
+            self._pending_result_ids.add(admission.request_id)
+            try:
+                self._audit("mcp_tool_result_enveloped", {
+                    "request_id": admission.request_id, "tenant_id": admission.tenant_id,
+                    "subject_agent_id": admission.subject_agent_id, "tool": admission.tool,
+                    "payload_sha256": digest, "payload_bytes": len(encoded),
+                    "trust": "UNTRUSTED_DATA", "mode": "DRY_RUN",
+                    "action": "ENVELOPE_ONLY", "interpreted": False,
+                    "tool_executed_by_gateway": False, "deployment": "DISABLED",
+                })
+            except Exception as exc:
+                self._pending_result_ids.remove(admission.request_id)
+                raise MCPGatewayError("MCP result Evidence write failed") from exc
+            self._pending_result_ids.remove(admission.request_id)
+            self._completed_request_ids.add(admission.request_id)
+            return MCPToolResultEnvelope(
+                admission.request_id, admission.tenant_id, admission.subject_agent_id,
+                admission.tool, payload_json, digest,
             )

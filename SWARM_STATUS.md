@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: FW-MCP (then FW-BME, FW-SOC under D-022)
-- Current focus: FW-MCP-02 accepted; FW-MCP-03 untrusted result envelopes are next
-- Next task: implement FW-MCP-03 without interpreting or executing tool output.
+- Current focus: FW-MCP-03 bounded untrusted result envelopes
+- Next task: validate and exact-review FW-MCP-03 without interpreting tool output.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
