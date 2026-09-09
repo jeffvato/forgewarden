@@ -1,0 +1,29 @@
+{
+  "adjudication": null,
+  "candidate_commit": "0ce44dcd92d5a14576ceff5fba859fccb7398847",
+  "deployment": "DISABLED",
+  "job_id": "phase2a-bbbbbbbbbbbbbbbbbbbbbbbb",
+  "kill_switch": "ENGAGED",
+  "mutation_allowed": false,
+  "reviews": [{
+    "provider": "CLAUDE",
+    "result": {
+      "blocking_findings": [],
+      "job_id": "phase2a-bbbbbbbbbbbbbbbbbbbbbbbb",
+      "non_blocking_notes": [
+        "Input validation order (confidence, recommendation, mode/action) enforced before external calls, preventing wasted ticket validation and audit writes on invalid findings.",
+        "Evidence-first pattern with single-use consumption: validate() → audit() → validate_and_consume() enforces ticket cannot be reused if audit fails.",
+        "Kill-switch state checked before any external operations; pre-evidence denial prevents evidence pollution from unpermitted attempts.",
+        "Frozen RansomwareIsolationProposal dataclass prevents post-construction mutation; immutability correctly propagated from function signature."
+      ],
+      "proposed_rules": [],
+      "reasoning_summary": "Commit implements FW-RANSOM-02 ticket-bound isolation proposal mechanism with correct evidence-first, single-use semantics. All safety constraints enforced: DRY_RUN/DETECT_ONLY preservation, kill-switch requirement, no containment execution. Binding validation confirms exact Action Ticket authorization before audit write. Three new tests comprehensively verify single-use replay protection (second call denied), pre-evidence denial (no audit on invalid finding), and audit failure recovery (ticket not consumed). Input validation enforces confidence and recommendation requirements before external calls. Error handling chains exceptions properly. Code is narrow, well-tested, and addresses all FW-RANSOM-02 requirements without scope creep or safety violations. Deterministic checks passed (git diff --check clean, no formatting issues).",
+      "reviewed_commit": "0ce44dcd92d5a14576ceff5fba859fccb7398847",
+      "risk": "LOW",
+      "tests_missing": [],
+      "verdict": "APPROVE"
+    },
+    "state": "APPROVED"
+  }],
+  "state": "APPROVED"
+}
