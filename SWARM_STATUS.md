@@ -4,7 +4,7 @@
 
 - Active phase: ForgeWarden Core
 - Current focus: Core supervisor and deterministic queue reconciliation
-- Current task: Core queue cleanup review pending; repetitive FWQ-0019+ placeholders removed in candidate `d5be14dd8096ffc7870f23a10b54d535d7af1c52`.
+- Current task: FWQ-0008 — Immutable accepted-work evidence bundle (blocked pending independent Gemini exact-commit review).
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -43,6 +43,8 @@ On every restart or continuation:
 - Platform delivery definition: Windows and Linux are the first endpoint targets; macOS, Android, and iOS are later platform-native releases. Detailed scope and required proof are in `docs/fw-av-windows-linux-delivery-plan.md`.
 
 ## Execution log
+
+- 2026-09-09: Queue cleanup accepted at `d5be14dd8096ffc7870f23a10b54d535d7af1c52`: repetitive FWQ-0019 through FWQ-0062 placeholders were removed while substantive FWQ-0008/FWQ-0009 records were preserved. Claude exact review returned APPROVE/LOW with no missing tests. The large-patch verifier path was repaired and reviewed separately (`4a512da`), enabling bounded read-only inspection of oversized exact diffs. Next substantive work is FWQ-0008, blocked pending independent Gemini review.
 
 - 2026-09-09: Repetitive FWQ-0019 through FWQ-0062 placeholders were removed in candidate `d5be14dd8096ffc7870f23a10b54d535d7af1c52`, leaving substantive FWQ-0008/FWQ-0009 records intact. Exact Claude review is pending because the 796-line deletion exceeds the verifier's 24 KB exact-patch bound; no approval or broad validation is inferred.
 

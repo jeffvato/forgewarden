@@ -4,13 +4,14 @@ This file records only genuine blockers that require Customer Root authority, un
 
 ## Current blockers
 
-### B-032 — Queue cleanup candidate exceeds exact-review patch bound
+### B-032 — Queue cleanup candidate exceeds exact-review patch bound (resolved)
 
 - Related task: authorized cleanup of repetitive FWQ-0019+ placeholders.
 - Exact condition: candidate `d5be14dd8096ffc7870f23a10b54d535d7af1c52` is pushed and removes only repetitive queue placeholders, but the exact Claude verifier rejects the review request because the embedded patch exceeds its 24 KB bound.
 - Why work cannot complete safely: the required exact-commit review cannot be performed through the bounded verifier; no approval may be inferred from a summary or stat-only inspection.
 - Required resolution: review the exact candidate through a reviewer path that can safely ingest the full diff, or authorize a bounded mechanical cleanup split into smaller exact-reviewable commits.
 - Current state: queue cleanup remains review-pending; no product validation or next-milestone implementation has started.
+- Resolution: Claude verifier now externalizes oversized exact patches to a mode restricted to the read-only file viewer; exact review of the cleanup candidate returned APPROVE/LOW with no missing tests. No product validation was needed for this documentation-only change.
 
 ### B-030 — Android fixture adapter review returned required edge-case tests
 
