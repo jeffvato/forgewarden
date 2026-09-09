@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: FW-MCP (then FW-BME, FW-SOC under D-022)
-- Current focus: FW-MCP-01 accepted; FW-MCP-02 bounded admission budgets are next
-- Next task: implement FW-MCP-02 in the canonical MCPGateway.
+- Current focus: FW-MCP-02 bounded admission budgets
+- Next task: validate and exact-review FW-MCP-02 in the canonical MCPGateway.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled

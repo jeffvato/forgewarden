@@ -47,7 +47,7 @@ def test_exact_request_admission_is_evidence_first_and_does_not_execute_tool():
         "capability": "telemetry.read", "resource": "endpoint-123",
         "tool": "mcp.telemetry.status", "policy_version": "FW-ASOC-01-v1",
         "mode": "DRY_RUN", "action": "ADMIT_ONLY", "tool_executed": False,
-        "deployment": "DISABLED",
+        "deployment": "DISABLED", "budget_used": 1, "budget_limit": 1024,
     })]
 
 
@@ -117,3 +117,55 @@ def test_reentrant_evidence_callback_cannot_admit_the_same_request_twice():
     gateway.register(grant())
     assert request(gateway).request_id == "request-1"
     assert outcomes == ["MCP request replay detected"]
+
+
+def test_admission_budget_is_bounded_and_denies_without_consuming_request_id():
+    gateway = MCPGateway(lambda *_args: None, max_admissions_per_scope=1)
+    gateway.register(grant())
+    gateway.register(MCPToolGrant("tenant-a", "agent-b", "telemetry.read", "endpoint-123", "mcp.telemetry.status", "FW-ASOC-01-v1"))
+    assert request(gateway, "request-1").request_id == "request-1"
+    with pytest.raises(MCPGatewayError, match="budget exhausted"):
+        request(gateway, "request-2")
+    assert request(gateway, "request-2", subject_agent_id="agent-b").request_id == "request-2"
+
+
+@pytest.mark.parametrize("limit", [True, 0, -1, 1025, "1"])
+def test_admission_budget_configuration_fails_closed(limit):
+    with pytest.raises(MCPGatewayError, match="positive bounded integer"):
+        MCPGateway(max_admissions_per_scope=limit)
+
+
+def test_admission_budgets_are_isolated_by_tenant_agent_and_tool():
+    gateway = MCPGateway(lambda *_args: None, max_admissions_per_scope=1)
+    gateway.register(grant())
+    gateway.register(MCPToolGrant("tenant-a", "agent-b", "telemetry.read", "endpoint-123", "mcp.telemetry.status", "FW-ASOC-01-v1"))
+    gateway.register(MCPToolGrant("tenant-b", "agent-a", "telemetry.read", "endpoint-123", "mcp.telemetry.status", "FW-ASOC-01-v1"))
+    gateway.register(MCPToolGrant("tenant-a", "agent-a", "telemetry.read", "endpoint-123", "mcp.telemetry.health", "FW-ASOC-01-v1"))
+    request(gateway, "request-a")
+    request(gateway, "request-b", subject_agent_id="agent-b")
+    request(gateway, "request-c", tenant_id="tenant-b")
+    request(gateway, "request-d", tool="mcp.telemetry.health")
+
+
+def test_concurrent_admission_cannot_exceed_scope_budget():
+    gateway = MCPGateway(lambda *_args: None, max_admissions_per_scope=3)
+    gateway.register(grant())
+    def attempt(number):
+        try:
+            request(gateway, f"request-{number}")
+            return "ADMITTED"
+        except MCPGatewayError:
+            return "DENIED"
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        results = list(pool.map(attempt, range(8)))
+    assert results.count("ADMITTED") == 3
+    assert results.count("DENIED") == 5
+
+
+def test_evidence_failure_does_not_consume_budget():
+    gateway = MCPGateway(lambda *_args: (_ for _ in ()).throw(RuntimeError("offline")), max_admissions_per_scope=1)
+    gateway.register(grant())
+    with pytest.raises(MCPGatewayError, match="Evidence write failed"):
+        request(gateway, "request-1")
+    gateway._audit = lambda *_args: None
+    assert request(gateway, "request-2").request_id == "request-2"

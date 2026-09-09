@@ -22,7 +22,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-MCP-02 — Bounded MCP admission budgets
 - Requirement: FW-MCP gateway resource limits
-- State: READY
+- State: IN_PROGRESS
 - Priority: P0
 - Dependencies: FW-MCP-01
 - Approval: FW-MCP is active under D-022.

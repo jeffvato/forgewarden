@@ -11,6 +11,9 @@ class MCPGatewayError(ValueError):
     """An MCP tool grant is invalid or conflicts with an existing grant."""
 
 
+MAX_ADMISSIONS_PER_SCOPE = 1024
+
+
 def _text(value: Any, field: str) -> str:
     if not isinstance(value, str) or not value.strip() or len(value) > 256:
         raise MCPGatewayError(f"{field} must be a non-empty bounded string")
@@ -47,15 +50,22 @@ class MCPToolAdmission:
 class MCPGateway:
     """Fail-closed registry for exact MCP tool requests; no wildcard grants."""
 
-    def __init__(self, audit: Callable[[str, dict[str, Any]], None] | None = None) -> None:
+    def __init__(
+        self, audit: Callable[[str, dict[str, Any]], None] | None = None, *,
+        max_admissions_per_scope: int = MAX_ADMISSIONS_PER_SCOPE,
+    ) -> None:
         if audit is not None and not callable(audit):
             raise MCPGatewayError("audit must be callable")
+        if isinstance(max_admissions_per_scope, bool) or not isinstance(max_admissions_per_scope, int) or not 1 <= max_admissions_per_scope <= MAX_ADMISSIONS_PER_SCOPE:
+            raise MCPGatewayError("max admissions per scope must be a positive bounded integer")
         self._audit = audit
+        self._max_admissions_per_scope = max_admissions_per_scope
         self._lock = RLock()
         self._grants: set[MCPToolGrant] = set()
         self._revoked: set[MCPToolGrant] = set()
         self._pending_request_ids: set[str] = set()
         self._admitted_request_ids: set[str] = set()
+        self._admission_counts: dict[tuple[str, str, str], int] = {}
 
     def register(self, grant: MCPToolGrant) -> MCPToolGrant:
         if not isinstance(grant, MCPToolGrant):
@@ -105,10 +115,13 @@ class MCPGateway:
             tenant_id, subject_agent_id, capability, resource, tool, policy_version,
         )
         with self._lock:
+            budget_scope = (grant.tenant_id, grant.subject_agent_id, grant.tool)
             if request_id in self._pending_request_ids or request_id in self._admitted_request_ids:
                 raise MCPGatewayError("MCP request replay detected")
             if grant not in self._grants or grant in self._revoked:
                 raise MCPGatewayError("MCP request denied")
+            if self._admission_counts.get(budget_scope, 0) >= self._max_admissions_per_scope:
+                raise MCPGatewayError("MCP admission budget exhausted")
             if self._audit is None:
                 raise MCPGatewayError("MCP admission Evidence unavailable")
             self._pending_request_ids.add(request_id)
@@ -120,12 +133,15 @@ class MCPGateway:
                     "tool": grant.tool, "policy_version": grant.policy_version,
                     "mode": "DRY_RUN", "action": "ADMIT_ONLY",
                     "tool_executed": False, "deployment": "DISABLED",
+                    "budget_used": self._admission_counts.get(budget_scope, 0) + 1,
+                    "budget_limit": self._max_admissions_per_scope,
                 })
             except Exception as exc:
                 self._pending_request_ids.remove(request_id)
                 raise MCPGatewayError("MCP admission Evidence write failed") from exc
             self._pending_request_ids.remove(request_id)
             self._admitted_request_ids.add(request_id)
+            self._admission_counts[budget_scope] = self._admission_counts.get(budget_scope, 0) + 1
             return MCPToolAdmission(
                 request_id, grant.tenant_id, grant.subject_agent_id, grant.capability,
                 grant.resource, grant.tool, grant.policy_version,
