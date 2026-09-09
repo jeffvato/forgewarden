@@ -22,7 +22,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-RANSOM-03 — Bounded ransomware canary registry and touch detection
 - Requirement: FW-RANSOM deterministic canary signal
-- State: READY
+- State: IN_PROGRESS
 - Priority: P0
 - Dependencies: FW-RANSOM-02
 - Approval: FW-RANSOM is active first under D-022.

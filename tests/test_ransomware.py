@@ -3,7 +3,7 @@ import pytest
 from swarm.action_ticket import ActionTicket, ActionTicketRegistry
 from swarm.asoc import HMACLeaseSigner
 from swarm.endpoint_fixtures import EndpointObservation
-from swarm.ransomware import RansomwareEvaluationDenied, evaluate_ransomware_activity, propose_ransomware_isolation
+from swarm.ransomware import RansomwareCanaryRegistry, RansomwareEvaluationDenied, evaluate_ransomware_activity, propose_ransomware_isolation
 
 
 def observation(event_id, observed, operation="WRITE", indicators=(), tenant="tenant-a", device="device-a"):
@@ -145,3 +145,64 @@ def test_isolation_proposal_evidence_failure_does_not_consume_ticket():
         propose_ransomware_isolation(high_finding(), audit=fail, **kwargs)
     proposal = propose_ransomware_isolation(high_finding(), audit=lambda *_args: None, **kwargs)
     assert proposal.ticket_id == "ticket-1"
+
+
+def test_canary_registration_and_exact_touch_are_evidence_first_and_warn_only():
+    evidence = []
+    registry = RansomwareCanaryRegistry(lambda *args: evidence.append(args))
+    assert registry.register(("C:/canary/b", "C:/canary/a"), tenant_id="tenant-a", device_id="device-a") == ("C:/canary/a", "C:/canary/b")
+    finding = registry.evaluate_touch(
+        observation("canary-touch", 100, operation="WRITE"),
+        tenant_id="tenant-a", device_id="device-a",
+    )
+    assert finding is None
+    touched = EndpointObservation(
+        "canary-touch", "tenant-a", "device-a", 100, "FILE_LIFECYCLE", "WINDOWS_SENSOR",
+        (("operation", "WRITE"), ("path", "C:/canary/a")), (), (), "evidence-canary",
+    )
+    finding = registry.evaluate_touch(touched, tenant_id="tenant-a", device_id="device-a")
+    assert finding.signals == ("CANARY_TOUCHED",)
+    assert finding.confidence == "HIGH" and finding.recommendations == ("WARN",)
+    assert finding.mode == "DRY_RUN" and finding.action == "DETECT_ONLY"
+    assert [item[0] for item in evidence] == ["ransomware_canaries_registered", "ransomware_canary_touched"]
+    assert "identifiers" not in evidence[0][1] and "canary_identifier" not in evidence[1][1]
+    assert len(evidence[0][1]["identifier_refs"][0]) == 64
+
+
+def test_canary_registry_is_tenant_device_isolated_and_rejects_duplicates():
+    registry = RansomwareCanaryRegistry(lambda *_args: None)
+    registry.register(("C:/canary/a",), tenant_id="tenant-a", device_id="device-a")
+    with pytest.raises(RansomwareEvaluationDenied, match="CANARY_SCOPE_ALREADY_REGISTERED"):
+        registry.register(("C:/canary/b",), tenant_id="tenant-a", device_id="device-a")
+    with pytest.raises(RansomwareEvaluationDenied, match="CANARY_DUPLICATE"):
+        RansomwareCanaryRegistry(lambda *_args: None).register(("a", "a"), tenant_id="tenant-a", device_id="device-a")
+    with pytest.raises(RansomwareEvaluationDenied, match="CANARY_SCOPE_INVALID"):
+        RansomwareCanaryRegistry(lambda *_args: None).register(("a",), tenant_id=" tenant-a", device_id="device-a")
+    cross_tenant = EndpointObservation(
+        "cross", "tenant-b", "device-a", 100, "FILE_LIFECYCLE", "WINDOWS_SENSOR",
+        (("operation", "WRITE"), ("path", "C:/canary/a")), (), (), "evidence-cross",
+    )
+    with pytest.raises(RansomwareEvaluationDenied, match="TENANT_OR_DEVICE_MISMATCH"):
+        registry.evaluate_touch(cross_tenant, tenant_id="tenant-a", device_id="device-a")
+
+
+def test_canary_evidence_failures_do_not_register_or_return_findings():
+    calls = 0
+    def fail(*_args):
+        nonlocal calls
+        calls += 1
+        raise RuntimeError("offline")
+    registry = RansomwareCanaryRegistry(fail)
+    with pytest.raises(RansomwareEvaluationDenied, match="EVIDENCE_WRITE_FAILED"):
+        registry.register(("C:/canary/a",), tenant_id="tenant-a", device_id="device-a")
+    assert calls == 1
+    evidence = []
+    registry = RansomwareCanaryRegistry(lambda *args: evidence.append(args))
+    registry.register(("C:/canary/a",), tenant_id="tenant-a", device_id="device-a")
+    registry._audit = fail
+    touched = EndpointObservation(
+        "touch", "tenant-a", "device-a", 100, "FILE_LIFECYCLE", "WINDOWS_SENSOR",
+        (("operation", "WRITE"), ("path", "C:/canary/a")), (), (), "evidence-touch",
+    )
+    with pytest.raises(RansomwareEvaluationDenied, match="EVIDENCE_WRITE_FAILED"):
+        registry.evaluate_touch(touched, tenant_id="tenant-a", device_id="device-a")

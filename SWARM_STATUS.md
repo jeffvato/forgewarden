@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: FW-RANSOM (then FW-MCP, FW-BME, FW-SOC under D-022)
-- Current focus: FW-RANSOM-02 accepted; FW-RANSOM-03 canary fixture controls are next
-- Next task: implement FW-RANSOM-03 without filesystem or endpoint access.
+- Current focus: FW-RANSOM-03 bounded canary fixture controls
+- Next task: validate and exact-review FW-RANSOM-03 without filesystem or endpoint access.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled

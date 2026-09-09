@@ -7,6 +7,8 @@ recovery, or deployment authority.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from hashlib import sha256
+from threading import RLock
 from typing import Iterable
 
 from .asoc import AuditSink
@@ -15,6 +17,8 @@ from .endpoint_fixtures import EndpointObservation
 
 MAX_RANSOM_EVENTS = 128
 MAX_RANSOM_WINDOW_SECONDS = 300
+MAX_CANARIES_PER_DEVICE = 64
+MAX_CANARY_IDENTIFIER_BYTES = 256
 _FILE_OPERATIONS = frozenset({"WRITE", "RENAME", "DELETE"})
 _STRONG_INDICATORS = frozenset({"EXTENSION_CHANGE", "HIGH_ENTROPY", "RANSOM_NOTE", "SHADOW_COPY_TAMPER"})
 
@@ -23,6 +27,16 @@ class RansomwareEvaluationDenied(PermissionError):
     def __init__(self, reason: str):
         self.reason = reason
         super().__init__(reason)
+
+
+def _bounded_scope(value: object, reason: str) -> str:
+    if not isinstance(value, str) or not value.strip() or value != value.strip() or len(value.encode("utf-8")) > MAX_CANARY_IDENTIFIER_BYTES:
+        raise RansomwareEvaluationDenied(reason)
+    return value
+
+
+def _canary_ref(identifier: str) -> str:
+    return sha256(identifier.encode("utf-8")).hexdigest()
 
 
 @dataclass(frozen=True)
@@ -46,6 +60,72 @@ class RansomwareIsolationProposal:
     confidence: str = "HIGH"
     mode: str = "DRY_RUN"
     action: str = "DETECT_ONLY"
+
+
+class RansomwareCanaryRegistry:
+    """Bounded in-memory canary identifiers partitioned by tenant and device."""
+
+    def __init__(self, audit: AuditSink) -> None:
+        if not callable(audit):
+            raise RansomwareEvaluationDenied("CANARY_REGISTRY_INVALID")
+        self._audit = audit
+        self._lock = RLock()
+        self._canaries: dict[tuple[str, str], frozenset[str]] = {}
+
+    def register(self, identifiers: tuple[str, ...], *, tenant_id: str, device_id: str) -> tuple[str, ...]:
+        if not isinstance(identifiers, tuple) or not 1 <= len(identifiers) <= MAX_CANARIES_PER_DEVICE:
+            raise RansomwareEvaluationDenied("CANARY_SET_INVALID")
+        _bounded_scope(tenant_id, "CANARY_SCOPE_INVALID")
+        _bounded_scope(device_id, "CANARY_SCOPE_INVALID")
+        if any(not isinstance(item, str) or not item.strip() or item != item.strip() or len(item.encode("utf-8")) > MAX_CANARY_IDENTIFIER_BYTES for item in identifiers):
+            raise RansomwareEvaluationDenied("CANARY_IDENTIFIER_INVALID")
+        if len(set(identifiers)) != len(identifiers):
+            raise RansomwareEvaluationDenied("CANARY_DUPLICATE")
+        ordered = tuple(sorted(identifiers))
+        key = (tenant_id, device_id)
+        with self._lock:
+            if key in self._canaries:
+                raise RansomwareEvaluationDenied("CANARY_SCOPE_ALREADY_REGISTERED")
+            try:
+                self._audit("ransomware_canaries_registered", {
+                    "tenant_id": tenant_id, "device_id": device_id,
+                    "identifier_refs": [_canary_ref(item) for item in ordered], "count": len(ordered),
+                    "mode": "DRY_RUN", "action": "DETECT_ONLY", "deployment": "DISABLED",
+                })
+            except Exception as exc:
+                raise RansomwareEvaluationDenied("EVIDENCE_WRITE_FAILED") from exc
+            self._canaries[key] = frozenset(ordered)
+            return ordered
+
+    def evaluate_touch(
+        self, observation: EndpointObservation, *, tenant_id: str, device_id: str,
+    ) -> RansomwareFinding | None:
+        if not isinstance(observation, EndpointObservation):
+            raise RansomwareEvaluationDenied("EVENT_INVALID")
+        _bounded_scope(tenant_id, "CANARY_SCOPE_INVALID")
+        _bounded_scope(device_id, "CANARY_SCOPE_INVALID")
+        if (observation.tenant_id, observation.device_id) != (tenant_id, device_id):
+            raise RansomwareEvaluationDenied("TENANT_OR_DEVICE_MISMATCH")
+        if observation.mode != "DRY_RUN" or observation.action != "DETECT_ONLY":
+            raise RansomwareEvaluationDenied("EVENT_AUTHORITY_INVALID")
+        path = dict(observation.metadata).get("path") if observation.event_type == "FILE_LIFECYCLE" else None
+        with self._lock:
+            matched = path is not None and path in self._canaries.get((tenant_id, device_id), frozenset())
+            if not matched:
+                return None
+            try:
+                self._audit("ransomware_canary_touched", {
+                    "tenant_id": tenant_id, "device_id": device_id,
+                    "event_id": observation.event_id, "canary_ref": _canary_ref(path),
+                    "recommendations": ["WARN"], "mode": "DRY_RUN",
+                    "action": "DETECT_ONLY", "deployment": "DISABLED",
+                })
+            except Exception as exc:
+                raise RansomwareEvaluationDenied("EVIDENCE_WRITE_FAILED") from exc
+            return RansomwareFinding(
+                tenant_id, device_id, (observation.event_id,), ("CANARY_TOUCHED",),
+                "HIGH", ("WARN",),
+            )
 
 
 def evaluate_ransomware_activity(
