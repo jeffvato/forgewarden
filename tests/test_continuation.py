@@ -68,3 +68,38 @@ def test_continuation_replay_guard_rejects_mismatch_and_capacity():
     second = guard.issue("FWQ-0002", SHA, "FWQ-0003")
     with pytest.raises(ContinuationReplayDenied, match="CONTINUATION_CAPACITY"):
         guard.consume(second, completed_task="FWQ-0002", accepted_commit=SHA, next_task="FWQ-0003")
+
+
+def test_continuation_admission_requires_sole_ready_dependency_complete_success():
+    guard = ContinuationReplayGuard()
+    transition = guard.issue("FWQ-0001", SHA, "FWQ-0002")
+    decision = guard.admit(transition, completed_task="FWQ-0001", accepted_commit=SHA,
+                           next_task="FWQ-0002", ready_tasks=("FWQ-0002",),
+                           dependencies_complete=True)
+    assert decision.decision == "ADMITTED"
+    assert decision.next_task == "FWQ-0002"
+
+
+@pytest.mark.parametrize(("ready", "complete", "reason"), [
+    (("FWQ-0003",), True, "CONTINUATION_NEXT_TASK_MISMATCH"),
+    (("FWQ-0002", "FWQ-0003"), True, "CONTINUATION_NEXT_TASK_AMBIGUOUS"),
+    (("FWQ-0002",), False, "CONTINUATION_DEPENDENCY_INCOMPLETE"),
+    (("FWQ-0002", "FWQ-0002"), True, "CONTINUATION_READY_TASK_DUPLICATE"),
+])
+def test_continuation_admission_rejects_invalid_successor_evidence(ready, complete, reason):
+    guard = ContinuationReplayGuard()
+    transition = guard.issue("FWQ-0001", SHA, "FWQ-0002")
+    with pytest.raises(ContinuationReplayDenied, match=reason):
+        guard.admit(transition, completed_task="FWQ-0001", accepted_commit=SHA,
+                    next_task="FWQ-0002", ready_tasks=ready,
+                    dependencies_complete=complete)
+
+
+def test_continuation_admission_replay_is_denied_after_success():
+    guard = ContinuationReplayGuard()
+    transition = guard.issue("FWQ-0001", SHA, "FWQ-0002")
+    guard.admit(transition, completed_task="FWQ-0001", accepted_commit=SHA,
+                next_task="FWQ-0002", ready_tasks=("FWQ-0002",), dependencies_complete=True)
+    with pytest.raises(ContinuationReplayDenied, match="CONTINUATION_REPLAY"):
+        guard.admit(transition, completed_task="FWQ-0001", accepted_commit=SHA,
+                    next_task="FWQ-0002", ready_tasks=("FWQ-0002",), dependencies_complete=True)

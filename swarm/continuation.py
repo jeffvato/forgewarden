@@ -57,6 +57,38 @@ class ContinuationReplayGuard:
         self._consumed.add(transition.token)
         return transition
 
+    def admit(self, transition: ContinuationTransition, *, completed_task: str, accepted_commit: str,
+              next_task: str, ready_tasks: tuple[str, ...], dependencies_complete: bool,
+              active_phase: str = "ForgeWarden Core") -> "ContinuationAdmission":
+        """Consume a transition only when its successor is the sole READY task."""
+        if not isinstance(ready_tasks, tuple) or not ready_tasks:
+            raise ContinuationReplayDenied("CONTINUATION_NEXT_TASK_NOT_READY")
+        if any(not isinstance(item, str) or not _TASK.fullmatch(item) for item in ready_tasks):
+            raise ContinuationReplayDenied("CONTINUATION_READY_TASK_INVALID")
+        if len(set(ready_tasks)) != len(ready_tasks):
+            raise ContinuationReplayDenied("CONTINUATION_READY_TASK_DUPLICATE")
+        if len(ready_tasks) != 1:
+            raise ContinuationReplayDenied("CONTINUATION_NEXT_TASK_AMBIGUOUS")
+        if not isinstance(dependencies_complete, bool) or not dependencies_complete:
+            raise ContinuationReplayDenied("CONTINUATION_DEPENDENCY_INCOMPLETE")
+        if next_task != ready_tasks[0]:
+            raise ContinuationReplayDenied("CONTINUATION_NEXT_TASK_MISMATCH")
+        consumed = self.consume(transition, completed_task=completed_task,
+                                accepted_commit=accepted_commit, next_task=next_task,
+                                active_phase=active_phase)
+        return ContinuationAdmission(consumed.completed_task, consumed.accepted_commit,
+                                     consumed.next_task, consumed.active_phase, "ADMITTED")
+
+
+@dataclass(frozen=True)
+class ContinuationAdmission:
+    """Redacted result of bounded continuation admission; not execution authority."""
+    completed_task: str
+    accepted_commit: str
+    next_task: str
+    active_phase: str
+    decision: str
+
 @dataclass(frozen=True)
 class ContinuationPlan:
     stop: StopDecision
