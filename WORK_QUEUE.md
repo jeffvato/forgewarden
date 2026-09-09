@@ -22,7 +22,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-MCP-01 — Replay-protected exact tool-request admission
 - Requirement: FW-MCP canonical gateway request admission
-- State: READY
+- State: IN_PROGRESS
 - Priority: P0
 - Dependencies: FW-RANSOM-05 and existing MCPGateway grant registry
 - Approval: FW-MCP follows completed FW-RANSOM under D-022.

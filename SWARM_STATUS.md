@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: FW-MCP (then FW-BME, FW-SOC under D-022)
-- Current focus: FW-RANSOM bounded scope accepted; FW-MCP-01 exact request admission is next
-- Next task: implement FW-MCP-01 in the canonical MCPGateway without tool execution.
+- Current focus: FW-MCP-01 replay-protected exact request admission
+- Next task: validate and exact-review FW-MCP-01 without tool execution.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
