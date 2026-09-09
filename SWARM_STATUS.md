@@ -4,7 +4,7 @@
 
 - Active phase: ForgeWarden Core
 - Current focus: Core supervisor and deterministic queue reconciliation
-- Current task: FWQ-0013 — Deterministic Core resume-plan validation (already implemented; evidence reconciliation recorded).
+- Current task: FWQ-0014 — Deterministic Core continuation transition record (already implemented; evidence reconciliation recorded).
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -43,6 +43,8 @@ On every restart or continuation:
 - Platform delivery definition: Windows and Linux are the first endpoint targets; macOS, Android, and iOS are later platform-native releases. Detailed scope and required proof are in `docs/fw-av-windows-linux-delivery-plan.md`.
 
 ## Execution log
+
+- 2026-09-09: FWQ-0014 was authorized and reconciled against existing Core evidence. `run_bounded_work_unit` and `plan_continuation` already persist bounded continuation checkpoints, bind candidate/review evidence, preserve DRY_RUN, and fail closed on invalid callbacks or review repair failures; regression coverage is present in `tests/test_continuation.py`. No duplicate product code or unchanged validation was added.
 
 - 2026-09-09: FWQ-0013 was authorized and reconciled against existing Core evidence. `derive_next_core_task` preserves an explicit bounded Core successor, refuses duplicate persisted IDs, and parks broader roadmap families; regression coverage is present in `tests/test_autonomous_loop.py`. No duplicate product code or unchanged validation was added.
 
