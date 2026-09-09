@@ -45,6 +45,7 @@ On every restart or continuation:
 ## Execution log
 
 - 2026-09-09: FWQ-0016 accepted at `2999e3e87469ef08d68171f310cb223e86a42cd5`: continuation admission requires exactly one validated READY successor with complete dependencies, binds the consumed transition to the accepted Core task/commit/phase, and returns a redacted non-authoritative decision. Focused proof passed (18 tests); exact Claude review returned APPROVE/LOW with no missing tests. Full suite and integrity gate are pending once for milestone closure.
+- 2026-09-09: FWQ-0016 milestone closure recorded at `6b6ab2520565b08e12259035f439724c65cac797`: full Linux suite passed (812 passed, 8 skipped); integrity gate passed all hard checks and Golden Path with YELLOW limited to the pre-existing missing `tzdata` dependency and roadmap-only identity/SOC/compliance owners. Checkpoint was pushed; FWQ-0017 is next.
 
 - 2026-09-09: FWQ-0015 accepted at `7aa31fb1ac246ce94a698950a25ebc12b565ed42`: ContinuationReplayGuard binds immutable task/commit/next-task/phase transitions and consumes each token once within a bounded ledger. Focused proof passed (12 tests), exact Claude review APPROVE/LOW with no missing tests, full suite passed (813 passed, 1 skipped), and integrity returned YELLOW only for pre-existing dependency and roadmap-owner findings. Claude verifier repair `216a82b` preserves exact patch text while sanitizing instructions.
 
