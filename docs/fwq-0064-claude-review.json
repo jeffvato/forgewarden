@@ -1,0 +1,28 @@
+{
+  "adjudication": null,
+  "candidate_commit": "bb185c3be81c41df55a58adb0bddde1471573ce8",
+  "deployment": "DISABLED",
+  "job_id": "phase2a-2199b065a1674a5380e02582",
+  "kill_switch": "ENGAGED",
+  "mutation_allowed": false,
+  "reviews": [
+    {
+      "provider": "CLAUDE",
+      "result": {
+        "blocking_findings": [],
+        "job_id": "phase2a-2199b065a1674a5380e02582",
+        "non_blocking_notes": [
+          "Context manager scope is correctly preserved; cleanup behavior remains deterministic"
+        ],
+        "proposed_rules": [],
+        "reasoning_summary": "FWQ-0064 correctly fixes a concrete reliability defect by re-indenting adjudication logic inside the TemporaryDirectory context manager. This ensures review snapshots remain alive through adjudication completion. The fix is narrow (indentation change in swarm/review_runner.py lines 175\u2013183), preserves all error handling paths, and is covered by comprehensive new tests validating both success and failure scenarios. Deterministic checks passed: 11 focused tests, git diff --check. No blocking findings.",
+        "reviewed_commit": "bb185c3be81c41df55a58adb0bddde1471573ce8",
+        "risk": "LOW",
+        "tests_missing": [],
+        "verdict": "APPROVE"
+      },
+      "state": "APPROVED"
+    }
+  ],
+  "state": "APPROVED"
+}

@@ -379,7 +379,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FWQ-0064 — Retain exact review snapshots through adjudication
 - Requirement: Core exact-review reliability and evidence lifetime (D-004, D-014)
-- State: REVIEW
+- State: DONE
 - Priority: P1
 - Dependencies: FWQ-0063
 - Approval: Jeff authorized continued development after FWQ-0063; this is a concrete defect in the existing read-only review owner, not a new capability.
@@ -396,6 +396,8 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - regression uses isolated fixtures and fake read-only providers, with no real external requests.
 - Expected validation: one focused Linux proof, exact Claude review, then full suite/integrity once.
 - Security considerations: no new filesystem/cleanup/product authority; retain existing trusted temporary-directory lifecycle and read-only provider limits. No autonomous Gemini selection is re-enabled.
+
+- Completion evidence: exact candidate `bb185c3be81c41df55a58adb0bddde1471573ce8`; regression reproduced before fix, focused 11 passed afterward; exact Claude APPROVE/LOW with no blockers/missing tests; full 833 passed/1 skipped; integrity all hard checks and 4 Golden Paths pass. Saved review/gate: `docs/fwq-0064-claude-review.json`, `docs/fwq-0064-integrity.json`.
 
 ## Queue cleanup
 

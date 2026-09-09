@@ -4,7 +4,9 @@ Start with `AGENTS.md`, `docs/completion-audit-2026-09-09.md`, current Git statu
 
 FWQ-0008 already has implementation and binding hardening. FWQ-0009's source/tests are unchanged from its historically reviewed candidate. FWQ-0012–0016 are complete/reconciled. ASOC-01/02 and the bounded AV/endpoint/Android/quarantine milestones are recorded in the audit. Missing historical provenance does not authorize rebuilding completed work.
 
-Next actual gap: FWQ-0063 synchronizes the autonomous CLI/adapter with Jeff's D-020 Claude-only requirement. Read its bounded acceptance criteria before editing. Check existing evidence for the separate `0afcbdd` reviewer change before spending another review; do not infer its approval from a commit title.
+FWQ-0063 is now accepted at `13604a8`: Claude-only autonomous review, focused 72 passed, full 831 passed/1 skipped, exact Claude APPROVE/LOW and passing integrity hard checks. FWQ-0064 is accepted at `bb185c3`: snapshot lifetime through adjudication, reproduced regression, focused 11 passed, full 833 passed/1 skipped, exact Claude APPROVE/LOW and passing integrity hard checks. Review/gate evidence is preserved under `docs/fwq-0063-*` and `docs/fwq-0064-*`.
+
+No task is currently READY. Wait for concrete new authorized behavior or a specific newly evidenced defect; do not restart the completed review fixes or populate a successor merely to keep busy. The existing full-snapshot mode was exercised by the FWQ-0064 regression, not used to replay FWQ-0008.
 
 Use WSL. Codex is sole application-code writer; Claude Code is required read-only reviewer. Gemini is disabled. AnythingLLM/Qwen is optional and Groq-rate-limited, with workspace named `n8n`; that is not authorization to access `~/n8n`. Preserve all DRY_RUN, deployment-disabled, engaged-kill-switch, tenant, exact-evidence and no-authority boundaries.
 
