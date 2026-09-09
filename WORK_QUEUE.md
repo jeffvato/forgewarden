@@ -20,9 +20,28 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 
 Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical implementation is not new work. FWQ-0008 VALIDATED preserves a provenance caveat, not a request to rebuild or automatically repeat review. FWQ-0012–0016 are reconciled DONE from existing implementation and recorded proof.
 
+### FW-MCP-05 — Fail-closed MCP health and kill-switch admission
+- Requirement: FW-MCP gateway health and kill-switch enforcement
+- State: READY
+- Priority: P0
+- Dependencies: FW-MCP-04
+- Approval: FW-MCP is active under D-022.
+- Description: Add optional strict dry-run admission prerequisites that require explicit healthy gateway state and the safety kill switch to remain engaged, without adding tool execution or state-changing control surfaces.
+- Target path: swarm/mcp_gateway.py
+- Allowed paths: swarm/mcp_gateway.py, tests/test_mcp_gateway.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_mcp_gateway.py tests/test_asoc.py
+- Acceptance criteria:
+  - strict mode admits only when health is HEALTHY and kill switch is ENGAGED;
+  - unhealthy, unknown, malformed, or disengaged states deny before Evidence/quota/request-ID mutation;
+  - existing compatibility mode remains unchanged;
+  - state is caller-supplied immutable configuration, not a gateway authority control;
+  - no tool connection/execution, transport, credentials, filesystem, shell, deployment, or response authority is added.
+- Expected validation: focused Linux proof, exact Claude review, then full suite/integrity once.
+- Security considerations: health metadata cannot clear the kill switch or grant tool authority.
+
 ### FW-MCP-04 — Tenant-bound MCP tool catalog and discovery
 - Requirement: FW-MCP registry, discovery, and trust levels
-- State: REVIEW
+- State: DONE
 - Priority: P0
 - Dependencies: FW-MCP-03
 - Approval: FW-MCP is active under D-022.
@@ -38,6 +57,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no tool connection, invocation, transport, credential, filesystem, shell, deployment, or response authority is added.
 - Expected validation: focused Linux proof, exact Claude review, then full suite/integrity once.
 - Security considerations: catalog metadata is untrusted configuration and cannot grant authority by itself.
+- Completion evidence: exact candidate `dd2cad59ede185a4f8eeac3ac7d7f6ee486329bc`; focused 139 passed; Claude APPROVE/LOW with no blockers/missing tests after provider reset; full 888 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with pre-existing YELLOW findings. Evidence: `docs/fw-mcp-04-claude-review.json`, `docs/fw-mcp-04-integrity.json`.
 
 ### FW-MCP-03 — Bounded untrusted MCP result envelope
 - Requirement: FW-MCP output sanitization and Evidence
