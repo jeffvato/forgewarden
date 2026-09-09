@@ -1,4 +1,5 @@
-from swarm.continuation import plan_continuation
+import pytest
+from swarm.continuation import ContinuationReplayDenied, ContinuationReplayGuard, plan_continuation
 from swarm.stop_conditions import StopContext
 from swarm.continuation import WorkUnitResult, run_bounded_work_unit
 from swarm.review_handoff import ReviewResult
@@ -48,3 +49,22 @@ def test_initial_record_review_error_is_structured(tmp_path):
     state=_state(_task("FWQ-0001")); result=WorkUnitResult(SHA,("x",),("ok",))
     bad=lambda sha:(ReviewResult("CLAUDE","b"*40,(),"LOW","APPROVED","ok"),)
     assert run_bounded_work_unit(state,StopContext(),tmp_path/"c",SHA,lambda _:result,lambda _:True,bad).stop.reason == "REVIEW_REPAIR_REQUIRED"
+
+
+def test_continuation_replay_guard_binds_and_consumes_once():
+    guard = ContinuationReplayGuard()
+    transition = guard.issue("FWQ-0001", SHA, "FWQ-0002")
+    assert guard.consume(transition, completed_task="FWQ-0001", accepted_commit=SHA, next_task="FWQ-0002") == transition
+    with pytest.raises(ContinuationReplayDenied, match="CONTINUATION_REPLAY"):
+        guard.consume(transition, completed_task="FWQ-0001", accepted_commit=SHA, next_task="FWQ-0002")
+
+
+def test_continuation_replay_guard_rejects_mismatch_and_capacity():
+    guard = ContinuationReplayGuard(max_entries=1)
+    transition = guard.issue("FWQ-0001", SHA, "FWQ-0002")
+    with pytest.raises(ContinuationReplayDenied, match="CONTINUATION_MISMATCH"):
+        guard.consume(transition, completed_task="FWQ-0001", accepted_commit=CANDIDATE_SHA, next_task="FWQ-0002")
+    guard.consume(transition, completed_task="FWQ-0001", accepted_commit=SHA, next_task="FWQ-0002")
+    second = guard.issue("FWQ-0002", SHA, "FWQ-0003")
+    with pytest.raises(ContinuationReplayDenied, match="CONTINUATION_CAPACITY"):
+        guard.consume(second, completed_task="FWQ-0002", accepted_commit=SHA, next_task="FWQ-0003")
