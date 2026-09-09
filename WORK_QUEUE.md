@@ -20,9 +20,28 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 
 Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical implementation is not new work. FWQ-0008 VALIDATED preserves a provenance caveat, not a request to rebuild or automatically repeat review. FWQ-0012–0016 are reconciled DONE from existing implementation and recorded proof.
 
+### FW-BME-02 — Deterministic phishing and spoof classification
+- Requirement: FW-BME phishing/BEC/authentication signal evaluation
+- State: READY
+- Priority: P0
+- Dependencies: FW-BME-01
+- Approval: FW-BME is active under D-022.
+- Description: Evaluate bounded normalized browser/email observations for exact phishing, lookalike, BEC, QR-phishing, redirect, and SPF/DKIM/DMARC failure combinations, with Evidence-first warn-only findings.
+- Target path: swarm/browser_email.py
+- Allowed paths: swarm/browser_email.py, tests/test_browser_email.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_browser_email.py
+- Acceptance criteria:
+  - deterministic exact-token classification with explicit LOW/MEDIUM/HIGH confidence;
+  - authentication-result combinations apply only to email observations;
+  - every finding recommends WARN and none executes link blocking, message movement, account action, or containment;
+  - tenant binding and immutable untrusted observation state remain enforced;
+  - Evidence failure denies findings and no browser/mailbox/network/credential authority is added.
+- Expected validation: focused Linux proof, exact Claude review, then full suite/integrity once.
+- Security considerations: signals and content remain caller-supplied untrusted data; confidence grants no authority.
+
 ### FW-BME-01 — Bounded browser/email fixture normalization
 - Requirement: FW-BME caller-supplied browser and email metadata boundary
-- State: IN_PROGRESS
+- State: DONE
 - Priority: P0
 - Dependencies: FW-MCP-05
 - Approval: FW-BME follows completed FW-MCP under D-022.
@@ -38,6 +57,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - outputs remain DRY_RUN/DETECT_ONLY with no browser, email, network, credential, filesystem, or response authority.
 - Expected validation: focused Linux proof, exact Claude review, then full suite/integrity once.
 - Security considerations: fixture content may contain prompt injection and cannot become instructions or authority.
+- Completion evidence: exact candidate `dea7ca0d90924888556783aa3b3e98c1615ce324`; focused 11 passed; Claude APPROVE/LOW with no blockers/missing tests; full 908 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with pre-existing YELLOW findings. Evidence: `docs/fw-bme-01-claude-review.json`, `docs/fw-bme-01-integrity.json`.
 
 ### FW-MCP-05 — Fail-closed MCP health and kill-switch admission
 - Requirement: FW-MCP gateway health and kill-switch enforcement

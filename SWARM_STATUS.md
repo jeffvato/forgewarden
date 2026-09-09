@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: FW-BME (then FW-SOC under D-022)
-- Current focus: FW-BME-01 bounded browser/email fixture normalization
-- Next task: validate and exact-review FW-BME-01 over caller-supplied data only.
+- Current focus: FW-BME-01 accepted; FW-BME-02 phishing/spoof classification is next
+- Next task: implement FW-BME-02 as Evidence-first warn-only evaluation.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -29,17 +29,17 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-MCP-05
-- Starting commit: 61d9820243342b31d740d0049233bc132aa1169f
-- Candidate commit: ef5dec5a97888ab1b325c208eea85e54cb0505da
-- Accepted commit: ef5dec5a97888ab1b325c208eea85e54cb0505da
-- Files changed: swarm/mcp_gateway.py, tests/test_mcp_gateway.py, WORK_QUEUE.md, SWARM_STATUS.md
-- Deterministic validation: focused 148 passed; full 897 passed/1 skipped; integrity all hard checks and 4 Golden Paths pass, YELLOW pre-existing findings
-- Claude review: ef5dec5a97888ab1b325c208eea85e54cb0505da APPROVE/LOW, no blockers or missing tests
+- Task ID: FW-BME-01
+- Starting commit: f4d3dffebd884b82c75ffdcc5d772cb5d8ed96e2
+- Candidate commit: dea7ca0d90924888556783aa3b3e98c1615ce324
+- Accepted commit: dea7ca0d90924888556783aa3b3e98c1615ce324
+- Files changed: swarm/browser_email.py, tests/test_browser_email.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Deterministic validation: focused 11 passed; full 908 passed/1 skipped; integrity all hard checks and 4 Golden Paths pass, YELLOW pre-existing findings
+- Claude review: dea7ca0d90924888556783aa3b3e98c1615ce324 APPROVE/LOW, no blockers or missing tests
 - Gemini review: disabled and not required under D-020
-- Unresolved findings: none for bounded FW-RANSOM or FW-MCP phases; historical caveats and pre-existing YELLOW findings remain
+- Unresolved findings: none for bounded FW-RANSOM/FW-MCP or FW-BME-01; historical caveats and pre-existing YELLOW findings remain
 - Blocker: none for bounded FW-MCP work; broader live/response authority stays disabled
-- Next action: claim FW-BME-01
+- Next action: claim FW-BME-02
 
 - Completion inventory: `docs/completion-audit-2026-09-09.md` (baseline `0afcbdd`).
 - FWQ-0008 implementation and binding hardening exist; VALIDATED retains a historical provenance caveat, not an implementation assignment. FWQ-0009 is recorded accepted and unchanged at source/test level from its reviewed candidate.
@@ -49,6 +49,8 @@ On every restart or continuation:
 - Latest broad Core closure: FWQ-0064, 833 passed/1 skipped, all hard checks/Golden Path passing, YELLOW pre-existing findings.
 
 ## Execution log
+
+- 2026-09-09: FW-BME-01 accepted at `dea7ca0d90924888556783aa3b3e98c1615ce324`. Strict caller-supplied browser/email fixtures normalize to immutable UNTRUSTED_DATA observations after Evidence, with exact source/event/auth/indicator validation and no raw URLs or sender data in Evidence. Focused 11 passed; exact Claude APPROVE/LOW; full 908 passed/1 skipped; integrity hard checks and Golden Paths pass with unchanged YELLOW findings. FW-BME-02 is next.
 
 - 2026-09-09: FW-MCP-05 accepted at `ef5dec5a97888ab1b325c208eea85e54cb0505da`. Optional strict admission requires an immutable HEALTHY/ENGAGED safety state before Evidence, quota, or request mutation; malformed/unknown/unhealthy/disengaged states deny and compatibility mode remains unchanged. Focused 148 passed; exact Claude APPROVE/LOW; full 897 passed/1 skipped; integrity hard checks and Golden Paths pass with unchanged YELLOW findings. The bounded FW-MCP phase is complete; FW-BME-01 is next under D-022.
 
