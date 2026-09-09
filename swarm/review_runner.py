@@ -112,7 +112,7 @@ def run_review_cycle(
     commit = _validate_inputs(repository, candidate_commit, job_id)
     patch = _git(repository, "show", "--format=fuller", "--stat", "--patch", commit)
     inline_context = context + "\n\nExact candidate patch from Git:\n" + patch
-    patch_file_mode = len(inline_context.encode("utf-8")) > 24_000
+    patch_file_mode = len(inline_context.encode("utf-8")) > 24_000 or "FULL_SNAPSHOT_READ_ONLY_REVIEW" in context
     review_context = (context + "\n\nExact candidate patch is available at EXACT_CANDIDATE.patch. Use only the read-only file viewer to inspect that exact patch.") if patch_file_mode else inline_context
     requested = tuple(dict.fromkeys(reviewers))
     supported = {"CLAUDE", "GEMINI", "OPENROUTER", "NVIDIA"}
