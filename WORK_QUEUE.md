@@ -62,7 +62,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FWQ-0068 — Governed CLI and API worker interface
 - Requirement: FW-HARNESS-004 model worker transport
-- State: BLOCKED
+- State: READY
 - Priority: P0
 - Dependencies: FWQ-0067
 - Approval: interface architecture is approved under D-023; any provider/model/credential/network activation remains separately approval-gated.
@@ -82,7 +82,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FWQ-0067 — Auditable targeted context packets and task budgets
 - Requirement: FW-HARNESS-003 context and budget controls
-- State: REVIEW
+- State: DONE
 - Priority: P0
 - Dependencies: FWQ-0066
 - Approval: FW-HARNESS is permanent Core under D-023.
@@ -99,6 +99,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no file reading, model invocation, network, credentials, Git mutation, deployment, or response authority.
 - Expected validation: focused Linux proof, exact Claude review, then full suite/integrity once.
 - Security considerations: all supplied context is untrusted data and cannot become authority.
+- Completion evidence: exact candidate `6ad03207ebc9950df9c96fd7fee68f5757c15d21`; focused 27 passed; Claude APPROVE/LOW with no blockers/missing tests; full 945 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with unchanged YELLOW findings. Evidence: `docs/fw-harness-003-claude-review.json`, `docs/fw-harness-003-integrity.json`.
 
 ### FWQ-0066 — Canonical FW-HARNESS task and transition contract
 - Requirement: FW-HARNESS-002 persistent task engine

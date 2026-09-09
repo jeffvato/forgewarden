@@ -1,0 +1,28 @@
+{
+  "adjudication": null,
+  "candidate_commit": "6ad03207ebc9950df9c96fd7fee68f5757c15d21",
+  "deployment": "DISABLED",
+  "job_id": "phase2a-6ad03207ebc9950df9c96fd7",
+  "kill_switch": "ENGAGED",
+  "mutation_allowed": false,
+  "reviews": [
+    {
+      "provider": "CLAUDE",
+      "result": {
+        "blocking_findings": [],
+        "job_id": "phase2a-6ad03207ebc9950df9c96fd7",
+        "non_blocking_notes": [
+          "All 27 focused tests pass; git diff --check passed. Deterministic context uses canonical JSON with sorted keys and SHA256 binding to task record. Scope validation enforces task requirement/ID matching, file containment, and commit SHA format. Architecture constraints and forbidden-change items are mandatory. Budget ledger is atomic with lock-protected state; exhaustion rejects without partial consumption. Immutable frozen dataclasses and MappingProxyType prevent model output alteration. Path traversal and malformed identities blocked. Thread-safe. No file reads, model invocation, or external dependencies. Patch is narrow and self-contained."
+        ],
+        "proposed_rules": [],
+        "reasoning_summary": "FW-HARNESS-003 implements deterministic context packet construction and atomic budget controls as specified. The core `build_context_packet()` function enforces that all context material comes only from explicit caller-supplied ContextItem instances, validated against an allowlist of kinds. The packet includes a canonical SHA256 hash of the task record, binding the context to the task's identity. Scope validation ensures relevant_file references exist in task.relevant_files, recent_commit items are valid Git SHAs, and requirement/task_state items match their respective task fields. Architecture constraints and forbidden-change items are mandatory, preventing context construction without explicit bounds. Item and packet byte limits are enforced. The BudgetLedger class implements atomic task/session budget admission: all resource dimensions (model calls, tokens, retries, elapsed time, tool calls, cost) are checked against both task and session limits before any state is mutated; exhaustion triggers a thrown exception without consuming budget. Thread safety uses threading.Lock. All dataclasses are frozen and snapshot returns read-only views, preventing model output from altering audit state. Input validation is comprehensive: empty/duplicate items rejected, malformed identities rejected, unregistered tasks/workers rejected. The 27 test cases cover determinism, hash binding, scope validation, architecture enforcement, byte limits, atomic cross-task admission, exhaustion without consumption, and identity validation. The patch modifies only two new files (harness_context.py and its test module) and updates documentation; no existing code paths are altered. Risk is LOW with no blockers or missing tests.\", \"Verified: (1) Deterministic context uses canonical JSON with sorted keys, immutable dataclass, SHA256 of payload. (2) Only explicit caller items; ContextItem instances with validated kinds. (3) Task hash bound via task_record_sha256 in payload. (4) Scope: relevant_file checked against task.relevant_files; recent_commit validated as SHA; requirement/task_state match task IDs. (5) Architecture and forbidden_change mandatory. (6) Item byte limits enforced per-item and per-packet. (7) Budget ledger atomic: all checks before mutation, exhaustion raises without consuming. (8) Thread-safe with Lock. (9) Immutable results (frozen dataclasses, MappingProxyType snapshot). (10) Input validation: path traversal blocked, malformed IDs rejected, unregistered tasks rejected. (11) No file reads or model calls. Tests comprehensive and passing.\"",
+        "reviewed_commit": "6ad03207ebc9950df9c96fd7fee68f5757c15d21",
+        "risk": "LOW",
+        "tests_missing": [],
+        "verdict": "APPROVE"
+      },
+      "state": "APPROVED"
+    }
+  ],
+  "state": "APPROVED"
+}
