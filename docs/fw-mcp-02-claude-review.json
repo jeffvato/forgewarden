@@ -1,0 +1,28 @@
+{
+  "adjudication": null,
+  "candidate_commit": "a6d1232e841861b41da00c49b95c82ef6ffe6c5e",
+  "deployment": "DISABLED",
+  "job_id": "phase2a-gggggggggggggggggggggggg",
+  "kill_switch": "ENGAGED",
+  "mutation_allowed": false,
+  "reviews": [{
+    "provider": "CLAUDE",
+    "result": {
+      "blocking_findings": [],
+      "job_id": "phase2a-gggggggggggggggggggggggg",
+      "non_blocking_notes": [
+        "All critical paths verified: budget exhaustion, isolation by (tenant, agent, tool), Evidence-failure rollback, and concurrent safety.",
+        "Budget counter initialization correct: .get(scope, 0) handles first-admission case properly.",
+        "Validation order correct: audit callable check before max_admissions_per_scope bounds."
+      ],
+      "proposed_rules": [],
+      "reasoning_summary": "Patch correctly implements FW-MCP-02 bounded admission budgets. Core isolation uses exact 3-tuple key (tenant_id, subject_agent_id, tool) preventing cross-tenant/agent/tool budget leakage. Concurrency safety ensured: all budget checks and increments occur within self._lock RLock block (mcp_gateway.py:115–144). Denial-before-Evidence ordering verified: budget exhaustion check (line 123) raises before audit invocation (line 126). Evidence-failure rollback working: budget increment (line 144) only executes after successful try block; on Exception, request_id removed from pending (line 139) and budget untouched. Auditable budget counters included in audit call with budget_used and budget_limit. Validation fail-closed: constructor rejects bool, 0, negative, >1024, and non-int. Five new test cases verify: budget exhaustion denial, configuration rejection, 4-way isolation, concurrent 8-thread safety (3-budget limit=3 admitted/5 denied), and rollback-on-Evidence-failure. Backward compatible: max_admissions_per_scope keyword-only with default MAX_ADMISSIONS_PER_SCOPE=1024. Scope stays within admission logic; no tool execution, transport, credentials, or response authority changes. All 119 tests pass. git diff --check passed. Patch narrow: only mcp_gateway.py, tests, and status updates.",
+      "reviewed_commit": "a6d1232e841861b41da00c49b95c82ef6ffe6c5e",
+      "risk": "LOW",
+      "tests_missing": [],
+      "verdict": "APPROVE"
+    },
+    "state": "APPROVED"
+  }],
+  "state": "APPROVED"
+}
