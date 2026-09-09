@@ -1,0 +1,28 @@
+{
+  "adjudication": null,
+  "candidate_commit": "87dda89c410ec0d563719476b7564a833b1c7177",
+  "deployment": "DISABLED",
+  "job_id": "phase2a-ffffffffffffffffffffffff",
+  "kill_switch": "ENGAGED",
+  "mutation_allowed": false,
+  "reviews": [{
+    "provider": "CLAUDE",
+    "result": {
+      "blocking_findings": [],
+      "job_id": "phase2a-ffffffffffffffffffffffff",
+      "non_blocking_notes": [
+        "Evidence callback executes under lock (by design) to protect reentrancy—correct per test_reentrant_evidence_callback test",
+        "Request ID sanitization via _text() is consistent with existing pattern for grant fields",
+        "Audit parameter is optional but admit() requires it (Evidence unavailable error)—proper fail-safe design"
+      ],
+      "proposed_rules": [],
+      "reasoning_summary": "Commit 87dda89c implements FW-MCP-01 replay-protected exact request admission. All requirements verified: deny-by-default enforcement via grant membership check, bounded request IDs via single-use tracking under RLock, concurrent and reentrant replay protection demonstrated across 8-thread pool and callback reentrancy tests, revoked/cross-tenant denial validated, Evidence-first rollback semantics with proper exception rollback, backward compatibility of allows() method, thread-safe lock usage on all mutations, and absence of tool execution (DRY_RUN mode, tool_executed=False) and prohibited operations. Patch is narrow and focused. Tests comprehensively cover normal path, failure modes, concurrency, and edge cases. Deterministic checks passed (110 tests, git diff --check).",
+      "reviewed_commit": "87dda89c410ec0d563719476b7564a833b1c7177",
+      "risk": "LOW",
+      "tests_missing": [],
+      "verdict": "APPROVE"
+    },
+    "state": "APPROVED"
+  }],
+  "state": "APPROVED"
+}
