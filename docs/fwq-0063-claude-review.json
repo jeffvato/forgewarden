@@ -1,0 +1,26 @@
+{
+  "adjudication": null,
+  "candidate_commit": "13604a8dddda40c11a415da08ccf6e7ef60460a4",
+  "deployment": "DISABLED",
+  "job_id": "phase2a-78b7f9f4a9274cc899d77666",
+  "kill_switch": "ENGAGED",
+  "mutation_allowed": false,
+  "reviews": [
+    {
+      "provider": "CLAUDE",
+      "result": {
+        "blocking_findings": [],
+        "job_id": "phase2a-78b7f9f4a9274cc899d77666",
+        "non_blocking_notes": [],
+        "proposed_rules": [],
+        "reasoning_summary": "Commit successfully enforces Claude-only autonomous review policy (D-020) by removing Gemini fallback from ExactReviewAdapter and autonomous execution. Constructor validation at instantiation time prevents misconfiguration by requiring Claude and rejecting Gemini. All Gemini fallback logic is removed; sequential_fallback set to False. Deterministic checks verified: 72 focused Linux autonomous-loop tests passed, git diff --check passed. Test coverage is comprehensive: 4 new tests (policy validation, exact contract verification, unavailable Claude handling, rejection without fallback) plus updated existing tests. Patch is narrow with no new credentials, transport, or authority. Policy enforcement is deterministic and explicit.",
+        "reviewed_commit": "13604a8dddda40c11a415da08ccf6e7ef60460a4",
+        "risk": "LOW",
+        "tests_missing": [],
+        "verdict": "APPROVE"
+      },
+      "state": "APPROVED"
+    }
+  ],
+  "state": "APPROVED"
+}

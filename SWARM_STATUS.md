@@ -4,7 +4,7 @@
 
 - Active phase: ForgeWarden Core
 - Current focus: prevent repeated work and enforce the current autonomous reviewer policy
-- Next task: FWQ-0063 — Enforce the current reviewer policy in autonomous execution.
+- Next task: FWQ-0064 — Retain exact review snapshots through adjudication.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -31,15 +31,15 @@ On every restart or continuation:
 
 - Task ID: FWQ-0063
 - Starting commit: de3d15946edad7d8a090ac9e150a9c647f839c94
-- Candidate commit: none
-- Accepted commit: none
+- Candidate commit: 13604a8dddda40c11a415da08ccf6e7ef60460a4
+- Accepted commit: 13604a8dddda40c11a415da08ccf6e7ef60460a4
 - Files changed: swarm/autonomous_adapters.py, swarm/cli.py, tests/test_autonomous_loop.py, WORK_QUEUE.md, SWARM_STATUS.md
-- Deterministic validation: focused Linux autonomous-loop tests 72 passed; git diff --check passed
-- Claude review: FWQ-0063 exact candidate review pending
+- Deterministic validation: focused 72 passed; full 831 passed/1 skipped; integrity hard checks and 4 Golden Paths pass; YELLOW pre-existing findings
+- Claude review: 13604a8dddda40c11a415da08ccf6e7ef60460a4 APPROVE/LOW, no findings or missing tests
 - Gemini review: disabled and not required under D-020
-- Unresolved findings: none from focused checks; exact review pending
+- Unresolved findings: none for FWQ-0063; distinct snapshot-lifetime defect scoped as FWQ-0064
 - Blocker: none for bounded FWQ-0063; historical evidence caveats are in the audit
-- Next action: obtain exact Claude review of FWQ-0063, then full suite/integrity once after approval
+- Next action: claim FWQ-0064; do not repeat accepted FWQ-0063 checks
 
 - Completion inventory: `docs/completion-audit-2026-09-09.md` (baseline `0afcbdd`).
 - FWQ-0008 implementation and binding hardening exist; VALIDATED retains a historical provenance caveat, not an implementation assignment. FWQ-0009 is recorded accepted and unchanged at source/test level from its reviewed candidate.
@@ -49,6 +49,8 @@ On every restart or continuation:
 - Latest historical broad Core closure: FWQ-0016, 812 passed/8 skipped and YELLOW gate; no product validation rerun by this audit.
 
 ## Execution log
+
+- 2026-09-09: FWQ-0063 accepted at `13604a8dddda40c11a415da08ccf6e7ef60460a4`: required Claude-only autonomous review, no Gemini fallback. Focused 72 passed, exact Claude APPROVE/LOW, full 831 passed/1 skipped; integrity all hard checks/Golden Path pass with existing YELLOW findings. Next is the separately identified snapshot-lifetime defect, FWQ-0064.
 
 Entries below are historical observations, not a resume queue. Later acceptance supersedes earlier pending entries. Use the audited resume point and current queue.
 

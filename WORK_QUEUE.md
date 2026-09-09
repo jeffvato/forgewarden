@@ -355,7 +355,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FWQ-0063 — Enforce the current reviewer policy in autonomous execution
 - Requirement: Core deterministic review policy (D-020)
-- State: REVIEW
+- State: DONE
 - Priority: P1
 - Dependencies: FWQ-0016
 - Approval: Jeff explicitly removed Gemini from the requirement and authorized autonomous Core continuation; this unit implements that existing policy without expanding authority.
@@ -374,6 +374,28 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - DRY_RUN, disabled deployment, kill switch and no-authority boundaries remain unchanged.
 - Expected validation: focused Linux tests once, exact Claude candidate review, full suite/integrity once after approval; reuse unchanged evidence.
 - Security considerations: reviewer output remains untrusted evidence; no credentials, transport, live actions or tool authority added.
+
+- Completion evidence: exact candidate `13604a8dddda40c11a415da08ccf6e7ef60460a4`; focused 72 passed; Claude APPROVE/LOW with no findings/missing tests; full 831 passed/1 skipped; all integrity hard checks and 4 Golden Paths pass, YELLOW only for pre-existing dependency and roadmap-owner findings. Evidence: `docs/fwq-0063-claude-review.json`, `docs/fwq-0063-integrity.json`.
+
+### FWQ-0064 — Retain exact review snapshots through adjudication
+- Requirement: Core exact-review reliability and evidence lifetime (D-004, D-014)
+- State: READY
+- Priority: P1
+- Dependencies: FWQ-0063
+- Approval: Jeff authorized continued development after FWQ-0063; this is a concrete defect in the existing read-only review owner, not a new capability.
+- Description: Keep the canonical disposable review snapshot alive until an explicitly requested disagreement adjudication finishes, then release it through the existing scoped temporary-directory lifecycle.
+- Target path: swarm/review_runner.py
+- Allowed paths: swarm/review_runner.py, tests/test_review_runner.py
+- Test command: python3 -m pytest -q tests/test_review_runner.py
+- Expected behavior: Claude adjudication can inspect the same exact snapshot/patch as initial review; failure or completion exits the existing temporary scope.
+- Failing assertion: current adjudication runs after TemporaryDirectory exits, so its snapshot is missing.
+- Acceptance criteria:
+  - exact snapshot and externalized patch remain available during adjudication;
+  - the existing temporary scope ends after success or provider failure;
+  - exact SHA/job-ID/schema validation and no-authority boundaries remain unchanged;
+  - regression uses isolated fixtures and fake read-only providers, with no real external requests.
+- Expected validation: one focused Linux proof, exact Claude review, then full suite/integrity once.
+- Security considerations: no new filesystem/cleanup/product authority; retain existing trusted temporary-directory lifecycle and read-only provider limits. No autonomous Gemini selection is re-enabled.
 
 ## Queue cleanup
 
