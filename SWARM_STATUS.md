@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: FW-HARNESS-002 accepted; FW-HARNESS-003 targeted context and budgets is next
-- Next task: implement FWQ-0067 as deterministic data and accounting controls without model invocation.
+- Current focus: FW-HARNESS-003 targeted context and budget controls under exact review
+- Next task: accept or repair FWQ-0067 from deterministic proof and exact Claude findings.
 - Harness role: permanent ForgeWarden Core subsystem and default controller for ForgeWarden's own development; one governed architecture serves both roles under D-023.
 - Worker transport direction: registered local CLIs and explicitly approved API-backed workers; API keys are resolved only through FW-KEYS secret handles inside trusted adapters and never enter model context or lifecycle evidence.
 - Provider authentication direction: deterministic OpenAI, Anthropic, and Google profiles with provider-specific official OAuth where available and approved API-key classes otherwise; FW-ID owns delegated identity and FW-KEYS owns all credential material.
@@ -33,17 +33,17 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FWQ-0066
-- Starting commit: 6fd1b41d376b0cb912dd1e89d1e7954f9071473c
-- Candidate commit: 78fdf188a452b53c20895c2d024b265fc51621c0
-- Accepted commit: 78fdf188a452b53c20895c2d024b265fc51621c0
-- Files changed: swarm/harness_task.py, tests/test_harness_task.py, WORK_QUEUE.md, SWARM_STATUS.md
-- Deterministic validation: focused 96 passed; full 929 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with unchanged YELLOW findings
-- Claude review: 78fdf188a452b53c20895c2d024b265fc51621c0 APPROVE/LOW, no blockers or missing tests
+- Task ID: FWQ-0067
+- Starting commit: 0f1c1eb6e7906c91e6be7ed49da78052f7ccf024
+- Candidate commit: pending exact commit creation
+- Accepted commit: none
+- Files changed: swarm/harness_context.py, tests/test_harness_context.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Deterministic validation: focused 27 passed; git diff --check pending
+- Claude review: pending exact-candidate review
 - Gemini review: disabled and not required under D-020
 - Unresolved findings: none for bounded FW-RANSOM/FW-MCP or FW-BME-01/02; historical caveats and pre-existing YELLOW findings remain
-- Blocker: none for FW-HARNESS-002; FW-BME-03 is deferred under D-023
-- Next action: claim FWQ-0067
+- Blocker: none for FW-HARNESS-003; FW-BME-03 is deferred under D-023
+- Next action: create and review exact FWQ-0067 candidate
 
 - Completion inventory: `docs/completion-audit-2026-09-09.md` (baseline `0afcbdd`).
 - FWQ-0008 implementation and binding hardening exist; VALIDATED retains a historical provenance caveat, not an implementation assignment. FWQ-0009 is recorded accepted and unchanged at source/test level from its reviewed candidate.

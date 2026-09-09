@@ -82,7 +82,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FWQ-0067 — Auditable targeted context packets and task budgets
 - Requirement: FW-HARNESS-003 context and budget controls
-- State: READY
+- State: REVIEW
 - Priority: P0
 - Dependencies: FWQ-0066
 - Approval: FW-HARNESS is permanent Core under D-023.
