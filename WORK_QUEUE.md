@@ -20,9 +20,28 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 
 Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical implementation is not new work. FWQ-0008 VALIDATED preserves a provenance caveat, not a request to rebuild or automatically repeat review. FWQ-0012–0016 are reconciled DONE from existing implementation and recorded proof.
 
+### FW-MCP-04 — Tenant-bound MCP tool catalog and discovery
+- Requirement: FW-MCP registry, discovery, and trust levels
+- State: READY
+- Priority: P0
+- Dependencies: FW-MCP-03
+- Approval: FW-MCP is active under D-022.
+- Description: Add a bounded in-memory catalog of exact tenant-owned MCP tool metadata with explicit trust levels and deterministic read-only discovery, without connecting to or invoking tools.
+- Target path: swarm/mcp_gateway.py
+- Allowed paths: swarm/mcp_gateway.py, tests/test_mcp_gateway.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_mcp_gateway.py tests/test_asoc.py
+- Acceptance criteria:
+  - catalog entries bind exact tenant, tool, capability, trust level, and enabled state;
+  - registration and discovery are bounded, deterministic, duplicate-safe, and tenant isolated;
+  - disabled/untrusted entries cannot satisfy admission preconditions;
+  - Evidence failure denies catalog mutation;
+  - no tool connection, invocation, transport, credential, filesystem, shell, deployment, or response authority is added.
+- Expected validation: focused Linux proof, exact Claude review, then full suite/integrity once.
+- Security considerations: catalog metadata is untrusted configuration and cannot grant authority by itself.
+
 ### FW-MCP-03 — Bounded untrusted MCP result envelope
 - Requirement: FW-MCP output sanitization and Evidence
-- State: IN_PROGRESS
+- State: DONE
 - Priority: P0
 - Dependencies: FW-MCP-02
 - Approval: FW-MCP is active under D-022.
@@ -38,6 +57,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no tool invocation, network transport, credentials, filesystem, shell, or response authority is added.
 - Expected validation: focused Linux proof, exact Claude review, then full suite/integrity once.
 - Security considerations: MCP output may contain prompt injection; the envelope never interprets or executes it.
+- Completion evidence: exact candidate `ed8b0a915b9ff8f1a3c85507066595afd79b171d`; focused 130 passed; Claude APPROVE/LOW with no blockers/missing tests; full 879 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with pre-existing YELLOW findings. Evidence: `docs/fw-mcp-03-claude-review.json`, `docs/fw-mcp-03-integrity.json`.
 
 ### FW-MCP-02 — Bounded MCP admission budgets
 - Requirement: FW-MCP gateway resource limits

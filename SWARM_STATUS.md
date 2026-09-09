@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: FW-MCP (then FW-BME, FW-SOC under D-022)
-- Current focus: FW-MCP-03 bounded untrusted result envelopes
-- Next task: validate and exact-review FW-MCP-03 without interpreting tool output.
+- Current focus: FW-MCP-03 accepted; FW-MCP-04 tenant tool catalog is next
+- Next task: implement FW-MCP-04 without connecting to or invoking tools.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -29,17 +29,17 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-MCP-02
-- Starting commit: ffe00c05c0b7f3f42080f10ca47a5a169fea3030
-- Candidate commit: a6d1232e841861b41da00c49b95c82ef6ffe6c5e
-- Accepted commit: a6d1232e841861b41da00c49b95c82ef6ffe6c5e
+- Task ID: FW-MCP-03
+- Starting commit: e2abbed7ef94e31f3711f7fc996da5547f5f82bb
+- Candidate commit: ed8b0a915b9ff8f1a3c85507066595afd79b171d
+- Accepted commit: ed8b0a915b9ff8f1a3c85507066595afd79b171d
 - Files changed: swarm/mcp_gateway.py, tests/test_mcp_gateway.py, WORK_QUEUE.md, SWARM_STATUS.md
-- Deterministic validation: focused 119 passed; full 868 passed/1 skipped; integrity all hard checks and 4 Golden Paths pass, YELLOW pre-existing findings
-- Claude review: a6d1232e841861b41da00c49b95c82ef6ffe6c5e APPROVE/LOW, no blockers or missing tests
+- Deterministic validation: focused 130 passed; full 879 passed/1 skipped; integrity all hard checks and 4 Golden Paths pass, YELLOW pre-existing findings
+- Claude review: ed8b0a915b9ff8f1a3c85507066595afd79b171d APPROVE/LOW, no blockers or missing tests
 - Gemini review: disabled and not required under D-020
-- Unresolved findings: none for FW-RANSOM-01 through 05 or FW-MCP-01/02; historical caveats and pre-existing YELLOW findings remain
+- Unresolved findings: none for FW-RANSOM-01 through 05 or FW-MCP-01 through 03; historical caveats and pre-existing YELLOW findings remain
 - Blocker: none for bounded FW-RANSOM fixture/proposal work; broader live/response authority stays disabled
-- Next action: claim FW-MCP-03
+- Next action: claim FW-MCP-04
 
 - Completion inventory: `docs/completion-audit-2026-09-09.md` (baseline `0afcbdd`).
 - FWQ-0008 implementation and binding hardening exist; VALIDATED retains a historical provenance caveat, not an implementation assignment. FWQ-0009 is recorded accepted and unchanged at source/test level from its reviewed candidate.
@@ -49,6 +49,8 @@ On every restart or continuation:
 - Latest broad Core closure: FWQ-0064, 833 passed/1 skipped, all hard checks/Golden Path passing, YELLOW pre-existing findings.
 
 ## Execution log
+
+- 2026-09-09: FW-MCP-03 accepted at `ed8b0a915b9ff8f1a3c85507066595afd79b171d`. Exact admitted requests can wrap one bounded canonical JSON-compatible result in an immutable UNTRUSTED_DATA envelope; content is not interpreted or logged, revocation/replay deny, and Evidence failures roll back completion. Focused 130 passed; exact Claude APPROVE/LOW; full 879 passed/1 skipped; integrity hard checks and Golden Paths pass with unchanged YELLOW findings. FW-MCP-04 is next.
 
 - 2026-09-09: FW-MCP-02 accepted at `a6d1232e841861b41da00c49b95c82ef6ffe6c5e`. Exact tenant/agent/tool scopes now have bounded deterministic admission budgets; concurrent requests cannot exceed the cap, Evidence failures consume neither budget nor request IDs, and audit records include usage/limit. Focused 119 passed; exact Claude APPROVE/LOW; full 868 passed/1 skipped; integrity hard checks and Golden Paths pass with unchanged YELLOW findings. FW-MCP-03 is next.
 
