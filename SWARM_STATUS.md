@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: FW-HARNESS-010 accepted; FW-HARNESS-011 Approved Model Registry admission is next
-- Next task: claim FWQ-0076 to bind workers and explicit fallbacks to existing Model Broker decisions.
+- Current focus: FW-HARNESS-011 accepted; FW-HARNESS-012 Monitor → Repair → Review governance is next
+- Next task: claim FWQ-0077 for deterministic anomaly classification and authority-free recovery requests/reviews.
 - Harness role: permanent ForgeWarden Core subsystem and default controller for ForgeWarden's own development; one governed architecture serves both roles under D-023.
 - Worker transport direction: registered local CLIs and explicitly approved API-backed workers; API keys are resolved only through FW-KEYS secret handles inside trusted adapters and never enter model context or lifecycle evidence.
 - Provider authentication direction: deterministic OpenAI, Anthropic, and Google/Gemini profiles with provider-specific official OAuth where available and approved API-key classes otherwise; Gemini CLI is registered as `agy` for read-only roles, FW-ID owns delegated identity, and FW-KEYS owns all credential material.
@@ -54,6 +54,8 @@ On every restart or continuation:
 - Latest broad Core closure: FWQ-0064, 833 passed/1 skipped, all hard checks/Golden Path passing, YELLOW pre-existing findings.
 
 ## Execution log
+
+- 2026-09-09: FW-HARNESS-011 accepted at `a6f60e429d43a0e6df44ed91e7156f5fe0e81ebd`. Harness model selection now validates exact existing registry decisions binding tenant/task/agent/worker/provider/model/deployment/version/approval/role/data/tools/context/token/cost/reliability/Evidence. Unapproved, stale, substituted, expanded, or silent fallback decisions deny; fallback requires a separately admitted ordered equivalent with unchanged task/data/tool/context/budget facts. No router, registry, provider connection, or deployment authority was added. Focused 135 passed; exact Claude APPROVE/LOW with no blockers/missing tests; full 1063 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with unchanged YELLOW findings. FW-HARNESS-012 Monitor → Repair → Review is next.
 
 - 2026-09-09: FW-HARNESS-010 accepted at `0b699536951464a085bd0beacd6b38a64929b38c`. Harness work now validates exact existing authority decisions binding tenant/task/agent/worker/provider/model/capability/resource/operation/token budget/policy/lease expiry/Evidence/ticket/safety state. Mutation requires a code-writing role and consumed Action Ticket; read-only work cannot consume one. Scope, substitution, replay, stale, missing-Evidence, budget, and safety violations deny. The adapter issues and stores no authority. Focused 145 passed; exact Claude APPROVE/LOW with no blockers/missing tests; full 1045 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with unchanged YELLOW findings. FW-HARNESS-011 model admission is next.
 

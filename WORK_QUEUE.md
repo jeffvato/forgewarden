@@ -62,9 +62,28 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 - Blocking reason: the cached Azure CLI identity is present, but Entra security defaults require an interactive management-scope login before resource/deployment and credit-protection evidence can be inspected without keys.
 - Completion evidence: exact candidate `05843269712abd1952a90c1f1aac96c2b3209eaf`; focused 29 passed; Claude APPROVE/LOW with no blockers/missing tests; combined full 968 passed/1 skipped and integrity hard checks/4 Golden Paths pass with unchanged YELLOW findings. Live Azure activation remains safely disabled pending interactive Entra login and credit/deployment verification. Evidence: `docs/fw-harness-007-claude-review.json`, `docs/fw-harness-004-007-integrity.json`.
 
+### FWQ-0077 — Harness Monitor → Repair → Review governance
+- Requirement: FW-HARNESS-012 anomaly and recovery governance
+- State: READY
+- Priority: P0
+- Dependencies: FWQ-0076
+- Approval: bounded monitoring and recovery classification are approved by the FW-HARNESS master requirement; repair execution remains subject to existing task/authority/ticket gates.
+- Description: Deterministically classify harness anomalies and produce bounded monitor, repair-request, and recovery-review records for stuck work, retry/resource spikes, test degradation, file scope, privilege, provider/model substitution, and Evidence integrity failures.
+- Target path: swarm/harness_recovery.py
+- Allowed paths: swarm/harness_recovery.py, tests/test_harness_recovery.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_harness_recovery.py tests/test_autonomous_loop.py tests/test_harness_authority.py tests/test_harness_evidence.py tests/test_harness_models.py
+- Acceptance criteria:
+  - monitor input and classification are deterministic, bounded, tenant/task/worker/model bound, and Evidence-first;
+  - repair output is an authority-free request for an existing approved bounded task, never an executed action;
+  - recovery review binds exact repair attempt, validation, reviewer, checkpoint/rollback, and final status;
+  - repeated failures, budget exhaustion, scope/privilege anomalies, Evidence failure, and kill-switch state stop or escalate without silent authority expansion;
+  - no process restart, filesystem rollback, provider connection, credential, deployment, remediation, or response authority is added.
+- Expected validation: focused adversarial Linux proof, exact Claude review, then full suite/integrity once.
+- Security considerations: monitor/recovery records are untrusted observations until deterministic validation and canonical Evidence succeed.
+
 ### FWQ-0076 — Harness Approved Model Registry admission
 - Requirement: FW-HARNESS-011 approved model binding
-- State: READY
+- State: DONE
 - Priority: P0
 - Dependencies: FWQ-0075
 - Approval: deterministic Model Broker/Approved Model Registry integration is approved by the FW-HARNESS master requirement; no new provider, model, route, or credential activation is approved.
@@ -80,6 +99,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no provider connection, credential resolution, model registration, network transport, deployment, or response authority is added.
 - Expected validation: focused adversarial Linux proof, exact Claude review, then full suite/integrity once.
 - Security considerations: model availability and confidence never grant authority or permit silent substitution.
+- Completion evidence: exact candidate `a6f60e429d43a0e6df44ed91e7156f5fe0e81ebd`; focused 135 passed; exact Claude APPROVE/LOW with no blockers/missing tests; full 1063 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with unchanged YELLOW findings. Evidence: `docs/fw-harness-011-claude-review.json`, `docs/fw-harness-011-integrity-full.json`.
 
 ### FWQ-0075 — Harness capability and Action Ticket admission
 - Requirement: FW-HARNESS-010 bounded execution authority

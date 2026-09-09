@@ -1,0 +1,33 @@
+{
+  "adjudication": null,
+  "candidate_commit": "a6f60e429d43a0e6df44ed91e7156f5fe0e81ebd",
+  "deployment": "DISABLED",
+  "job_id": "phase2a-0076aabbccddeeff00112233",
+  "kill_switch": "ENGAGED",
+  "mutation_allowed": false,
+  "reviews": [
+    {
+      "provider": "CLAUDE",
+      "result": {
+        "blocking_findings": [],
+        "job_id": "phase2a-0076aabbccddeeff00112233",
+        "non_blocking_notes": [
+          "Patch introduces 232 lines of new code with 17 explicit test cases covering all validation paths",
+          "Registry decision binding enforces all required dimensions: tenant/task/agent/worker/provider/model/deployment/version/approval/role/data/tools/context/token/cost/reliability/Evidence",
+          "Denial enforcement verified for stale, unapproved, substituted, and expanded decisions",
+          "Fallback mechanism properly constrained: requires prior admission, enforces ordering by rank, validates equivalence of stable fields while requiring different provider/model pair",
+          "Deployment authority hardcoded to DISABLED; no provider connection, credential handling, or network calls",
+          "Regex patterns (_ID, _REF) provide strict boundary validation on identifiers and references"
+        ],
+        "proposed_rules": [],
+        "reasoning_summary": "The commit implements exact Approved Model Registry admission for FW-HARNESS-011 workers. The implementation is a pure validation function that accepts an external registry decision via callable, validates all bindings (tenant through Evidence), and denies substitution/expansion/staleness/unapproval. Fallback models are permitted only when separately admitted with matching stable fields and explicit provider/model equivalence enforcement. The patch is narrow (new files only, no existing code modifications), deterministic (pure validation, no side effects), and comprehensive in testing (17 explicit test cases covering substitution, budget expansion, approval denial, staleness, equivalence violation, and resolver failure). No blocking findings detected against stated requirements.",
+        "reviewed_commit": "a6f60e429d43a0e6df44ed91e7156f5fe0e81ebd",
+        "risk": "LOW",
+        "tests_missing": [],
+        "verdict": "APPROVE"
+      },
+      "state": "APPROVED"
+    }
+  ],
+  "state": "APPROVED"
+}
