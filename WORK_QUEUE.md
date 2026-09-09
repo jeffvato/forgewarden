@@ -20,6 +20,26 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 
 Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical implementation is not new work. FWQ-0008 VALIDATED preserves a provenance caveat, not a request to rebuild or automatically repeat review. FWQ-0012–0016 are reconciled DONE from existing implementation and recorded proof.
 
+### FW-RANSOM-01 — Bounded ransomware activity evaluator
+- Requirement: FW-RANSOM deterministic detection over canonical endpoint fixtures
+- State: IN_PROGRESS
+- Priority: P0
+- Dependencies: completed NormalizedEventStore and FW-ENDPOINT fixture controls
+- Approval: Jeff explicitly activated FW-RANSOM first under D-022.
+- Description: Evaluate a bounded caller-supplied tenant/device event window for exact ransomware activity signals, write canonical Evidence before returning, warn for every finding, and recommend isolation only for high-confidence combinations without executing a response.
+- Target path: swarm/ransomware.py
+- Allowed paths: swarm/ransomware.py, tests/test_ransomware.py, WORK_QUEUE.md, SWARM_STATUS.md, DECISIONS.md
+- Test command: python3 -m pytest -q tests/test_ransomware.py
+- Acceptance criteria:
+  - deterministic results independent of input order;
+  - strict tenant/device binding, duplicate rejection, bounded event count and time window;
+  - exact normalized operation/indicator tokens only;
+  - Evidence written before any result is returned and Evidence failure denies the result;
+  - every finding recommends WARN; only HIGH may additionally recommend isolation;
+  - mode remains DRY_RUN/DETECT_ONLY with deployment disabled and no live response authority.
+- Expected validation: one focused Linux proof, exact Claude review, then one full suite/integrity gate.
+- Security considerations: observations are untrusted caller-supplied data; recommendations are non-authoritative and cannot execute containment.
+
 ### FWQ-0001 — Supervisor persistent-state bootstrap
 - Requirement: Core supervisor/control-plane
 - State: DONE

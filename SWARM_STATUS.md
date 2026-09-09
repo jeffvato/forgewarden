@@ -2,9 +2,9 @@
 
 ## Current state
 
-- Active phase: ForgeWarden Core
-- Current focus: completed bounded Core fixes; wait for genuinely new authorized work
-- Next task: none currently READY; do not derive a placeholder or reopen completed implementation.
+- Active phase: FW-RANSOM (then FW-MCP, FW-BME, FW-SOC under D-022)
+- Current focus: FW-RANSOM-01 bounded ransomware activity evaluation
+- Next task: complete FW-RANSOM-01 validation and exact Claude review, then continue the D-022 sequence.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -38,8 +38,8 @@ On every restart or continuation:
 - Claude review: bb185c3be81c41df55a58adb0bddde1471573ce8 APPROVE/LOW, no blockers or missing tests
 - Gemini review: disabled and not required under D-020
 - Unresolved findings: none for FWQ-0063/0064; historical caveats remain in the completion audit
-- Blocker: no executable READY work currently remains; broader live/response authority stays disabled
-- Next action: wait for a concrete authorized new behavior/defect; no unchanged validation or successor population
+- Blocker: none for the bounded FW-RANSOM-01 fixture evaluator; broader live/response authority stays disabled
+- Next action: validate and review FW-RANSOM-01 without reopening completed Core work
 
 - Completion inventory: `docs/completion-audit-2026-09-09.md` (baseline `0afcbdd`).
 - FWQ-0008 implementation and binding hardening exist; VALIDATED retains a historical provenance caveat, not an implementation assignment. FWQ-0009 is recorded accepted and unchanged at source/test level from its reviewed candidate.
