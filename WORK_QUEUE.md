@@ -20,6 +20,25 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 
 Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical implementation is not new work. FWQ-0008 VALIDATED preserves a provenance caveat, not a request to rebuild or automatically repeat review. FWQ-0012–0016 are reconciled DONE from existing implementation and recorded proof.
 
+### FWQ-0072 — Claude structured-review terminal turn
+- Requirement: FW-HARNESS reviewer availability repair
+- State: REVIEW
+- Priority: P0
+- Dependencies: FWQ-0067
+- Approval: bounded reliability repair required by repeated exact-review verifier exhaustion.
+- Description: Allow one additional bounded Claude structured-output turn so a permitted read/tool request can reach its terminal schema response without changing tools, permissions, timeout, model, or acceptance rules.
+- Target path: swarm/claude_verifier.py
+- Allowed paths: swarm/claude_verifier.py, tests/test_claude_verifier.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_claude_verifier.py tests/test_review_runner.py
+- Acceptance criteria:
+  - maximum turns increases only from two to three;
+  - tool-free mode remains tool-free and oversized mode remains Read-only;
+  - exact job/SHA/schema validation, snapshot isolation, timeout, and no-authority boundaries remain unchanged;
+  - previously pending exact candidates receive at most one retry after repair;
+  - no shell, Git, MCP, edit, browser, deployment, or network tool is granted to Claude.
+- Expected validation: focused Linux proof and exact Claude review through the repaired bounded path.
+- Security considerations: the extra terminal turn does not add a capability or relax acceptance.
+
 ### FWQ-0071 — Azure Foundry exact-commit review adapter
 - Requirement: FW-HARNESS-007 Azure independent review
 - State: BLOCKED

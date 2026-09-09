@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: FW-HARNESS-007 Azure Foundry independent review adapter; FW-HARNESS-004 remains exact-review pending
-- Next task: finish deterministic Azure adapter validation, then perform interactive Entra/resource/credit verification before one live exact-commit review.
+- Current focus: FWQ-0072 bounded Claude verifier availability repair; Azure and worker-interface exact reviews remain pending
+- Next task: validate the three-turn structured-review bound and retry each pending exact candidate at most once.
 - Harness role: permanent ForgeWarden Core subsystem and default controller for ForgeWarden's own development; one governed architecture serves both roles under D-023.
 - Worker transport direction: registered local CLIs and explicitly approved API-backed workers; API keys are resolved only through FW-KEYS secret handles inside trusted adapters and never enter model context or lifecycle evidence.
 - Provider authentication direction: deterministic OpenAI, Anthropic, and Google/Gemini profiles with provider-specific official OAuth where available and approved API-key classes otherwise; Gemini CLI is registered as `agy` for read-only roles, FW-ID owns delegated identity, and FW-KEYS owns all credential material.
@@ -34,17 +34,17 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FWQ-0071
-- Starting commit: 005afed5525a5308a66c3eb387ef2a49e81724df
+- Task ID: FWQ-0072
+- Starting commit: 05843269712abd1952a90c1f1aac96c2b3209eaf
 - Candidate commit: pending exact commit creation
 - Accepted commit: none
-- Files changed: swarm/azure_foundry_adapter.py, swarm/review_runner.py, tests/test_azure_foundry_adapter.py, tests/test_review_runner.py, docs/azure-foundry-reviewer.md, DECISIONS.md, WORK_QUEUE.md, SWARM_STATUS.md
-- Deterministic validation: focused 29 passed; git diff --check passed; live proof pending credit-safe Azure configuration
-- Claude review: FW-HARNESS-007 candidate pending; FW-HARNESS-004 exact review remains deferred after bounded verifier exhaustion
+- Files changed: swarm/claude_verifier.py, tests/test_claude_verifier.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Deterministic validation: focused 18 passed; git diff --check passed
+- Claude review: pending exact verifier-repair review; FW-HARNESS-004/007 exact reviews remain pending
 - Gemini review: disabled and not required under D-020
 - Unresolved findings: none for bounded FW-RANSOM/FW-MCP or FW-BME-01/02; historical caveats and pre-existing YELLOW findings remain
 - Blocker: interactive Entra login is required to inspect Azure resource/deployment and credit protection; no live call is allowed before cost evidence passes
-- Next action: create the FWQ-0071 candidate, complete interactive Azure login, verify credit-only protection and deployment, then run one bounded exact review
+- Next action: review the FWQ-0072 verifier repair, then retry the pending exact worker and Azure candidates once
 
 - Completion inventory: `docs/completion-audit-2026-09-09.md` (baseline `0afcbdd`).
 - FWQ-0008 implementation and binding hardening exist; VALIDATED retains a historical provenance caveat, not an implementation assignment. FWQ-0009 is recorded accepted and unchanged at source/test level from its reviewed candidate.
@@ -54,6 +54,8 @@ On every restart or continuation:
 - Latest broad Core closure: FWQ-0064, 833 passed/1 skipped, all hard checks/Golden Path passing, YELLOW pre-existing findings.
 
 ## Execution log
+
+- 2026-09-09: Two Claude modes consistently reached a third structured-output/tool turn while configured for a two-turn maximum. FWQ-0072 raises only the turn ceiling to three; permissions, tools, timeout, exact binding, schema validation, and acceptance remain unchanged. This bounded repair enables one retry of the pending worker/Azure candidates without a hot loop.
 
 - 2026-09-09: Jeff explicitly activated Azure Foundry for independent code checking using startup credits and prohibited unexpected billing. FW-HARNESS-007 extends the existing exact-commit review runner with transient Entra authentication and a fail-closed atomic credit guard. Azure resource discovery is blocked pending interactive Entra login; no resource, key, deployment, or paid call has been created.
 

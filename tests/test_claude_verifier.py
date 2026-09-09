@@ -9,6 +9,10 @@ import pytest
 from swarm import claude_verifier
 
 
+def test_structured_verifier_has_one_bounded_terminal_turn():
+    assert claude_verifier.MAX_TURNS == 3
+
+
 def test_fake_cli_is_commit_bound_and_read_only():
     job = "phase2a-" + "a" * 24
     commit = "b" * 40
