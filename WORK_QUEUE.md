@@ -62,9 +62,28 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 - Blocking reason: the cached Azure CLI identity is present, but Entra security defaults require an interactive management-scope login before resource/deployment and credit-protection evidence can be inspected without keys.
 - Completion evidence: exact candidate `05843269712abd1952a90c1f1aac96c2b3209eaf`; focused 29 passed; Claude APPROVE/LOW with no blockers/missing tests; combined full 968 passed/1 skipped and integrity hard checks/4 Golden Paths pass with unchanged YELLOW findings. Live Azure activation remains safely disabled pending interactive Entra login and credit/deployment verification. Evidence: `docs/fw-harness-007-claude-review.json`, `docs/fw-harness-004-007-integrity.json`.
 
+### FWQ-0074 — Harness lifecycle Evidence integration
+- Requirement: FW-HARNESS-009 canonical lifecycle evidence
+- State: READY
+- Priority: P0
+- Dependencies: FWQ-0073
+- Approval: Evidence integration is approved by the FW-HARNESS master requirement; it must consume FW-EVID and may not create a competing log authority.
+- Description: Map bounded harness task, context, worker, validation, review, acceptance, denial, checkpoint, and recovery lifecycle events into the canonical Evidence boundary with exact identity and commit references.
+- Target path: swarm/harness_evidence.py
+- Allowed paths: swarm/harness_evidence.py, tests/test_harness_evidence.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_harness_evidence.py tests/test_harness_task.py tests/test_harness_context.py tests/test_harness_worker.py
+- Acceptance criteria:
+  - canonical evidence binds tenant, task, requirement, actor/worker/model, context hash, authorized capabilities, attempted/denied actions, files, tests, reviewer findings, policy/acceptance decision, timestamps, commit, and checkpoint references;
+  - evidence consumes the existing FW-EVID sink and does not own signing, storage, deletion, mutation, or trust decisions;
+  - malformed, secret-bearing, cross-tenant, mismatched, excessive, or mutable lifecycle input denies before Evidence emission;
+  - Evidence failure denies the lifecycle transition without partial success or authority expansion;
+  - no provider, credential, deployment, remediation, or response authority is added.
+- Expected validation: focused adversarial Linux proof, exact Claude review, then full suite/integrity once.
+- Security considerations: model output and operational logs remain untrusted; only validated bounded facts enter canonical Evidence.
+
 ### FWQ-0073 — Harness Mission Control projection
 - Requirement: FW-HARNESS-008 operator visibility
-- State: READY
+- State: DONE
 - Priority: P0
 - Dependencies: FWQ-0070
 - Approval: read-only Mission Control integration is approved by the FW-HARNESS master requirement; new control authority or deployment remains prohibited.
@@ -79,6 +98,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - view is deterministic, bounded, read-only, and grants no task, Git, credential, policy, approval, deployment, or kill-switch authority.
 - Expected validation: focused adversarial Linux proof, exact Claude review, then full suite/integrity once.
 - Security considerations: raw logs, prompts, credentials, and model output are not operator-state authority and are excluded from the projection.
+- Completion evidence: exact candidate `5fd266cce1780061a39a2bd6bc465e5cfec043d9`; focused 119 passed; exact Claude APPROVE/LOW with no blockers/missing tests; full 1007 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with unchanged YELLOW findings. Evidence: `docs/fw-harness-008-claude-review.json`, `docs/fw-harness-008-integrity-full.json`.
 
 ### FWQ-0070 — Provider OAuth and credential-broker contract
 - Requirement: FW-HARNESS-006 provider authentication
