@@ -1,0 +1,28 @@
+{
+  "adjudication": null,
+  "candidate_commit": "ed8b0a915b9ff8f1a3c85507066595afd79b171d",
+  "deployment": "DISABLED",
+  "job_id": "phase2a-hhhhhhhhhhhhhhhhhhhhhhhh",
+  "kill_switch": "ENGAGED",
+  "mutation_allowed": false,
+  "reviews": [{
+    "provider": "CLAUDE",
+    "result": {
+      "blocking_findings": [],
+      "job_id": "phase2a-hhhhhhhhhhhhhhhhhhhhhhhh",
+      "non_blocking_notes": [
+        "Memory management: _admissions, _pending_result_ids, and _completed_result_ids dictionaries/sets grow with admission count but remain bounded by MAX_ADMISSIONS_PER_SCOPE constraint per scope.",
+        "JSON canonical form uses ensure_ascii=False to preserve UTF-8; appropriate for untrusted international data.",
+        "SHA256 hexdigest stored in Evidence for integrity verification; sufficient for this use case."
+      ],
+      "proposed_rules": [],
+      "reasoning_summary": "Commit ed8b0a915b9ff8f1a3c85507066595afd79b171d implements FW-MCP-03 bounded untrusted MCP result envelopes with comprehensive security controls. MCPToolResultEnvelope is an immutable frozen dataclass marked UNTRUSTED_DATA, DRY_RUN mode, ENVELOPE_ONLY action. The wrap_result() method enforces exact admission binding (identity check), single-use completion (pending/completed tracking prevents replay and concurrent double-completion), post-admission revocation (reconstructs grant and validates against revoked set), and bounded validation: max depth 8, collection items 128, string bytes 4096, total bytes 64KB, with cycle detection and non-finite rejection. Canonical JSON serialization (sorted keys, consistent separators) enables deterministic hashing. Evidence audit records hash/size/metadata only—never interprets or logs payload content. Rollback on Evidence write failure preserves single-use invariant. Reentrancy safety via RLock and state machine prevents nested calls from double-completing the same admission. No tool execution, interpretation, credentials, filesystem, shell, transport, or deployment authority present. Test suite (7 new tests, 130 total passing) validates immutability, canonicalization, exact admission, single-use, revocation, reentrancy, and all bounds. Deterministic: SHA256 output, no environment/RNG dependencies. Patch is narrow, focused, and has no security gaps against stated requirements.",
+      "reviewed_commit": "ed8b0a915b9ff8f1a3c85507066595afd79b171d",
+      "risk": "LOW",
+      "tests_missing": [],
+      "verdict": "APPROVE"
+    },
+    "state": "APPROVED"
+  }],
+  "state": "APPROVED"
+}
