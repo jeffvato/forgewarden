@@ -8,6 +8,8 @@ Repository checkpoint inspected: `09442959fe64c3c33e01e23d1e60c2e32df13ba8`
 
 ForgeWarden already contains the foundation of the permanent governed engineering harness. The existing trusted Python orchestration path must remain canonical. FW-HARNESS formalizes and incrementally consolidates it; it does not authorize a second controller, a second evidence system, production deployment, or broader model authority.
 
+FW-HARNESS permanently lives inside ForgeWarden Core. It also governs ForgeWarden's own coding work from its activation forward, replacing repeated manual continuation with persisted, policy-controlled development. This is self-hosting through the same trusted controller, not a parallel development project. During incremental implementation, existing harness components remain the active governed path until each canonical FW-HARNESS interface replaces its legacy representation with validated compatibility.
+
 The current implementation can persist a bounded queue, recover interrupted leases, select dependency-complete work, dispatch a scoped Codex worker, inspect and commit bounded changes through trusted Git code, run deterministic tests, obtain exact-commit Claude review, create bounded repair successors, checkpoint progress, and continue. The largest gap is not absence of orchestration. It is fragmentation between three task/state representations and incomplete coverage of the permanent schema, budgets, context evidence, approval classes, worktree lifecycle, and Mission Control status.
 
 ## Existing canonical components

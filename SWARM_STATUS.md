@@ -5,6 +5,7 @@
 - Active phase: ForgeWarden Core
 - Current focus: FW-HARNESS-002 accepted; FW-HARNESS-003 targeted context and budgets is next
 - Next task: implement FWQ-0067 as deterministic data and accounting controls without model invocation.
+- Harness role: permanent ForgeWarden Core subsystem and default controller for ForgeWarden's own development; one governed architecture serves both roles under D-023.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -49,6 +50,8 @@ On every restart or continuation:
 - Latest broad Core closure: FWQ-0064, 833 passed/1 skipped, all hard checks/Golden Path passing, YELLOW pre-existing findings.
 
 ## Execution log
+
+- 2026-09-09: Jeff clarified FW-HARNESS's permanent dual role: it lives within ForgeWarden Core and governs ForgeWarden's own coding from this point forward. The self-hosted development path remains deterministic and bounded; AI owns no task-state, policy, validation, review acceptance, Git, deployment, evidence, approval, budget, or kill-switch authority.
 
 - 2026-09-09: FW-HARNESS-002 accepted at `78fdf188a452b53c20895c2d024b265fc51621c0`. A versioned immutable task record now separates task and requirement IDs, defines the required lifecycle with deterministic fail-closed transitions, validates bounded metadata/budgets/paths/timestamps, strictly round-trips persistence, and explicitly adapts legacy task/runtime records. Focused 96 passed; exact Claude APPROVE/LOW; full 929 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with unchanged `tzdata` and roadmap-owner YELLOW findings. FW-HARNESS-003 is next.
 
