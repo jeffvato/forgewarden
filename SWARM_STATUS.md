@@ -4,7 +4,7 @@
 
 - Active phase: ForgeWarden Core
 - Current focus: Core supervisor and deterministic queue reconciliation
-- Current task: FWQ-0016 — Deterministic Core continuation admission validation (accepted); next FWQ-0017.
+- Current task: FWQ-0017 — Deterministic Core successor queue declaration (accepted); next FWQ-0018.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -43,6 +43,8 @@ On every restart or continuation:
 - Platform delivery definition: Windows and Linux are the first endpoint targets; macOS, Android, and iOS are later platform-native releases. Detailed scope and required proof are in `docs/fw-av-windows-linux-delivery-plan.md`.
 
 ## Execution log
+
+- 2026-09-09: FWQ-0017 accepted at `fba27b5b32ba3bc05dcc6426c870d8d88ed7f11f`: queue metadata records FWQ-0018 as the single bounded READY Core successor while keeping completed, blocked, dependency-incomplete, and parked work ineligible. Exact Claude review returned APPROVE/LOW with no missing tests; no product validation was rerun for this documentation-only reconciliation.
 
 - 2026-09-09: FWQ-0016 accepted at `2999e3e87469ef08d68171f310cb223e86a42cd5`: continuation admission requires exactly one validated READY successor with complete dependencies, binds the consumed transition to the accepted Core task/commit/phase, and returns a redacted non-authoritative decision. Focused proof passed (18 tests); exact Claude review returned APPROVE/LOW with no missing tests. Full suite and integrity gate are pending once for milestone closure.
 - 2026-09-09: FWQ-0016 milestone closure recorded at `6b6ab2520565b08e12259035f439724c65cac797`: full Linux suite passed (812 passed, 8 skipped); integrity gate passed all hard checks and Golden Path with YELLOW limited to the pre-existing missing `tzdata` dependency and roadmap-only identity/SOC/compliance owners. Checkpoint was pushed; FWQ-0017 is next.
