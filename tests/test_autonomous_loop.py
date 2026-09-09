@@ -100,6 +100,74 @@ def test_recover_restart_and_retry_then_continue(tmp_path: Path):
     assert any("stale_lease_recovered" in line for line in (tmp_path / "execution-log.jsonl").read_text().splitlines())
 
 
+def test_unexpired_persisted_lease_must_match_controller_binding(tmp_path: Path):
+    task = TaskSpec("FWQ-0001", "Core lease", "bound lease", allowed_paths=("swarm/a.py",))
+    runner = AutonomousOrchestrator(tmp_path / "run.json", tmp_path / "repo", (task,))
+    state = runner._initial()
+    state["active_task"] = task.task_id
+    state["queued_tasks"][task.task_id]["state"] = "IN_PROGRESS"
+    state["worker_lease"] = asdict(WorkerLease(
+        "a" * 32, task.task_id, runner.session_id, str(runner.repository), task.allowed_paths,
+        "IMPLEMENT_AND_TEST", (), time.time() + 60, controller_digest="tampered",
+    ))
+    runner._write(state)
+
+    with pytest.raises(Exception, match="controller binding"):
+        runner.status()
+
+
+def test_consumed_lease_cannot_be_replayed_after_restart(tmp_path: Path):
+    task = TaskSpec("FWQ-0001", "Core lease", "no replay")
+    runner = AutonomousOrchestrator(tmp_path / "run.json", tmp_path / "repo", (task,))
+    lease = WorkerLease(
+        "a" * 32, task.task_id, runner.session_id, str(runner.repository), (),
+        "IMPLEMENT_AND_TEST", ("approved deterministic test commands",), time.time() + 60,
+        controller_digest=runner._controller_digest(task),
+    )
+    state = runner._initial()
+    state["active_task"] = task.task_id
+    state["queued_tasks"][task.task_id]["state"] = "IN_PROGRESS"
+    state["worker_lease"] = asdict(lease)
+    state["consumed_lease_ids"] = [lease.lease_id]
+    runner._write(state)
+
+    with pytest.raises(Exception, match="replays a consumed"):
+        runner.status()
+
+
+def test_supervisor_can_stop_between_worker_and_validation(tmp_path: Path):
+    task = TaskSpec("FWQ-0001", "Core stop", "safe interruption")
+    runner = AutonomousOrchestrator(tmp_path / "run.json", tmp_path / "repo", (task,))
+    checks = iter((True, True, False))
+    dispatched = []
+    validation_called = []
+
+    state = runner.run(
+        dispatch=lambda current, lease: (dispatched.append(True) or WorkerResult(SHA_A, (), ("pytest",))),
+        validate=lambda current, result: (validation_called.append(True) or True),
+        commit=lambda current, result: SHA_A,
+        review=lambda current, sha, lease: ("APPROVED",),
+        authorized=lambda: next(checks),
+    )
+
+    assert dispatched == [True]
+    assert validation_called == []
+    assert state["queued_tasks"][task.task_id]["state"] == "READY"
+    assert state["stop_reason"] == "SUPERVISOR_TERMINATED"
+    assert any("task_safely_interrupted" in line for line in (tmp_path / "execution-log.jsonl").read_text().splitlines())
+
+
+def test_audit_evidence_refuses_symlink_target(tmp_path: Path):
+    target = tmp_path / "outside.jsonl"
+    audit = tmp_path / "audit.jsonl"
+    audit.symlink_to(target)
+    runner = AutonomousOrchestrator(tmp_path / "run.json", tmp_path / "repo", _tasks(), audit_path=audit)
+
+    with pytest.raises(Exception, match="unsafe audit evidence path"):
+        runner.status()
+    assert not target.exists()
+
+
 def test_orphaned_in_progress_claim_is_recovered_without_a_lease(tmp_path: Path):
     task = TaskSpec("FWQ-0001", "Core recovery", "recover orphan")
     runner = AutonomousOrchestrator(tmp_path / "run.json", tmp_path / "repo", (task,))

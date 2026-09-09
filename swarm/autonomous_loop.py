@@ -5,6 +5,7 @@ operation described by the lease and return evidence to this controller.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -12,7 +13,7 @@ import subprocess
 import tempfile
 import time
 import uuid
-from dataclasses import asdict, dataclass, replace
+from dataclasses import asdict, dataclass, fields, replace
 from pathlib import Path
 from typing import Any, Callable, Mapping
 
@@ -39,6 +40,10 @@ class AutonomousLoopError(RuntimeError):
 
 class ReviewUnavailable(AutonomousLoopError):
     """The candidate is held for review because a required reviewer is unavailable."""
+
+
+class SupervisorInterrupted(AutonomousLoopError):
+    """The trusted supervisor stopped work at a durable stage boundary."""
 
 
 @dataclass(frozen=True)
@@ -295,6 +300,7 @@ class WorkerLease:
     deployment: str = "DISABLED"
     dry_run: bool = True
     authority_expansion: bool = False
+    controller_digest: str = ""
 
 
 @dataclass(frozen=True)
@@ -339,6 +345,60 @@ class AutonomousOrchestrator:
                 raise AutonomousLoopError(f"unknown dependency for {task.task_id}")
         self.session_id = session_id or uuid.uuid4().hex
 
+    def _controller_digest(self, task: TaskSpec) -> str:
+        payload = {
+            "session_id": self.session_id,
+            "task_id": task.task_id,
+            "worker_type": task.worker_type,
+            "repository": str(self.repository),
+            "allowed_paths": list(task.allowed_paths),
+            "dry_run": True,
+            "deployment": "DISABLED",
+        }
+        return hashlib.sha256(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+
+    def _validate_lease(self, lease: Mapping[str, Any], task: TaskSpec) -> None:
+        required = {field.name for field in fields(WorkerLease)}
+        if set(lease) != required:
+            raise AutonomousLoopError("persisted worker lease schema is invalid")
+        try:
+            normalized = dict(lease)
+            normalized["allowed_paths"] = tuple(normalized.get("allowed_paths", ()))
+            normalized["commands"] = tuple(normalized.get("commands", ()))
+            restored = WorkerLease(**normalized)
+        except TypeError as exc:
+            raise AutonomousLoopError("persisted worker lease schema is invalid") from exc
+        if (
+            not re.fullmatch(r"[0-9a-f]{32}", restored.lease_id)
+            or
+            restored.task_id != task.task_id
+            or restored.session_id != self.session_id
+            or restored.repository != str(self.repository)
+            or restored.allowed_paths != task.allowed_paths
+            or restored.operation != "IMPLEMENT_AND_TEST"
+            or restored.commands != ("approved deterministic test commands",)
+            or restored.deployment != "DISABLED"
+            or restored.dry_run is not True
+            or restored.authority_expansion is not False
+            or restored.controller_digest != self._controller_digest(task)
+        ):
+            raise AutonomousLoopError("persisted worker lease violates controller binding")
+
+    def _stage(self, state: dict[str, Any], task: TaskSpec, name: str, authorized: Callable[[], bool] | None) -> None:
+        self._enforce_safety()
+        if authorized is not None and not authorized():
+            raise SupervisorInterrupted(f"supervisor stopped work before {name}")
+        lease = state.get("worker_lease")
+        if not isinstance(lease, Mapping):
+            raise AutonomousLoopError("active worker lease is missing")
+        self._validate_lease(lease, task)
+        if float(lease["expires_at"]) <= _now():
+            raise SupervisorInterrupted(f"worker lease expired before {name}")
+        state["execution_stage"] = name
+        state["timestamps"]["updated_at"] = _now()
+        self._write(state)
+        self._log("stage_checkpointed", task_id=task.task_id, lease_id=lease["lease_id"], stage=name)
+
     def _write(self, payload: Mapping[str, Any]) -> None:
         path = self.state_path
         if not path.is_absolute() or any(parent.is_symlink() for parent in (path.parent, *path.parent.parents)):
@@ -358,6 +418,8 @@ class AutonomousOrchestrator:
             temporary.unlink(missing_ok=True)
 
     def _log(self, event: str, **data: Any) -> None:
+        if not self.audit_path.is_absolute() or self.audit_path.is_symlink() or any(parent.is_symlink() for parent in (self.audit_path.parent, *self.audit_path.parent.parents)):
+            raise AutonomousLoopError("unsafe audit evidence path")
         self.audit_path.parent.mkdir(parents=True, exist_ok=True)
         with self.audit_path.open("a", encoding="utf-8") as handle:
             handle.write(json.dumps({"timestamp": _now(), "session_id": self.session_id, "event": event, **data}, sort_keys=True) + "\n")
@@ -365,7 +427,7 @@ class AutonomousOrchestrator:
             os.fsync(handle.fileno())
 
     def _initial(self) -> dict[str, Any]:
-        return {"version": 1, "session_id": self.session_id, "phase": "ForgeWarden Core", "milestone": None, "current_work_package": None, "task_specs": {task_id: asdict(task) for task_id, task in self.tasks.items()}, "queued_tasks": {task_id: {"state": task.initial_state, "attempts": 0} for task_id, task in self.tasks.items()}, "active_task": None, "completed_tasks": [], "failed_tasks": [], "retry_count": {}, "worker_assigned": None, "worker_lease": None, "repository_head_before": None, "repository_head_after": None, "test_results": [], "reviewer_result": None, "acceptance_result": None, "unresolved_blockers": [], "next_action": "select next eligible task", "timestamps": {"created_at": _now(), "updated_at": _now()}, "stop_reason": None, "dry_run": True, "deployment": "DISABLED", "kill_switch": "ENGAGED"}
+        return {"version": 1, "session_id": self.session_id, "phase": "ForgeWarden Core", "milestone": None, "current_work_package": None, "task_specs": {task_id: asdict(task) for task_id, task in self.tasks.items()}, "queued_tasks": {task_id: {"state": task.initial_state, "attempts": 0} for task_id, task in self.tasks.items()}, "active_task": None, "completed_tasks": [], "failed_tasks": [], "retry_count": {}, "worker_assigned": None, "worker_lease": None, "consumed_lease_ids": [], "execution_stage": "idle", "repository_head_before": None, "repository_head_after": None, "test_results": [], "reviewer_result": None, "acceptance_result": None, "unresolved_blockers": [], "next_action": "select next eligible task", "timestamps": {"created_at": _now(), "updated_at": _now()}, "stop_reason": None, "dry_run": True, "deployment": "DISABLED", "kill_switch": "ENGAGED"}
 
     def _load(self) -> dict[str, Any]:
         if not self.state_path.exists():
@@ -421,6 +483,17 @@ class AutonomousOrchestrator:
         if state.get("session_id") != self.session_id and self.session_id:
             self.session_id = str(state["session_id"])
         self._recover_stale(state)
+        lease = state.get("worker_lease")
+        active_task = state.get("active_task")
+        if lease is not None:
+            if active_task not in self.tasks or not isinstance(lease, Mapping):
+                raise AutonomousLoopError("durable state has an invalid active worker lease")
+            self._validate_lease(lease, self.tasks[active_task])
+            consumed = state.setdefault("consumed_lease_ids", [])
+            if not isinstance(consumed, list) or any(not isinstance(value, str) or not re.fullmatch(r"[0-9a-f]{32}", value) for value in consumed) or len(consumed) > 1024:
+                raise AutonomousLoopError("durable consumed lease evidence is invalid")
+            if lease.get("lease_id") in consumed:
+                raise AutonomousLoopError("durable state replays a consumed worker lease")
         self._recover_orphaned(state)
         self._requeue_authoritative_failures(state)
         return state
@@ -553,25 +626,30 @@ class AutonomousOrchestrator:
                 break
             record = state["queued_tasks"][task.task_id]
             attempts = int(record.get("attempts", 0))
-            lease = WorkerLease(uuid.uuid4().hex, task.task_id, self.session_id, str(self.repository), task.allowed_paths, "IMPLEMENT_AND_TEST", ("approved deterministic test commands",), _now() + self.lease_seconds)
+            lease = WorkerLease(uuid.uuid4().hex, task.task_id, self.session_id, str(self.repository), task.allowed_paths, "IMPLEMENT_AND_TEST", ("approved deterministic test commands",), _now() + self.lease_seconds, controller_digest=self._controller_digest(task))
             state.update({"active_task": task.task_id, "current_work_package": task.task_id, "worker_assigned": task.worker_type, "worker_lease": asdict(lease), "repository_head_before": state.get("repository_head_after"), "next_action": "dispatch bounded worker"})
             record["state"] = "IN_PROGRESS"
             state["timestamps"]["updated_at"] = _now()
             self._write(state); self._log("worker_dispatched", task_id=task.task_id, lease_id=lease.lease_id)
             try:
+                self._stage(state, task, "dispatch", authorized)
                 result = dispatch(task, lease)
+                self._stage(state, task, "worker_result", authorized)
                 if not isinstance(result, WorkerResult) or (result.candidate_commit is not None and not _SHA.fullmatch(result.candidate_commit)):
                     raise AutonomousLoopError("worker returned invalid candidate evidence")
                 if any(not file or Path(file).is_absolute() or ".." in Path(file).parts for file in result.changed_files):
                     raise AutonomousLoopError("worker returned an escaping changed path")
                 if task.allowed_paths and any(not any(file == allowed or file.startswith(allowed.rstrip("/") + "/") for allowed in task.allowed_paths) for file in result.changed_files):
                     raise AutonomousLoopError("worker changed a path outside its lease")
+                self._stage(state, task, "validation", authorized)
                 if not validate(task, result):
                     raise AutonomousLoopError("deterministic validation failed")
+                self._stage(state, task, "commit", authorized)
                 candidate = commit(task, result)
                 if not _SHA.fullmatch(candidate) or (result.candidate_commit is not None and candidate.lower() != result.candidate_commit.lower()):
                     raise AutonomousLoopError("trusted commit did not match worker candidate")
                 try:
+                    self._stage(state, task, "review", authorized)
                     review_payload = review(task, candidate, lease)
                 except ReviewUnavailable as exc:
                     task = replace(task, review_commit=candidate)
@@ -611,9 +689,15 @@ class AutonomousOrchestrator:
                     reviews = tuple(review(task, candidate, lease))
                 if not reviews_approved and any(item.upper() not in {"APPROVED", "APPROVE", "LOW"} for item in reviews):
                     raise AutonomousLoopError("review rejected candidate")
+                self._stage(state, task, "acceptance", authorized)
                 self._checkpoint(task, state, starting=state.get("repository_head_before") or candidate, candidate=candidate, accepted=candidate, validation=result.tests, reviews=reviews, next_action="select next eligible task")
                 record["state"] = "DONE"; state["completed_tasks"].append(task.task_id); state["repository_head_after"] = candidate; state["test_results"] = list(result.tests); state["reviewer_result"] = list(reviews); state["acceptance_result"] = "PASSED"
                 self._log("task_accepted", task_id=task.task_id, candidate_commit=candidate)
+            except SupervisorInterrupted as exc:
+                record["state"] = "READY"
+                state["stop_reason"] = "SUPERVISOR_TERMINATED"
+                state["next_action"] = "resume only after explicit authorization"
+                self._log("task_safely_interrupted", task_id=task.task_id, stage=state.get("execution_stage"), reason=str(exc)[:500])
             except Exception as exc:
                 record["attempts"] = attempts + 1; state["retry_count"][task.task_id] = attempts + 1
                 if attempts < task.retry_budget:
@@ -622,8 +706,14 @@ class AutonomousOrchestrator:
                     record["state"] = "FAILED"; state["failed_tasks"].append(task.task_id); state["unresolved_blockers"].append(f"{task.task_id}: {str(exc)[:500]}"); state["next_action"] = "continue with independent eligible work"
                 self._log("task_failed", task_id=task.task_id, error=str(exc)[:500], retry=attempts < task.retry_budget)
             finally:
-                state["active_task"] = None; state["worker_assigned"] = None; state["worker_lease"] = None; state["timestamps"]["updated_at"] = _now(); self._write(state)
+                if state.get("worker_lease"):
+                    consumed = state.setdefault("consumed_lease_ids", [])
+                    consumed.append(state["worker_lease"]["lease_id"])
+                    del consumed[:-1024]
+                state["active_task"] = None; state["worker_assigned"] = None; state["worker_lease"] = None; state["execution_stage"] = "idle"; state["timestamps"]["updated_at"] = _now(); self._write(state)
                 steps += 1
+            if state.get("stop_reason") == "SUPERVISOR_TERMINATED":
+                break
         if state.get("stop_reason") is None and max_steps is not None and steps >= max_steps:
             state["stop_reason"] = "STEP_BOUND_REACHED"; state["next_action"] = "resume durable run"
         state["timestamps"]["updated_at"] = _now(); self._write(state); self._log("run_checkpointed", stop_reason=state.get("stop_reason"), steps=steps)

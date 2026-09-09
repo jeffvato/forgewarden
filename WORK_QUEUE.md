@@ -90,8 +90,8 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 - Approval: architecture is approved under D-023; implementation awaits worker-interface prerequisites.
 - Description: Harden the single-controller, coding-worker, read-only-reviewer topology against crash, replay, stale lease, path escape, identity substitution, malformed output, resource exhaustion, and unsafe interruption using deterministic controls and adversarial fixtures.
 - Target path: swarm/autonomous_loop.py
-- Allowed paths: swarm/autonomous_loop.py, swarm/autonomous_adapters.py, swarm/harness_worker.py, tests/test_autonomous_loop.py, tests/test_autonomous_adapters.py, tests/test_harness_worker.py, WORK_QUEUE.md, SWARM_STATUS.md
-- Test command: python3 -m pytest -q tests/test_autonomous_loop.py tests/test_autonomous_adapters.py tests/test_harness_worker.py
+- Allowed paths: swarm/autonomous_loop.py, swarm/autonomous_adapters.py, swarm/harness_worker.py, tests/test_autonomous_loop.py, tests/test_harness_worker.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_autonomous_loop.py tests/test_harness_worker.py
 - Acceptance criteria:
   - exact controller/worker/reviewer identity and configuration binding;
   - atomic stage checkpoints and deterministic restart reconciliation;
