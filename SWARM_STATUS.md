@@ -4,7 +4,7 @@
 
 - Active phase: ForgeWarden Core
 - Current focus: Core supervisor and deterministic queue reconciliation
-- Current task: FWQ-0008 — Immutable accepted-work evidence bundle (blocked pending independent Gemini exact-commit review).
+- Current task: FWQ-0008 — Immutable accepted-work evidence bundle (pending Claude Code exact-commit review under D-020).
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -12,7 +12,7 @@
 - Confirmed product response policy: warn for every finding; quarantine only high-confidence trusted-content detections behind deterministic policy; clean/repair only as ticketed, approved, recoverable Core remediation.
 - Codex role: sole application-code writer
 - Claude role: architecture/requirements/adversarial reviewer
-- Gemini role: independent read-only exact-commit reviewer
+- Gemini role: disabled for the active workflow; no longer a required reviewer (D-020).
 
 ## Resume protocol
 
@@ -23,7 +23,7 @@ On every restart or continuation:
 3. Reconcile this status file with actual repository evidence.
 4. If a task was interrupted, resume from the last provably valid checkpoint rather than restarting the project.
 5. Otherwise claim the highest-priority READY task whose dependencies are complete.
-6. Run the full Codex → deterministic validation → Claude review → Gemini exact-commit review → Codex repair/revalidation cycle.
+6. Run the Codex → deterministic validation → Claude Code exact-commit review → Codex repair/revalidation cycle. Require validated APPROVE/LOW with no blocking findings or missing tests; do not invoke Gemini.
 7. After acceptance, checkpoint and immediately continue to the next READY task.
 
 ## Work-unit checkpoint
@@ -43,6 +43,8 @@ On every restart or continuation:
 - Platform delivery definition: Windows and Linux are the first endpoint targets; macOS, Android, and iOS are later platform-native releases. Detailed scope and required proof are in `docs/fw-av-windows-linux-delivery-plan.md`.
 
 ## Execution log
+
+- 2026-09-09: Jeff explicitly removed Gemini from the review requirement and directed checking through Claude Code (D-020). B-002 is resolved by this policy change, not by provider approval. FWQ-0008 remains in REVIEW; historical evidence is unchanged and no acceptance or validation is inferred.
 
 - 2026-09-09: Queue cleanup accepted at `d5be14dd8096ffc7870f23a10b54d535d7af1c52`: repetitive FWQ-0019 through FWQ-0062 placeholders were removed while substantive FWQ-0008/FWQ-0009 records were preserved. Claude exact review returned APPROVE/LOW with no missing tests. The large-patch verifier path was repaired and reviewed separately (`4a512da`), enabling bounded read-only inspection of oversized exact diffs. Next substantive work is FWQ-0008, blocked pending independent Gemini review.
 

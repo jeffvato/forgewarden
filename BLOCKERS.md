@@ -209,7 +209,7 @@ This file records only genuine blockers that require Customer Root authority, un
 - Resolution: Jeff supplied an exact Claude Co-Work read-only review for `07842a6`; the payload was schema-valid, exact-commit bound, APPROVE/LOW, with no missing tests or blocking findings. Deterministic focused proof, full suite, and integrity gate passed.
 - First resume action: none; FW-AV-48 is accepted and work proceeds to FW-AV-49.
 
-### B-002 — Independent Gemini review capacity unavailable
+### B-002 — Independent Gemini review capacity unavailable (resolved by D-020)
 
 - Related task/requirement: FWQ-0008 — Immutable accepted-work evidence bundle; D-004 and D-014 exact-commit review/evidence requirements
 - Exact condition: agy launches but either ignores the no-tools boundary and times out, or reports `Individual quota reached`; no valid Gemini payload has been returned for candidate `9feb4ee68d91c8e2936459228d31082c50b2655e`.
@@ -217,7 +217,8 @@ This file records only genuine blockers that require Customer Root authority, un
 - Required resource: a functioning Gemini/agy review capacity bound to the exact candidate.
 - Independent READY work: FWQ-0009 audit-event integrity reader.
 - Current candidate/checkpoint: `9feb4ee68d91c8e2936459228d31082c50b2655e` / FWQ-0008.
-- First resume action: obtain a valid Gemini payload for the exact candidate, validate its job ID and SHA, then resume FWQ-0008 acceptance.
+- Resolution (2026-09-09): Jeff explicitly removed Gemini from the requirement and directed checking through Claude Code. The preceding condition/resource entries are historical; no Gemini approval exists or is inferred.
+- First resume action: obtain exact Claude Code APPROVE/LOW with validated job ID/SHA, no blocking findings, and no missing tests; reconcile legitimate findings before FWQ-0008 acceptance.
 
 ## Resolved blockers
 

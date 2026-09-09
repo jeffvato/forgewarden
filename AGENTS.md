@@ -39,8 +39,8 @@ For each bounded work unit:
 4. Run applicable formatter, lint, type/static checks, unit/integration/security/invariant tests, secret/dependency checks, and repository-specific validation.
 5. Run the FW-INTEGRITY Product Integrity Gate and applicable Golden Paths; distinguish not-yet-proven from broken and record any RED/YELLOW findings.
 6. Produce one coherent candidate commit using the approved Git workflow and record its exact hash.
-7. Obtain Claude architecture/adversarial review of that exact candidate.
-8. Obtain Claude read-only review of that exact candidate. Gemini may be run as supplemental review when explicitly enabled, but is not required for the active Core plan.
+7. Obtain Claude Code architecture/adversarial read-only review of that exact candidate.
+8. Accept review only after exact job-ID/SHA and schema validation yields APPROVE/LOW with no blocking findings or missing tests. One qualifying Claude Code review satisfies the required reviewer gate; Gemini is not required and must not be invoked unless Jeff explicitly re-enables it.
 9. Codex repairs legitimate findings, strengthens regression tests, reruns validation, and presents a new exact candidate when needed.
 10. Accept a work unit only when acceptance criteria and deterministic validation pass and no unresolved critical/high-confidence finding remains.
 11. Update `WORK_QUEUE.md` and `SWARM_STATUS.md`, then immediately claim the next READY task.

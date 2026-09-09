@@ -10,7 +10,7 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 
 - Only approved active-phase work may be claimed.
 - Codex is the sole application-code writer.
-- Claude and Gemini review exact candidate commits and return findings only.
+- Claude Code reviews exact candidate commits and returns findings only. Gemini is not required or enabled for the active workflow (D-020).
 - A task is DONE only when acceptance criteria, deterministic validation, and review requirements are satisfied.
 - Do not mark placeholders, interfaces without behavior, untested code, or documentation-only claims as complete.
 - If one task is blocked, record the blocker and move to another independent READY task when safe.
@@ -131,7 +131,7 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 
 ### FWQ-0008 — Immutable accepted-work evidence bundle
 - Requirement: Core trust model and immutable evidence (FW-EVID)
-- State: BLOCKED
+- State: REVIEW
 - Priority: P1
 - Dependencies: FWQ-0003, FWQ-0005, FWQ-0007
 - Description: Define and implement a deterministic, redacted evidence bundle for an accepted dry-run work unit, binding its job ID, exact candidate and accepted commits, changed files, deterministic validation, Claude/Gemini review outcomes, policy state, and evidence hash without creating execution authority.
@@ -151,7 +151,7 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
   - DRY_RUN, deployment-disabled, kill-switch, sole-writer, and human-authority constraints remain unchanged.
 - Expected validation: focused evidence-contract tests, repository suite, schema validation, secret/redaction checks, and exact-commit review.
 - Security considerations: evidence is untrusted input and audit data, never authority; no reviewer or evidence record may authorize deployment, clear a kill switch, access credentials, or expand filesystem, Git, network, or remote-host scope.
-- Candidate evidence: Final candidate `9feb4ee68d91c8e2936459228d31082c50b2655e` includes the strict schema, create-once redacted evidence builder/reader, concurrent independent-review runner, and hardened agy JSON-envelope/error handling. Focused validation passed (14 review tests); full Linux-style suite passed (414 passed, 1 skipped). Exact Claude and independent Gemini review remain required before acceptance.
+- Candidate evidence: Final candidate `9feb4ee68d91c8e2936459228d31082c50b2655e` includes the strict schema, create-once redacted evidence builder/reader, concurrent independent-review runner, and hardened agy JSON-envelope/error handling. Focused validation passed (14 review tests); full Linux-style suite passed (414 passed, 1 skipped). Exact Claude Code APPROVE/LOW with no blocking findings or missing tests is required before acceptance under D-020. No Gemini approval is required or inferred. Historical bundle fields remain compatibility data; any schema change requires its own bounded implementation and review.
 
 ### FWQ-0009 — Deterministic audit-event integrity reader
 - Requirement: Core trust model and immutable evidence (FW-EVID)
@@ -348,7 +348,7 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 
 ## Queue cleanup
 
-FWQ-0019 through FWQ-0062 were repetitive successor/population placeholders. They are retired rather than treated as executable work. The next substantive Core item remains FWQ-0008 (immutable accepted-work evidence bundle), blocked pending its required independent Gemini exact-commit review; FWQ-0009 remains the independent audit-reader record with existing implementation evidence.
+FWQ-0019 through FWQ-0062 were repetitive successor/population placeholders. They are retired rather than treated as executable work. The next substantive Core item remains FWQ-0008 (immutable accepted-work evidence bundle), pending required Claude Code exact-commit review under D-020; FWQ-0009 remains the independent audit-reader record with existing implementation evidence.
 ## Future queue population
 
 After the supervisor/control-plane work is validated, populate subsequent Core tasks from the active phase of `ROADMAP.md` and existing repository requirements. FW-ASOC is an approved cross-cutting requirement family: register/map it and add bounded primitives/tests incrementally after Core sequencing permits; do not duplicate existing subsystems or activate broad implementation from roadmap presence alone. Broader FW-BME/FW-SOC/FW-SAAS/FW-SUPPLY/FW-NET/FW-ASM/FW-DSPM implementation remains parked until its phase is explicitly activated.
