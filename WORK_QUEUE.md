@@ -20,9 +20,29 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 
 Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical implementation is not new work. FWQ-0008 VALIDATED preserves a provenance caveat, not a request to rebuild or automatically repeat review. FWQ-0012–0016 are reconciled DONE from existing implementation and recorded proof.
 
+### FWQ-0067 — Auditable targeted context packets and task budgets
+- Requirement: FW-HARNESS-003 context and budget controls
+- State: READY
+- Priority: P0
+- Dependencies: FWQ-0066
+- Approval: FW-HARNESS is permanent Core under D-023.
+- Description: Build deterministic bounded context packets from caller-supplied approved task material, hash their canonical content, and enforce per-task model-call, token, retry, and elapsed-time budgets without invoking a model.
+- Target path: swarm/harness_context.py
+- Allowed paths: swarm/harness_context.py, tests/test_harness_context.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_harness_context.py tests/test_harness_task.py
+- Acceptance criteria:
+  - context contains only explicit approved requirement, constraints, files, contracts, commits, task state, failures, findings, interfaces, and forbidden changes;
+  - deterministic canonical encoding and context hash;
+  - strict item/byte/count limits and relative path validation;
+  - deterministic task/session budget admission and exhaustion reasons;
+  - model output cannot alter context selection or resource limits;
+  - no file reading, model invocation, network, credentials, Git mutation, deployment, or response authority.
+- Expected validation: focused Linux proof, exact Claude review, then full suite/integrity once.
+- Security considerations: all supplied context is untrusted data and cannot become authority.
+
 ### FWQ-0066 — Canonical FW-HARNESS task and transition contract
 - Requirement: FW-HARNESS-002 persistent task engine
-- State: REVIEW
+- State: DONE
 - Priority: P0
 - Dependencies: FWQ-0065
 - Approval: FW-HARNESS is permanent Core under D-023.
@@ -39,6 +59,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no new execution, Git, filesystem, credential, network, deployment, or response authority.
 - Expected validation: focused Linux proof, exact Claude review, then full suite/integrity once.
 - Security considerations: persisted task data and model suggestions are untrusted input and must fail closed.
+- Completion evidence: exact candidate `78fdf188a452b53c20895c2d024b265fc51621c0`; focused 96 passed; Claude APPROVE/LOW with no blockers/missing tests; full 929 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with unchanged YELLOW findings. Evidence: `docs/fw-harness-002-claude-review.json`, `docs/fw-harness-002-integrity.json`.
 
 ### FWQ-0065 — FW-HARNESS existing architecture inventory
 - Requirement: FW-HARNESS-001 harness inventory

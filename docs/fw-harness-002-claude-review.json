@@ -1,0 +1,26 @@
+{
+  "adjudication": null,
+  "candidate_commit": "78fdf188a452b53c20895c2d024b265fc51621c0",
+  "deployment": "DISABLED",
+  "job_id": "phase2a-123456789012345678901234",
+  "kill_switch": "ENGAGED",
+  "mutation_allowed": false,
+  "reviews": [
+    {
+      "provider": "CLAUDE",
+      "result": {
+        "blocking_findings": [],
+        "job_id": "phase2a-123456789012345678901234",
+        "non_blocking_notes": [],
+        "proposed_rules": [],
+        "reasoning_summary": "Commit implements the canonical FW-HARNESS-002 task record contract correctly. HarnessTask is immutable (frozen dataclass) with separate stable task_id and requirement_id fields, validated via strict regex. Lifecycle enforces exactly 10 states with fail-closed deterministic transitions via ALLOWED_TRANSITIONS and transition_task() as sole mutation authority. Bounds enforced: paths prevent traversal/absolute paths, capabilities limited to 128 chars via regex, budgets validated non-negative/finite, timestamps require ISO-8601 with timezone, retry counts ordered. Persistence is strict: task_to_record() serializes to dict, task_from_record() requires exact field match and fails on unknown fields. Legacy adapter from_legacy_task() explicitly maps TaskSpec/queue dictionaries via LEGACY_STATUS enum; unknown legacy states fail closed. Terminal/blocked evidence enforced: blocked tasks require blocking_reason, terminal tasks require completed_at, COMPLETED requires resulting_commit, RUNNING requires started_at. Models cannot mutate (frozen) or skip transitions (only adjacent states in ALLOWED_TRANSITIONS allowed). No scheduler, shell, credentials, network, deployment, or kill-switch code added. Tests (90 lines, 96 passed) comprehensively cover immutability, lifecycle, transitions, bounds, legacy adapter, persistence, and evidence rules. Code is deterministic with no security vulnerabilities. Patch is narrow and focused.",
+        "reviewed_commit": "78fdf188a452b53c20895c2d024b265fc51621c0",
+        "risk": "LOW",
+        "tests_missing": [],
+        "verdict": "APPROVE"
+      },
+      "state": "APPROVED"
+    }
+  ],
+  "state": "APPROVED"
+}
