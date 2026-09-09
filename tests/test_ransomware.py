@@ -1,7 +1,9 @@
 import pytest
 
+from swarm.action_ticket import ActionTicket, ActionTicketRegistry
+from swarm.asoc import HMACLeaseSigner
 from swarm.endpoint_fixtures import EndpointObservation
-from swarm.ransomware import RansomwareEvaluationDenied, evaluate_ransomware_activity
+from swarm.ransomware import RansomwareEvaluationDenied, evaluate_ransomware_activity, propose_ransomware_isolation
 
 
 def observation(event_id, observed, operation="WRITE", indicators=(), tenant="tenant-a", device="device-a"):
@@ -75,3 +77,71 @@ def test_evidence_failure_denies_the_result():
             [observation("e1", 100, indicators=("RANSOM_NOTE",))],
             tenant_id="tenant-a", device_id="device-a", audit=fail,
         )
+
+
+def high_finding():
+    return evaluate_ransomware_activity([
+        observation("e1", 100, "WRITE", ("HIGH_ENTROPY",)),
+        observation("e2", 101, "RENAME", ("EXTENSION_CHANGE",)),
+        observation("e3", 102, "WRITE"), observation("e4", 103, "DELETE"),
+    ], tenant_id="tenant-a", device_id="device-a", audit=lambda *_args: None)
+
+
+def ticket_registry(*, resource="device-a", expires=200):
+    registry = ActionTicketRegistry(HMACLeaseSigner({"key-1": b"test-only-key-material"}))
+    registry.issue(ActionTicket(
+        "ticket-1", "tenant-a", "agent-1", "lease-1", "endpoint.isolate.propose",
+        resource, "ISOLATION_PROPOSAL", "human-1", "approval-1", "policy-1",
+        100, expires, "key-1",
+    ))
+    return registry
+
+
+def test_high_finding_creates_evidence_first_single_use_dry_run_proposal():
+    tickets = ticket_registry()
+    evidence = []
+    proposal = propose_ransomware_isolation(
+        high_finding(), tickets=tickets, ticket_id="ticket-1", subject_agent_id="agent-1",
+        lease_id="lease-1", policy_version="policy-1", now=150,
+        kill_switch_state="ENGAGED", audit=lambda *args: evidence.append(args),
+    )
+    assert proposal.mode == "DRY_RUN" and proposal.action == "DETECT_ONLY"
+    assert evidence[0][0] == "ransomware_isolation_proposed"
+    assert evidence[0][1]["containment_executed"] is False
+    with pytest.raises(RansomwareEvaluationDenied, match="ACTION_TICKET_DENIED"):
+        propose_ransomware_isolation(
+            high_finding(), tickets=tickets, ticket_id="ticket-1", subject_agent_id="agent-1",
+            lease_id="lease-1", policy_version="policy-1", now=150,
+            kill_switch_state="ENGAGED", audit=lambda *_args: None,
+        )
+
+
+def test_isolation_proposal_denies_low_confidence_ticket_mismatch_and_kill_switch_before_evidence():
+    evidence = []
+    low = evaluate_ransomware_activity(
+        [observation("low", 100, indicators=("RANSOM_NOTE",))],
+        tenant_id="tenant-a", device_id="device-a", audit=lambda *_args: None,
+    )
+    base = dict(tickets=ticket_registry(), ticket_id="ticket-1", subject_agent_id="agent-1",
+                lease_id="lease-1", policy_version="policy-1", now=150,
+                kill_switch_state="ENGAGED", audit=lambda *args: evidence.append(args))
+    with pytest.raises(RansomwareEvaluationDenied, match="CONFIDENCE_INSUFFICIENT"):
+        propose_ransomware_isolation(low, **base)
+    with pytest.raises(RansomwareEvaluationDenied, match="ACTION_TICKET_DENIED"):
+        propose_ransomware_isolation(high_finding(), **(base | {"tickets": ticket_registry(resource="other")}))
+    with pytest.raises(RansomwareEvaluationDenied, match="KILL_SWITCH_NOT_ENGAGED"):
+        propose_ransomware_isolation(high_finding(), **(base | {"kill_switch_state": "CLEARED"}))
+    assert evidence == []
+
+
+def test_isolation_proposal_evidence_failure_does_not_consume_ticket():
+    tickets = ticket_registry()
+    def fail(*_args):
+        raise RuntimeError("offline")
+    kwargs = dict(tickets=tickets, ticket_id="ticket-1", subject_agent_id="agent-1",
+                  lease_id="lease-1", policy_version="policy-1", now=150,
+                  kill_switch_state="ENGAGED")
+    with pytest.raises(RansomwareEvaluationDenied, match="EVIDENCE_WRITE_FAILED"):
+        propose_ransomware_isolation(high_finding(), audit=fail, **kwargs)
+    proposal = propose_ransomware_isolation(high_finding(), audit=lambda *_args: None, **kwargs)
+    assert proposal.ticket_id == "ticket-1"

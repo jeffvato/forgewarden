@@ -22,7 +22,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-RANSOM-02 — Ticket-bound ransomware isolation proposal
 - Requirement: FW-RANSOM deterministic response proposal boundary
-- State: READY
+- State: IN_PROGRESS
 - Priority: P0
 - Dependencies: FW-RANSOM-01
 - Approval: FW-RANSOM is active first under D-022.

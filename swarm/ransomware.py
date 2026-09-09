@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from typing import Iterable
 
 from .asoc import AuditSink
+from .action_ticket import ActionTicketError, ActionTicketRegistry
 from .endpoint_fixtures import EndpointObservation
 
 MAX_RANSOM_EVENTS = 128
@@ -32,6 +33,17 @@ class RansomwareFinding:
     signals: tuple[str, ...]
     confidence: str
     recommendations: tuple[str, ...]
+    mode: str = "DRY_RUN"
+    action: str = "DETECT_ONLY"
+
+
+@dataclass(frozen=True)
+class RansomwareIsolationProposal:
+    tenant_id: str
+    device_id: str
+    event_ids: tuple[str, ...]
+    ticket_id: str
+    confidence: str = "HIGH"
     mode: str = "DRY_RUN"
     action: str = "DETECT_ONLY"
 
@@ -97,3 +109,46 @@ def evaluate_ransomware_activity(
     if confidence is None:
         return None
     return RansomwareFinding(tenant_id, device_id, event_ids, tuple(sorted(signals)), confidence, recommendations)
+
+
+def propose_ransomware_isolation(
+    finding: RansomwareFinding, *, tickets: ActionTicketRegistry, ticket_id: str,
+    subject_agent_id: str, lease_id: str, policy_version: str, now: int,
+    kill_switch_state: str, audit: AuditSink,
+) -> RansomwareIsolationProposal:
+    """Record and consume authority for a proposal without isolating anything."""
+    if not isinstance(finding, RansomwareFinding) or not isinstance(tickets, ActionTicketRegistry) or not callable(audit):
+        raise RansomwareEvaluationDenied("PROPOSAL_INPUT_INVALID")
+    if finding.confidence != "HIGH" or "PROPOSE_ISOLATION" not in finding.recommendations:
+        raise RansomwareEvaluationDenied("CONFIDENCE_INSUFFICIENT")
+    if finding.mode != "DRY_RUN" or finding.action != "DETECT_ONLY":
+        raise RansomwareEvaluationDenied("FINDING_AUTHORITY_INVALID")
+    if kill_switch_state != "ENGAGED":
+        raise RansomwareEvaluationDenied("KILL_SWITCH_NOT_ENGAGED")
+    resource = finding.device_id
+    binding = {
+        "tenant_id": finding.tenant_id, "subject_agent_id": subject_agent_id,
+        "lease_id": lease_id, "capability": "endpoint.isolate.propose",
+        "resource": resource, "action_class": "ISOLATION_PROPOSAL",
+        "policy_version": policy_version, "now": now,
+    }
+    try:
+        tickets.validate(ticket_id, **binding)
+    except ActionTicketError as exc:
+        raise RansomwareEvaluationDenied("ACTION_TICKET_DENIED") from exc
+    try:
+        audit("ransomware_isolation_proposed", {
+            "tenant_id": finding.tenant_id, "device_id": finding.device_id,
+            "event_ids": list(finding.event_ids), "ticket_id": ticket_id,
+            "confidence": "HIGH", "mode": "DRY_RUN", "action": "DETECT_ONLY",
+            "deployment": "DISABLED", "containment_executed": False,
+        })
+    except Exception as exc:
+        raise RansomwareEvaluationDenied("EVIDENCE_WRITE_FAILED") from exc
+    try:
+        tickets.validate_and_consume(ticket_id, **binding)
+    except ActionTicketError as exc:
+        raise RansomwareEvaluationDenied("ACTION_TICKET_DENIED") from exc
+    return RansomwareIsolationProposal(
+        finding.tenant_id, finding.device_id, finding.event_ids, ticket_id,
+    )

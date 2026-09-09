@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: FW-RANSOM (then FW-MCP, FW-BME, FW-SOC under D-022)
-- Current focus: FW-RANSOM-01 accepted; FW-RANSOM-02 ticket-bound isolation proposal is next
-- Next task: implement FW-RANSOM-02 without live containment authority.
+- Current focus: FW-RANSOM-02 ticket-bound isolation proposal
+- Next task: validate and exact-review FW-RANSOM-02 without live containment authority.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
