@@ -2,7 +2,8 @@ from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 
-from swarm.mcp_gateway import MCPGateway, MCPGatewayError, MCPToolAdmission, MCPToolGrant
+import swarm.mcp_gateway as mcp_gateway
+from swarm.mcp_gateway import MCPGateway, MCPGatewayError, MCPToolAdmission, MCPToolCatalogEntry, MCPToolGrant
 
 
 def grant(tenant_id: str = "tenant-a", agent_id: str = "agent-a") -> MCPToolGrant:
@@ -270,3 +271,84 @@ def test_reentrant_result_evidence_cannot_complete_request_twice():
     gateway._audit = audit
     assert gateway.wrap_result(admission, {"ok": True}).request_id == admission.request_id
     assert outcomes == ["MCP result replay detected"]
+
+
+def catalog_entry(tenant="tenant-a", tool="mcp.telemetry.status", capability="telemetry.read", trust="TRUSTED_READ_ONLY", enabled=True):
+    return MCPToolCatalogEntry(tenant, tool, capability, trust, enabled)
+
+
+def test_catalog_registration_is_evidence_first_and_discovery_is_tenant_bound_deterministic():
+    evidence = []
+    gateway = MCPGateway(lambda *args: evidence.append(args), require_catalog=True)
+    gateway.register_tool(catalog_entry(tool="mcp.z"))
+    gateway.register_tool(catalog_entry(tool="mcp.a"))
+    gateway.register_tool(catalog_entry(tenant="tenant-b", tool="mcp.b"))
+    assert [entry.tool for entry in gateway.discover_tools(tenant_id="tenant-a")] == ["mcp.a", "mcp.z"]
+    assert [entry.tool for entry in gateway.discover_tools(tenant_id="tenant-b")] == ["mcp.b"]
+    assert evidence[0][0] == "mcp_tool_catalog_registered"
+    assert evidence[0][1]["connected"] is False and evidence[0][1]["tool_executed"] is False
+
+
+@pytest.mark.parametrize("entry", [
+    catalog_entry(trust="UNTRUSTED"),
+    catalog_entry(enabled=False),
+    catalog_entry(capability="telemetry.write"),
+])
+def test_strict_catalog_denies_untrusted_disabled_or_capability_mismatch(entry):
+    gateway = MCPGateway(lambda *_args: None, require_catalog=True)
+    gateway.register_tool(entry)
+    gateway.register(grant())
+    with pytest.raises(MCPGatewayError, match="catalog admission denied"):
+        request(gateway)
+
+
+def test_strict_catalog_allows_exact_enabled_trusted_entry_and_absence_denies():
+    gateway = MCPGateway(lambda *_args: None, require_catalog=True)
+    gateway.register(grant())
+    with pytest.raises(MCPGatewayError, match="catalog admission denied"):
+        request(gateway)
+    gateway.register_tool(catalog_entry())
+    assert request(gateway).request_id == "request-1"
+
+
+def test_catalog_duplicate_invalid_metadata_and_evidence_failure_deny_without_mutation():
+    gateway = MCPGateway(lambda *_args: None)
+    gateway.register_tool(catalog_entry())
+    with pytest.raises(MCPGatewayError, match="already exists"):
+        gateway.register_tool(catalog_entry())
+    with pytest.raises(MCPGatewayError, match="invalid MCP catalog"):
+        catalog_entry(trust="TRUSTED")
+    failing = MCPGateway(lambda *_args: (_ for _ in ()).throw(RuntimeError("offline")))
+    with pytest.raises(MCPGatewayError, match="Evidence write failed"):
+        failing.register_tool(catalog_entry())
+    assert failing.discover_tools(tenant_id="tenant-a") == ()
+
+
+def test_legacy_gateway_admission_remains_compatible_without_catalog():
+    gateway = MCPGateway(lambda *_args: None)
+    gateway.register(grant())
+    assert request(gateway).request_id == "request-1"
+
+
+def test_catalog_capacity_is_per_tenant_and_bounded(monkeypatch):
+    monkeypatch.setattr(mcp_gateway, "MAX_CATALOG_ENTRIES_PER_TENANT", 2)
+    gateway = MCPGateway(lambda *_args: None)
+    gateway.register_tool(catalog_entry(tool="mcp.a"))
+    gateway.register_tool(catalog_entry(tool="mcp.b"))
+    with pytest.raises(MCPGatewayError, match="capacity exhausted"):
+        gateway.register_tool(catalog_entry(tool="mcp.c"))
+    gateway.register_tool(catalog_entry(tenant="tenant-b", tool="mcp.c"))
+
+
+def test_reentrant_catalog_evidence_cannot_register_same_entry_twice():
+    outcomes = []
+    gateway = None
+    entry = catalog_entry()
+    def audit(*_args):
+        try:
+            gateway.register_tool(entry)
+        except MCPGatewayError as exc:
+            outcomes.append(str(exc))
+    gateway = MCPGateway(audit)
+    assert gateway.register_tool(entry) == entry
+    assert outcomes == ["MCP catalog entry already exists"]

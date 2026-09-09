@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: FW-MCP (then FW-BME, FW-SOC under D-022)
-- Current focus: FW-MCP-03 accepted; FW-MCP-04 tenant tool catalog is next
-- Next task: implement FW-MCP-04 without connecting to or invoking tools.
+- Current focus: FW-MCP-04 tenant-bound tool catalog and discovery
+- Next task: validate and exact-review FW-MCP-04 without connecting to tools.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled

@@ -19,6 +19,9 @@ MAX_RESULT_BYTES = 64 * 1024
 MAX_RESULT_DEPTH = 8
 MAX_RESULT_COLLECTION_ITEMS = 128
 MAX_RESULT_STRING_BYTES = 4096
+MAX_CATALOG_ENTRIES_PER_TENANT = 128
+_MCP_TRUST_LEVELS = frozenset({"TRUSTED_READ_ONLY", "TRUSTED_BOUNDED", "UNTRUSTED"})
+_ADMISSIBLE_TRUST_LEVELS = frozenset({"TRUSTED_READ_ONLY", "TRUSTED_BOUNDED"})
 
 
 def _text(value: Any, field: str) -> str:
@@ -67,6 +70,21 @@ class MCPToolResultEnvelope:
     action: str = "ENVELOPE_ONLY"
 
 
+@dataclass(frozen=True)
+class MCPToolCatalogEntry:
+    tenant_id: str
+    tool: str
+    capability: str
+    trust_level: str
+    enabled: bool
+
+    def __post_init__(self) -> None:
+        for field in ("tenant_id", "tool", "capability"):
+            object.__setattr__(self, field, _text(getattr(self, field), field))
+        if self.trust_level not in _MCP_TRUST_LEVELS or not isinstance(self.enabled, bool):
+            raise MCPGatewayError("invalid MCP catalog trust or enabled state")
+
+
 def _validate_result_value(value: Any, *, depth: int = 0, ancestors: frozenset[int] = frozenset()) -> None:
     if depth > MAX_RESULT_DEPTH:
         raise MCPGatewayError("MCP result depth exceeded")
@@ -105,13 +123,17 @@ class MCPGateway:
     def __init__(
         self, audit: Callable[[str, dict[str, Any]], None] | None = None, *,
         max_admissions_per_scope: int = MAX_ADMISSIONS_PER_SCOPE,
+        require_catalog: bool = False,
     ) -> None:
         if audit is not None and not callable(audit):
             raise MCPGatewayError("audit must be callable")
         if isinstance(max_admissions_per_scope, bool) or not isinstance(max_admissions_per_scope, int) or not 1 <= max_admissions_per_scope <= MAX_ADMISSIONS_PER_SCOPE:
             raise MCPGatewayError("max admissions per scope must be a positive bounded integer")
+        if not isinstance(require_catalog, bool):
+            raise MCPGatewayError("require_catalog must be boolean")
         self._audit = audit
         self._max_admissions_per_scope = max_admissions_per_scope
+        self._require_catalog = require_catalog
         self._lock = RLock()
         self._grants: set[MCPToolGrant] = set()
         self._revoked: set[MCPToolGrant] = set()
@@ -121,6 +143,8 @@ class MCPGateway:
         self._admissions: dict[str, MCPToolAdmission] = {}
         self._pending_result_ids: set[str] = set()
         self._completed_request_ids: set[str] = set()
+        self._catalog: dict[tuple[str, str], MCPToolCatalogEntry] = {}
+        self._pending_catalog_keys: set[tuple[str, str]] = set()
 
     def register(self, grant: MCPToolGrant) -> MCPToolGrant:
         if not isinstance(grant, MCPToolGrant):
@@ -130,6 +154,44 @@ class MCPGateway:
                 raise MCPGatewayError("MCP tool grant already exists")
             self._grants.add(grant)
             return grant
+
+    def register_tool(self, entry: MCPToolCatalogEntry) -> MCPToolCatalogEntry:
+        """Evidence-log and register exact tool metadata without connecting to it."""
+        if not isinstance(entry, MCPToolCatalogEntry):
+            raise MCPGatewayError("catalog entry must be an MCPToolCatalogEntry")
+        key = (entry.tenant_id, entry.tool)
+        with self._lock:
+            if key in self._pending_catalog_keys or key in self._catalog:
+                raise MCPGatewayError("MCP catalog entry already exists")
+            tenant_count = sum(item.tenant_id == entry.tenant_id for item in self._catalog.values())
+            if tenant_count >= MAX_CATALOG_ENTRIES_PER_TENANT:
+                raise MCPGatewayError("MCP tenant catalog capacity exhausted")
+            if self._audit is None:
+                raise MCPGatewayError("MCP catalog Evidence unavailable")
+            self._pending_catalog_keys.add(key)
+            try:
+                self._audit("mcp_tool_catalog_registered", {
+                    "tenant_id": entry.tenant_id, "tool": entry.tool,
+                    "capability": entry.capability, "trust_level": entry.trust_level,
+                    "enabled": entry.enabled, "mode": "DRY_RUN",
+                    "action": "REGISTER_ONLY", "connected": False,
+                    "tool_executed": False, "deployment": "DISABLED",
+                })
+            except Exception as exc:
+                self._pending_catalog_keys.remove(key)
+                raise MCPGatewayError("MCP catalog Evidence write failed") from exc
+            self._pending_catalog_keys.remove(key)
+            self._catalog[key] = entry
+            return entry
+
+    def discover_tools(self, *, tenant_id: str) -> tuple[MCPToolCatalogEntry, ...]:
+        """Return one tenant's bounded catalog in deterministic tool order."""
+        tenant_id = _text(tenant_id, "tenant_id")
+        with self._lock:
+            return tuple(sorted(
+                (entry for entry in self._catalog.values() if entry.tenant_id == tenant_id),
+                key=lambda entry: (entry.tool, entry.capability, entry.trust_level),
+            ))
 
     def revoke_matching(
         self, *, tenant_id: str | None = None, subject_agent_id: str | None = None,
@@ -175,6 +237,10 @@ class MCPGateway:
                 raise MCPGatewayError("MCP request replay detected")
             if grant not in self._grants or grant in self._revoked:
                 raise MCPGatewayError("MCP request denied")
+            if self._require_catalog:
+                catalog_entry = self._catalog.get((grant.tenant_id, grant.tool))
+                if catalog_entry is None or catalog_entry.capability != grant.capability or not catalog_entry.enabled or catalog_entry.trust_level not in _ADMISSIBLE_TRUST_LEVELS:
+                    raise MCPGatewayError("MCP catalog admission denied")
             if self._admission_counts.get(budget_scope, 0) >= self._max_admissions_per_scope:
                 raise MCPGatewayError("MCP admission budget exhausted")
             if self._audit is None:
