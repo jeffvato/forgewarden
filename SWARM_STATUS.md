@@ -2,9 +2,9 @@
 
 ## Current state
 
-- Active phase: FW-RANSOM (then FW-MCP, FW-BME, FW-SOC under D-022)
-- Current focus: FW-RANSOM-05 defensive-control tamper signal correlation
-- Next task: validate and exact-review FW-RANSOM-05 within the bounded evaluator.
+- Active phase: FW-MCP (then FW-BME, FW-SOC under D-022)
+- Current focus: FW-RANSOM bounded scope accepted; FW-MCP-01 exact request admission is next
+- Next task: implement FW-MCP-01 in the canonical MCPGateway without tool execution.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -29,17 +29,17 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-RANSOM-04
-- Starting commit: 20bdae8fd3087436173cc2cc7591eed9a8997ddf
-- Candidate commit: 7c28fedfa04e925c47c305ab4c1cb4b6a30ed65b
-- Accepted commit: 7c28fedfa04e925c47c305ab4c1cb4b6a30ed65b
+- Task ID: FW-RANSOM-05
+- Starting commit: dc2b2afbbc88284ffc4fbcd819b825e57805e76e
+- Candidate commit: 05e7b34b0cadd28d58adc094b1c9264f50276f42
+- Accepted commit: 05e7b34b0cadd28d58adc094b1c9264f50276f42
 - Files changed: swarm/ransomware.py, tests/test_ransomware.py, WORK_QUEUE.md, SWARM_STATUS.md, DECISIONS.md
-- Deterministic validation: focused 18 passed; full 851 passed/1 skipped; integrity all hard checks and 4 Golden Paths pass, YELLOW pre-existing findings
-- Claude review: 7c28fedfa04e925c47c305ab4c1cb4b6a30ed65b APPROVE/LOW, no blockers or missing tests
+- Deterministic validation: focused 20 passed; full 853 passed/1 skipped; integrity all hard checks and 4 Golden Paths pass, YELLOW pre-existing findings
+- Claude review: 05e7b34b0cadd28d58adc094b1c9264f50276f42 APPROVE/LOW, no blockers or missing tests
 - Gemini review: disabled and not required under D-020
-- Unresolved findings: none for FW-RANSOM-01 through 04; historical caveats and pre-existing YELLOW findings remain
+- Unresolved findings: none for FW-RANSOM-01 through 05; historical caveats and pre-existing YELLOW findings remain
 - Blocker: none for bounded FW-RANSOM fixture/proposal work; broader live/response authority stays disabled
-- Next action: claim FW-RANSOM-05
+- Next action: claim FW-MCP-01
 
 - Completion inventory: `docs/completion-audit-2026-09-09.md` (baseline `0afcbdd`).
 - FWQ-0008 implementation and binding hardening exist; VALIDATED retains a historical provenance caveat, not an implementation assignment. FWQ-0009 is recorded accepted and unchanged at source/test level from its reviewed candidate.
@@ -49,6 +49,8 @@ On every restart or continuation:
 - Latest broad Core closure: FWQ-0064, 833 passed/1 skipped, all hard checks/Golden Path passing, YELLOW pre-existing findings.
 
 ## Execution log
+
+- 2026-09-09: FW-RANSOM-05 accepted at `05e7b34b0cadd28d58adc094b1c9264f50276f42`. Exact credential and service tamper indicators join shadow-copy tamper in the bounded evaluator; case variants remain ignored, Evidence failures deny, and outputs remain warn-only unless existing HIGH policy recommends a proposal. Focused 20 passed; exact Claude APPROVE/LOW; full 853 passed/1 skipped; integrity hard checks and Golden Paths pass with unchanged YELLOW findings. The bounded FW-RANSOM phase is complete; FW-MCP-01 is next under D-022.
 
 - 2026-09-09: FW-RANSOM-04 accepted at `7c28fedfa04e925c47c305ab4c1cb4b6a30ed65b`. Bounded single-tenant correlation detects exact SMB lateral-propagation signals across devices, writes Evidence before return, and warns without network or response authority. Focused 18 passed; exact Claude APPROVE/LOW; full 851 passed/1 skipped; integrity hard checks and Golden Paths pass with unchanged YELLOW findings. FW-RANSOM-05 is next.
 

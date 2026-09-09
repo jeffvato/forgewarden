@@ -20,9 +20,28 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 
 Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical implementation is not new work. FWQ-0008 VALIDATED preserves a provenance caveat, not a request to rebuild or automatically repeat review. FWQ-0012–0016 are reconciled DONE from existing implementation and recorded proof.
 
+### FW-MCP-01 — Replay-protected exact tool-request admission
+- Requirement: FW-MCP canonical gateway request admission
+- State: READY
+- Priority: P0
+- Dependencies: FW-RANSOM-05 and existing MCPGateway grant registry
+- Approval: FW-MCP follows completed FW-RANSOM under D-022.
+- Description: Add a bounded request-ID admission path to the existing canonical MCPGateway that checks exact tenant/agent/capability/resource/tool/policy grants, rejects replay, and writes Evidence before recording admission.
+- Target path: swarm/mcp_gateway.py
+- Allowed paths: swarm/mcp_gateway.py, tests/test_mcp_gateway.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_mcp_gateway.py tests/test_asoc.py
+- Acceptance criteria:
+  - exact grant matching remains deny-by-default with no wildcards;
+  - request IDs are bounded and single-use, including concurrent replay;
+  - denied/revoked/cross-tenant requests never become admitted;
+  - Evidence failure denies and does not consume the request ID;
+  - no tool execution, network transport, credentials, filesystem, shell, or response authority is added.
+- Expected validation: focused Linux proof, exact Claude review, then full suite/integrity once.
+- Security considerations: MCP request metadata and tool output remain untrusted; admission is policy evidence, not execution authority.
+
 ### FW-RANSOM-05 — Defensive-control tamper signal correlation
 - Requirement: FW-RANSOM deterministic credential/service/recovery tamper detection
-- State: IN_PROGRESS
+- State: DONE
 - Priority: P0
 - Dependencies: FW-RANSOM-04
 - Approval: FW-RANSOM is active first under D-022.
@@ -37,6 +56,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - Evidence failure denies output and DRY_RUN/DETECT_ONLY remains fixed.
 - Expected validation: focused Linux proof, exact Claude review, then full suite/integrity once.
 - Security considerations: indicators are caller-supplied untrusted data and cannot authorize response.
+- Completion evidence: exact candidate `05e7b34b0cadd28d58adc094b1c9264f50276f42`; focused 20 passed; Claude APPROVE/LOW with no blockers/missing tests; full 853 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with pre-existing YELLOW findings. Evidence: `docs/fw-ransom-05-claude-review.json`, `docs/fw-ransom-05-integrity.json`.
 
 ### FW-RANSOM-04 — Bounded SMB propagation correlation
 - Requirement: FW-RANSOM deterministic lateral-propagation signal
