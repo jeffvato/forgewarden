@@ -26,7 +26,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 - Priority: P0
 - Dependencies: FWQ-0068
 - Approval: credential architecture is approved under D-023; provider activation and credential creation remain explicit approval gates.
-- Description: Define deterministic OpenAI, Anthropic, and Google provider-authentication profiles supporting only officially available OAuth flows or approved API-key classes, with FW-ID identity binding and FW-KEYS opaque secret handles.
+- Description: Define deterministic OpenAI, Anthropic, and Google/Gemini provider-authentication profiles supporting only officially available OAuth flows or approved API-key classes, with FW-ID identity binding and FW-KEYS opaque secret handles; Gemini local CLI identity is `agy`.
 - Target path: swarm/harness_credentials.py
 - Allowed paths: swarm/harness_credentials.py, tests/test_harness_credentials.py, WORK_QUEUE.md, SWARM_STATUS.md
 - Test command: python3 -m pytest -q tests/test_harness_credentials.py tests/test_harness_worker.py tests/test_asoc.py
@@ -66,13 +66,14 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 - Priority: P0
 - Dependencies: FWQ-0067
 - Approval: interface architecture is approved under D-023; any provider/model/credential/network activation remains separately approval-gated.
-- Description: Define one generic worker interface supporting registered local CLI and approved API adapters with identical scoped tasks, context, capabilities, budgets, and output contracts.
+- Description: Define one generic worker interface supporting registered local CLI and approved API adapters with identical scoped tasks, context, capabilities, budgets, and output contracts, including the read-only Gemini CLI registered as `agy`.
 - Target path: swarm/harness_worker.py
 - Allowed paths: swarm/harness_worker.py, tests/test_harness_worker.py, WORK_QUEUE.md, SWARM_STATUS.md
 - Test command: python3 -m pytest -q tests/test_harness_worker.py tests/test_harness_task.py tests/test_harness_context.py
 - Acceptance criteria:
   - exact worker/provider/model/transport registration and role binding;
   - CLI execution contract uses registered executables and sanitized bounded process configuration;
+  - Gemini CLI identity binds exactly to registered executable `agy` and read-only roles; it cannot obtain Codex's source-writing role;
   - API contract accepts only FW-KEYS secret references, never raw keys in model-visible or persisted data;
   - provider/model/credential/network activation is denied without explicit approval evidence;
   - transport cannot expand task authority or bypass validation, review, Git, audit, budgets, or kill switch;

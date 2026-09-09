@@ -7,7 +7,7 @@
 - Next task: implement FWQ-0068 as transport-neutral contracts without activating providers or credentials.
 - Harness role: permanent ForgeWarden Core subsystem and default controller for ForgeWarden's own development; one governed architecture serves both roles under D-023.
 - Worker transport direction: registered local CLIs and explicitly approved API-backed workers; API keys are resolved only through FW-KEYS secret handles inside trusted adapters and never enter model context or lifecycle evidence.
-- Provider authentication direction: deterministic OpenAI, Anthropic, and Google profiles with provider-specific official OAuth where available and approved API-key classes otherwise; FW-ID owns delegated identity and FW-KEYS owns all credential material.
+- Provider authentication direction: deterministic OpenAI, Anthropic, and Google/Gemini profiles with provider-specific official OAuth where available and approved API-key classes otherwise; Gemini CLI is registered as `agy` for read-only roles, FW-ID owns delegated identity, and FW-KEYS owns all credential material.
 - Swarm assurance direction: fail-closed isolation, identity binding, crash/replay recovery, resource bounds, malformed-output rejection, and adversarial proof are required before broader autonomy.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
@@ -53,6 +53,8 @@ On every restart or continuation:
 - Latest broad Core closure: FWQ-0064, 833 passed/1 skipped, all hard checks/Golden Path passing, YELLOW pre-existing findings.
 
 ## Execution log
+
+- 2026-09-09: Jeff identified `agy` as the Gemini CLI invocation. FW-HARNESS-004/006 now require exact Gemini/`agy` registration. Gemini begins read-only and does not replace required Claude review under D-020 or Codex's sole source-writing role.
 
 - 2026-09-09: FW-HARNESS-003 accepted at `6ad03207ebc9950df9c96fd7fee68f5757c15d21`. Caller-supplied approved context now produces deterministic bounded packets with exact task/content hashes and auditable selection references; an atomic ledger enforces task/session model-call, token, retry, elapsed-time, tool-call, and cost limits without partial consumption. Focused 27 passed; exact Claude APPROVE/LOW; full 945 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with unchanged YELLOW findings. FW-HARNESS-004 is next.
 
