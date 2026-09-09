@@ -7,6 +7,7 @@
 - Next task: implement FWQ-0067 as deterministic data and accounting controls without model invocation.
 - Harness role: permanent ForgeWarden Core subsystem and default controller for ForgeWarden's own development; one governed architecture serves both roles under D-023.
 - Worker transport direction: registered local CLIs and explicitly approved API-backed workers; API keys are resolved only through FW-KEYS secret handles inside trusted adapters and never enter model context or lifecycle evidence.
+- Provider authentication direction: deterministic OpenAI, Anthropic, and Google profiles with provider-specific official OAuth where available and approved API-key classes otherwise; FW-ID owns delegated identity and FW-KEYS owns all credential material.
 - Swarm assurance direction: fail-closed isolation, identity binding, crash/replay recovery, resource bounds, malformed-output rejection, and adversarial proof are required before broader autonomy.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
@@ -52,6 +53,8 @@ On every restart or continuation:
 - Latest broad Core closure: FWQ-0064, 833 passed/1 skipped, all hard checks/Golden Path passing, YELLOW pre-existing findings.
 
 ## Execution log
+
+- 2026-09-09: Jeff directed OAuth planning for the three initial providers: OpenAI, Anthropic, and Google. FW-HARNESS queues a provider-specific credential-broker contract after the generic worker interface. No uniform OAuth capability is assumed, and no provider, network route, token, client secret, or API key is activated or stored by this architecture update.
 
 - 2026-09-09: Jeff required both CLI and API-key-backed worker operation and emphasized that the swarm boundary must be hardened. FW-HARNESS now queues an approval-gated CLI/API worker interface followed by adversarial execution-boundary hardening. Raw API keys remain excluded from prompts, task state, logs, Evidence, and model-visible context; no live provider or credential was added.
 

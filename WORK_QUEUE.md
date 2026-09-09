@@ -20,6 +20,26 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 
 Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical implementation is not new work. FWQ-0008 VALIDATED preserves a provenance caveat, not a request to rebuild or automatically repeat review. FWQ-0012–0016 are reconciled DONE from existing implementation and recorded proof.
 
+### FWQ-0070 — Provider OAuth and credential-broker contract
+- Requirement: FW-HARNESS-006 provider authentication
+- State: BLOCKED
+- Priority: P0
+- Dependencies: FWQ-0068
+- Approval: credential architecture is approved under D-023; provider activation and credential creation remain explicit approval gates.
+- Description: Define deterministic OpenAI, Anthropic, and Google provider-authentication profiles supporting only officially available OAuth flows or approved API-key classes, with FW-ID identity binding and FW-KEYS opaque secret handles.
+- Target path: swarm/harness_credentials.py
+- Allowed paths: swarm/harness_credentials.py, tests/test_harness_credentials.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_harness_credentials.py tests/test_harness_worker.py tests/test_asoc.py
+- Acceptance criteria:
+  - exact provider, tenant, identity, authorization method, scopes, expiry, approval, and revocation metadata;
+  - OAuth behavior is provider-specific and never inferred or silently substituted;
+  - persistent records contain opaque FW-KEYS handles and sanitized outcomes only;
+  - access/refresh tokens, client secrets, and API keys are rejected from task, context, log, Git, and Evidence schemas;
+  - expiry, revocation, provider/model mismatch, absent approval, and unsupported flow deny safely;
+  - no live OAuth exchange, credential creation, provider connection, network transport, or deployment authority.
+- Expected validation: focused adversarial Linux proof, exact Claude review, then full suite/integrity once.
+- Security considerations: credential material is isolated at the trusted adapter boundary and models cannot request broader scopes.
+
 ### FWQ-0069 — Swarm execution-boundary hardening
 - Requirement: FW-HARNESS-005 swarm resilience and isolation
 - State: BLOCKED
