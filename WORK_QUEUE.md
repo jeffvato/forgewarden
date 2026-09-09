@@ -62,9 +62,28 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 - Blocking reason: the cached Azure CLI identity is present, but Entra security defaults require an interactive management-scope login before resource/deployment and credit-protection evidence can be inspected without keys.
 - Completion evidence: exact candidate `05843269712abd1952a90c1f1aac96c2b3209eaf`; focused 29 passed; Claude APPROVE/LOW with no blockers/missing tests; combined full 968 passed/1 skipped and integrity hard checks/4 Golden Paths pass with unchanged YELLOW findings. Live Azure activation remains safely disabled pending interactive Entra login and credit/deployment verification. Evidence: `docs/fw-harness-007-claude-review.json`, `docs/fw-harness-004-007-integrity.json`.
 
+### FWQ-0076 — Harness Approved Model Registry admission
+- Requirement: FW-HARNESS-011 approved model binding
+- State: READY
+- Priority: P0
+- Dependencies: FWQ-0075
+- Approval: deterministic Model Broker/Approved Model Registry integration is approved by the FW-HARNESS master requirement; no new provider, model, route, or credential activation is approved.
+- Description: Bind harness worker selection and fallback to existing exact Approved Model Registry/Model Broker decisions covering provider, model, role, data class, tool policy, context/resource limits, approval version, and reliability metadata.
+- Target path: swarm/harness_models.py
+- Allowed paths: swarm/harness_models.py, tests/test_harness_models.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_harness_models.py tests/test_harness_worker.py tests/test_model_broker.py tests/test_asoc.py
+- Acceptance criteria:
+  - admission consumes an existing exact Model Broker decision and creates no second model registry or routing authority;
+  - provider, model/deployment/version, worker role, tenant, data classification, tools, context/resource budgets, and approval version bind exactly;
+  - silent fallback, router-selected substitution, unapproved model/provider, role/data/tool mismatch, stale approval, and budget expansion deny safely;
+  - fallback is permitted only when an explicit ordered approved equivalent is separately admitted;
+  - no provider connection, credential resolution, model registration, network transport, deployment, or response authority is added.
+- Expected validation: focused adversarial Linux proof, exact Claude review, then full suite/integrity once.
+- Security considerations: model availability and confidence never grant authority or permit silent substitution.
+
 ### FWQ-0075 — Harness capability and Action Ticket admission
 - Requirement: FW-HARNESS-010 bounded execution authority
-- State: READY
+- State: DONE
 - Priority: P0
 - Dependencies: FWQ-0074
 - Approval: deterministic capability/lease/Action Ticket integration is approved by the FW-HARNESS master requirement; no new capability class or authority expansion is approved.
@@ -80,6 +99,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no capability issuance, ticket signing, credential resolution, provider activation, deployment, remediation, or response authority is added.
 - Expected validation: focused adversarial Linux proof, exact Claude review, then full suite/integrity once.
 - Security considerations: AI requests are untrusted and cannot mint, widen, renew, inherit, or approve authority.
+- Completion evidence: exact candidate `0b699536951464a085bd0beacd6b38a64929b38c`; focused 145 passed; exact Claude APPROVE/LOW with no blockers/missing tests; full 1045 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with unchanged YELLOW findings. Evidence: `docs/fw-harness-010-claude-review.json`, `docs/fw-harness-010-integrity-full.json`.
 
 ### FWQ-0074 — Harness lifecycle Evidence integration
 - Requirement: FW-HARNESS-009 canonical lifecycle evidence

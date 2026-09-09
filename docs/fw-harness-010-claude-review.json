@@ -1,0 +1,31 @@
+{
+  "adjudication": null,
+  "candidate_commit": "0b699536951464a085bd0beacd6b38a64929b38c",
+  "deployment": "DISABLED",
+  "job_id": "phase2a-0075aabbccddeeff00112233",
+  "kill_switch": "ENGAGED",
+  "mutation_allowed": false,
+  "reviews": [
+    {
+      "provider": "CLAUDE",
+      "result": {
+        "blocking_findings": [],
+        "job_id": "phase2a-0075aabbccddeeff00112233",
+        "non_blocking_notes": [
+          "Identity validation uses regex patterns that correctly normalize and constrain alphanumeric IDs and reference formats",
+          "Resource scoping via _in_scope uses Path operations correctly: checks non-absolute paths, excludes '..' traversal, validates exact match or parent containment",
+          "Type checking is appropriately defensive: explicitly excludes bool subclass from int checks (lines 92, 95), uses strict type() check for ticket_consumed to prevent subclass bypasses",
+          "Frozen dataclasses prevent mutation of admission/request objects, ensuring immutability guarantees"
+        ],
+        "proposed_rules": [],
+        "reasoning_summary": "The patch implements a narrow, deterministic harness authority validation adapter that validates exact existing authority decisions without issuing, storing, or expanding authority. Core security properties verified: (1) Binds all required elements\u2014tenant_id, task_id, agent_id, worker_id, provider, model_id, capability, resource, operation, requested_tokens, policy_version, lease_id, evidence_reference, action_ticket_reference, safety state\u2014through explicit field-by-field validation. (2) Mutation constraints enforced: WorkerRole.CODE_WRITER required for WRITE operations (line 106), Action Ticket reference required for mutations (line 107), and ticket_consumed must equal mutating state (line 129). (3) Read-only enforcement: action_ticket_reference must be None for READ operations (line 108), preventing ticket consumption by read-only workers. (4) Denial conditions correctly implemented: task/worker/provider/model binding mismatches denied before resolver invocation (lines 95-98), scope/budget violations denied (lines 98-99), operation/capability class mismatches denied (line 103), replay attacks denied via exact request_id binding (line 119), unsafe decisions denied via safety state checks (lines 121-122). (5) No authority issuance: function returns HarnessAuthorityAdmission based purely on validation of externally-resolved decisions; no capability creation, ticket issuance, credential generation, provider registration, or deployment enabled (deployment field must be 'DISABLED', line 122). Test suite covers 10 test functions with parametrized subcases systematically validating identity scope boundaries, authorization constraints, safety violations, and read-only semantics. Patch is deterministic, narrow (2 new files only), with no side effects, network calls, or external dependencies beyond dataclass operations and regex validation.",
+        "reviewed_commit": "0b699536951464a085bd0beacd6b38a64929b38c",
+        "risk": "LOW",
+        "tests_missing": [],
+        "verdict": "APPROVE"
+      },
+      "state": "APPROVED"
+    }
+  ],
+  "state": "APPROVED"
+}
