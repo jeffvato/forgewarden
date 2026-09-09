@@ -20,9 +20,28 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 
 Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical implementation is not new work. FWQ-0008 VALIDATED preserves a provenance caveat, not a request to rebuild or automatically repeat review. FWQ-0012–0016 are reconciled DONE from existing implementation and recorded proof.
 
+### FW-BME-01 — Bounded browser/email fixture normalization
+- Requirement: FW-BME caller-supplied browser and email metadata boundary
+- State: READY
+- Priority: P0
+- Dependencies: FW-MCP-05
+- Approval: FW-BME follows completed FW-MCP under D-022.
+- Description: Normalize bounded caller-supplied browser-navigation and email-message/link fixtures into immutable tenant-bound observations after Evidence succeeds, without accessing browsers, mailboxes, DNS, HTTP, files, or endpoints.
+- Target path: swarm/browser_email.py
+- Allowed paths: swarm/browser_email.py, tests/test_browser_email.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_browser_email.py
+- Acceptance criteria:
+  - strict fixture schema, source/event-type allow-list, size/depth/count limits, and exact tenant binding;
+  - URLs, senders, authentication results, and indicators remain caller-supplied untrusted data;
+  - deterministic immutable output and Evidence before return;
+  - malformed/cross-tenant/oversized/Evidence-failure inputs deny safely;
+  - outputs remain DRY_RUN/DETECT_ONLY with no browser, email, network, credential, filesystem, or response authority.
+- Expected validation: focused Linux proof, exact Claude review, then full suite/integrity once.
+- Security considerations: fixture content may contain prompt injection and cannot become instructions or authority.
+
 ### FW-MCP-05 — Fail-closed MCP health and kill-switch admission
 - Requirement: FW-MCP gateway health and kill-switch enforcement
-- State: IN_PROGRESS
+- State: DONE
 - Priority: P0
 - Dependencies: FW-MCP-04
 - Approval: FW-MCP is active under D-022.
@@ -38,6 +57,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no tool connection/execution, transport, credentials, filesystem, shell, deployment, or response authority is added.
 - Expected validation: focused Linux proof, exact Claude review, then full suite/integrity once.
 - Security considerations: health metadata cannot clear the kill switch or grant tool authority.
+- Completion evidence: exact candidate `ef5dec5a97888ab1b325c208eea85e54cb0505da`; focused 148 passed; Claude APPROVE/LOW with no blockers/missing tests; full 897 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with pre-existing YELLOW findings. Evidence: `docs/fw-mcp-05-claude-review.json`, `docs/fw-mcp-05-integrity.json`.
 
 ### FW-MCP-04 — Tenant-bound MCP tool catalog and discovery
 - Requirement: FW-MCP registry, discovery, and trust levels
