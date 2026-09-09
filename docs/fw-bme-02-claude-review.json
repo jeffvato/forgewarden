@@ -1,0 +1,34 @@
+{
+  "adjudication": null,
+  "candidate_commit": "87a2d15f29504679d35b7c84f4c7e6a940f1dfd9",
+  "deployment": "DISABLED",
+  "job_id": "phase2a-mmmmmmmmmmmmmmmmmmmmmmmm",
+  "kill_switch": "ENGAGED",
+  "mutation_allowed": false,
+  "reviews": [{
+    "provider": "CLAUDE",
+    "result": {
+      "blocking_findings": [],
+      "job_id": "phase2a-mmmmmmmmmmmmmmmmmmmmmmmm",
+      "non_blocking_notes": [
+        "Frozen dataclass with immutable signals tuple and default warn-only recommendations confirmed",
+        "Comprehensive revalidation of untrusted observations at function entry including trust/mode/action authority boundaries",
+        "Deterministic confidence calculation: HIGH (2+ threat signals or threat+DMARC_FAIL), MEDIUM (threat or 2+ auth failures), LOW (single auth failure)",
+        "Evidence-first design: audit called before finding returned; evidence write failure raises EVIDENCE_WRITE_FAILED exception denying finding",
+        "Email-specific auth handling enforced: EMAIL_FIXTURE requires all auth keys, BROWSER_FIXTURE requires auth null/empty",
+        "Signal classification exact: BEC_DISPLAY_NAME, LOOKALIKE_DOMAIN, PHISHING_DOMAIN, QR_PHISHING, REDIRECT_CHAIN for threats; SPF_FAIL, DKIM_FAIL, DMARC_FAIL for auth",
+        "Sorted signals tuple ensures deterministic ordering; audit log includes response_executed=False and deployment=DISABLED",
+        "No mailbox, message movement, link-blocking, account, network, credential, filesystem, browser, or deployment operations present",
+        "Parametrized boundary revalidation tests validate tenant mismatch, authority rejection, source mismatch, and URL constraints"
+      ],
+      "proposed_rules": [],
+      "reasoning_summary": "FW-BME-02 deterministic phishing and spoof classification passes all deterministic checks and security constraints. The classify_phishing_spoof function and BrowserEmailFinding dataclass implement evidence-first, warn-only evaluation of exact phishing/BEC/lookalike/QR/redirect and email-auth signals without any response authority. Comprehensive input validation revalidates immutable untrusted observations, including tenant isolation and authority boundaries. Confidence is deterministic and rule-based, with source-specific auth handling enforced. Evidence is recorded before a finding is returned; audit failure denies the finding. All 21 tests pass with parametrized boundary coverage. No operations affect browser state, mailbox, message movement, links, accounts, network, credentials, filesystem, or deployment.",
+      "reviewed_commit": "87a2d15f29504679d35b7c84f4c7e6a940f1dfd9",
+      "risk": "LOW",
+      "tests_missing": [],
+      "verdict": "APPROVE"
+    },
+    "state": "APPROVED"
+  }],
+  "state": "APPROVED"
+}
