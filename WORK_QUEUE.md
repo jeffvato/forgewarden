@@ -42,7 +42,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FWQ-0065 — FW-HARNESS existing architecture inventory
 - Requirement: FW-HARNESS-001 harness inventory
-- State: REVIEW
+- State: DONE
 - Priority: P0
 - Dependencies: FWQ-0064
 - Approval: FW-HARNESS is permanent Core under D-023.
@@ -58,6 +58,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - DRY_RUN, disabled deployment, kill switch, and model no-authority boundaries remain unchanged.
 - Expected validation: control-file parser/selector proof, diff check, and exact Claude review.
 - Security considerations: documentation and queue metadata grant no runtime authority.
+- Completion evidence: exact candidate `0d0585dbb37fc6f062ac9f66eaed3440da889d00`; focused 32 passed; `git diff --check` passed; Claude APPROVE/LOW with no blockers or missing tests. Evidence: `docs/fw-harness-001-claude-review.json`.
 
 ### FW-BME-03 — Deterministic dangerous-delivery classification
 - Requirement: FW-BME dangerous download, redirect, HTML-smuggling, and prompt-injection signals

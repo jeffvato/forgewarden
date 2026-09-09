@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: FW-HARNESS-001 inventory and formalization of the existing governed development harness
-- Next task: complete FWQ-0065 inventory review, then implement FW-HARNESS-002 canonical task/state transitions.
+- Current focus: FW-HARNESS-001 accepted; FW-HARNESS-002 canonical task/state transition contract is next
+- Next task: implement FWQ-0066 without adding a second scheduler or evidence system.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -31,15 +31,15 @@ On every restart or continuation:
 
 - Task ID: FWQ-0065
 - Starting commit: 09442959fe64c3c33e01e23d1e60c2e32df13ba8
-- Candidate commit: pending exact commit creation
-- Accepted commit: none
+- Candidate commit: 0d0585dbb37fc6f062ac9f66eaed3440da889d00
+- Accepted commit: 0d0585dbb37fc6f062ac9f66eaed3440da889d00
 - Files changed: docs/fw-harness-inventory.md, ROADMAP.md, DECISIONS.md, WORK_QUEUE.md, SWARM_STATUS.md
-- Deterministic validation: pending focused control-file proof and diff check
-- Claude review: pending exact-candidate review
+- Deterministic validation: focused 32 passed; git diff --check passed; documentation/control milestone required no product-suite rerun
+- Claude review: 0d0585dbb37fc6f062ac9f66eaed3440da889d00 APPROVE/LOW, no blockers or missing tests
 - Gemini review: disabled and not required under D-020
 - Unresolved findings: none for bounded FW-RANSOM/FW-MCP or FW-BME-01/02; historical caveats and pre-existing YELLOW findings remain
 - Blocker: none for FW-HARNESS-001; FW-BME-03 is deferred under D-023
-- Next action: validate and review FWQ-0065, then claim FWQ-0066
+- Next action: claim FWQ-0066
 
 - Completion inventory: `docs/completion-audit-2026-09-09.md` (baseline `0afcbdd`).
 - FWQ-0008 implementation and binding hardening exist; VALIDATED retains a historical provenance caveat, not an implementation assignment. FWQ-0009 is recorded accepted and unchanged at source/test level from its reviewed candidate.
@@ -49,6 +49,8 @@ On every restart or continuation:
 - Latest broad Core closure: FWQ-0064, 833 passed/1 skipped, all hard checks/Golden Path passing, YELLOW pre-existing findings.
 
 ## Execution log
+
+- 2026-09-09: FW-HARNESS-001 accepted at `0d0585dbb37fc6f062ac9f66eaed3440da889d00`. The inventory maps the existing trusted controller, persistence, continuation, Codex, validation, exact review, Git, evidence, governance, recovery, and console components and identifies schema consolidation as the first runtime gap. Focused control proof 32 passed; exact Claude APPROVE/LOW; no product suite rerun was required for the documentation/control-only milestone. FW-HARNESS-002 is next.
 
 - 2026-09-09: Jeff explicitly established FW-HARNESS as a permanent Core requirement family (D-023). Phase H1 inventories and maps the existing trusted harness before runtime changes. FW-BME-03 is deferred rather than cancelled; DRY_RUN, disabled deployment, engaged kill switch, exact Claude review, and model no-authority boundaries remain unchanged.
 
