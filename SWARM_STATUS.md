@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: FW-HARNESS-008 accepted; FW-HARNESS-009 canonical lifecycle Evidence integration is next
-- Next task: claim FWQ-0074 to map validated harness lifecycle facts into the existing FW-EVID boundary.
+- Current focus: FW-HARNESS-009 accepted; FW-HARNESS-010 capability and Action Ticket admission is next
+- Next task: claim FWQ-0075 to consume existing FW-ASOC lease/ticket decisions without creating authority.
 - Harness role: permanent ForgeWarden Core subsystem and default controller for ForgeWarden's own development; one governed architecture serves both roles under D-023.
 - Worker transport direction: registered local CLIs and explicitly approved API-backed workers; API keys are resolved only through FW-KEYS secret handles inside trusted adapters and never enter model context or lifecycle evidence.
 - Provider authentication direction: deterministic OpenAI, Anthropic, and Google/Gemini profiles with provider-specific official OAuth where available and approved API-key classes otherwise; Gemini CLI is registered as `agy` for read-only roles, FW-ID owns delegated identity, and FW-KEYS owns all credential material.
@@ -54,6 +54,8 @@ On every restart or continuation:
 - Latest broad Core closure: FWQ-0064, 833 passed/1 skipped, all hard checks/Golden Path passing, YELLOW pre-existing findings.
 
 ## Execution log
+
+- 2026-09-09: FW-HARNESS-009 accepted at `f03998ea53f965641b8207139968daa3d0ae938d`. Validated tenant/task/requirement/actor/worker/model/context/capability/action/file/test/review/decision/timestamp/commit/checkpoint facts now enter one existing FW-EVID sink call. Cross-tenant, secret-bearing, mismatched, excessive, and path-escaping input denies before emission; sink failure returns no lifecycle success. No Evidence storage or signing authority was added. Focused 56 passed; exact Claude APPROVE/LOW with no blockers/missing tests; full 1025 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with unchanged YELLOW findings. FW-HARNESS-010 authority admission is next.
 
 - 2026-09-09: FW-HARNESS-008 accepted at `5fd266cce1780061a39a2bd6bc465e5cfec043d9`. A deterministic immutable Mission Control projection exposes bounded tenant/task/dependency/worker/model/budget/validation/review/commit/decision/next-task/kill-switch state from canonical owners. Cross-tenant, missing-dependency, identity/budget mismatch, mutable commit, disengaged kill switch, excessive history, and secret-bearing display data deny. The view owns no state or authority. Focused 119 passed; exact Claude APPROVE/LOW with no blockers/missing tests; full 1007 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with unchanged YELLOW findings. FW-HARNESS-009 Evidence integration is next.
 

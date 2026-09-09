@@ -62,9 +62,28 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 - Blocking reason: the cached Azure CLI identity is present, but Entra security defaults require an interactive management-scope login before resource/deployment and credit-protection evidence can be inspected without keys.
 - Completion evidence: exact candidate `05843269712abd1952a90c1f1aac96c2b3209eaf`; focused 29 passed; Claude APPROVE/LOW with no blockers/missing tests; combined full 968 passed/1 skipped and integrity hard checks/4 Golden Paths pass with unchanged YELLOW findings. Live Azure activation remains safely disabled pending interactive Entra login and credit/deployment verification. Evidence: `docs/fw-harness-007-claude-review.json`, `docs/fw-harness-004-007-integrity.json`.
 
+### FWQ-0075 — Harness capability and Action Ticket admission
+- Requirement: FW-HARNESS-010 bounded execution authority
+- State: READY
+- Priority: P0
+- Dependencies: FWQ-0074
+- Approval: deterministic capability/lease/Action Ticket integration is approved by the FW-HARNESS master requirement; no new capability class or authority expansion is approved.
+- Description: Bind each harness execution request to existing FW-ASOC capability leases and, where mutation is requested, an existing single-use Action Ticket decision, while preserving task scope, expiry, tenant, identity, budget, kill-switch, and Evidence boundaries.
+- Target path: swarm/harness_authority.py
+- Allowed paths: swarm/harness_authority.py, tests/test_harness_authority.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_harness_authority.py tests/test_asoc.py tests/test_harness_task.py tests/test_harness_worker.py
+- Acceptance criteria:
+  - admission consumes existing validated agent/capability/lease/Action Ticket decisions through narrow interfaces and creates no second authority registry;
+  - exact tenant, task, actor, worker, capability, resource/path, operation, expiry, budget, policy version, and kill-switch state bind each decision;
+  - read-only work cannot gain mutation and mutating work cannot proceed without the applicable single-use Action Ticket decision;
+  - replay, expiry, revocation, scope escape, identity/provider substitution, missing Evidence, and authority inheritance deny safely;
+  - no capability issuance, ticket signing, credential resolution, provider activation, deployment, remediation, or response authority is added.
+- Expected validation: focused adversarial Linux proof, exact Claude review, then full suite/integrity once.
+- Security considerations: AI requests are untrusted and cannot mint, widen, renew, inherit, or approve authority.
+
 ### FWQ-0074 — Harness lifecycle Evidence integration
 - Requirement: FW-HARNESS-009 canonical lifecycle evidence
-- State: READY
+- State: DONE
 - Priority: P0
 - Dependencies: FWQ-0073
 - Approval: Evidence integration is approved by the FW-HARNESS master requirement; it must consume FW-EVID and may not create a competing log authority.
@@ -80,6 +99,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no provider, credential, deployment, remediation, or response authority is added.
 - Expected validation: focused adversarial Linux proof, exact Claude review, then full suite/integrity once.
 - Security considerations: model output and operational logs remain untrusted; only validated bounded facts enter canonical Evidence.
+- Completion evidence: exact candidate `f03998ea53f965641b8207139968daa3d0ae938d`; focused 56 passed; exact Claude APPROVE/LOW with no blockers/missing tests; full 1025 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with unchanged YELLOW findings. Evidence: `docs/fw-harness-009-claude-review.json`, `docs/fw-harness-009-integrity-full.json`.
 
 ### FWQ-0073 — Harness Mission Control projection
 - Requirement: FW-HARNESS-008 operator visibility

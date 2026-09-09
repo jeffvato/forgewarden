@@ -1,0 +1,30 @@
+{
+  "adjudication": null,
+  "candidate_commit": "f03998ea53f965641b8207139968daa3d0ae938d",
+  "deployment": "DISABLED",
+  "job_id": "phase2a-0074aabbccddeeff00112233",
+  "kill_switch": "ENGAGED",
+  "mutation_allowed": false,
+  "reviews": [
+    {
+      "provider": "CLAUDE",
+      "result": {
+        "blocking_findings": [],
+        "job_id": "phase2a-0074aabbccddeeff00112233",
+        "non_blocking_notes": [
+          "Hardcoded mode=DRY_RUN and deployment=DISABLED are intentional per lifecycle governance, not oversight",
+          "Schema version pinned to 1 as canonical form; migration path would require new function",
+          "Path validation scope limited to relative paths and no-traversal; appropriate for task-scoped files"
+        ],
+        "proposed_rules": [],
+        "reasoning_summary": "Deterministic validation architecture: tenant_id/event/decisions validated against frozensets and regex; cross-tenant binding enforced before sink; task-context-worker binding verified with all IDs matching; secrets and path escapes rejected by _bounded() before emission; changed files scope-checked; one immutable evidence_sink call only; evidence_sink failure propagates without partial state. Tests confirm denial-before-emission (empty sink calls on validation error). Immutable frozen dataclass with hardcoded governance flags (DRY_RUN, DISABLED, authority_expanded=False). 56 passed.",
+        "reviewed_commit": "f03998ea53f965641b8207139968daa3d0ae938d",
+        "risk": "LOW",
+        "tests_missing": [],
+        "verdict": "APPROVE"
+      },
+      "state": "APPROVED"
+    }
+  ],
+  "state": "APPROVED"
+}
