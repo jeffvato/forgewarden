@@ -56,6 +56,27 @@ def test_noncanonical_signal_case_does_not_match():
     assert finding is None
 
 
+def test_distinct_defensive_tamper_signals_create_warn_only_medium_finding():
+    finding = evaluate_ransomware_activity([
+        observation("e1", 100, indicators=("CREDENTIAL_TAMPER",)),
+        observation("e2", 101, indicators=("SERVICE_TAMPER", "SHADOW_COPY_TAMPER")),
+    ], tenant_id="tenant-a", device_id="device-a", audit=lambda *_args: None)
+    assert finding.signals == ("CREDENTIAL_TAMPER", "SERVICE_TAMPER", "SHADOW_COPY_TAMPER")
+    assert finding.confidence == "MEDIUM"
+    assert finding.recommendations == ("WARN",)
+
+
+def test_tamper_signal_case_is_exact_and_evidence_failure_denies_output():
+    assert evaluate_ransomware_activity([
+        observation("e1", 100, indicators=("credential_tamper", "service_tamper")),
+    ], tenant_id="tenant-a", device_id="device-a", audit=lambda *_args: None) is None
+    with pytest.raises(RansomwareEvaluationDenied, match="EVIDENCE_WRITE_FAILED"):
+        evaluate_ransomware_activity([
+            observation("e1", 100, indicators=("CREDENTIAL_TAMPER", "SERVICE_TAMPER")),
+        ], tenant_id="tenant-a", device_id="device-a",
+           audit=lambda *_args: (_ for _ in ()).throw(RuntimeError("offline")))
+
+
 @pytest.mark.parametrize("items, reason", [
     ([], "EVENT_COUNT_INVALID"),
     ([observation("e1", 100), observation("e1", 101)], "EVENT_ID_DUPLICATE"),

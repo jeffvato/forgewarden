@@ -22,7 +22,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-RANSOM-05 — Defensive-control tamper signal correlation
 - Requirement: FW-RANSOM deterministic credential/service/recovery tamper detection
-- State: READY
+- State: IN_PROGRESS
 - Priority: P0
 - Dependencies: FW-RANSOM-04
 - Approval: FW-RANSOM is active first under D-022.

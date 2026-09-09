@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: FW-RANSOM (then FW-MCP, FW-BME, FW-SOC under D-022)
-- Current focus: FW-RANSOM-04 accepted; FW-RANSOM-05 defensive tamper signals are next
-- Next task: implement FW-RANSOM-05 within the existing bounded evaluator.
+- Current focus: FW-RANSOM-05 defensive-control tamper signal correlation
+- Next task: validate and exact-review FW-RANSOM-05 within the bounded evaluator.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
