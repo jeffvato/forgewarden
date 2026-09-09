@@ -4,7 +4,7 @@
 
 - Active phase: ForgeWarden Core
 - Current focus: Core supervisor and deterministic queue reconciliation
-- Current task: FWQ-0014 — Deterministic Core continuation transition record (already implemented; evidence reconciliation recorded).
+- Current task: FWQ-0015 — Deterministic Core continuation replay guard (accepted).
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -43,6 +43,8 @@ On every restart or continuation:
 - Platform delivery definition: Windows and Linux are the first endpoint targets; macOS, Android, and iOS are later platform-native releases. Detailed scope and required proof are in `docs/fw-av-windows-linux-delivery-plan.md`.
 
 ## Execution log
+
+- 2026-09-09: FWQ-0015 accepted at `1428970ff3f6b51892711efaed7262008d373378`: bounded ContinuationReplayGuard binds completed task, accepted commit, next task, and Core phase into an immutable token and consumes each transition exactly once. Focused proof passed (12 tests); exact Claude review APPROVE/LOW with no missing tests. Claude verifier repair `216a82b` preserves exact Git patch text while sanitizing only reviewer instructions.
 
 - 2026-09-09: FWQ-0014 was authorized and reconciled against existing Core evidence. `run_bounded_work_unit` and `plan_continuation` already persist bounded continuation checkpoints, bind candidate/review evidence, preserve DRY_RUN, and fail closed on invalid callbacks or review repair failures; regression coverage is present in `tests/test_continuation.py`. No duplicate product code or unchanged validation was added.
 
