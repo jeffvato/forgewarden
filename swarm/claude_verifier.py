@@ -18,7 +18,9 @@ from .core import SwarmError, validate_contract
 MODEL = MODEL_ALIASES["haiku"]
 TIMEOUT_SECONDS = 180
 MAX_OUTPUT_BYTES = 131072
-MAX_TURNS = 1
+# Claude's structured-output wrapper accounts for the request and response as
+# two turns even when no tools are enabled; two is the smallest reliable bound.
+MAX_TURNS = 2
 
 
 def _write_diagnostic(path: Path | None, payload: dict[str, Any]) -> None:
@@ -100,7 +102,7 @@ def run(snapshot: Path, job_id: str, commit: str, prompt: str, *, diagnostic_pat
         str(CLAUDE), "-p", verifier_prompt, "--model", MODEL, "--output-format", "json",
         "--json-schema", json.dumps(schema_value, separators=(",", ":"), sort_keys=True),
         "--tools", "", "--permission-mode", "plan", "--no-session-persistence",
-        "--max-turns", "1", "--effort", "low", "--disable-slash-commands", "--no-chrome",
+        "--max-turns", str(MAX_TURNS), "--effort", "low", "--disable-slash-commands", "--no-chrome",
     ]
     if not snapshot.is_dir() or snapshot.is_symlink():
         raise ClaudeVerificationError("Claude verifier snapshot is unavailable")
