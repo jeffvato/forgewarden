@@ -242,3 +242,49 @@ def repo_fixture(tmp_path: Path) -> Path:
     sha = subprocess.check_output(["git", "-C", str(repo), "rev-parse", "HEAD"], text=True).strip()
     (repo / ".candidate-sha").write_text(sha, encoding="utf-8")
     return repo
+
+
+@pytest.mark.parametrize("outcome", ["APPROVE", "UNAVAILABLE"])
+def test_adjudication_retains_exact_snapshot_until_finished(repo_fixture, outcome):
+    sha = (repo_fixture / ".candidate-sha").read_text().strip()
+    snapshots = []
+    inspected = []
+
+    def payload(job_id, commit, verdict="APPROVE"):
+        return {"job_id": job_id, "reviewed_commit": commit, "verdict": verdict,
+                "risk": "LOW", "blocking_findings": [], "non_blocking_notes": [],
+                "tests_missing": [], "reasoning_summary": "fixture review", "proposed_rules": []}
+
+    def claude(snapshot, job_id, commit, context):
+        snapshots.append(snapshot)
+        assert (snapshot / "README.md").read_text() == "fixture\n"
+        patch = (snapshot / "EXACT_CANDIDATE.patch").read_text()
+        assert sha in patch and "+fixture" in patch
+        inspected.append(patch)
+        if len(snapshots) == 2 and outcome == "UNAVAILABLE":
+            raise RuntimeError("fixture adjudicator unavailable after inspection")
+        return payload(job_id, commit)
+
+    def disagrees(snapshot, job_id, commit, context):
+        return payload(job_id, commit, "REJECT")
+
+    result = run_review_cycle(
+        repo_fixture, sha, "phase2a-" + "8" * 24,
+        "FULL_SNAPSHOT_READ_ONLY_REVIEW: inspect exact fixture patch",
+        claude_runner=claude, openrouter_runner=disagrees,
+        reviewers=("CLAUDE", "OPENROUTER"), required_reviewers=("CLAUDE",),
+        adjudicate_disagreements=True,
+    )
+    assert len(inspected) == 2
+    assert inspected[0] == inspected[1]
+    assert snapshots[0] == snapshots[1]
+    assert all(not snapshot.exists() for snapshot in snapshots)
+    assert result["mutation_allowed"] is False
+    if outcome == "APPROVE":
+        assert result["state"] == "APPROVED"
+        assert result["adjudication"]["state"] == "APPROVED"
+        assert result["adjudication"]["result"]["reviewed_commit"] == sha
+    else:
+        assert result["state"] == "REVIEW_REQUIRED"
+        assert result["adjudication"]["state"] == "UNAVAILABLE"
+        assert "after inspection" in result["adjudication"]["error"]

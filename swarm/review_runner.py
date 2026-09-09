@@ -172,17 +172,17 @@ def run_review_cycle(
                 futures = [executor.submit(invoke_provider, provider, invoke) for provider, invoke in providers]
                 records = [future.result() for future in futures]
 
-    adjudication = None
-    if adjudicate_disagreements and "CLAUDE" in requested and next(record for record in records if record["provider"] == "CLAUDE")["state"] != "UNAVAILABLE":
-        non_claude = [record for record in records if record["provider"] != "CLAUDE" and record["state"] != "UNAVAILABLE"]
-        if any(record["state"] != "APPROVED" for record in non_claude):
-            try:
-                adjudication_prompt = review_context + "\n\nThe following read-only provider reports disagree. Adjudicate them against the exact commit and return the final Claude decision:\n" + json.dumps(non_claude, sort_keys=True)
-                final_result = claude(snapshots["CLAUDE"], job_id, commit, adjudication_prompt)
-                validate_contract(final_result, "claude", expected_job_id=job_id, expected_commit=commit)
-                adjudication = _review_record("CLAUDE_ADJUDICATION", result=final_result)
-            except Exception as exc:
-                adjudication = _review_record("CLAUDE_ADJUDICATION", error=redact(str(exc)))
+        adjudication = None
+        if adjudicate_disagreements and "CLAUDE" in requested and next(record for record in records if record["provider"] == "CLAUDE")["state"] != "UNAVAILABLE":
+            non_claude = [record for record in records if record["provider"] != "CLAUDE" and record["state"] != "UNAVAILABLE"]
+            if any(record["state"] != "APPROVED" for record in non_claude):
+                try:
+                    adjudication_prompt = review_context + "\n\nThe following read-only provider reports disagree. Adjudicate them against the exact commit and return the final Claude decision:\n" + json.dumps(non_claude, sort_keys=True)
+                    final_result = claude(snapshots["CLAUDE"], job_id, commit, adjudication_prompt)
+                    validate_contract(final_result, "claude", expected_job_id=job_id, expected_commit=commit)
+                    adjudication = _review_record("CLAUDE_ADJUDICATION", result=final_result)
+                except Exception as exc:
+                    adjudication = _review_record("CLAUDE_ADJUDICATION", error=redact(str(exc)))
     required_records = [record for record in records if record["provider"] in required]
     optional_records = [record for record in records if record["provider"] not in required]
     approved = bool(adjudication and adjudication["state"] == "APPROVED") or (

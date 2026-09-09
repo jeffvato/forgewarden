@@ -29,17 +29,17 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FWQ-0063
-- Starting commit: de3d15946edad7d8a090ac9e150a9c647f839c94
-- Candidate commit: 13604a8dddda40c11a415da08ccf6e7ef60460a4
-- Accepted commit: 13604a8dddda40c11a415da08ccf6e7ef60460a4
-- Files changed: swarm/autonomous_adapters.py, swarm/cli.py, tests/test_autonomous_loop.py, WORK_QUEUE.md, SWARM_STATUS.md
-- Deterministic validation: focused 72 passed; full 831 passed/1 skipped; integrity hard checks and 4 Golden Paths pass; YELLOW pre-existing findings
-- Claude review: 13604a8dddda40c11a415da08ccf6e7ef60460a4 APPROVE/LOW, no findings or missing tests
+- Task ID: FWQ-0064
+- Starting commit: 3f08707d527e14a90331fc83b92e9efd6a04adcd
+- Candidate commit: none
+- Accepted commit: none
+- Files changed: swarm/review_runner.py, tests/test_review_runner.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Deterministic validation: regression reproduced missing adjudication snapshot; focused review-runner proof 11 passed after fix; git diff --check passed
+- Claude review: FWQ-0064 exact review pending
 - Gemini review: disabled and not required under D-020
-- Unresolved findings: none for FWQ-0063; distinct snapshot-lifetime defect scoped as FWQ-0064
+- Unresolved findings: none from FWQ-0064 focused checks; exact review pending
 - Blocker: none for bounded FWQ-0063; historical evidence caveats are in the audit
-- Next action: claim FWQ-0064; do not repeat accepted FWQ-0063 checks
+- Next action: obtain exact Claude review of FWQ-0064, then full suite/integrity once after approval
 
 - Completion inventory: `docs/completion-audit-2026-09-09.md` (baseline `0afcbdd`).
 - FWQ-0008 implementation and binding hardening exist; VALIDATED retains a historical provenance caveat, not an implementation assignment. FWQ-0009 is recorded accepted and unchanged at source/test level from its reviewed candidate.

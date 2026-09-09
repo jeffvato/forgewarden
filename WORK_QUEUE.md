@@ -379,7 +379,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FWQ-0064 — Retain exact review snapshots through adjudication
 - Requirement: Core exact-review reliability and evidence lifetime (D-004, D-014)
-- State: READY
+- State: REVIEW
 - Priority: P1
 - Dependencies: FWQ-0063
 - Approval: Jeff authorized continued development after FWQ-0063; this is a concrete defect in the existing read-only review owner, not a new capability.
