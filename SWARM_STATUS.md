@@ -2,9 +2,9 @@
 
 ## Current state
 
-- Active phase: FW-BME (then FW-SOC under D-022)
-- Current focus: FW-BME-02 accepted; FW-BME-03 dangerous-delivery classification is next
-- Next task: implement FW-BME-03 as offline warn-only evaluation.
+- Active phase: ForgeWarden Core
+- Current focus: FW-HARNESS-001 inventory and formalization of the existing governed development harness
+- Next task: complete FWQ-0065 inventory review, then implement FW-HARNESS-002 canonical task/state transitions.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -29,17 +29,17 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-BME-02
-- Starting commit: 580d16c91215b614337890da7671abf1494f98e2
-- Candidate commit: 87a2d15f29504679d35b7c84f4c7e6a940f1dfd9
-- Accepted commit: 87a2d15f29504679d35b7c84f4c7e6a940f1dfd9
-- Files changed: swarm/browser_email.py, tests/test_browser_email.py, WORK_QUEUE.md, SWARM_STATUS.md
-- Deterministic validation: focused 21 passed; full 918 passed/1 skipped; integrity all hard checks and 4 Golden Paths pass, YELLOW pre-existing findings
-- Claude review: 87a2d15f29504679d35b7c84f4c7e6a940f1dfd9 APPROVE/LOW, no blockers or missing tests
+- Task ID: FWQ-0065
+- Starting commit: 09442959fe64c3c33e01e23d1e60c2e32df13ba8
+- Candidate commit: pending exact commit creation
+- Accepted commit: none
+- Files changed: docs/fw-harness-inventory.md, ROADMAP.md, DECISIONS.md, WORK_QUEUE.md, SWARM_STATUS.md
+- Deterministic validation: pending focused control-file proof and diff check
+- Claude review: pending exact-candidate review
 - Gemini review: disabled and not required under D-020
 - Unresolved findings: none for bounded FW-RANSOM/FW-MCP or FW-BME-01/02; historical caveats and pre-existing YELLOW findings remain
-- Blocker: none for bounded FW-MCP work; broader live/response authority stays disabled
-- Next action: claim FW-BME-03
+- Blocker: none for FW-HARNESS-001; FW-BME-03 is deferred under D-023
+- Next action: validate and review FWQ-0065, then claim FWQ-0066
 
 - Completion inventory: `docs/completion-audit-2026-09-09.md` (baseline `0afcbdd`).
 - FWQ-0008 implementation and binding hardening exist; VALIDATED retains a historical provenance caveat, not an implementation assignment. FWQ-0009 is recorded accepted and unchanged at source/test level from its reviewed candidate.
@@ -49,6 +49,8 @@ On every restart or continuation:
 - Latest broad Core closure: FWQ-0064, 833 passed/1 skipped, all hard checks/Golden Path passing, YELLOW pre-existing findings.
 
 ## Execution log
+
+- 2026-09-09: Jeff explicitly established FW-HARNESS as a permanent Core requirement family (D-023). Phase H1 inventories and maps the existing trusted harness before runtime changes. FW-BME-03 is deferred rather than cancelled; DRY_RUN, disabled deployment, engaged kill switch, exact Claude review, and model no-authority boundaries remain unchanged.
 
 - 2026-09-09: FW-BME-02 accepted at `87a2d15f29504679d35b7c84f4c7e6a940f1dfd9`. Exact phishing/BEC/lookalike/QR/redirect and email authentication signals produce deterministic Evidence-first warn-only findings after revalidating tenant and untrusted observation boundaries. Focused 21 passed; exact Claude APPROVE/LOW; full 918 passed/1 skipped; integrity hard checks and Golden Paths pass with unchanged YELLOW findings. FW-BME-03 is next.
 

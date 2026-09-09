@@ -73,3 +73,9 @@ Jeff also reports that this AnythingLLM route uses rate-limited Groq capacity. U
 ## D-022 — Approved security-family implementation sequence
 
 On 2026-09-09 Jeff explicitly activated continued implementation in this order: FW-RANSOM, FW-MCP, FW-BME, then FW-SOC. Each family proceeds as bounded queue items through deterministic validation and exact Claude Code review. This activation does not authorize live sensors, endpoint or network services, credentials, deployment, quarantine, remediation, cleanup, restore, deletion, repair, or response actions. Existing tenant, Evidence, Action Ticket, FW-KEYS, TrustedSignatureCatalog, NormalizedEventStore, DRY_RUN, disabled-deployment, and kill-switch boundaries remain authoritative.
+
+## D-023 — FW-HARNESS is a permanent Core requirement family
+
+On 2026-09-09 Jeff explicitly expanded Core to make the existing AI development/orchestration harness a first-class subsystem named FW-HARNESS. This satisfies D-016's architecture-decision gate. FW-HARNESS extends the existing Hermes, Codex, trusted Python orchestrator, deterministic validation, read-only review, Git, DRY_RUN, audit, recovery, and kill-switch implementation; it must not create a parallel orchestrator or evidence architecture. Deterministic ForgeWarden components retain permissions, execution, Git, filesystem, tools, credentials, policy, state, retries, budgets, approvals, deployment, rollback, evidence, and kill-switch authority. Model output remains untrusted advisory input.
+
+FW-HARNESS takes implementation priority while its initial permanent milestones are active. FW-BME-03 and the remaining D-022 sequence are deferred, not cancelled, and may resume only through a later explicit queue transition. Current deployment and response-authority prohibitions remain unchanged.

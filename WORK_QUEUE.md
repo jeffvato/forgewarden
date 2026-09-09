@@ -20,12 +20,52 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 
 Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical implementation is not new work. FWQ-0008 VALIDATED preserves a provenance caveat, not a request to rebuild or automatically repeat review. FWQ-0012–0016 are reconciled DONE from existing implementation and recorded proof.
 
+### FWQ-0066 — Canonical FW-HARNESS task and transition contract
+- Requirement: FW-HARNESS-002 persistent task engine
+- State: READY
+- Priority: P0
+- Dependencies: FWQ-0065
+- Approval: FW-HARNESS is permanent Core under D-023.
+- Description: Consolidate the existing queue item, autonomous TaskSpec/runtime record, and work checkpoint around one versioned canonical task schema and deterministic transition contract, preserving compatibility and fail-closed recovery.
+- Target path: swarm/harness_task.py
+- Allowed paths: swarm/harness_task.py, swarm/task_selection.py, swarm/autonomous_loop.py, tests/test_harness_task.py, tests/test_task_selection.py, tests/test_autonomous_loop.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_harness_task.py tests/test_task_selection.py tests/test_autonomous_loop.py
+- Acceptance criteria:
+  - stable execution task ID and separate stable FW-HARNESS requirement ID;
+  - required lifecycle states and deterministic validated transitions;
+  - required task metadata represented with bounded validated values;
+  - existing queue/autonomous state loads through explicit compatibility adapters;
+  - models cannot mutate protected workflow state;
+  - no new execution, Git, filesystem, credential, network, deployment, or response authority.
+- Expected validation: focused Linux proof, exact Claude review, then full suite/integrity once.
+- Security considerations: persisted task data and model suggestions are untrusted input and must fail closed.
+
+### FWQ-0065 — FW-HARNESS existing architecture inventory
+- Requirement: FW-HARNESS-001 harness inventory
+- State: REVIEW
+- Priority: P0
+- Dependencies: FWQ-0064
+- Approval: FW-HARNESS is permanent Core under D-023.
+- Description: Inventory the existing orchestration, state, continuation, Codex, review, Git, safety, audit, testing, monitoring, and Mission Control components before changing runtime architecture.
+- Target path: docs/fw-harness-inventory.md
+- Allowed paths: docs/fw-harness-inventory.md, ROADMAP.md, DECISIONS.md, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_supervisor_state.py tests/test_task_selection.py
+- Acceptance criteria:
+  - existing canonical owners and overlaps are identified;
+  - requested FW-HARNESS capabilities are mapped to existing components and concrete gaps;
+  - consolidation order avoids duplicate orchestrator/evidence architecture;
+  - next bounded implementation task is explicit;
+  - DRY_RUN, disabled deployment, kill switch, and model no-authority boundaries remain unchanged.
+- Expected validation: control-file parser/selector proof, diff check, and exact Claude review.
+- Security considerations: documentation and queue metadata grant no runtime authority.
+
 ### FW-BME-03 — Deterministic dangerous-delivery classification
 - Requirement: FW-BME dangerous download, redirect, HTML-smuggling, and prompt-injection signals
-- State: READY
+- State: BLOCKED
 - Priority: P0
 - Dependencies: FW-BME-02
 - Approval: FW-BME is active under D-022.
+- Blocking reason: deferred by the explicit FW-HARNESS Core priority in D-023; resume only through a later authorized queue transition.
 - Description: Classify exact normalized dangerous-delivery indicators into Evidence-first warn-only findings without fetching links, opening content, scanning files, or invoking AV/quarantine behavior.
 - Target path: swarm/browser_email.py
 - Allowed paths: swarm/browser_email.py, tests/test_browser_email.py, WORK_QUEUE.md, SWARM_STATUS.md

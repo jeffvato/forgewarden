@@ -17,6 +17,9 @@ ForgeWarden Core remains the active implementation mission. The broader security
 
 ## Active / foundational requirement families
 
+### FW-HARNESS — Governed AI Execution & Engineering Harness
+Permanent Core subsystem for persistent task execution, deterministic scheduling and transitions, targeted context, bounded AI workers, independent read-only review, validation, repair, trusted Git/worktree control, recovery, budgets, audit evidence, approval gates, kill-switch enforcement, and Mission Control visibility. FW-HARNESS consumes FW-ROOT, FW-ID, FW-KEYS, FW-EVID, FW-REC, FW-TEST, FW-MCP, FW-API, FW-OPS, and FW-GOV through their canonical interfaces. AI output is always untrusted advisory input and never owns authority. Implementation proceeds incrementally from the existing trusted Python harness documented in `docs/fw-harness-inventory.md`.
+
 ### FW-ROOT — Root authority and deterministic policy
 Customer Root, Z3 Policy Engine/Action Broker, signed policies, bounded leases/capabilities, single-use Action Tickets, dual control, kill-switch enforcement, immutable prohibitions, and machine-checkable invariants.
 
