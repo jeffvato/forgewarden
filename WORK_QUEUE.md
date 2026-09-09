@@ -20,9 +20,27 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 
 Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical implementation is not new work. FWQ-0008 VALIDATED preserves a provenance caveat, not a request to rebuild or automatically repeat review. FWQ-0012–0016 are reconciled DONE from existing implementation and recorded proof.
 
+### FW-RANSOM-05 — Defensive-control tamper signal correlation
+- Requirement: FW-RANSOM deterministic credential/service/recovery tamper detection
+- State: READY
+- Priority: P0
+- Dependencies: FW-RANSOM-04
+- Approval: FW-RANSOM is active first under D-022.
+- Description: Extend the bounded activity evaluator with exact credential, service, and shadow-copy tamper indicators while preserving deterministic confidence and warn/proposal policy.
+- Target path: swarm/ransomware.py
+- Allowed paths: swarm/ransomware.py, tests/test_ransomware.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_ransomware.py
+- Acceptance criteria:
+  - exact canonical tamper tokens only, with noncanonical case ignored;
+  - two distinct tamper signals produce a bounded finding without requiring filesystem or process inspection;
+  - every finding warns and isolation remains only a recommendation at HIGH confidence;
+  - Evidence failure denies output and DRY_RUN/DETECT_ONLY remains fixed.
+- Expected validation: focused Linux proof, exact Claude review, then full suite/integrity once.
+- Security considerations: indicators are caller-supplied untrusted data and cannot authorize response.
+
 ### FW-RANSOM-04 — Bounded SMB propagation correlation
 - Requirement: FW-RANSOM deterministic lateral-propagation signal
-- State: IN_PROGRESS
+- State: DONE
 - Priority: P0
 - Dependencies: FW-RANSOM-03
 - Approval: FW-RANSOM is active first under D-022.
@@ -38,6 +56,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - outputs remain DRY_RUN/DETECT_ONLY and recommend WARN only.
 - Expected validation: focused Linux proof, exact Claude review, then full suite/integrity once.
 - Security considerations: event metadata is caller-supplied untrusted data; correlation grants no response authority.
+- Completion evidence: exact candidate `7c28fedfa04e925c47c305ab4c1cb4b6a30ed65b`; focused 18 passed; Claude APPROVE/LOW with no blockers/missing tests; full 851 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with pre-existing YELLOW findings. Evidence: `docs/fw-ransom-04-claude-review.json`, `docs/fw-ransom-04-integrity.json`.
 
 ### FW-RANSOM-03 — Bounded ransomware canary registry and touch detection
 - Requirement: FW-RANSOM deterministic canary signal
