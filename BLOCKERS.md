@@ -4,6 +4,16 @@ This file records only genuine blockers that require Customer Root authority, un
 
 ## Current blockers
 
+### B-029 — Untracked pitch-deck artifacts block YARA integrity acceptance
+
+- Related task/requirement: FW-AV-YARA-01 final integrity acceptance.
+- Exact condition: the one required integrity gate at `9af56a6` passed build, startup, configuration, tests, and Golden Path, but returned repository RED because `output/` and `tmp/` are untracked in the working tree.
+- Why work cannot complete safely: accepting a RED integrity result would misrepresent repository hygiene; deleting or moving artifacts is a potentially destructive action requiring Customer Root direction.
+- What authority/resource/decision is required: Jeff must choose whether to move the artifacts outside the repository or explicitly approve another reversible cleanup/ignore strategy.
+- Independent READY work still available: none within the active YARA acceptance gate; Android work remains downstream of this acceptance.
+- Current commit/checkpoint: `9af56a6` plus the recorded integrity report `.swarm-state/fw-av-yara-01-integrity.json`.
+- First action to resume after resolution: rerun only the integrity gate against the now-clean tree, then record YARA acceptance and continue to Android.
+
 ### B-028 — Exact Claude review pending for FW-AV-YARA-01 catalog binding (resolved)
 
 - Related task/requirement: FW-AV-YARA-01 — bind YARA rules into trusted catalog snapshots, signed local admission, and accepted-cache recovery.
