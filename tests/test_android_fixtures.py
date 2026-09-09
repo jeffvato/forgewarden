@@ -1,5 +1,6 @@
 from swarm.android_fixtures import ANDROID_SOURCE, AndroidFixtureDenied, adapt_android_record, ingest_android_fixture
 from swarm.normalized_events import NormalizedEventStore
+import pytest
 
 
 def _record(**overrides):
@@ -37,3 +38,28 @@ def test_android_fixture_rejects_cross_tenant_and_permission_overflow():
         assert exc.reason == "PERMISSIONS_INVALID"
     else:
         raise AssertionError("oversized permission list accepted")
+
+
+def test_android_fixture_rejects_missing_or_extra_fields():
+    missing = _record()
+    missing.pop("evidence_ref")
+    with pytest.raises(AndroidFixtureDenied, match="RECORD_INVALID"):
+        adapt_android_record(missing, tenant_id="tenant-a", device_id="phone-1")
+    with pytest.raises(AndroidFixtureDenied, match="RECORD_INVALID"):
+        adapt_android_record(_record(unexpected="value"), tenant_id="tenant-a", device_id="phone-1")
+
+
+def test_android_fixture_rejects_invalid_event_type():
+    with pytest.raises(AndroidFixtureDenied, match="EVENT_TYPE_INVALID"):
+        adapt_android_record(_record(event_type="PROCESS_START"), tenant_id="tenant-a", device_id="phone-1")
+
+
+def test_android_fixture_rejects_empty_or_malformed_permissions():
+    for permissions in ([], [""], [None]):
+        with pytest.raises(AndroidFixtureDenied, match="PERMISSIONS_INVALID"):
+            adapt_android_record(_record(permissions=permissions), tenant_id="tenant-a", device_id="phone-1")
+
+
+def test_android_fixture_rejects_invalid_store():
+    with pytest.raises(AndroidFixtureDenied, match="STORE_INVALID"):
+        ingest_android_fixture(object(), _record(), tenant_id="tenant-a", device_id="phone-1", now_epoch=150)
