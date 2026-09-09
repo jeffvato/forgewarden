@@ -1,0 +1,24 @@
+{
+  "adjudication": null,
+  "candidate_commit": "7c28fedfa04e925c47c305ab4c1cb4b6a30ed65b",
+  "deployment": "DISABLED",
+  "job_id": "phase2a-dddddddddddddddddddddddd",
+  "kill_switch": "ENGAGED",
+  "mutation_allowed": false,
+  "reviews": [{
+    "provider": "CLAUDE",
+    "result": {
+      "blocking_findings": [],
+      "job_id": "phase2a-dddddddddddddddddddddddd",
+      "non_blocking_notes": [],
+      "proposed_rules": [],
+      "reasoning_summary": "Patch implements FW-RANSOM-04 bounded SMB propagation correlation with deterministic, tenant-isolated event correlation over caller-supplied observations. All core requirements met: exact uppercase-token matching, device/event/window bounds enforced before audit, one-tenant isolation, duplicate (device_id, event_id) deduplication, evidence-first validation pattern, warn-only recommendations, hardcoded DRY_RUN/DETECT_ONLY mode/action, and no network operations. Input validation rejects non-DRY_RUN observations. Frozen dataclass ensures immutability. Four comprehensive tests cover happy path, token exactness, cross-tenant rejection, bounds enforcement before evidence write, and audit failure handling. No modifications to existing ransomware logic—purely additive feature. Status files updated. Narrow patch, zero architectural debt.",
+      "reviewed_commit": "7c28fedfa04e925c47c305ab4c1cb4b6a30ed65b",
+      "risk": "LOW",
+      "tests_missing": [],
+      "verdict": "APPROVE"
+    },
+    "state": "APPROVED"
+  }],
+  "state": "APPROVED"
+}
