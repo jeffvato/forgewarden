@@ -18,13 +18,13 @@ MAX_FIXTURE_BYTES = 64 * 1024
 MAX_METADATA_STRING_BYTES = 256
 MAX_PROCESS_ANCESTRY = 32
 MAX_RELATED_INDICATORS = 64
-_SOURCES = frozenset({"WINDOWS_SENSOR", "LINUX_SENSOR"})
-_EVENT_TYPES = frozenset({"FILE_LIFECYCLE", "PROCESS_START", "PROCESS_EXIT", "NETWORK_CONNECT", "RUNTIME_INDICATOR"})
+_SOURCES = frozenset({"WINDOWS_SENSOR", "LINUX_SENSOR", "ANDROID_FIXTURE"})
+_EVENT_TYPES = frozenset({"FILE_LIFECYCLE", "PROCESS_START", "PROCESS_EXIT", "NETWORK_CONNECT", "RUNTIME_INDICATOR", "APP_STATE", "APP_PERMISSION", "DEVICE_POSTURE"})
 _FIXTURE_KEYS = frozenset({
     "event_id", "tenant_id", "device_id", "observed_at_epoch", "event_type", "source",
     "artifact", "process", "process_ancestry", "related_indicators", "evidence_ref",
 })
-_METADATA_KEYS = frozenset({"path", "name", "digest", "pid", "parent_pid", "command_line", "destination", "operation", "exit_code"})
+_METADATA_KEYS = frozenset({"path", "name", "digest", "pid", "parent_pid", "command_line", "destination", "operation", "exit_code", "package_name", "app_label", "version_name", "version_code", "permissions"})
 
 
 class EndpointFixtureDenied(PermissionError):
