@@ -111,9 +111,9 @@ def run_review_cycle(
         raise ReviewRunnerError("review context must be non-empty text")
     commit = _validate_inputs(repository, candidate_commit, job_id)
     patch = _git(repository, "show", "--format=fuller", "--stat", "--patch", commit)
-    review_context = context + "\n\nExact candidate patch from Git:\n" + patch
-    if len(review_context.encode("utf-8")) > 24_000:
-        raise ReviewRunnerError("review context plus exact candidate patch exceeds the 24000-byte bound")
+    inline_context = context + "\n\nExact candidate patch from Git:\n" + patch
+    patch_file_mode = len(inline_context.encode("utf-8")) > 24_000
+    review_context = (context + "\n\nExact candidate patch is available at EXACT_CANDIDATE.patch. Use only the read-only file viewer to inspect that exact patch.") if patch_file_mode else inline_context
     requested = tuple(dict.fromkeys(reviewers))
     supported = {"CLAUDE", "GEMINI", "OPENROUTER", "NVIDIA"}
     if not requested or any(provider not in supported for provider in requested):
@@ -126,6 +126,10 @@ def run_review_cycle(
         for snapshot in snapshots.values():
             snapshot.mkdir()
             _extract_archive(repository, commit, snapshot)
+            if patch_file_mode:
+                patch_path = snapshot / "EXACT_CANDIDATE.patch"
+                patch_path.write_text(patch, encoding="utf-8")
+                patch_path.chmod(0o600)
 
         claude = claude_runner or claude_verifier.run
         gemini = gemini_runner

@@ -97,20 +97,25 @@ def run(snapshot: Path, job_id: str, commit: str, prompt: str, *, diagnostic_pat
     if not CLAUDE.is_file() or not os.access(CLAUDE, os.X_OK):
         raise ClaudeVerificationError("Claude CLI is unavailable")
     context = _sanitize_review_context(prompt)
+    patch_file_mode = "Exact candidate patch is available at EXACT_CANDIDATE.patch." in context
     schema_value = schema(job_id, commit)
+    patch_instruction = (
+        "The complete exact patch is included in the review context; do not use tools or inspect unrelated files."
+        if not patch_file_mode else
+        "The complete exact patch is available at EXACT_CANDIDATE.patch; use only the read-only file viewer to inspect it."
+    )
     verifier_prompt = (
         f"You are the primary read-only verifier for Phase 2A job {job_id}. "
         f"Review only the exact commit {commit} in this disposable snapshot. "
         "Return one JSON object matching the supplied schema. APPROVE only when the "
         "deterministic checks passed, the patch is narrow, and there are no blocking "
-        "findings or missing tests. The complete exact patch is included in the review context; "
-        "do not use tools or inspect unrelated files. Do not use shell, Git, edits, MCP, deployment, "
+        "findings or missing tests. " + patch_instruction + " Do not use shell, Git, edits, MCP, deployment, "
         "or network resources. Do not authorize any action beyond this verification.\n\n" + context
     )
     argv = [
         str(CLAUDE), "-p", verifier_prompt, "--model", MODEL, "--output-format", "json",
         "--json-schema", json.dumps(schema_value, separators=(",", ":"), sort_keys=True),
-        "--tools", "", "--permission-mode", "plan", "--no-session-persistence",
+        "--tools", "Read" if patch_file_mode else "", "--permission-mode", "plan", "--no-session-persistence",
         "--max-turns", str(MAX_TURNS), "--effort", "low", "--disable-slash-commands", "--no-chrome",
     ]
     if not snapshot.is_dir() or snapshot.is_symlink():

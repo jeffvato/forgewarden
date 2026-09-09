@@ -179,6 +179,27 @@ def test_review_cycle_supports_explicit_claude_only_mode(repo_fixture: Path):
     assert [item["provider"] for item in result["reviews"]] == ["CLAUDE"]
 
 
+def test_review_cycle_externalizes_large_exact_patch_for_read_only_review(repo_fixture: Path):
+    import subprocess
+
+    large = repo_fixture / "large.txt"
+    large.write_text("x" * 30_000, encoding="utf-8")
+    subprocess.run(["git", "-C", str(repo_fixture), "add", "large.txt"], check=True)
+    subprocess.run(["git", "-C", str(repo_fixture), "-c", "user.name=Test", "-c", "user.email=test@example.com", "commit", "-q", "-m", "large"], check=True)
+    sha = subprocess.check_output(["git", "-C", str(repo_fixture), "rev-parse", "HEAD"], text=True).strip()
+    seen = {}
+
+    def approved(snapshot, job_id, commit, context):
+        seen["context"] = context
+        seen["patch"] = (snapshot / "EXACT_CANDIDATE.patch").read_text(encoding="utf-8")
+        return {"job_id": job_id, "reviewed_commit": commit, "verdict": "APPROVE", "risk": "LOW", "blocking_findings": [], "non_blocking_notes": [], "tests_missing": [], "reasoning_summary": "approved", "proposed_rules": []}
+
+    result = run_review_cycle(repo_fixture, sha, "phase2a-" + "a" * 24, "review", claude_runner=approved, reviewers=("CLAUDE",))
+    assert result["state"] == "APPROVED"
+    assert "EXACT_CANDIDATE.patch" in seen["context"]
+    assert "large.txt" in seen["patch"]
+
+
 def test_review_cycle_uses_claude_to_adjudicate_provider_disagreement(repo_fixture: Path):
     sha = repo_fixture.joinpath(".candidate-sha").read_text().strip()
     calls = {"claude": 0}
