@@ -28,9 +28,9 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-AV-YARA-01 — Bounded YARA-compatible trusted-catalog rules
+- Task ID: FW-ENDPOINT-ANDROID-01 — Bounded Android caller-supplied fixture adapter
 - Starting checkpoint: `160ba0c` (FW-ENDPOINT-01 accepted)
-- Candidate commit: `d982c1e6019cdb9660bb775c3f623f505c6b3f31` (YARA evaluator accepted by exact Claude APPROVE/LOW; full milestone validation is now due).
+- Candidate commit: `f600ee29cfa39e2ba71c29d144f054070031adf4` (Android fixture adapter focused proof passes; exact Claude review pending).
 - Canonical owner: `swarm.anti_malware.AcceptedCatalogScanner` is the detect-only facade over the existing `AcceptedCatalogCache`, `TrustedSignatureCatalog`, and `HashSignatureScanner`. FW-KEYS, `DurableCatalogSequenceStore`, and canonical audit remain the only trust, anti-rollback, and Evidence owners.
 - Acceptance criteria: bounded declarative byte/hex-literal rules joined by AND/OR and parentheses only, strict rule-size/atom/depth/literal limits, trusted-catalog and signed-bundle binding, Evidence-first/fail-closed, tenant isolation, fixed DRY_RUN/DETECT_ONLY, and no execution or external authority.
 - Negative paths: cache miss and expired catalog deny before scanning; malformed, oversized, over-work, stream-failure, match-overflow, and Evidence-failure paths remain fail closed. No network, endpoint, credential, quarantine, remediation, or response authority is added.
@@ -39,7 +39,7 @@ On every restart or continuation:
 - Proof: FW-ENDPOINT-02 through FW-ENDPOINT-06 are accepted with their recorded focused/full proofs. FW-ENDPOINT-07 cap repair `acad2ad` was accepted with exact Claude APPROVE/LOW and full validation (`702 passed, 1 skipped`). Follow-up candidate `8ad33d1` adds the exact-128 positive boundary regression; focused proof passed (`27 tests`), exact Claude review returned APPROVE/LOW, and the final full suite passed (`703 passed, 1 skipped`) with integrity gate passing all hard checks and Golden Path. Health remains YELLOW only for pre-existing dependency and roadmap-owner findings (`identity`, `soc_incidents`, `compliance`).
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
 - Blocker: none; the YARA grammar, limits, and source/licensing boundaries are authorized.
-- Next action: implement the authorized Android design-and-caller-supplied-fixture milestone; actual containment, restore, deletion, filesystem, endpoint, and execution authority remain disabled.
+- Next action: obtain exact Claude APPROVE/LOW for the Android fixture adapter, then run the one full suite and integrity gate; no platform APIs or response authority are enabled.
 - Platform delivery definition: Windows and Linux are the first endpoint targets; macOS, Android, and iOS are later platform-native releases. Detailed scope and required proof are in `docs/fw-av-windows-linux-delivery-plan.md`.
 
 ## Execution log
@@ -53,6 +53,8 @@ On every restart or continuation:
 - 2026-09-08: FW-AV-YARA-01 broad validation completed once at accepted evaluator checkpoint `9af56a6`: integrity build/startup/configuration/tests/Golden Path all passed, but the gate is RED solely because untracked user artifacts `output/` and `tmp/` remain in the repository. Dependency and roadmap-owner findings remain YELLOW; no product failure was observed.
 
 - 2026-09-08: FW-AV-YARA-01 complete at `218a911` with final integrity checkpoint `YELLOW`: after Jeff authorized reversible relocation, pitch-deck artifacts were moved intact to `C:\Users\jeffv\forgewarden-artifacts`; the integrity gate passed repository, build, startup, configuration, tests, and Golden Path. Remaining YELLOW findings are the pre-existing dependency and roadmap-owner items. The next bounded milestone is Android caller-supplied design/fixture work.
+
+- 2026-09-08: FW-ENDPOINT-ANDROID-01 candidate `f600ee2` adds a pure Android-shaped caller-supplied metadata mapper into the canonical NormalizedEventStore, with bounded package identity, permission declarations, tenant/device binding, Evidence-first admission, and fixed DRY_RUN/DETECT_ONLY. Focused proof passed (2 tests); exact Claude review is pending, so broad validation and acceptance are deferred.
 
 - 2026-09-08: FW-AV-YARA-01 parser sub-unit accepted at `2d7bb81`: `YaraCompatibleRule` validates a parse-only declarative literal grammar with strict rule, metadata, literal, atom, and expression-depth bounds. Exact Claude review returned APPROVE/LOW after the atom-count repair; focused anti-malware proof passed (54 tests). Catalog binding, signed admission, cache recovery, and evaluation remain separate sub-units; no broad validation was run.
 

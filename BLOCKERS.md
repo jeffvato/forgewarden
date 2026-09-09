@@ -4,6 +4,16 @@ This file records only genuine blockers that require Customer Root authority, un
 
 ## Current blockers
 
+### B-030 — Exact Claude review pending for Android fixture adapter
+
+- Related task/requirement: FW-ENDPOINT-ANDROID-01 — caller-supplied Android metadata/events only.
+- Exact condition: candidate `f600ee29cfa39e2ba71c29d144f054070031adf4` is pushed and focused-tested, but the WSL Claude CLI has not returned a review payload.
+- Why work cannot complete safely: the exact-commit reviewer gate is required before broad validation and acceptance; no approval may be inferred from a hung process.
+- What authority/resource/decision is required: a functioning Claude review session or a user-supplied exact APPROVE/LOW payload.
+- Independent READY work still available: none within the active Android milestone without bypassing the required review.
+- Current commit/checkpoint: `f600ee2`.
+- First action to resume after resolution: validate the exact review, then run full suite and integrity gate once.
+
 ### B-029 — Untracked pitch-deck artifacts block YARA integrity acceptance (resolved)
 
 - Related task/requirement: FW-AV-YARA-01 final integrity acceptance.
