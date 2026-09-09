@@ -22,7 +22,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-BME-01 — Bounded browser/email fixture normalization
 - Requirement: FW-BME caller-supplied browser and email metadata boundary
-- State: READY
+- State: IN_PROGRESS
 - Priority: P0
 - Dependencies: FW-MCP-05
 - Approval: FW-BME follows completed FW-MCP under D-022.

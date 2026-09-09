@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: FW-BME (then FW-SOC under D-022)
-- Current focus: bounded FW-MCP scope accepted; FW-BME-01 fixture normalization is next
-- Next task: implement FW-BME-01 over caller-supplied data only.
+- Current focus: FW-BME-01 bounded browser/email fixture normalization
+- Next task: validate and exact-review FW-BME-01 over caller-supplied data only.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled

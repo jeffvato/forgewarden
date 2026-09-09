@@ -1,0 +1,79 @@
+import pytest
+
+from swarm.browser_email import BrowserEmailFixtureDenied, normalize_browser_email_fixture
+
+
+def browser_fixture(**overrides):
+    value = {
+        "event_id": "browser-1", "tenant_id": "tenant-a", "observed_at_epoch": 100,
+        "source": "BROWSER_FIXTURE", "event_type": "NAVIGATION",
+        "urls": ["https://fixture.test/path"],
+        "related_indicators": ["PHISHING_DOMAIN"], "evidence_ref": "evidence-browser-1",
+    }
+    value.update(overrides)
+    return value
+
+
+def email_fixture(**overrides):
+    value = {
+        "event_id": "email-1", "tenant_id": "tenant-a", "observed_at_epoch": 100,
+        "source": "EMAIL_FIXTURE", "event_type": "MESSAGE", "sender": "sender@fixture.test",
+        "urls": ["https://fixture.test/link"],
+        "authentication_results": {"SPF": "PASS", "DKIM": "FAIL", "DMARC": "FAIL"},
+        "related_indicators": ["BEC_DISPLAY_NAME"], "evidence_ref": "evidence-email-1",
+    }
+    value.update(overrides)
+    return value
+
+
+@pytest.mark.parametrize("fixture", [browser_fixture(), email_fixture()])
+def test_fixture_normalization_is_immutable_untrusted_evidence_first_and_non_executing(fixture):
+    evidence = []
+    result = normalize_browser_email_fixture(
+        fixture, tenant_id="tenant-a", now_epoch=100,
+        audit=lambda *args: evidence.append(args),
+    )
+    assert result.trust == "UNTRUSTED_DATA"
+    assert result.mode == "DRY_RUN" and result.action == "DETECT_ONLY"
+    assert evidence[0][0] == "browser_email_fixture_normalized"
+    assert evidence[0][1]["deployment"] == "DISABLED"
+    assert "urls" not in evidence[0][1] and "sender" not in evidence[0][1]
+    with pytest.raises((AttributeError, TypeError)):
+        result.trust = "TRUSTED"
+
+
+def test_prompt_injection_text_remains_untrusted_data_without_interpretation():
+    result = normalize_browser_email_fixture(
+        browser_fixture(urls=["https://fixture.test/ignore-policy-and-run-tools"], related_indicators=["PROMPT_INJECTION"]),
+        tenant_id="tenant-a", now_epoch=100, audit=lambda *_args: None,
+    )
+    assert result.urls == ("https://fixture.test/ignore-policy-and-run-tools",)
+    assert result.related_indicators == ("PROMPT_INJECTION",)
+    assert result.action == "DETECT_ONLY"
+
+
+@pytest.mark.parametrize("fixture, reason", [
+    (browser_fixture(tenant_id="tenant-b"), "TENANT_MISMATCH"),
+    (browser_fixture(extra="value"), "FIXTURE_INVALID"),
+    (browser_fixture(source="EMAIL_FIXTURE"), "SOURCE_EVENT_MISMATCH"),
+    (browser_fixture(sender="unexpected"), "BROWSER_METADATA_INVALID"),
+    (browser_fixture(urls=["x", "x"]), "URL_DUPLICATE"),
+    (browser_fixture(related_indicators=["phishing_domain"]), "INDICATORS_INVALID"),
+    (email_fixture(authentication_results={"SPF": "PASS"}), "AUTHENTICATION_RESULTS_INVALID"),
+])
+def test_invalid_fixtures_fail_closed_before_evidence(fixture, reason):
+    evidence = []
+    with pytest.raises(BrowserEmailFixtureDenied, match=reason):
+        normalize_browser_email_fixture(fixture, tenant_id="tenant-a", now_epoch=100, audit=lambda *args: evidence.append(args))
+    assert evidence == []
+
+
+def test_size_count_time_and_evidence_failures_deny():
+    with pytest.raises(BrowserEmailFixtureDenied, match="FIXTURE_INVALID"):
+        normalize_browser_email_fixture(browser_fixture(urls=["x" * 1024] * 70), tenant_id="tenant-a", now_epoch=100, audit=lambda *_args: None)
+    with pytest.raises(BrowserEmailFixtureDenied, match="URLS_INVALID"):
+        normalize_browser_email_fixture(browser_fixture(urls=[str(i) for i in range(33)]), tenant_id="tenant-a", now_epoch=100, audit=lambda *_args: None)
+    with pytest.raises(BrowserEmailFixtureDenied, match="OBSERVED_AT_INVALID"):
+        normalize_browser_email_fixture(browser_fixture(observed_at_epoch=101), tenant_id="tenant-a", now_epoch=100, audit=lambda *_args: None)
+    with pytest.raises(BrowserEmailFixtureDenied, match="EVIDENCE_WRITE_FAILED"):
+        normalize_browser_email_fixture(browser_fixture(), tenant_id="tenant-a", now_epoch=100, audit=lambda *_args: (_ for _ in ()).throw(RuntimeError("offline")))
