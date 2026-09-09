@@ -89,3 +89,10 @@ def test_provider_failure_preserves_diagnostic_stderr():
                 assert evidence["exit_code"] == 17
             else:
                 raise AssertionError("provider failure should fail closed")
+
+
+def test_review_context_preserves_exact_patch_while_sanitizing_instructions():
+    prompt = "token=secret\n\nExact candidate patch from Git:\n+ token = hashlib.sha256(material).hexdigest()"
+    result = claude_verifier._sanitize_review_context(prompt)
+    assert "token=[REDACTED]" in result
+    assert "+ token = hashlib.sha256(material).hexdigest()" in result

@@ -80,6 +80,15 @@ def _payload(stdout: str) -> dict[str, Any]:
     return result
 
 
+def _sanitize_review_context(prompt: str) -> str:
+    """Sanitize instructions without rewriting the exact embedded Git patch."""
+    marker = "\n\nExact candidate patch from Git:\n"
+    if marker not in prompt:
+        return sanitize_context(prompt)
+    instructions, patch = prompt.split(marker, 1)
+    return sanitize_context(instructions) + marker + patch
+
+
 def run(snapshot: Path, job_id: str, commit: str, prompt: str, *, diagnostic_path: Path | None = None) -> dict[str, Any]:
     if not re.fullmatch(r"phase2a-[a-z0-9]{24}", job_id):
         raise ClaudeVerificationError("invalid Phase 2A job ID")
@@ -87,7 +96,7 @@ def run(snapshot: Path, job_id: str, commit: str, prompt: str, *, diagnostic_pat
         raise ClaudeVerificationError("invalid review commit")
     if not CLAUDE.is_file() or not os.access(CLAUDE, os.X_OK):
         raise ClaudeVerificationError("Claude CLI is unavailable")
-    context = sanitize_context(prompt)
+    context = _sanitize_review_context(prompt)
     schema_value = schema(job_id, commit)
     verifier_prompt = (
         f"You are the primary read-only verifier for Phase 2A job {job_id}. "
