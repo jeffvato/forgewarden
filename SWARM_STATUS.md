@@ -30,7 +30,7 @@ On every restart or continuation:
 
 - Task ID: FW-ENDPOINT-ANDROID-01 — Bounded Android caller-supplied fixture adapter
 - Starting checkpoint: `160ba0c` (FW-ENDPOINT-01 accepted)
-- Candidate commit: `3bb8053d5c707a8892d5a628e8206fa22174eb07` (Android fixture batch ingestion; exact Claude APPROVE/LOW; focused proof 9 passed).
+- Candidate commit: `3bb8053d5c707a8892d5a628e8206fa22174eb07` (Android fixture batch ingestion; exact Claude APPROVE/LOW; focused proof 9 passed; full suite 810 passed, 1 skipped; integrity YELLOW with hard checks and Golden Path passing).
 - Canonical owner: `swarm.anti_malware.AcceptedCatalogScanner` is the detect-only facade over the existing `AcceptedCatalogCache`, `TrustedSignatureCatalog`, and `HashSignatureScanner`. FW-KEYS, `DurableCatalogSequenceStore`, and canonical audit remain the only trust, anti-rollback, and Evidence owners.
 - Acceptance criteria: bounded declarative byte/hex-literal rules joined by AND/OR and parentheses only, strict rule-size/atom/depth/literal limits, trusted-catalog and signed-bundle binding, Evidence-first/fail-closed, tenant isolation, fixed DRY_RUN/DETECT_ONLY, and no execution or external authority.
 - Negative paths: cache miss and expired catalog deny before scanning; malformed, oversized, over-work, stream-failure, match-overflow, and Evidence-failure paths remain fail closed. No network, endpoint, credential, quarantine, remediation, or response authority is added.
@@ -39,10 +39,12 @@ On every restart or continuation:
 - Proof: FW-ENDPOINT-02 through FW-ENDPOINT-06 are accepted with their recorded focused/full proofs. FW-ENDPOINT-07 cap repair `acad2ad` was accepted with exact Claude APPROVE/LOW and full validation (`702 passed, 1 skipped`). Follow-up candidate `8ad33d1` adds the exact-128 positive boundary regression; focused proof passed (`27 tests`), exact Claude review returned APPROVE/LOW, and the final full suite passed (`703 passed, 1 skipped`) with integrity gate passing all hard checks and Golden Path. Health remains YELLOW only for pre-existing dependency and roadmap-owner findings (`identity`, `soc_incidents`, `compliance`).
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
 - Blocker: none for the Android fixture milestone. The core WSL Claude exact-commit verifier is repaired and proven; no provider approval is inferred without a valid exact payload.
-- Next action: run the one full suite and integrity gate for Android batch ingestion, then derive the next grouped platform milestone. No platform APIs or response authority are enabled.
+- Next action: derive the next grouped platform milestone from the roadmap; do not replay Android batch validation. No platform APIs or response authority are enabled.
 - Platform delivery definition: Windows and Linux are the first endpoint targets; macOS, Android, and iOS are later platform-native releases. Detailed scope and required proof are in `docs/fw-av-windows-linux-delivery-plan.md`.
 
 ## Execution log
+
+- 2026-09-09: FW-ENDPOINT-ANDROID-02 accepted at `122c1e5`: bounded Android fixture batches are deterministically ordered and admitted atomically through NormalizedEventStore with duplicate rejection, queue backpressure, tenant binding, Evidence-first behavior, and fixed DRY_RUN/DETECT_ONLY. Focused proof passed (9 tests), exact Claude review APPROVE/LOW with no missing tests, full suite passed (810 passed, 1 skipped), and integrity gate returned YELLOW with all hard checks and Golden Path passing. Remaining YELLOW findings are pre-existing dependency and roadmap-owner items.
 
 - 2026-09-09: FW-ENDPOINT-ANDROID-02 candidate `3bb8053` adds bounded deterministic Android fixture batch ingestion through the canonical NormalizedEventStore. Focused proof passed (9 tests); exact Claude review returned APPROVE/LOW with no missing tests. Broad validation is pending milestone closure.
 

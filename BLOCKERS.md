@@ -13,7 +13,7 @@ This file records only genuine blockers that require Customer Root authority, un
 - Independent READY work still available: none within the active Android milestone without bypassing the required review.
 - Current commit/checkpoint: `f600ee2`.
 - First action to resume after resolution: add the four narrowly scoped tests, obtain exact Claude approval, then run full suite and integrity gate once.
-- Resolution: four edge-case tests were added in `ce1108c26fa405538d6d12cb97b667c4648404be`; the repaired Claude verifier returned exact APPROVE/LOW with no missing tests. Full validation is now the only remaining acceptance step.
+- Resolution: four edge-case tests were added in `ce1108c26fa405538d6d12cb97b667c4648404be`; the repaired Claude verifier returned exact APPROVE/LOW with no missing tests. The Android batch milestone then passed full validation (`810 passed, 1 skipped`); integrity returned YELLOW only for pre-existing dependency and roadmap-owner findings.
 
 ### B-031 — Claude verifier integration repair checkpoint
 
