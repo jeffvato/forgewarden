@@ -22,7 +22,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-BME-02 — Deterministic phishing and spoof classification
 - Requirement: FW-BME phishing/BEC/authentication signal evaluation
-- State: READY
+- State: IN_PROGRESS
 - Priority: P0
 - Dependencies: FW-BME-01
 - Approval: FW-BME is active under D-022.

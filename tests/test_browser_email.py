@@ -1,6 +1,8 @@
 import pytest
 
-from swarm.browser_email import BrowserEmailFixtureDenied, normalize_browser_email_fixture
+from dataclasses import replace
+
+from swarm.browser_email import BrowserEmailFixtureDenied, classify_phishing_spoof, normalize_browser_email_fixture
 
 
 def browser_fixture(**overrides):
@@ -77,3 +79,62 @@ def test_size_count_time_and_evidence_failures_deny():
         normalize_browser_email_fixture(browser_fixture(observed_at_epoch=101), tenant_id="tenant-a", now_epoch=100, audit=lambda *_args: None)
     with pytest.raises(BrowserEmailFixtureDenied, match="EVIDENCE_WRITE_FAILED"):
         normalize_browser_email_fixture(browser_fixture(), tenant_id="tenant-a", now_epoch=100, audit=lambda *_args: (_ for _ in ()).throw(RuntimeError("offline")))
+
+
+def normalized(fixture):
+    return normalize_browser_email_fixture(fixture, tenant_id="tenant-a", now_epoch=100, audit=lambda *_args: None)
+
+
+def test_email_phishing_and_auth_failure_combination_is_high_warn_only_evidence_first():
+    evidence = []
+    finding = classify_phishing_spoof(
+        normalized(email_fixture(related_indicators=["LOOKALIKE_DOMAIN"])),
+        tenant_id="tenant-a", audit=lambda *args: evidence.append(args),
+    )
+    assert finding.confidence == "HIGH"
+    assert finding.signals == ("DKIM_FAIL", "DMARC_FAIL", "LOOKALIKE_DOMAIN")
+    assert finding.recommendations == ("WARN",)
+    assert finding.mode == "DRY_RUN" and finding.action == "DETECT_ONLY"
+    assert evidence[0][0] == "browser_email_phishing_classified"
+    assert evidence[0][1]["response_executed"] is False
+
+
+def test_browser_signal_is_medium_and_benign_observation_has_no_finding():
+    medium = classify_phishing_spoof(
+        normalized(browser_fixture(related_indicators=["PHISHING_DOMAIN"])),
+        tenant_id="tenant-a", audit=lambda *_args: None,
+    )
+    assert medium.confidence == "MEDIUM" and medium.recommendations == ("WARN",)
+    benign = normalized(browser_fixture(related_indicators=[]))
+    assert classify_phishing_spoof(benign, tenant_id="tenant-a", audit=lambda *_args: None) is None
+
+
+def test_authentication_failures_apply_only_to_email_and_are_deterministic():
+    finding = classify_phishing_spoof(
+        normalized(email_fixture(related_indicators=[], authentication_results={"SPF": "FAIL", "DKIM": "FAIL", "DMARC": "PASS"})),
+        tenant_id="tenant-a", audit=lambda *_args: None,
+    )
+    assert finding.signals == ("DKIM_FAIL", "SPF_FAIL")
+    assert finding.confidence == "MEDIUM"
+
+
+@pytest.mark.parametrize("change, reason", [
+    ({"tenant_id": "tenant-b"}, "TENANT_MISMATCH"),
+    ({"trust": "TRUSTED"}, "OBSERVATION_AUTHORITY_INVALID"),
+    ({"mode": "LIVE"}, "OBSERVATION_AUTHORITY_INVALID"),
+    ({"source": "EMAIL_FIXTURE"}, "OBSERVATION_INVALID"),
+    ({"related_indicators": ("phishing_domain",)}, "OBSERVATION_INVALID"),
+    ({"urls": ("x" * 1025,)}, "URL_INVALID"),
+])
+def test_classifier_revalidates_untrusted_observation_boundary(change, reason):
+    observation = replace(normalized(browser_fixture()), **change)
+    with pytest.raises(BrowserEmailFixtureDenied, match=reason):
+        classify_phishing_spoof(observation, tenant_id="tenant-a", audit=lambda *_args: None)
+
+
+def test_classifier_evidence_failure_denies_finding():
+    with pytest.raises(BrowserEmailFixtureDenied, match="EVIDENCE_WRITE_FAILED"):
+        classify_phishing_spoof(
+            normalized(browser_fixture(related_indicators=["PHISHING_DOMAIN"])),
+            tenant_id="tenant-a", audit=lambda *_args: (_ for _ in ()).throw(RuntimeError("offline")),
+        )

@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: FW-BME (then FW-SOC under D-022)
-- Current focus: FW-BME-01 accepted; FW-BME-02 phishing/spoof classification is next
-- Next task: implement FW-BME-02 as Evidence-first warn-only evaluation.
+- Current focus: FW-BME-02 deterministic phishing and spoof classification
+- Next task: validate and exact-review FW-BME-02 as warn-only evaluation.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled

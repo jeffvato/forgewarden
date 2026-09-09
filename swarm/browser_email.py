@@ -58,6 +58,18 @@ class BrowserEmailObservation:
     action: str = "DETECT_ONLY"
 
 
+@dataclass(frozen=True)
+class BrowserEmailFinding:
+    event_id: str
+    tenant_id: str
+    signals: tuple[str, ...]
+    confidence: str
+    recommendations: tuple[str, ...] = ("WARN",)
+    trust: str = "UNTRUSTED_DATA"
+    mode: str = "DRY_RUN"
+    action: str = "DETECT_ONLY"
+
+
 def normalize_browser_email_fixture(
     fixture: Mapping[str, Any], *, tenant_id: str, now_epoch: int,
     audit: Callable[[str, dict[str, Any]], None],
@@ -126,4 +138,69 @@ def normalize_browser_email_fixture(
     return BrowserEmailObservation(
         event_id, expected_tenant, observed, source, event_type, sender, urls,
         auth, indicators, evidence_ref,
+    )
+
+
+def classify_phishing_spoof(
+    observation: BrowserEmailObservation, *, tenant_id: str,
+    audit: Callable[[str, dict[str, Any]], None],
+) -> BrowserEmailFinding | None:
+    """Classify exact fixture signals without interpreting content or taking action."""
+    if not isinstance(observation, BrowserEmailObservation) or not callable(audit):
+        raise BrowserEmailFixtureDenied("OBSERVATION_INVALID")
+    expected_tenant = _text(tenant_id, "TENANT")
+    if observation.tenant_id != expected_tenant:
+        raise BrowserEmailFixtureDenied("TENANT_MISMATCH")
+    if observation.trust != "UNTRUSTED_DATA" or observation.mode != "DRY_RUN" or observation.action != "DETECT_ONLY":
+        raise BrowserEmailFixtureDenied("OBSERVATION_AUTHORITY_INVALID")
+    if (observation.source, observation.event_type) not in {("BROWSER_FIXTURE", "NAVIGATION"), ("EMAIL_FIXTURE", "MESSAGE")}:
+        raise BrowserEmailFixtureDenied("OBSERVATION_INVALID")
+    if not isinstance(observation.observed_at_epoch, int) or isinstance(observation.observed_at_epoch, bool) or observation.observed_at_epoch < 0:
+        raise BrowserEmailFixtureDenied("OBSERVATION_INVALID")
+    _text(observation.event_id, "EVENT_ID")
+    _text(observation.evidence_ref, "EVIDENCE_REF")
+    if not isinstance(observation.urls, tuple) or not 1 <= len(observation.urls) <= MAX_BME_URLS or len(set(observation.urls)) != len(observation.urls):
+        raise BrowserEmailFixtureDenied("OBSERVATION_INVALID")
+    for url in observation.urls:
+        _text(url, "URL")
+    if not isinstance(observation.related_indicators, tuple) or len(observation.related_indicators) > MAX_BME_INDICATORS or len(set(observation.related_indicators)) != len(observation.related_indicators) or any(item not in _INDICATORS for item in observation.related_indicators):
+        raise BrowserEmailFixtureDenied("OBSERVATION_INVALID")
+
+    signals = set(observation.related_indicators)
+    if observation.source == "EMAIL_FIXTURE":
+        auth = dict(observation.authentication_results)
+        if observation.sender is None or set(auth) != _AUTH_KEYS or any(value not in _AUTH_VALUES for value in auth.values()):
+            raise BrowserEmailFixtureDenied("OBSERVATION_INVALID")
+        _text(observation.sender, "SENDER")
+        signals.update(f"{key}_FAIL" for key, value in auth.items() if value == "FAIL")
+    elif observation.sender is not None or observation.authentication_results:
+        raise BrowserEmailFixtureDenied("OBSERVATION_INVALID")
+
+    threat_signals = signals & {
+        "BEC_DISPLAY_NAME", "LOOKALIKE_DOMAIN", "PHISHING_DOMAIN", "QR_PHISHING",
+        "REDIRECT_CHAIN",
+    }
+    auth_failures = signals & {"SPF_FAIL", "DKIM_FAIL", "DMARC_FAIL"}
+    confidence: str | None = None
+    if len(threat_signals) >= 2 or (threat_signals and "DMARC_FAIL" in auth_failures):
+        confidence = "HIGH"
+    elif threat_signals or len(auth_failures) >= 2:
+        confidence = "MEDIUM"
+    elif auth_failures:
+        confidence = "LOW"
+    if confidence is None:
+        return None
+    ordered_signals = tuple(sorted(signals))
+    try:
+        audit("browser_email_phishing_classified", {
+            "event_id": observation.event_id, "tenant_id": expected_tenant,
+            "signals": list(ordered_signals), "confidence": confidence,
+            "recommendations": ["WARN"], "trust": "UNTRUSTED_DATA",
+            "mode": "DRY_RUN", "action": "DETECT_ONLY",
+            "response_executed": False, "deployment": "DISABLED",
+        })
+    except Exception as exc:
+        raise BrowserEmailFixtureDenied("EVIDENCE_WRITE_FAILED") from exc
+    return BrowserEmailFinding(
+        observation.event_id, expected_tenant, ordered_signals, confidence,
     )
