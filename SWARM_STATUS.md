@@ -29,17 +29,17 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: none
-- Starting commit: none
+- Task ID: FWQ-0063
+- Starting commit: de3d15946edad7d8a090ac9e150a9c647f839c94
 - Candidate commit: none
 - Accepted commit: none
-- Files changed: completion-audit documentation and persistent queue reconciliation only
-- Deterministic validation: read-only control-file parser and selector verification; no product tests rerun
-- Claude review: audit a1796013a45b2669ffe8c106c3f20738c785d52e APPROVE/LOW; no new product acceptance inferred
+- Files changed: swarm/autonomous_adapters.py, swarm/cli.py, tests/test_autonomous_loop.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Deterministic validation: focused Linux autonomous-loop tests 72 passed; git diff --check passed
+- Claude review: FWQ-0063 exact candidate review pending
 - Gemini review: disabled and not required under D-020
-- Unresolved findings: legacy autonomous Gemini selection/fallback scoped as FWQ-0063
+- Unresolved findings: none from focused checks; exact review pending
 - Blocker: none for bounded FWQ-0063; historical evidence caveats are in the audit
-- Next action: claim FWQ-0063; audit approved, do not replay completed milestones
+- Next action: obtain exact Claude review of FWQ-0063, then full suite/integrity once after approval
 
 - Completion inventory: `docs/completion-audit-2026-09-09.md` (baseline `0afcbdd`).
 - FWQ-0008 implementation and binding hardening exist; VALIDATED retains a historical provenance caveat, not an implementation assignment. FWQ-0009 is recorded accepted and unchanged at source/test level from its reviewed candidate.

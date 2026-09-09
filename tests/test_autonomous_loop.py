@@ -226,7 +226,15 @@ def test_cli_autonomous_loop_run_persists_without_dispatch_when_step_bound_is_ze
     manifest.write_text(json.dumps({"tasks": [{"task_id": "FWQ-0001", "requirement": "Core test", "description": "bounded", "target_path": "allowed.py", "allowed_paths": ["allowed.py"], "test_command": ["python3", "-c", "print('ok')"]}]}), encoding="utf-8")
     state_dir = tmp_path.parent / f"{tmp_path.name}-state"
     monkeypatch.setattr(sys, "argv", ["swarm", "autonomous-loop-run", "--repository", str(tmp_path), "--task-manifest", str(manifest), "--state-dir", str(state_dir), "--max-steps", "0"])
+    selected_reviewers = []
+    original_adapter = ExactReviewAdapter
+    def capture_adapter(*args, **kwargs):
+        adapter = original_adapter(*args, **kwargs)
+        selected_reviewers.append(adapter.reviewers)
+        return adapter
+    monkeypatch.setattr("swarm.cli.ExactReviewAdapter", capture_adapter)
     assert main() == 0
+    assert selected_reviewers == [("CLAUDE",)]
     payload = json.loads(capsys.readouterr().out)
     assert payload["stop_reason"] == "STEP_BOUND_REACHED"
     assert (state_dir / "autonomous-loop.json").is_file()
@@ -813,7 +821,7 @@ def test_review_resolver_ignores_optional_provider_outage_when_claude_is_availab
     assert ExactReviewAdapter("review").resolve_review(task, lease).startswith("REPAIRABLE:")
 
 
-def test_gemini_approves_when_claude_is_unavailable(tmp_path: Path, monkeypatch):
+def test_gemini_approval_cannot_replace_unavailable_claude(tmp_path: Path, monkeypatch):
     task = TaskSpec("FWQ-0009", "Core review", "review", initial_state="REVIEW", review_commit=SHA_A)
     lease = WorkerLease("review", task.task_id, "session", str(tmp_path), (), "REVIEW", (), time.time() + 60)
     payload = {"job_id": "phase2a-" + "0" * 24, "reviewed_commit": SHA_A, "verdict": "APPROVE", "risk": "LOW", "blocking_findings": [], "non_blocking_notes": [], "tests_missing": [], "reasoning_summary": "Gemini fallback approval", "proposed_rules": []}
@@ -821,9 +829,10 @@ def test_gemini_approves_when_claude_is_unavailable(tmp_path: Path, monkeypatch)
         {"provider": "CLAUDE", "state": "UNAVAILABLE", "error": "usage limit reached"},
         {"provider": "GEMINI", "state": "APPROVED", "result": payload},
     ]})
-    result = ExactReviewAdapter("review", reviewers=("CLAUDE", "GEMINI")).review(task, SHA_A, lease)
-    assert set(result) == {"GEMINI"}
-    assert result["GEMINI"].disposition == "APPROVED"
+    adapter = ExactReviewAdapter("review")
+    with pytest.raises(ReviewUnavailable, match="usage limit reached"):
+        adapter.review(task, SHA_A, lease)
+    assert adapter.resolve_review(task, lease) == "EXTERNAL: usage limit reached"
 
 
 def test_claude_rejection_does_not_fall_back_to_gemini(tmp_path: Path, monkeypatch):
@@ -835,7 +844,7 @@ def test_claude_rejection_does_not_fall_back_to_gemini(tmp_path: Path, monkeypat
         {"provider": "GEMINI", "state": "APPROVED", "result": payload},
     ]})
     with pytest.raises(RuntimeError, match="did not approve"):
-        ExactReviewAdapter("review", reviewers=("CLAUDE", "GEMINI")).review(task, SHA_A, lease)
+        ExactReviewAdapter("review").review(task, SHA_A, lease)
 
 
 def test_exact_review_adapter_uses_claude_adjudication_as_final_evidence(tmp_path: Path, monkeypatch):
@@ -968,3 +977,63 @@ def test_resume_restores_exact_review_commit_from_durable_task_state(tmp_path: P
     }), encoding="utf-8")
     runner = AutonomousOrchestrator(state_path, tmp_path / "repo", (TaskSpec("FWQ-0013", "Core review", "review", initial_state="REVIEW"),))
     assert runner.status()["task_specs"]["FWQ-0013"]["review_commit"] == SHA_A
+
+
+@pytest.mark.parametrize("reviewers", [("GEMINI",), ("CLAUDE", "GEMINI"), ("OPENROUTER",), ()])
+def test_autonomous_reviewer_configuration_rejects_legacy_fallback(reviewers):
+    with pytest.raises(ValueError, match="requires Claude and disables Gemini"):
+        ExactReviewAdapter("review", reviewers=reviewers)
+
+
+@pytest.mark.parametrize("outcome", ["APPROVE", "REJECT", "UNAVAILABLE", "STALE", "WRONG_JOB", "MISSING_TEST", "MEDIUM"])
+def test_autonomous_claude_review_uses_real_exact_contract(tmp_path, monkeypatch, outcome):
+    from swarm.review_runner import run_review_cycle as canonical_review_cycle
+
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    (tmp_path / "fixture.txt").write_text("review fixture\n")
+    subprocess.run(["git", "-C", str(tmp_path), "add", "fixture.txt"], check=True)
+    subprocess.run(["git", "-C", str(tmp_path), "-c", "user.name=Test", "-c", "user.email=test@example.test", "commit", "-qm", "fixture"], check=True)
+    sha = subprocess.check_output(["git", "-C", str(tmp_path), "rev-parse", "HEAD"], text=True).strip()
+    task = TaskSpec("FWQ-0063", "Core review", "review", initial_state="REVIEW", review_commit=sha)
+    lease = WorkerLease("review", task.task_id, "session", str(tmp_path), (), "REVIEW", (), time.time() + 60)
+    calls = []
+
+    def claude(snapshot, job_id, commit, context):
+        calls.append("CLAUDE")
+        assert (snapshot / "fixture.txt").read_text() == "review fixture\n"
+        assert commit == sha and sha in context
+        if outcome == "UNAVAILABLE":
+            raise RuntimeError("Claude usage unavailable")
+        return {"job_id": "phase2a-" + "0" * 24 if outcome == "WRONG_JOB" else job_id,
+                "reviewed_commit": SHA_B if outcome == "STALE" else commit,
+                "verdict": "REJECT" if outcome == "REJECT" else "APPROVE",
+                "risk": "MEDIUM" if outcome == "MEDIUM" else "LOW",
+                "blocking_findings": [], "non_blocking_notes": [],
+                "tests_missing": ["required proof"] if outcome == "MISSING_TEST" else [],
+                "reasoning_summary": "fixture review", "proposed_rules": []}
+
+    def forbidden(*args, **kwargs):
+        pytest.fail("autonomous review invoked Gemini")
+
+    def invoke(*args, **kwargs):
+        assert kwargs["reviewers"] == ("CLAUDE",)
+        assert kwargs["required_reviewers"] == ("CLAUDE",)
+        assert kwargs["sequential_fallback"] is False
+        return canonical_review_cycle(*args, **kwargs, claude_runner=claude, gemini_runner=forbidden)
+
+    monkeypatch.setattr(autonomous_adapters, "run_review_cycle", invoke)
+    adapter = ExactReviewAdapter("Review fixture read-only")
+    if outcome == "APPROVE":
+        result = adapter.review(task, sha, lease)
+        assert set(result) == {"CLAUDE"}
+        assert result["CLAUDE"].reviewed_commit == sha
+        assert adapter.resolve_review(task, lease) == "PASSED"
+    elif outcome in {"UNAVAILABLE", "STALE", "WRONG_JOB"}:
+        with pytest.raises(ReviewUnavailable):
+            adapter.review(task, sha, lease)
+        assert adapter.resolve_review(task, lease).startswith("EXTERNAL:")
+    else:
+        with pytest.raises(RuntimeError, match="did not approve"):
+            adapter.review(task, sha, lease)
+        assert adapter.resolve_review(task, lease).startswith("REPAIRABLE:")
+    assert calls == ["CLAUDE", "CLAUDE"]

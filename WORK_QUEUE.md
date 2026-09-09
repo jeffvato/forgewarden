@@ -355,7 +355,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FWQ-0063 — Enforce the current reviewer policy in autonomous execution
 - Requirement: Core deterministic review policy (D-020)
-- State: READY
+- State: REVIEW
 - Priority: P1
 - Dependencies: FWQ-0016
 - Approval: Jeff explicitly removed Gemini from the requirement and authorized autonomous Core continuation; this unit implements that existing policy without expanding authority.

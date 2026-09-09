@@ -62,34 +62,17 @@ def run_deterministic_tests(task: TaskSpec, result: WorkerResult, repository: Wo
 class ExactReviewAdapter:
     """Use the existing independent review runner and convert its evidence."""
 
-    def __init__(self, context: str, *, allow_external_review: bool = False, reviewers: tuple[str, ...] = ("CLAUDE", "GEMINI", "OPENROUTER", "NVIDIA")):
+    def __init__(self, context: str, *, allow_external_review: bool = False, reviewers: tuple[str, ...] = ("CLAUDE",)):
+        if "CLAUDE" not in reviewers or "GEMINI" in reviewers:
+            raise ValueError("autonomous review requires Claude and disables Gemini under D-020")
         self.context = context
         self.allow_external_review = allow_external_review
         self.reviewers = reviewers
 
     def review(self, task: TaskSpec, commit: str, lease: WorkerLease) -> dict[str, ReviewResult]:
         job_id = "phase2a-" + hashlib.sha256(task.task_id.encode("utf-8")).hexdigest()[:24]
-        result = run_review_cycle(Path(lease.repository), commit, job_id, self.context, allow_external_review=self.allow_external_review, reviewers=self.reviewers, required_reviewers=("CLAUDE",), adjudicate_disagreements=True, sequential_fallback=True)
+        result = run_review_cycle(Path(lease.repository), commit, job_id, self.context, allow_external_review=self.allow_external_review, reviewers=self.reviewers, required_reviewers=("CLAUDE",), adjudicate_disagreements=True, sequential_fallback=False)
         if result["state"] != "APPROVED":
-            claude = next((item for item in result.get("reviews", ()) if item.get("provider") == "CLAUDE"), None)
-            gemini = next((item for item in result.get("reviews", ()) if item.get("provider") == "GEMINI"), None)
-            # Claude is primary, but Gemini is the explicitly authorized
-            # fallback. A fallback approval is safe only when Claude is
-            # unavailable; a Claude rejection remains authoritative.
-            if (
-                claude is not None
-                and claude.get("state") == "UNAVAILABLE"
-                and gemini is not None
-                and gemini.get("state") == "APPROVED"
-                and isinstance(gemini.get("result"), dict)
-            ):
-                payload = gemini["result"]
-                return {
-                    "GEMINI": ReviewResult(
-                        "GEMINI", commit, tuple(str(value) for value in payload.get("blocking_findings", [])),
-                        str(payload["risk"]), "APPROVED", str(payload["reasoning_summary"]),
-                    )
-                }
             unavailable = [item for item in result.get("reviews", ()) if item.get("state") == "UNAVAILABLE"]
             if unavailable:
                 detail = "; ".join(f"{item.get('provider', 'reviewer')}: {item.get('error', 'no diagnostic')}" for item in unavailable)
@@ -127,15 +110,12 @@ class ExactReviewAdapter:
                 reviewers=self.reviewers,
                 required_reviewers=("CLAUDE",),
                 adjudicate_disagreements=True,
-                sequential_fallback=True,
+                sequential_fallback=False,
             )
             if result["state"] == "APPROVED":
                 return "PASSED"
             reviews = tuple(result.get("reviews", ()))
             claude = next((item for item in reviews if item.get("provider") == "CLAUDE"), None)
-            gemini = next((item for item in reviews if item.get("provider") == "GEMINI"), None)
-            if claude is not None and claude.get("state") == "UNAVAILABLE" and gemini is not None and gemini.get("state") == "APPROVED":
-                return "PASSED"
             if claude is None or claude.get("state") == "UNAVAILABLE":
                 detail = claude.get("error", "Claude review record was not returned") if claude else "Claude review record was not returned"
                 return "EXTERNAL: " + str(detail)[:1000]
