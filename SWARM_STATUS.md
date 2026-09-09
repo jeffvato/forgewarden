@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: FW-RANSOM (then FW-MCP, FW-BME, FW-SOC under D-022)
-- Current focus: FW-RANSOM-02 ticket-bound isolation proposal
-- Next task: validate and exact-review FW-RANSOM-02 without live containment authority.
+- Current focus: FW-RANSOM-02 accepted; FW-RANSOM-03 canary fixture controls are next
+- Next task: implement FW-RANSOM-03 without filesystem or endpoint access.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -29,17 +29,17 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-RANSOM-01
-- Starting commit: bb10a81359f03392ff1a28a538e05e0134d2eaac
-- Candidate commit: 41e4655ad9178cc77166d3ac73220ca4ccbc0721
-- Accepted commit: 41e4655ad9178cc77166d3ac73220ca4ccbc0721
+- Task ID: FW-RANSOM-02
+- Starting commit: ba4593c09af5206ad5a7ff30d45fba26e6177b27
+- Candidate commit: 0ce44dcd92d5a14576ceff5fba859fccb7398847
+- Accepted commit: 0ce44dcd92d5a14576ceff5fba859fccb7398847
 - Files changed: swarm/ransomware.py, tests/test_ransomware.py, WORK_QUEUE.md, SWARM_STATUS.md, DECISIONS.md
-- Deterministic validation: focused 8 passed; full 841 passed/1 skipped; integrity all hard checks and 4 Golden Paths pass, YELLOW pre-existing findings
-- Claude review: 41e4655ad9178cc77166d3ac73220ca4ccbc0721 APPROVE/LOW, no blockers or missing tests
+- Deterministic validation: focused 11 passed; full 844 passed/1 skipped; integrity all hard checks and 4 Golden Paths pass, YELLOW pre-existing findings
+- Claude review: 0ce44dcd92d5a14576ceff5fba859fccb7398847 APPROVE/LOW, no blockers or missing tests
 - Gemini review: disabled and not required under D-020
-- Unresolved findings: none for FW-RANSOM-01; historical caveats and pre-existing YELLOW findings remain
+- Unresolved findings: none for FW-RANSOM-01/02; historical caveats and pre-existing YELLOW findings remain
 - Blocker: none for bounded FW-RANSOM fixture/proposal work; broader live/response authority stays disabled
-- Next action: claim FW-RANSOM-02
+- Next action: claim FW-RANSOM-03
 
 - Completion inventory: `docs/completion-audit-2026-09-09.md` (baseline `0afcbdd`).
 - FWQ-0008 implementation and binding hardening exist; VALIDATED retains a historical provenance caveat, not an implementation assignment. FWQ-0009 is recorded accepted and unchanged at source/test level from its reviewed candidate.
@@ -49,6 +49,8 @@ On every restart or continuation:
 - Latest broad Core closure: FWQ-0064, 833 passed/1 skipped, all hard checks/Golden Path passing, YELLOW pre-existing findings.
 
 ## Execution log
+
+- 2026-09-09: FW-RANSOM-02 accepted at `0ce44dcd92d5a14576ceff5fba859fccb7398847`. HIGH findings can produce only a ticket-bound, Evidence-first, single-use dry-run isolation proposal; replay, scope, kill-switch and Evidence failures deny safely, and containment remains unexecuted. Focused 11 passed; exact Claude APPROVE/LOW; full 844 passed/1 skipped; integrity hard checks and Golden Paths pass with unchanged YELLOW findings. FW-RANSOM-03 is next.
 
 - 2026-09-09: FW-RANSOM-01 accepted at `41e4655ad9178cc77166d3ac73220ca4ccbc0721`. Bounded normalized-event evaluation deterministically detects exact ransomware signals, writes Evidence before return, warns for every finding, and only recommends isolation at HIGH confidence. Focused 8 passed; exact Claude APPROVE/LOW; full 841 passed/1 skipped; integrity hard checks and Golden Paths pass with unchanged YELLOW findings. FW-RANSOM-02 is next.
 

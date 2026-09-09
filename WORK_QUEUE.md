@@ -20,9 +20,28 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 
 Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical implementation is not new work. FWQ-0008 VALIDATED preserves a provenance caveat, not a request to rebuild or automatically repeat review. FWQ-0012–0016 are reconciled DONE from existing implementation and recorded proof.
 
+### FW-RANSOM-03 — Bounded ransomware canary registry and touch detection
+- Requirement: FW-RANSOM deterministic canary signal
+- State: READY
+- Priority: P0
+- Dependencies: FW-RANSOM-02
+- Approval: FW-RANSOM is active first under D-022.
+- Description: Register bounded caller-supplied tenant/device canary identifiers in memory and detect exact canary touches from canonical normalized fixture events with Evidence-first DRY_RUN findings.
+- Target path: swarm/ransomware.py
+- Allowed paths: swarm/ransomware.py, tests/test_ransomware.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_ransomware.py
+- Acceptance criteria:
+  - registry and lookup remain tenant/device isolated and bounded;
+  - exact identifiers only, with duplicate and malformed input rejection;
+  - detection consumes normalized caller-supplied observations only;
+  - Evidence failure denies findings and no endpoint/filesystem access is added;
+  - outputs remain DRY_RUN/DETECT_ONLY and recommend WARN only.
+- Expected validation: focused Linux proof, exact Claude review, then full suite/integrity once.
+- Security considerations: canaries and event metadata are untrusted fixture data; detection grants no response authority.
+
 ### FW-RANSOM-02 — Ticket-bound ransomware isolation proposal
 - Requirement: FW-RANSOM deterministic response proposal boundary
-- State: IN_PROGRESS
+- State: DONE
 - Priority: P0
 - Dependencies: FW-RANSOM-01
 - Approval: FW-RANSOM is active first under D-022.
@@ -37,6 +56,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - successful output remains DRY_RUN/DETECT_ONLY and cannot execute containment.
 - Expected validation: focused Linux proof, exact Claude review, then full suite/integrity once.
 - Security considerations: proposal metadata is non-authoritative; Action Ticket validation grants no endpoint access.
+- Completion evidence: exact candidate `0ce44dcd92d5a14576ceff5fba859fccb7398847`; focused 11 passed; Claude APPROVE/LOW with no blockers/missing tests; full 844 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with pre-existing YELLOW findings. Evidence: `docs/fw-ransom-02-claude-review.json`, `docs/fw-ransom-02-integrity.json`.
 
 ### FW-RANSOM-01 — Bounded ransomware activity evaluator
 - Requirement: FW-RANSOM deterministic detection over canonical endpoint fixtures
