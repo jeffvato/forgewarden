@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: FW-HARNESS-003 accepted; FW-HARNESS-004 governed CLI/API worker interface is next
-- Next task: implement FWQ-0068 as transport-neutral contracts without activating providers or credentials.
+- Current focus: FW-HARNESS-004 governed CLI/API worker interface under exact review
+- Next task: accept or repair FWQ-0068 from deterministic proof and read-only review.
 - Harness role: permanent ForgeWarden Core subsystem and default controller for ForgeWarden's own development; one governed architecture serves both roles under D-023.
 - Worker transport direction: registered local CLIs and explicitly approved API-backed workers; API keys are resolved only through FW-KEYS secret handles inside trusted adapters and never enter model context or lifecycle evidence.
 - Provider authentication direction: deterministic OpenAI, Anthropic, and Google/Gemini profiles with provider-specific official OAuth where available and approved API-key classes otherwise; Gemini CLI is registered as `agy` for read-only roles, FW-ID owns delegated identity, and FW-KEYS owns all credential material.
@@ -33,17 +33,17 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FWQ-0067
-- Starting commit: 0f1c1eb6e7906c91e6be7ed49da78052f7ccf024
-- Candidate commit: 6ad03207ebc9950df9c96fd7fee68f5757c15d21
-- Accepted commit: 6ad03207ebc9950df9c96fd7fee68f5757c15d21
-- Files changed: swarm/harness_context.py, tests/test_harness_context.py, WORK_QUEUE.md, SWARM_STATUS.md
-- Deterministic validation: focused 27 passed; full 945 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with unchanged YELLOW findings
-- Claude review: 6ad03207ebc9950df9c96fd7fee68f5757c15d21 APPROVE/LOW, no blockers or missing tests
+- Task ID: FWQ-0068
+- Starting commit: 0a7befaa7d63aff4b0d2fe1bb5e89bb704f9763b
+- Candidate commit: pending exact commit creation
+- Accepted commit: none
+- Files changed: swarm/harness_worker.py, tests/test_harness_worker.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Deterministic validation: focused 38 passed; git diff --check passed
+- Claude review: pending exact-candidate review; prior `agy` documentation review remains deferred after bounded verifier exhaustion
 - Gemini review: disabled and not required under D-020
 - Unresolved findings: none for bounded FW-RANSOM/FW-MCP or FW-BME-01/02; historical caveats and pre-existing YELLOW findings remain
-- Blocker: none for FW-HARNESS-003; provider activation remains approval-gated and FW-BME-03 remains deferred under D-023
-- Next action: claim FWQ-0068
+- Blocker: none for implementation; provider activation remains approval-gated and FW-BME-03 remains deferred under D-023
+- Next action: create and review exact FWQ-0068 candidate
 
 - Completion inventory: `docs/completion-audit-2026-09-09.md` (baseline `0afcbdd`).
 - FWQ-0008 implementation and binding hardening exist; VALIDATED retains a historical provenance caveat, not an implementation assignment. FWQ-0009 is recorded accepted and unchanged at source/test level from its reviewed candidate.

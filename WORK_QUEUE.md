@@ -62,7 +62,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FWQ-0068 — Governed CLI and API worker interface
 - Requirement: FW-HARNESS-004 model worker transport
-- State: READY
+- State: REVIEW
 - Priority: P0
 - Dependencies: FWQ-0067
 - Approval: interface architecture is approved under D-023; any provider/model/credential/network activation remains separately approval-gated.
