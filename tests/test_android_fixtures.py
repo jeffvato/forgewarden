@@ -1,5 +1,6 @@
-from swarm.android_fixtures import ANDROID_SOURCE, AndroidFixtureDenied, adapt_android_record, ingest_android_fixture
+from swarm.android_fixtures import ANDROID_SOURCE, AndroidFixtureDenied, adapt_android_record, ingest_android_batch, ingest_android_fixture
 from swarm.normalized_events import NormalizedEventStore
+from swarm.endpoint_fixtures import EndpointFixtureDenied
 import pytest
 
 
@@ -63,3 +64,28 @@ def test_android_fixture_rejects_empty_or_malformed_permissions():
 def test_android_fixture_rejects_invalid_store():
     with pytest.raises(AndroidFixtureDenied, match="STORE_INVALID"):
         ingest_android_fixture(object(), _record(), tenant_id="tenant-a", device_id="phone-1", now_epoch=150)
+
+
+def test_android_batch_is_deterministic_and_atomically_admitted():
+    events = []
+    store = NormalizedEventStore(lambda *args: events.append(args))
+    records = [_record(event_id="later", observed_at_epoch=120), _record(event_id="earlier", observed_at_epoch=110)]
+    admitted = ingest_android_batch(store, records, tenant_id="tenant-a", device_id="phone-1", now_epoch=150)
+    assert tuple(item.event_id for item in admitted) == ("earlier", "later")
+    assert events[-1][0] == "endpoint_events_batch_admitted"
+    assert events[-1][1]["mode"] == "DRY_RUN" and events[-1][1]["action"] == "DETECT_ONLY"
+
+
+def test_android_batch_rejects_duplicate_and_over_cap_inputs():
+    store = NormalizedEventStore(lambda *_args: None)
+    with pytest.raises(AndroidFixtureDenied, match="EVENT_ID_DUPLICATE"):
+        ingest_android_batch(store, [_record(), _record()], tenant_id="tenant-a", device_id="phone-1", now_epoch=150)
+    with pytest.raises(AndroidFixtureDenied, match="BATCH_INVALID"):
+        ingest_android_batch(store, [_record(event_id=f"event-{i}") for i in range(129)], tenant_id="tenant-a", device_id="phone-1", now_epoch=150)
+
+
+def test_android_batch_preserves_tenant_and_queue_fail_closed():
+    store = NormalizedEventStore(lambda *_args: None, max_queued_events_per_device=1)
+    ingest_android_batch(store, [_record()], tenant_id="tenant-a", device_id="phone-1", now_epoch=150)
+    with pytest.raises(EndpointFixtureDenied, match="EVENT_QUEUE_FULL"):
+        ingest_android_batch(store, [_record(event_id="next")], tenant_id="tenant-a", device_id="phone-1", now_epoch=150)

@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import Any, Mapping
 
-from .normalized_events import NormalizedEventStore
+from .normalized_events import MAX_EVENT_BATCH, NormalizedEventStore
 
 ANDROID_SOURCE = "ANDROID_FIXTURE"
 _REQUIRED = frozenset({
@@ -61,3 +61,24 @@ def ingest_android_fixture(
         raise AndroidFixtureDenied("STORE_INVALID")
     fixture = adapt_android_record(record, tenant_id=tenant_id, device_id=device_id)
     return store.admit_fixture(fixture, tenant_id=tenant_id, device_id=device_id, source=ANDROID_SOURCE, now_epoch=now_epoch)
+
+
+def ingest_android_batch(
+    store: NormalizedEventStore, records: list[Mapping[str, Any]], *, tenant_id: str,
+    device_id: str, now_epoch: int,
+) -> tuple[Any, ...]:
+    """Atomically normalize and enqueue a bounded Android fixture batch.
+
+    Ordering is deterministic (observation time, then event ID); the canonical
+    store owns duplicate rejection, queue limits, Evidence, and tenant binding.
+    """
+    if not isinstance(store, NormalizedEventStore):
+        raise AndroidFixtureDenied("STORE_INVALID")
+    if not isinstance(records, list) or not 1 <= len(records) <= MAX_EVENT_BATCH:
+        raise AndroidFixtureDenied("BATCH_INVALID")
+    fixtures = [adapt_android_record(record, tenant_id=tenant_id, device_id=device_id) for record in records]
+    if len({fixture["event_id"] for fixture in fixtures}) != len(fixtures):
+        raise AndroidFixtureDenied("EVENT_ID_DUPLICATE")
+    fixtures.sort(key=lambda fixture: (fixture["observed_at_epoch"], fixture["event_id"]))
+    return store.admit_batch(fixtures, tenant_id=tenant_id, device_id=device_id,
+                             source=ANDROID_SOURCE, now_epoch=now_epoch)
