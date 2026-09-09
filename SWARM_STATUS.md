@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: FW-BME (then FW-SOC under D-022)
-- Current focus: FW-BME-02 deterministic phishing and spoof classification
-- Next task: validate and exact-review FW-BME-02 as warn-only evaluation.
+- Current focus: FW-BME-02 accepted; FW-BME-03 dangerous-delivery classification is next
+- Next task: implement FW-BME-03 as offline warn-only evaluation.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -29,17 +29,17 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-BME-01
-- Starting commit: f4d3dffebd884b82c75ffdcc5d772cb5d8ed96e2
-- Candidate commit: dea7ca0d90924888556783aa3b3e98c1615ce324
-- Accepted commit: dea7ca0d90924888556783aa3b3e98c1615ce324
+- Task ID: FW-BME-02
+- Starting commit: 580d16c91215b614337890da7671abf1494f98e2
+- Candidate commit: 87a2d15f29504679d35b7c84f4c7e6a940f1dfd9
+- Accepted commit: 87a2d15f29504679d35b7c84f4c7e6a940f1dfd9
 - Files changed: swarm/browser_email.py, tests/test_browser_email.py, WORK_QUEUE.md, SWARM_STATUS.md
-- Deterministic validation: focused 11 passed; full 908 passed/1 skipped; integrity all hard checks and 4 Golden Paths pass, YELLOW pre-existing findings
-- Claude review: dea7ca0d90924888556783aa3b3e98c1615ce324 APPROVE/LOW, no blockers or missing tests
+- Deterministic validation: focused 21 passed; full 918 passed/1 skipped; integrity all hard checks and 4 Golden Paths pass, YELLOW pre-existing findings
+- Claude review: 87a2d15f29504679d35b7c84f4c7e6a940f1dfd9 APPROVE/LOW, no blockers or missing tests
 - Gemini review: disabled and not required under D-020
-- Unresolved findings: none for bounded FW-RANSOM/FW-MCP or FW-BME-01; historical caveats and pre-existing YELLOW findings remain
+- Unresolved findings: none for bounded FW-RANSOM/FW-MCP or FW-BME-01/02; historical caveats and pre-existing YELLOW findings remain
 - Blocker: none for bounded FW-MCP work; broader live/response authority stays disabled
-- Next action: claim FW-BME-02
+- Next action: claim FW-BME-03
 
 - Completion inventory: `docs/completion-audit-2026-09-09.md` (baseline `0afcbdd`).
 - FWQ-0008 implementation and binding hardening exist; VALIDATED retains a historical provenance caveat, not an implementation assignment. FWQ-0009 is recorded accepted and unchanged at source/test level from its reviewed candidate.
@@ -49,6 +49,8 @@ On every restart or continuation:
 - Latest broad Core closure: FWQ-0064, 833 passed/1 skipped, all hard checks/Golden Path passing, YELLOW pre-existing findings.
 
 ## Execution log
+
+- 2026-09-09: FW-BME-02 accepted at `87a2d15f29504679d35b7c84f4c7e6a940f1dfd9`. Exact phishing/BEC/lookalike/QR/redirect and email authentication signals produce deterministic Evidence-first warn-only findings after revalidating tenant and untrusted observation boundaries. Focused 21 passed; exact Claude APPROVE/LOW; full 918 passed/1 skipped; integrity hard checks and Golden Paths pass with unchanged YELLOW findings. FW-BME-03 is next.
 
 - 2026-09-09: FW-BME-01 accepted at `dea7ca0d90924888556783aa3b3e98c1615ce324`. Strict caller-supplied browser/email fixtures normalize to immutable UNTRUSTED_DATA observations after Evidence, with exact source/event/auth/indicator validation and no raw URLs or sender data in Evidence. Focused 11 passed; exact Claude APPROVE/LOW; full 908 passed/1 skipped; integrity hard checks and Golden Paths pass with unchanged YELLOW findings. FW-BME-02 is next.
 

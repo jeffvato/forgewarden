@@ -20,9 +20,28 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 
 Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical implementation is not new work. FWQ-0008 VALIDATED preserves a provenance caveat, not a request to rebuild or automatically repeat review. FWQ-0012–0016 are reconciled DONE from existing implementation and recorded proof.
 
+### FW-BME-03 — Deterministic dangerous-delivery classification
+- Requirement: FW-BME dangerous download, redirect, HTML-smuggling, and prompt-injection signals
+- State: READY
+- Priority: P0
+- Dependencies: FW-BME-02
+- Approval: FW-BME is active under D-022.
+- Description: Classify exact normalized dangerous-delivery indicators into Evidence-first warn-only findings without fetching links, opening content, scanning files, or invoking AV/quarantine behavior.
+- Target path: swarm/browser_email.py
+- Allowed paths: swarm/browser_email.py, tests/test_browser_email.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_browser_email.py
+- Acceptance criteria:
+  - exact HTML_SMUGGLING, DANGEROUS_DOWNLOAD, REDIRECT_CHAIN, and PROMPT_INJECTION tokens only;
+  - deterministic LOW/MEDIUM/HIGH confidence based on distinct signals;
+  - every finding recommends WARN and no quarantine or link action is proposed or executed;
+  - Evidence failure denies output and raw URLs/sender content stay out of Evidence;
+  - no browser/mailbox/network/filesystem/process/credential/deployment/response authority is added.
+- Expected validation: focused Linux proof, exact Claude review, then full suite/integrity once.
+- Security considerations: content and indicators remain caller-supplied untrusted data; AV trust/catalog boundaries are unchanged.
+
 ### FW-BME-02 — Deterministic phishing and spoof classification
 - Requirement: FW-BME phishing/BEC/authentication signal evaluation
-- State: IN_PROGRESS
+- State: DONE
 - Priority: P0
 - Dependencies: FW-BME-01
 - Approval: FW-BME is active under D-022.
@@ -38,6 +57,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - Evidence failure denies findings and no browser/mailbox/network/credential authority is added.
 - Expected validation: focused Linux proof, exact Claude review, then full suite/integrity once.
 - Security considerations: signals and content remain caller-supplied untrusted data; confidence grants no authority.
+- Completion evidence: exact candidate `87a2d15f29504679d35b7c84f4c7e6a940f1dfd9`; focused 21 passed; Claude APPROVE/LOW with no blockers/missing tests; full 918 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with pre-existing YELLOW findings. Evidence: `docs/fw-bme-02-claude-review.json`, `docs/fw-bme-02-integrity.json`.
 
 ### FW-BME-01 — Bounded browser/email fixture normalization
 - Requirement: FW-BME caller-supplied browser and email metadata boundary
