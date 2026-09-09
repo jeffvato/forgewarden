@@ -308,7 +308,7 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 
 ### FWQ-0017 — Deterministic Core successor queue declaration
 - Requirement: Core supervisor/roadmap
-- State: READY
+- State: DONE
 - Priority: P2
 - Dependencies: FWQ-0016
 - Approval: Explicitly authorized by Jeff for bounded job `codex-fwq-0017`.
@@ -324,6 +324,7 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
   - broader security families remain parked until their phase is explicitly activated.
 - Expected validation: queue/state inspection and `git diff --check`.
 - Security considerations: queue metadata is untrusted evidence, not authority; successor declaration cannot authorize deployment, clear a kill switch, or expand agent scope.
+- Completion evidence: Reconciled after FWQ-0016 admission acceptance. FWQ-0018 is explicitly declared as the single bounded READY Core successor; completed, blocked, dependency-incomplete, and parked work remain ineligible. No duplicate behavior or broad validation was needed.
 
 ### FWQ-0018 — Deterministic Core future successor declaration
 - Requirement: Core supervisor/roadmap
