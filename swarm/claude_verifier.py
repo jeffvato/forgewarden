@@ -115,7 +115,7 @@ def run(snapshot: Path, job_id: str, commit: str, prompt: str, *, diagnostic_pat
     argv = [
         str(CLAUDE), "-p", verifier_prompt, "--model", MODEL, "--output-format", "json",
         "--json-schema", json.dumps(schema_value, separators=(",", ":"), sort_keys=True),
-        "--tools", "Read" if patch_file_mode else "", "--permission-mode", "plan", "--no-session-persistence",
+        "--tools", "Read" if patch_file_mode else "", "--permission-mode", "default" if patch_file_mode else "plan", "--no-session-persistence",
         "--max-turns", str(MAX_TURNS), "--effort", "low", "--disable-slash-commands", "--no-chrome",
     ]
     if not snapshot.is_dir() or snapshot.is_symlink():
