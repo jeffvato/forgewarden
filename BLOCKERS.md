@@ -4,15 +4,21 @@ This file records only genuine blockers that require Customer Root authority, un
 
 ## Current blockers
 
-### B-030 — Exact Claude review pending for Android fixture adapter
+### B-030 — Android fixture adapter review returned required edge-case tests
 
 - Related task/requirement: FW-ENDPOINT-ANDROID-01 — caller-supplied Android metadata/events only.
-- Exact condition: candidate `f600ee29cfa39e2ba71c29d144f054070031adf4` is pushed and focused-tested, but the WSL Claude CLI has not returned a review payload.
-- Why work cannot complete safely: the exact-commit reviewer gate is required before broad validation and acceptance; no approval may be inferred from a hung process.
-- What authority/resource/decision is required: a functioning Claude review session or a user-supplied exact APPROVE/LOW payload.
+- Exact condition: candidate `f600ee29cfa39e2ba71c29d144f054070031adf4` is pushed and focused-tested; the repaired WSL Claude verifier returned a valid exact-commit LOW-risk review, but listed four required edge-case tests, so the review is not yet approvable.
+- Why work cannot complete safely: the exact-commit reviewer gate requires no missing tests before broad validation and acceptance; no approval may be inferred from a merely reachable provider.
+- What authority/resource/decision is required: Codex may add only the four directly identified Android validation tests, then submit the resulting exact commit to the working Claude verifier for a fresh APPROVE/LOW decision.
 - Independent READY work still available: none within the active Android milestone without bypassing the required review.
 - Current commit/checkpoint: `f600ee2`.
-- First action to resume after resolution: validate the exact review, then run full suite and integrity gate once.
+- First action to resume after resolution: add the four narrowly scoped tests, obtain exact Claude approval, then run full suite and integrity gate once.
+
+### B-031 — Claude verifier integration repair checkpoint
+
+- Related task/requirement: core exact-commit reviewer integration.
+- Exact condition: the verifier previously stalled in tool turns; the adapter now uses the embedded bounded patch, a single turn, no tools, low effort, and the authenticated existing WSL CLI session.
+- Resolution: focused verifier/adapter tests pass (`10 passed`), and a real Android candidate review returned a validated JSON payload. The repair is committed separately before any Android product changes resume.
 
 ### B-029 — Untracked pitch-deck artifacts block YARA integrity acceptance (resolved)
 

@@ -12,10 +12,13 @@ from typing import Any
 from .claude_adapter import CLAUDE, MODEL_ALIASES, minimal_environment, sanitize_context
 from .core import SwarmError, validate_contract
 
-MODEL = MODEL_ALIASES["sonnet"]
+# Exact reviews are deliberately single-turn and tool-free: the bounded patch is
+# embedded in the review context, so allowing a tool loop only adds latency and
+# makes the verifier appear unavailable when the CLI is otherwise healthy.
+MODEL = MODEL_ALIASES["haiku"]
 TIMEOUT_SECONDS = 180
 MAX_OUTPUT_BYTES = 131072
-MAX_TURNS = 4
+MAX_TURNS = 1
 
 
 def _write_diagnostic(path: Path | None, payload: dict[str, Any]) -> None:
@@ -89,16 +92,15 @@ def run(snapshot: Path, job_id: str, commit: str, prompt: str, *, diagnostic_pat
         f"Review only the exact commit {commit} in this disposable snapshot. "
         "Return one JSON object matching the supplied schema. APPROVE only when the "
         "deterministic checks passed, the patch is narrow, and there are no blocking "
-        "findings or missing tests. You may use the read-only file tool to inspect only "
-        "the changed files named in the review context inside this disposable snapshot. "
-        "Do not enumerate unrelated repository files. Do not use shell, Git, edits, MCP, deployment, "
+        "findings or missing tests. The complete exact patch is included in the review context; "
+        "do not use tools or inspect unrelated files. Do not use shell, Git, edits, MCP, deployment, "
         "or network resources. Do not authorize any action beyond this verification.\n\n" + context
     )
     argv = [
         str(CLAUDE), "-p", verifier_prompt, "--model", MODEL, "--output-format", "json",
         "--json-schema", json.dumps(schema_value, separators=(",", ":"), sort_keys=True),
-        "--tools", "Read", "--permission-mode", "plan", "--no-session-persistence",
-        "--max-turns", str(MAX_TURNS), "--strict-mcp-config", "--disable-slash-commands", "--no-chrome",
+        "--tools", "", "--permission-mode", "plan", "--no-session-persistence",
+        "--max-turns", "1", "--effort", "low", "--disable-slash-commands", "--no-chrome",
     ]
     if not snapshot.is_dir() or snapshot.is_symlink():
         raise ClaudeVerificationError("Claude verifier snapshot is unavailable")

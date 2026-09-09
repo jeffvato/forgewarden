@@ -38,8 +38,8 @@ On every restart or continuation:
 - Exact first change: bind scanner entry points to a fresh `AcceptedCatalogCache` slot without changing the underlying bounded scanner.
 - Proof: FW-ENDPOINT-02 through FW-ENDPOINT-06 are accepted with their recorded focused/full proofs. FW-ENDPOINT-07 cap repair `acad2ad` was accepted with exact Claude APPROVE/LOW and full validation (`702 passed, 1 skipped`). Follow-up candidate `8ad33d1` adds the exact-128 positive boundary regression; focused proof passed (`27 tests`), exact Claude review returned APPROVE/LOW, and the final full suite passed (`703 passed, 1 skipped`) with integrity gate passing all hard checks and Golden Path. Health remains YELLOW only for pre-existing dependency and roadmap-owner findings (`identity`, `soc_incidents`, `compliance`).
 - Health: YELLOW only for the pre-existing `pip check` dependency finding and unimplemented roadmap ownership for identity, normalized events, SOC incidents, and compliance.
-- Blocker: none; the YARA grammar, limits, and source/licensing boundaries are authorized.
-- Next action: obtain exact Claude APPROVE/LOW for the Android fixture adapter, then run the one full suite and integrity gate; no platform APIs or response authority are enabled.
+- Blocker: Android candidate review is now reachable through the repaired WSL Claude verifier, but remains unaccepted because Claude returned four required edge-case tests. No product-code work proceeds until those tests are handled and the exact review is APPROVE/LOW.
+- Next action: use the working single-turn, tool-free Claude verifier for the Android candidate follow-up; then run the one full suite and integrity gate. No platform APIs or response authority are enabled.
 - Platform delivery definition: Windows and Linux are the first endpoint targets; macOS, Android, and iOS are later platform-native releases. Detailed scope and required proof are in `docs/fw-av-windows-linux-delivery-plan.md`.
 
 ## Execution log
