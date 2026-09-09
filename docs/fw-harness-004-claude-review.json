@@ -1,0 +1,30 @@
+{
+  "adjudication": null,
+  "candidate_commit": "005afed5525a5308a66c3eb387ef2a49e81724df",
+  "deployment": "DISABLED",
+  "job_id": "phase2a-005afed5525a5308a66c3eb5",
+  "kill_switch": "ENGAGED",
+  "mutation_allowed": false,
+  "reviews": [
+    {
+      "provider": "CLAUDE",
+      "result": {
+        "blocking_findings": [],
+        "job_id": "phase2a-005afed5525a5308a66c3eb5",
+        "non_blocking_notes": [
+          "Output field size limits (max 256 changed_files, max 1000 UTF-8 bytes per item, max 4000 bytes summary) are implemented but not explicitly tested",
+          "Role tuple duplication and empty role validation are in __post_init__ but lack explicit test cases",
+          "Configuration hash format is validated but has no test coverage"
+        ],
+        "proposed_rules": [],
+        "reasoning_summary": "FW-HARNESS-004 implementation meets all stated requirements with no blocking issues. Worker/provider/model/transport/role/task/context/budget bindings are strictly validated. Codex is restricted to CODE_WRITER role while Claude and Gemini-agy are read-only (ANALYST/READ_ONLY_REVIEWER only). CLI transport allows only registered executables without credentials; API transport requires approved network routes and opaque FW-KEYS handles. Output validation enforces exact schema, rejects path traversal, validates commit hashes, and blocks credential-like values via regex patterns. Immutable data structures and comprehensive validation logic prevent unauthorized mutations. Tests cover critical paths including role enforcement, binding validation, path scope limits, and secret rejection. Deterministic checks (focused 38 passed, diff --check) and git validation completed. No execution, network, or provider activation occurs.",
+        "reviewed_commit": "005afed5525a5308a66c3eb387ef2a49e81724df",
+        "risk": "LOW",
+        "tests_missing": [],
+        "verdict": "APPROVE"
+      },
+      "state": "APPROVED"
+    }
+  ],
+  "state": "APPROVED"
+}

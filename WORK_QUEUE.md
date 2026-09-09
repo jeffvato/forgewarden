@@ -22,7 +22,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FWQ-0072 — Claude structured-review terminal turn
 - Requirement: FW-HARNESS reviewer availability repair
-- State: REVIEW
+- State: DONE
 - Priority: P0
 - Dependencies: FWQ-0067
 - Approval: bounded reliability repair required by repeated exact-review verifier exhaustion.
@@ -38,10 +38,11 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no shell, Git, MCP, edit, browser, deployment, or network tool is granted to Claude.
 - Expected validation: focused Linux proof and exact Claude review through the repaired bounded path.
 - Security considerations: the extra terminal turn does not add a capability or relax acceptance.
+- Completion evidence: exact candidate `83386cb09f38c97774db43ca4bc340396d617186`; focused 18 passed; Claude APPROVE/LOW with no blockers/missing tests; combined full 968 passed/1 skipped and integrity hard checks/4 Golden Paths pass with unchanged YELLOW findings. Evidence: `docs/fwq-0072-claude-review.json`, `docs/fw-harness-004-007-integrity.json`.
 
 ### FWQ-0071 — Azure Foundry exact-commit review adapter
 - Requirement: FW-HARNESS-007 Azure independent review
-- State: BLOCKED
+- State: DONE
 - Priority: P0
 - Dependencies: FWQ-0067
 - Approval: Azure read-only review is explicitly approved under D-019; live calls require verified credit-only spending protection and bounded cost evidence.
@@ -59,6 +60,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 - Expected validation: focused Linux proof, exact read-only review when available, then full suite/integrity once.
 - Security considerations: no live call occurs until interactive Entra login, exact deployment discovery, and credit protection verification complete.
 - Blocking reason: the cached Azure CLI identity is present, but Entra security defaults require an interactive management-scope login before resource/deployment and credit-protection evidence can be inspected without keys.
+- Completion evidence: exact candidate `05843269712abd1952a90c1f1aac96c2b3209eaf`; focused 29 passed; Claude APPROVE/LOW with no blockers/missing tests; combined full 968 passed/1 skipped and integrity hard checks/4 Golden Paths pass with unchanged YELLOW findings. Live Azure activation remains safely disabled pending interactive Entra login and credit/deployment verification. Evidence: `docs/fw-harness-007-claude-review.json`, `docs/fw-harness-004-007-integrity.json`.
 
 ### FWQ-0070 — Provider OAuth and credential-broker contract
 - Requirement: FW-HARNESS-006 provider authentication
@@ -82,7 +84,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FWQ-0069 — Swarm execution-boundary hardening
 - Requirement: FW-HARNESS-005 swarm resilience and isolation
-- State: BLOCKED
+- State: READY
 - Priority: P0
 - Dependencies: FWQ-0068
 - Approval: architecture is approved under D-023; implementation awaits worker-interface prerequisites.
@@ -102,7 +104,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FWQ-0068 — Governed CLI and API worker interface
 - Requirement: FW-HARNESS-004 model worker transport
-- State: REVIEW
+- State: DONE
 - Priority: P0
 - Dependencies: FWQ-0067
 - Approval: interface architecture is approved under D-023; any provider/model/credential/network activation remains separately approval-gated.
@@ -120,6 +122,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no live provider connection or credential material is introduced in this milestone.
 - Expected validation: focused Linux proof, exact Claude review, then full suite/integrity once.
 - Security considerations: adapters mediate hostile output and never expose credentials to models.
+- Completion evidence: exact candidate `005afed5525a5308a66c3eb387ef2a49e81724df`; focused 38 passed; Claude APPROVE/LOW with no blockers/missing tests after the bounded verifier repair; combined full 968 passed/1 skipped and integrity hard checks/4 Golden Paths pass with unchanged YELLOW findings. Evidence: `docs/fw-harness-004-claude-review.json`, `docs/fw-harness-004-007-integrity.json`.
 
 ### FWQ-0067 — Auditable targeted context packets and task budgets
 - Requirement: FW-HARNESS-003 context and budget controls

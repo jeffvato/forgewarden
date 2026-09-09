@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: FWQ-0072 bounded Claude verifier availability repair; Azure and worker-interface exact reviews remain pending
-- Next task: validate the three-turn structured-review bound and retry each pending exact candidate at most once.
+- Current focus: FW-HARNESS-004/007 and FWQ-0072 accepted; FW-HARNESS-005 swarm execution-boundary hardening is next
+- Next task: claim FWQ-0069 for adversarial crash/replay/isolation/identity/resource hardening.
 - Harness role: permanent ForgeWarden Core subsystem and default controller for ForgeWarden's own development; one governed architecture serves both roles under D-023.
 - Worker transport direction: registered local CLIs and explicitly approved API-backed workers; API keys are resolved only through FW-KEYS secret handles inside trusted adapters and never enter model context or lifecycle evidence.
 - Provider authentication direction: deterministic OpenAI, Anthropic, and Google/Gemini profiles with provider-specific official OAuth where available and approved API-key classes otherwise; Gemini CLI is registered as `agy` for read-only roles, FW-ID owns delegated identity, and FW-KEYS owns all credential material.
@@ -36,15 +36,15 @@ On every restart or continuation:
 
 - Task ID: FWQ-0072
 - Starting commit: 05843269712abd1952a90c1f1aac96c2b3209eaf
-- Candidate commit: pending exact commit creation
-- Accepted commit: none
-- Files changed: swarm/claude_verifier.py, tests/test_claude_verifier.py, WORK_QUEUE.md, SWARM_STATUS.md
-- Deterministic validation: focused 18 passed; git diff --check passed
-- Claude review: pending exact verifier-repair review; FW-HARNESS-004/007 exact reviews remain pending
+- Candidate commit: 83386cb09f38c97774db43ca4bc340396d617186
+- Accepted commit: 83386cb09f38c97774db43ca4bc340396d617186
+- Files changed: FW-HARNESS-004 worker contracts, FW-HARNESS-007 Azure reviewer, FWQ-0072 verifier repair, tests and evidence
+- Deterministic validation: focused 38/29/18 passed; combined full 968 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with unchanged YELLOW findings
+- Claude review: exact APPROVE/LOW for `005afed`, `0584326`, and `83386cb`; no blockers or missing tests
 - Gemini review: disabled and not required under D-020
 - Unresolved findings: none for bounded FW-RANSOM/FW-MCP or FW-BME-01/02; historical caveats and pre-existing YELLOW findings remain
-- Blocker: interactive Entra login is required to inspect Azure resource/deployment and credit protection; no live call is allowed before cost evidence passes
-- Next action: review the FWQ-0072 verifier repair, then retry the pending exact worker and Azure candidates once
+- Blocker: live Azure use remains disabled until interactive Entra login and credit/deployment evidence pass; this does not block offline swarm hardening
+- Next action: claim FWQ-0069
 
 - Completion inventory: `docs/completion-audit-2026-09-09.md` (baseline `0afcbdd`).
 - FWQ-0008 implementation and binding hardening exist; VALIDATED retains a historical provenance caveat, not an implementation assignment. FWQ-0009 is recorded accepted and unchanged at source/test level from its reviewed candidate.
@@ -54,6 +54,8 @@ On every restart or continuation:
 - Latest broad Core closure: FWQ-0064, 833 passed/1 skipped, all hard checks/Golden Path passing, YELLOW pre-existing findings.
 
 ## Execution log
+
+- 2026-09-09: FW-HARNESS-004, FW-HARNESS-007, and FWQ-0072 cleared their exact gates. The worker contract binds CLI/API identities and keeps Codex sole writer with Gemini `agy` read-only; Azure Foundry is integrated as a credit-guarded advisory reviewer; the three-turn Claude bound repaired verifier exhaustion. Exact Claude reviews returned APPROVE/LOW with no blockers/missing tests. Combined full 968 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with unchanged YELLOW findings. Live Azure remains disabled pending login and cost evidence. FW-HARNESS-005 is next.
 
 - 2026-09-09: Two Claude modes consistently reached a third structured-output/tool turn while configured for a two-turn maximum. FWQ-0072 raises only the turn ceiling to three; permissions, tools, timeout, exact binding, schema validation, and acceptance remain unchanged. This bounded repair enables one retry of the pending worker/Azure candidates without a hot loop.
 

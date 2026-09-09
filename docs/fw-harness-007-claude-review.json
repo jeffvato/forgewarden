@@ -1,0 +1,31 @@
+{
+  "adjudication": null,
+  "candidate_commit": "05843269712abd1952a90c1f1aac96c2b3209eaf",
+  "deployment": "DISABLED",
+  "job_id": "phase2a-05843269712abd1952a90c1f",
+  "kill_switch": "ENGAGED",
+  "mutation_allowed": false,
+  "reviews": [
+    {
+      "provider": "CLAUDE",
+      "result": {
+        "blocking_findings": [],
+        "job_id": "phase2a-05843269712abd1952a90c1f",
+        "non_blocking_notes": [
+          "No live Azure call made; design gates execution pending interactive Entra login and cost-evidence verification (SWARM_STATUS.md:83)",
+          "Daily ledger uses UTC midnight reset; timezone independence confirmed",
+          "Credential resolver called after atomic reservation, guaranteeing fail-closed before network access",
+          "fcntl locking unavailable on Windows; WSL/Linux enforced at import"
+        ],
+        "proposed_rules": [],
+        "reasoning_summary": "Commit implements FW-HARNESS-007 Azure Foundry exact-commit reviewer with all required safety controls: (1) Endpoint validation enforces approved Azure HTTPS routes (openai.azure.com or services.ai.azure.com) and OpenAI v1 base route; (2) Transient Entra token obtained via az CLI, held only in request header, never persisted; (3) Exact job_id and commit SHA validated via strict schema binding before returning result; (4) Resource bounds enforced: 90s timeout, 2MB response, 4000 completion tokens, 48KB prompt; (5) Snapshot parameter unused and output marked advisory with no repository/tool/deployment authority; (6) Credit guard is comprehensive: denies before credential resolution via atomic file-locked reservation; requires recent (900s max staleness) unexpired credit-only spending-protected evidence; reserves worst-case per-call cost, maintains 100 USD reserve, caps daily calls at 20; (7) Missing Azure config becomes unavailable rather than errors; (8) Secrets redacted in all error paths; (9) No live resource created or paid call made by design. Tests: 29 focused pass; comprehensive coverage of v1 route, Entra auth, schema validation, endpoint allowlist, credit guard edge cases, worst-case reservation, daily limits, malformed output rejection, and credential redaction. Patch is deterministic, narrow, and production-ready for the gated live-call phase.",
+        "reviewed_commit": "05843269712abd1952a90c1f1aac96c2b3209eaf",
+        "risk": "LOW",
+        "tests_missing": [],
+        "verdict": "APPROVE"
+      },
+      "state": "APPROVED"
+    }
+  ],
+  "state": "APPROVED"
+}
