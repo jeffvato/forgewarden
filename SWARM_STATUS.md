@@ -13,6 +13,7 @@
 - Codex role: sole application-code writer
 - Claude role: architecture/requirements/adversarial reviewer
 - Gemini role: disabled for the active workflow; no longer a required reviewer (D-020).
+- AnythingLLM/Qwen role: authorized independent read-only reviewer using user-specified `qwen/qwen3.8-27b` (D-021); endpoint/workspace and model verification are pending.
 
 ## Resume protocol
 
