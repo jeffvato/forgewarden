@@ -64,9 +64,9 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FWQ-0070 — Provider OAuth and credential-broker contract
 - Requirement: FW-HARNESS-006 provider authentication
-- State: BLOCKED
+- State: READY
 - Priority: P0
-- Dependencies: FWQ-0068
+- Dependencies: FWQ-0069
 - Approval: credential architecture is approved under D-023; provider activation and credential creation remain explicit approval gates.
 - Description: Define deterministic OpenAI, Anthropic, and Google/Gemini provider-authentication profiles supporting only officially available OAuth flows or approved API-key classes, with FW-ID identity binding and FW-KEYS opaque secret handles; Gemini local CLI identity is `agy`.
 - Target path: swarm/harness_credentials.py
@@ -84,7 +84,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FWQ-0069 — Swarm execution-boundary hardening
 - Requirement: FW-HARNESS-005 swarm resilience and isolation
-- State: READY
+- State: DONE
 - Priority: P0
 - Dependencies: FWQ-0068
 - Approval: architecture is approved under D-023; implementation awaits worker-interface prerequisites.
@@ -101,6 +101,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no provider activation, credential issuance, deployment, or response authority.
 - Expected validation: focused adversarial Linux proof, exact Claude review, then full suite/integrity once.
 - Security considerations: hostile model output and interrupted processes are untrusted inputs.
+- Completion evidence: exact candidate `6ef3c6522187f9a11e805dbee19858c1bbed2dcf`; focused 87 passed; exact Claude APPROVE/LOW with no blockers/missing tests; full 972 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with unchanged YELLOW findings. Evidence: `docs/fw-harness-005-claude-review.json`, `docs/fw-harness-005-integrity.json`.
 
 ### FWQ-0068 — Governed CLI and API worker interface
 - Requirement: FW-HARNESS-004 model worker transport

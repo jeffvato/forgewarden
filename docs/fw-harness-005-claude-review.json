@@ -1,0 +1,29 @@
+{
+  "adjudication": null,
+  "candidate_commit": "6ef3c6522187f9a11e805dbee19858c1bbed2dcf",
+  "deployment": "DISABLED",
+  "job_id": "phase2a-0069aabbccddeeff00112233",
+  "kill_switch": "ENGAGED",
+  "mutation_allowed": false,
+  "reviews": [
+    {
+      "provider": "CLAUDE",
+      "result": {
+        "blocking_findings": [],
+        "job_id": "phase2a-0069aabbccddeeff00112233",
+        "non_blocking_notes": [
+          "Symlink validation occurs per log call rather than cached; acceptable for safety-first design.",
+          "Test file test_autonomous_adapters.py removed from test command per WORK_QUEUE.md specification."
+        ],
+        "proposed_rules": [],
+        "reasoning_summary": "Patch implements deterministic execution-boundary safety: (1) controller_digest SHA256 binds lease to session/task/repository/allowed_paths, preventing replay; (2) consumed_lease_ids list (bounded 1024) prevents reuse; (3) _stage() checkpoints with supervisor authorization gating; (4) SupervisorInterrupted enables safe stage-boundary stops; (5) audit_path symlink checks; (6) strict _validate_lease() immutability. Existing path-safety, allowed-paths, DRY_RUN/deployment preserved. No provider activation, credentials, deployment, or kill-switch changes. Tests validate binding, replay prevention, interruption, symlink safety. 87 tests pass.",
+        "reviewed_commit": "6ef3c6522187f9a11e805dbee19858c1bbed2dcf",
+        "risk": "LOW",
+        "tests_missing": [],
+        "verdict": "APPROVE"
+      },
+      "state": "APPROVED"
+    }
+  ],
+  "state": "APPROVED"
+}

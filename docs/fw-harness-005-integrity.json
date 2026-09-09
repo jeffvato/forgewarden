@@ -1,0 +1,23 @@
+{
+  "candidate_commit": "6ef3c6522187f9a11e805dbee19858c1bbed2dcf",
+  "checks": {
+    "build": true,
+    "configuration": true,
+    "golden_path": true,
+    "repository": true,
+    "startup": true,
+    "tests": true
+  },
+  "decision": "YELLOW",
+  "full_suite": {
+    "passed": 972,
+    "skipped": 1
+  },
+  "golden_path": {
+    "passed": 4
+  },
+  "unchanged_findings": [
+    "missing tzdata dependency reported by pip check",
+    "roadmap-only identity, SOC incident, and compliance owners"
+  ]
+}
