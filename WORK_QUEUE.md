@@ -22,7 +22,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-MCP-04 — Tenant-bound MCP tool catalog and discovery
 - Requirement: FW-MCP registry, discovery, and trust levels
-- State: IN_PROGRESS
+- State: REVIEW
 - Priority: P0
 - Dependencies: FW-MCP-03
 - Approval: FW-MCP is active under D-022.

@@ -4,7 +4,17 @@ This file records only genuine blockers that require Customer Root authority, un
 
 ## Current blockers
 
-Audit reconciliation (2026-09-09): entries with a Resolution are historical, even if their headings omit “resolved”. Do not reopen them from the earlier Exact condition text. B-002 is resolved by D-020. FWQ-0008's missing original acceptance payload in the bounded search is a provenance caveat, not a mandate to reimplement/review it repeatedly. See `docs/completion-audit-2026-09-09.md`. The policy/code mismatch FWQ-0063 and subsequent snapshot-lifetime defect FWQ-0064 are now accepted with preserved exact review/full-gate evidence. No task is currently READY; that is not permission to recreate completed work. Optional AnythingLLM connectivity does not block Claude review.
+Audit reconciliation (2026-09-09): entries with a Resolution are historical, even if their headings omit “resolved”. Do not reopen them from the earlier Exact condition text. B-002 is resolved by D-020. FWQ-0008's missing original acceptance payload in the bounded search is a provenance caveat, not a mandate to reimplement/review it repeatedly. See `docs/completion-audit-2026-09-09.md`. The policy/code mismatch FWQ-0063 and subsequent snapshot-lifetime defect FWQ-0064 are accepted with preserved exact review/full-gate evidence. Optional AnythingLLM connectivity does not block Claude review.
+
+### B-033 — FW-MCP-04 exact Claude review temporarily unavailable
+
+- Related task/requirement: FW-MCP-04 tenant-bound MCP tool catalog and discovery.
+- Exact condition: candidate `dd2cad59ede185a4f8eeac3ac7d7f6ee486329bc` passed focused proof (139 tests), but Claude returned HTTP 429 before consuming review tokens and reported the session limit resets at 1:20 PM America/Chicago on 2026-09-09.
+- Why work cannot complete safely: FW-MCP-04 requires an exact Claude APPROVE/LOW result before broad validation or acceptance; no approval was returned or inferred.
+- Required resource: restored Claude Code review capacity after the provider-stated reset.
+- Independent READY work: none within the ordered FW-MCP sequence while this candidate awaits review.
+- Current candidate/checkpoint: `dd2cad59ede185a4f8eeac3ac7d7f6ee486329bc` / FW-MCP-04.
+- First resume action: after 1:20 PM America/Chicago, submit the unchanged candidate once and continue only on validated APPROVE/LOW with no blockers or missing tests.
 
 ### B-032 — Queue cleanup candidate exceeds exact-review patch bound (resolved)
 

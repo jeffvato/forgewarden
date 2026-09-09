@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: FW-MCP (then FW-BME, FW-SOC under D-022)
-- Current focus: FW-MCP-04 tenant-bound tool catalog and discovery
-- Next task: validate and exact-review FW-MCP-04 without connecting to tools.
+- Current focus: FW-MCP-04 candidate awaiting exact Claude review after temporary session limit
+- Next task: retry the unchanged exact candidate after 1:20 PM America/Chicago; do not resubmit before reset.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -38,8 +38,8 @@ On every restart or continuation:
 - Claude review: ed8b0a915b9ff8f1a3c85507066595afd79b171d APPROVE/LOW, no blockers or missing tests
 - Gemini review: disabled and not required under D-020
 - Unresolved findings: none for FW-RANSOM-01 through 05 or FW-MCP-01 through 03; historical caveats and pre-existing YELLOW findings remain
-- Blocker: none for bounded FW-RANSOM fixture/proposal work; broader live/response authority stays disabled
-- Next action: claim FW-MCP-04
+- Blocker: B-033 temporary Claude session limit blocks required exact review of `dd2cad59ede185a4f8eeac3ac7d7f6ee486329bc`
+- Next action: after 1:20 PM America/Chicago, retry Claude once for the unchanged exact candidate
 
 - Completion inventory: `docs/completion-audit-2026-09-09.md` (baseline `0afcbdd`).
 - FWQ-0008 implementation and binding hardening exist; VALIDATED retains a historical provenance caveat, not an implementation assignment. FWQ-0009 is recorded accepted and unchanged at source/test level from its reviewed candidate.
