@@ -4,7 +4,7 @@
 
 - Active phase: ForgeWarden Core
 - Current focus: Core supervisor and deterministic queue reconciliation
-- Current task: FWQ-0015 — Deterministic Core continuation replay guard (accepted); next FWQ-0016.
+- Current task: FWQ-0016 — Deterministic Core continuation admission validation (accepted); next FWQ-0017.
 - Queue source: `WORK_QUEUE.md`
 - Repository safety mode: DRY_RUN
 - Deployment: disabled
@@ -43,6 +43,8 @@ On every restart or continuation:
 - Platform delivery definition: Windows and Linux are the first endpoint targets; macOS, Android, and iOS are later platform-native releases. Detailed scope and required proof are in `docs/fw-av-windows-linux-delivery-plan.md`.
 
 ## Execution log
+
+- 2026-09-09: FWQ-0016 accepted at `2999e3e87469ef08d68171f310cb223e86a42cd5`: continuation admission requires exactly one validated READY successor with complete dependencies, binds the consumed transition to the accepted Core task/commit/phase, and returns a redacted non-authoritative decision. Focused proof passed (18 tests); exact Claude review returned APPROVE/LOW with no missing tests. Full suite and integrity gate are pending once for milestone closure.
 
 - 2026-09-09: FWQ-0015 accepted at `7aa31fb1ac246ce94a698950a25ebc12b565ed42`: ContinuationReplayGuard binds immutable task/commit/next-task/phase transitions and consumes each token once within a bounded ledger. Focused proof passed (12 tests), exact Claude review APPROVE/LOW with no missing tests, full suite passed (813 passed, 1 skipped), and integrity returned YELLOW only for pre-existing dependency and roadmap-owner findings. Claude verifier repair `216a82b` preserves exact patch text while sanitizing instructions.
 
