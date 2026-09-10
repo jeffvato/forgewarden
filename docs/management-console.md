@@ -27,3 +27,16 @@ Fable/Compass for read-only analysis.
 
 The console binds to loopback by default. Do not expose it publicly without a
 separately reviewed authentication and deployment design.
+
+## AI Security / Agent Defense
+
+Mission Control must include a sanitized FW-AID projection of running agents,
+provider/model, task and purpose, current authority, offered tools, MCP
+connections, risk, anomalies, denied actions, egress and secret-access
+attempts, containment status or inert proposal, related endpoint/identity
+alerts, unified attack story, Evidence references, and kill-switch state.
+
+The view consumes canonical FW-ID, FW-KEYS, FW-HARNESS, MCP Gateway,
+NormalizedEventStore, FW-SOC, FW-EVID, FW-REC, and policy state. It neither
+owns that state nor executes response. Prompt text, retrieved content,
+credentials, tokens, and sensitive command arguments are excluded by default.

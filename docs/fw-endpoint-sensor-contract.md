@@ -85,3 +85,19 @@ The first test fixture is an in-memory JSONL stream containing explicit
 Live sensor APIs, installers, privileged services, on-access scanning,
 quarantine, cleanup, repair, deployment, and kill-switch changes require
 separate bounded authorization and review.
+
+## FW-AID AI workload attribution
+
+The future MicroSensor envelope extends through a versioned FW-AID reference,
+not a parallel endpoint schema. Where available, endpoint observations may
+carry bounded references for agent/model/session/task identity, initiating
+user, capability lease, Action Ticket, tool/MCP action, process ancestry,
+filesystem classification, network destination class, denial, injection
+indicator, and Evidence. Raw prompts, retrieved content, commands, credentials,
+tokens, and secrets are excluded by default.
+
+Endpoint adapters remain observation producers. NormalizedEventStore remains
+the canonical bounded queue; FW-AID classifies and correlates its references
+with AV, identity, network, browser/email, MCP, and SOC facts. Sensors cannot
+authorize containment, and the current caller-supplied DRY_RUN/DETECT_ONLY
+boundary remains unchanged.

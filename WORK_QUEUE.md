@@ -20,6 +20,25 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 
 Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical implementation is not new work. FWQ-0008 VALIDATED preserves a provenance caveat, not a request to rebuild or automatically repeat review. FWQ-0012–0016 are reconciled DONE from existing implementation and recorded proof.
 
+### FW-AID-001 — Core architecture, threat, and ownership inventory
+- Requirement: FW-AID permanent Core foundation
+- State: REVIEW
+- Priority: P0
+- Dependencies: D-025
+- Approval: FW-AID architecture and incremental fixture-only implementation are explicitly activated by D-025.
+- Description: Register FW-AID as a permanent Core family and define its canonical integrations, threat classes, AI telemetry contract, deterministic containment boundary, Mission Control visibility, harness protection, adversarial strategy, and incremental requirements without duplicating existing owners.
+- Target path: docs/fw-aid-architecture.md
+- Allowed paths: ROADMAP.md, DECISIONS.md, docs/fw-aid-architecture.md, docs/fw-endpoint-sensor-contract.md, docs/fw-harness-inventory.md, docs/management-console.md, docs/security-analysis.md, docs/fw-integrity-dependency-graph.md, docs/fw-integrity-functionality-map.md, swarm/integrity.py, tests/test_fw_aid_architecture.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_fw_aid_architecture.py tests/test_integrity.py tests/test_endpoint_design.py tests/test_mission_control.py
+- Acceptance criteria:
+  - FW-AID-001 through FW-AID-010 have stable, substantive requirements and dependencies on canonical AV, endpoint, Identity, FW-KEYS, MCP, model, event, policy, SOC, Evidence, Recovery, harness, test, and Mission Control owners;
+  - all ten required AI threat classes, privacy-minimized telemetry, behavioral baselines, cross-domain correlation, deterministic policy/containment, kill switch, Evidence, Mission Control, harness separation, and adversarial simulations are explicit;
+  - Product Integrity reports FW-AID honestly as Defined rather than implemented or Proven;
+  - the active D-024 Core sequence remains unchanged, with FW-KEYS-003 still next after this independent architecture milestone;
+  - no runtime detector, live telemetry source, sensor/hook, credential access, network/process/container control, containment, quarantine, recovery execution, deployment, or response authority is added.
+- Expected validation: focused documentation/registry proof and exact independent read-only review; no full product suite is required because this is an architecture-only change.
+- Security considerations: architecture text and registry metadata cannot become authority; future execution remains gated by bounded milestones and canonical owners.
+
 ### FWQ-0072 — Claude structured-review terminal turn
 - Requirement: FW-HARNESS reviewer availability repair
 - State: DONE

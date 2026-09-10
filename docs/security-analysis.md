@@ -40,3 +40,21 @@ a parameterized query. Tests operate on temporary files and do not connect to
 a database or transmit an injection payload. Future detectors should preserve
 the same read-only boundary and add positive and negative fixtures before
 being enabled in CI.
+
+
+## FW-AID threat model
+
+AI agents, model output, prompts, retrieval, webpages, documents, attachments,
+MCP responses, tool results, API responses, and generated commands are hostile
+input boundaries. The permanent FW-AID threat model covers sandbox escape,
+unexpected egress, secret discovery, privilege expansion, lateral movement,
+prompt injection, mission deviation, unauthorized coordination, evaluator
+manipulation, and security-control tampering. Detection does not replace
+environmental enforcement and a model cannot assess or lift its own
+containment.
+
+The canonical threat, telemetry, correlation, Evidence, Mission Control,
+containment-proposal, harness-protection, and adversarial-test specification is
+`docs/fw-aid-architecture.md`. Current work is fixture-only DRY_RUN and grants
+no live sensor, credential, network/process, containment, recovery, or
+deployment authority.

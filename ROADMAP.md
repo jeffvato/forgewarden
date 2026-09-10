@@ -28,6 +28,13 @@ The initial provider-authentication design covers OpenAI, Anthropic, and Google/
 
 The swarm path is a Core security boundary. It must fail closed under crashes, timeouts, partial writes, stale leases, replay, scope escape, unexpected processes, model or executable substitution, malformed output, validation failure, review mismatch, resource exhaustion, and kill-switch activation. Hardening must use isolated workspaces, exact identity/configuration binding, bounded processes and resources, deterministic transition ownership, checkpoint reconciliation, denied-action evidence, and adversarial regression tests.
 
+### FW-AID — AI Intrusion & Agent Defense
+Permanent first-class Core security family for deterministic protection of AI agents, LLM applications, coding workers, MCP clients/servers, model tool use, retrieval, autonomous workloads, and agent coordination. FW-AID treats every prompt, document, webpage, attachment, model output, tool call, MCP interaction, API response, and generated command as untrusted. It detects sandbox escape, unexpected egress, secret discovery, privilege expansion, lateral movement, prompt injection, mission deviation, unauthorized agent coordination, evaluator manipulation, and security-control tampering.
+
+FW-AID composes existing FW-AV, FW-ENDPOINT, FW-ID, FW-KEYS, FW-MCP, Model Broker, NormalizedEventStore, FW-BME, FW-SOC, FW-ROOT/Z3, FW-EVID, FW-REC, FW-HARNESS, FW-TEST, and Mission Control interfaces. It does not create duplicate engines. Traditional malware, endpoint, identity, network, and AI-agent facts reinforce one another in tenant-bound attack stories. Detection and model recommendations never grant response authority.
+
+The ForgeWarden development harness is the first protected fixture environment, with separation between harness control and the FW-AID enforcement plane. Current implementation remains DRY_RUN: only caller-supplied telemetry, findings, policy inputs, and inert containment proposals are permitted. Live sensors, credential access, network/process enforcement, containment, recovery execution, or deployment require separate authorized milestones. The canonical architecture, threat model, telemetry, requirements FW-AID-001 through FW-AID-010, Mission Control view, and adversarial strategy are in `docs/fw-aid-architecture.md`.
+
 ### FW-ROOT — Root authority and deterministic policy
 Customer Root, Z3 Policy Engine/Action Broker, signed policies, bounded leases/capabilities, single-use Action Tickets, dual control, kill-switch enforcement, immutable prohibitions, and machine-checkable invariants.
 

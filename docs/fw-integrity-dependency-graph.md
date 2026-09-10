@@ -17,6 +17,11 @@ FW-ASOC agent authority ---- deterministic policy / Action Tickets
        canonical events / telemetry normalization
                      |
                      v
+        FW-AID AI intrusion classification
+          /          |              \
+     FW-AV       FW-ENDPOINT      FW-HARNESS
+          \          |              /
+                     v
              FW-SOC incident correlation
                      |
                      v
@@ -36,6 +41,9 @@ Authority ownership flows downward only after identity and deterministic policy
 validation. Review, Evidence, and Integrity observe and prove the path; they do
 not grant authority. FW-ASOC consumes identity, policy, model, MCP, Action
 Ticket, Evidence, and kill-switch boundaries; it must not replace them.
+FW-AID consumes the same canonical identity, keys, model, MCP, endpoint,
+browser/email, event, policy, SOC, Evidence, recovery, and Mission Control
+owners. It adds AI-specific classification and correlation, never authority.
 
 Current checkout reality: several named families are still roadmap ownership
 labels rather than concrete modules. `swarm.integrity` records those gaps

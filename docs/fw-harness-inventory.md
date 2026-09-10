@@ -57,3 +57,19 @@ Model output enters this path only as untrusted worker or reviewer input. It doe
 The worker interface must cover two governed transports: registered local CLIs and approved APIs. API credentials are FW-KEYS-managed secret references resolved only inside trusted adapter code and are never task/context/audit payloads. Provider activation, credential classes, and network routes remain approval-gated. Swarm hardening is a standing requirement across every milestone, with adversarial proof for replay, crash recovery, stale leases, path escape, identity substitution, malformed model output, resource exhaustion, and fail-closed interruption.
 
 Each item is a bounded milestone. None enables production deployment or grants models authority.
+
+## FW-AID protected-environment boundary
+
+FW-HARNESS is the first fixture-driven environment protected by FW-AID.
+Existing task, identity, model, context-hash, tool, allowed-path, Git-scope,
+validation, review, denial, budget, provider-call, and recovery facts become
+caller-supplied AI security telemetry through the canonical event/Evidence
+interfaces. FW-AID detects mission deviation, secret requests, scope escape,
+unexpected egress, unauthorized MCP or coordination, self-expansion, test or
+review manipulation, and security-control tampering.
+
+Separation of duties is mandatory: the harness controller cannot change the
+FW-AID enforcement state protecting it, and FW-AID cannot control harness Git,
+acceptance, credentials, policy, or deployment. Current integration is
+DRY_RUN/DETECT_ONLY and adds no live monitoring hook, process/network control,
+credential access, or containment execution.

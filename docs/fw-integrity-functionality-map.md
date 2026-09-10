@@ -8,6 +8,7 @@ This summary is intentionally conservative:
 | FW-CORE | Proven | `swarm.core`, `swarm.autonomous_loop` | Core dry-run/review path | No production deployment or live mutation |
 | FW-ASOC-01 | Proven | `swarm.asoc.CapabilityAuthorizer` plus Action Tickets, Model Broker, and MCP Gateway | Canonical authorization, replay denial, kill-switch denial, recovery denial, and cross-tenant denial | In-memory single-process DRY_RUN registries; external service adapters and a full Z3 policy solver remain future work |
 | FW-ASOC-02 | Proven | `swarm.asoc.AggregateBlastRadiusLedger`, `WorkBudgetLedger`, and `LeaseRegistry` | Aggregate caps, bounded delegation, and lease/tenant work budgets with recovery and concurrency denials | In-memory single-process DRY_RUN scope; broader ASOC orchestration remains future work |
+| FW-AID | Defined | `docs/fw-aid-architecture.md` | Not started | Architecture and requirements are explicit; runtime telemetry, detection, correlation, proposals, Mission Control projection, and integrated proof remain |
 | FW-INTEGRITY | Implemented | `swarm.integrity` | Baseline Core path | Dependency lock, clean-build packaging, and broader end-to-end paths remain |
 
 Defined-but-not-yet-concrete ownership includes FW-ID, FW-SOC, and FW-COMP.
