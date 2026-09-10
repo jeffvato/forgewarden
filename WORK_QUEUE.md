@@ -514,7 +514,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-ID-005 — Integrated identity lifecycle proof
 - Requirement: FW-ID initial lifecycle integration
-- State: READY
+- State: DONE
 - Priority: P0
 - Dependencies: FW-ID-004
 - Approval: FW-ID integration is activated under D-024.
@@ -530,6 +530,26 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no authentication, OAuth exchange, credential resolution, persistence, network activation, process execution, Git, deployment, or response authority is added.
 - Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
 - Security considerations: the proof demonstrates attribution and fail-closed admission; it does not authenticate a real principal or grant action authority.
+- Completion evidence: repaired exact candidate `de01fef00bcd95ad04beab592ea053a6cb4491c2`; focused 78 passed. The initial exact Claude review approved the behavior at LOW risk and identified missing expiration-boundary proof; the repaired exact Claude Code job `phase2a-121d5b011d3a41d1837db7e9` returned APPROVE/LOW with no blockers or missing tests. Full 1198 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with only the existing dependency/compliance YELLOW findings.
+
+### FW-KEYS-001 — Canonical secret-handle inventory and metadata contract
+- Requirement: FW-KEYS foundation
+- State: READY
+- Priority: P0
+- Dependencies: FW-ID-005
+- Approval: FW-KEYS is activated under D-024; no new credential class or live secret backend is authorized.
+- Description: Inventory existing key and credential references and establish one immutable tenant-bound metadata contract for opaque secret handles without accepting, storing, resolving, exporting, or logging secret material.
+- Target path: swarm/keys.py
+- Allowed paths: swarm/keys.py, tests/test_keys.py, swarm/identity.py, swarm/harness_worker.py, tests/test_identity.py, tests/test_harness_worker.py, swarm/integrity.py, tests/test_integrity.py, docs/fw-keys-001-inventory.md, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_keys.py tests/test_identity.py tests/test_harness_worker.py tests/test_integrity.py
+- Acceptance criteria:
+  - one immutable canonical metadata record binds handle ID, tenant, credential class, owner identity, purpose, backend reference class, lifecycle state/timestamps, generation, and non-export policy exactly;
+  - opaque handle identifiers cannot contain raw secret material and secret-shaped fields are rejected rather than copied into state or Evidence;
+  - the contract grants no credential access, authentication, provider approval, worker role, capability, policy, Git, deployment, or response authority;
+  - existing key, signature, provider-binding, harness, Action Ticket, and evidence consumers are inventoried with their canonical owners and reuse boundaries;
+  - Product Integrity recognizes FW-KEYS as the canonical partial owner while accurately recording remaining production limitations.
+- Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
+- Security considerations: this milestone defines metadata only; no vault, HSM, environment-variable, credential-file, OAuth, network, or backend access is added.
 
 ### FW-BME-02 — Deterministic phishing and spoof classification
 - Requirement: FW-BME phishing/BEC/authentication signal evaluation

@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: FW-ID-004 harness worker identity enforcement accepted
-- Next task: FW-ID-005 integrated identity lifecycle proof under D-024.
+- Current focus: FW-ID initial lifecycle Proven through FW-ID-005
+- Next task: FW-KEYS-001 canonical secret-handle inventory and metadata contract under D-024.
 - Harness role: permanent ForgeWarden Core subsystem and default controller for ForgeWarden's own development; one governed architecture serves both roles under D-023.
 - Worker transport direction: registered local CLIs and explicitly approved API-backed workers; API keys are resolved only through FW-KEYS secret handles inside trusted adapters and never enter model context or lifecycle evidence.
 - Provider authentication direction: deterministic OpenAI, Anthropic, and Google/Gemini profiles with provider-specific official OAuth where available and approved API-key classes otherwise; Gemini CLI is registered as `agy` for read-only roles, FW-ID owns delegated identity, and FW-KEYS owns all credential material.
@@ -34,17 +34,17 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-ID-004
-- Starting commit: 5c9cec5669ccfd5f9a1f9f9912b0c97c8c8c75ae
-- Candidate commit: 672b6ff99113a3b565c3dbbc33acaaad686e8c0d
-- Accepted commit: 672b6ff99113a3b565c3dbbc33acaaad686e8c0d
-- Files changed: identity-bound harness planning/controller integration and focused admission regressions
-- Deterministic validation: focused 67 passed; full 1195 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with only dependency/compliance YELLOW findings
-- Independent review: Claude Code exact APPROVE/LOW with no blockers or missing tests (`phase2a-b532f38b788748c9962df546`)
+- Task ID: FW-ID-005
+- Starting commit: b6451d063b7f5f54f2dab09ab39d7633979230bb
+- Candidate commit: de01fef00bcd95ad04beab592ea053a6cb4491c2
+- Accepted commit: de01fef00bcd95ad04beab592ea053a6cb4491c2
+- Files changed: integrated identity lifecycle proof, provider-binding lifetime guard, expiration/replay regressions, and FW-ID Product Integrity proof
+- Deterministic validation: focused 78 passed; full 1198 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with only dependency/compliance YELLOW findings
+- Independent review: Claude Code exact APPROVE/LOW with no blockers or missing tests (`phase2a-121d5b011d3a41d1837db7e9`)
 - Gemini review: disabled and not required under D-020
-- Unresolved findings: none for FW-ID-004; historical dependency/compliance YELLOW findings remain
+- Unresolved findings: none for the FW-ID initial lifecycle; historical dependency/compliance YELLOW findings remain
 - Blocker: live Azure use remains disabled until interactive Entra login and credit/deployment evidence pass; this does not block offline swarm hardening
-- Next action: implement FW-ID-005.
+- Next action: implement FW-KEYS-001.
 
 - Completion inventory: `docs/completion-audit-2026-09-09.md` (baseline `0afcbdd`).
 - FWQ-0008 implementation and binding hardening exist; VALIDATED retains a historical provenance caveat, not an implementation assignment. FWQ-0009 is recorded accepted and unchanged at source/test level from its reviewed candidate.
@@ -54,6 +54,8 @@ On every restart or continuation:
 - Latest broad Core closure: FWQ-0064, 833 passed/1 skipped, all hard checks/Golden Path passing, YELLOW pre-existing findings.
 
 ## Execution log
+
+- 2026-09-10: FW-ID-005 accepted at `de01fef00bcd95ad04beab592ea053a6cb4491c2`. The integrated deterministic lifecycle proves create-once tenant/owner/worker registration, bounded delegated-provider binding, identity-bound harness admission, revocation, expiration, and replay denial with canonical Evidence ordering. A lifetime guard now prevents provider bindings from outliving either bound identity. Focused 78 passed; repaired exact Claude Code APPROVE/LOW with no blockers/missing tests; full 1198 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with only dependency/compliance YELLOW findings. No authentication, OAuth, credential resolution, persistence, process, network, Git, deployment, or response authority was added. FW-KEYS-001 is next.
 
 - 2026-09-10: FW-ID-004 accepted at `672b6ff99113a3b565c3dbbc33acaaad686e8c0d`. Every governed harness worker plan now requires an exact ACTIVE tenant-bound AI-agent identity. API plans additionally require a current delegated provider identity matching provider, credential class, opaque handle, subject, tenant, DRY_RUN, disabled deployment, and no-authority state; CLI plans cannot claim delegated provider binding. Focused 67 passed; exact Claude Code APPROVE/LOW with no blockers/missing tests; full 1195 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with only dependency/compliance YELLOW findings. Existing task/context/budget/model/role gates remain independent, and no process, credential, OAuth, network, Git, deployment, or response authority was added. FW-ID-005 is next.
 
