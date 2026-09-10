@@ -13,12 +13,16 @@ from typing import Any, Callable, Mapping
 
 IDENTITY_KINDS = frozenset({"HUMAN", "SERVICE", "WORKLOAD", "DEVICE", "AI_AGENT", "OAUTH_CLIENT"})
 LIFECYCLE_STATES = frozenset({"PROVISIONED", "ACTIVE", "REVOKED", "EXPIRED"})
+PROVIDERS = frozenset({"OPENAI", "ANTHROPIC", "GOOGLE", "AZURE"})
+CREDENTIAL_CLASSES = frozenset({"API_KEY", "OAUTH_TOKEN_SET", "SERVICE_PRINCIPAL"})
 _FIELDS = frozenset({"schema_version", "identity_id", "tenant_id", "identity_kind", "owner_identity_ref", "purpose", "lifecycle_state", "created_at_epoch", "lifecycle_changed_at_epoch", "expires_at_epoch", "provider_subject_ref", "credential_handle_ref"})
 _ID = re.compile(r"^fw-id/[a-z][a-z0-9_.-]{0,126}$")
 _TENANT = re.compile(r"^[a-z][a-z0-9_.-]{0,127}$")
 _REF = re.compile(r"^[a-z][a-z0-9_.-]{0,31}/[A-Za-z0-9][A-Za-z0-9_.:/-]{0,223}$")
 _HANDLE = re.compile(r"^fwkeys://[a-zA-Z0-9_.-]{1,64}/[a-zA-Z0-9_.:/-]{1,192}$")
 _SECRET = re.compile(r"(?i)(bearer\s+\S+|sk-[a-z0-9_-]{8,}|AIza[a-z0-9_-]{8,}|ya29\.[a-z0-9._-]{8,})")
+_BINDING_ID = re.compile(r"^fw-id-binding/[a-z][a-z0-9_.-]{0,118}$")
+_BINDING_FIELDS = frozenset({"binding_id", "tenant_id", "subject_identity_id", "owner_identity_id", "provider", "provider_subject_ref", "consent_ref", "credential_class", "credential_handle_ref", "issued_at_epoch", "expires_at_epoch"})
 
 
 class IdentityContractError(ValueError):
@@ -173,3 +177,68 @@ class IdentityRegistry:
             self._audit(event, {"identity_id": record.identity_id, "tenant_id": record.tenant_id, "identity_kind": record.identity_kind, "previous_state": previous, "lifecycle_state": current, "changed_at_epoch": at, "authority_granted": False, "mode": "DRY_RUN", "deployment": "DISABLED"})
         except Exception as exc:
             raise IdentityContractError("Evidence write failed") from exc
+
+
+@dataclass(frozen=True)
+class DelegatedProviderIdentity:
+    binding_id: str
+    tenant_id: str
+    subject_identity_id: str
+    owner_identity_id: str
+    provider: str
+    provider_subject_ref: str
+    consent_ref: str
+    credential_class: str
+    credential_handle_ref: str
+    issued_at_epoch: int
+    expires_at_epoch: int
+    mode: str = "DRY_RUN"
+    deployment: str = "DISABLED"
+    authority_granted: bool = False
+
+
+def bind_delegated_provider_identity(
+    value: Mapping[str, Any], *, registry: IdentityRegistry, now_epoch: int,
+    audit: Callable[[str, dict[str, Any]], None],
+) -> DelegatedProviderIdentity:
+    """Bind consent metadata to active identities without resolving credentials."""
+    if not isinstance(value, Mapping) or set(value) != _BINDING_FIELDS or not isinstance(registry, IdentityRegistry) or not callable(audit):
+        raise IdentityContractError("delegated provider binding is invalid")
+    if not isinstance(now_epoch, int) or isinstance(now_epoch, bool) or now_epoch < 0:
+        raise IdentityContractError("binding time is invalid")
+    tenant = value["tenant_id"]
+    if not isinstance(tenant, str) or not _TENANT.fullmatch(tenant):
+        raise IdentityContractError("binding tenant is invalid")
+    binding_id = value["binding_id"]
+    if not isinstance(binding_id, str) or not _BINDING_ID.fullmatch(binding_id):
+        raise IdentityContractError("binding_id is invalid")
+    subject = registry.get(value["subject_identity_id"], tenant_id=tenant)
+    owner = registry.get(value["owner_identity_id"], tenant_id=tenant)
+    if subject.lifecycle_state != "ACTIVE" or owner.lifecycle_state != "ACTIVE":
+        raise IdentityContractError("binding identities must be active")
+    if subject.identity_kind not in {"SERVICE", "WORKLOAD", "AI_AGENT", "OAUTH_CLIENT"}:
+        raise IdentityContractError("subject identity kind cannot bind a provider")
+    if owner.identity_kind not in {"HUMAN", "SERVICE"} or subject.owner_identity_ref != owner.identity_id:
+        raise IdentityContractError("binding owner mismatch")
+    provider = value["provider"]
+    credential_class = value["credential_class"]
+    if provider not in PROVIDERS or credential_class not in CREDENTIAL_CLASSES:
+        raise IdentityContractError("provider or credential class is not approved")
+    provider_ref = _text(value["provider_subject_ref"], "provider_subject_ref", maximum=256)
+    consent_ref = _text(value["consent_ref"], "consent_ref", maximum=256)
+    handle = _text(value["credential_handle_ref"], "credential_handle_ref", maximum=300)
+    if not _REF.fullmatch(provider_ref) or provider_ref != subject.provider_subject_ref:
+        raise IdentityContractError("provider subject binding mismatch")
+    if not _REF.fullmatch(consent_ref):
+        raise IdentityContractError("consent_ref is invalid")
+    if not _HANDLE.fullmatch(handle) or not handle.startswith(f"fwkeys://{tenant}/") or handle != subject.credential_handle_ref:
+        raise IdentityContractError("credential handle binding mismatch")
+    issued, expires = value["issued_at_epoch"], value["expires_at_epoch"]
+    if any(not isinstance(item, int) or isinstance(item, bool) for item in (issued, expires)) or not issued <= now_epoch < expires:
+        raise IdentityContractError("consent is stale or expired")
+    result = DelegatedProviderIdentity(binding_id, tenant, subject.identity_id, owner.identity_id, provider, provider_ref, consent_ref, credential_class, handle, issued, expires)
+    try:
+        audit("fw_id_provider_identity_bound", {"binding_id": binding_id, "tenant_id": tenant, "subject_identity_id": subject.identity_id, "owner_identity_id": owner.identity_id, "provider": provider, "provider_subject_ref": provider_ref, "consent_ref": consent_ref, "credential_class": credential_class, "issued_at_epoch": issued, "expires_at_epoch": expires, "mode": "DRY_RUN", "deployment": "DISABLED", "authority_granted": False, "credential_resolved": False})
+    except Exception as exc:
+        raise IdentityContractError("Evidence write failed") from exc
+    return result

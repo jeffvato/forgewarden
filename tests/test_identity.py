@@ -3,7 +3,7 @@ from threading import Event, Thread
 
 import pytest
 
-from swarm.identity import IDENTITY_KINDS, IdentityContractError, IdentityRegistry, validate_identity_record
+from swarm.identity import IDENTITY_KINDS, IdentityContractError, IdentityRegistry, bind_delegated_provider_identity, validate_identity_record
 
 
 def record(**changes):
@@ -170,3 +170,66 @@ def test_concurrent_transition_for_same_identity_is_denied_while_reserved():
     worker.join(2)
     assert not worker.is_alive()
     assert registry.get(identity.identity_id, tenant_id="tenant-a").lifecycle_state == "ACTIVE"
+
+
+def provider_registry(audit=lambda *_args: None):
+    registry = IdentityRegistry(audit)
+    owner = validate_identity_record(record(identity_id="fw-id/human-owner-1", identity_kind="HUMAN", owner_identity_ref="fw-id/human-owner-1", provider_subject_ref=None, credential_handle_ref=None, expires_at_epoch=None))
+    subject = validate_identity_record(record())
+    registry.register(owner)
+    registry.register(subject)
+    return registry
+
+
+def binding(**changes):
+    value = {"binding_id": "fw-id-binding/codex-openai-1", "tenant_id": "tenant-a", "subject_identity_id": "fw-id/agent-codex-1", "owner_identity_id": "fw-id/human-owner-1", "provider": "OPENAI", "provider_subject_ref": "provider/openai-codex", "consent_ref": "approval/provider-consent-1", "credential_class": "OAUTH_TOKEN_SET", "credential_handle_ref": "fwkeys://tenant-a/provider/openai-codex", "issued_at_epoch": 100, "expires_at_epoch": 200}
+    value.update(changes)
+    return value
+
+
+@pytest.mark.parametrize("provider", ["OPENAI", "ANTHROPIC", "GOOGLE", "AZURE"])
+def test_delegated_provider_binding_is_immutable_evidence_first_and_authority_free(provider):
+    events = []
+    result = bind_delegated_provider_identity(binding(provider=provider), registry=provider_registry(), now_epoch=150, audit=lambda *args: events.append(args))
+    assert result.provider == provider and result.mode == "DRY_RUN" and not result.authority_granted
+    assert events[0][0] == "fw_id_provider_identity_bound"
+    assert events[0][1]["credential_resolved"] is False and "credential_handle_ref" not in events[0][1]
+    with pytest.raises(FrozenInstanceError):
+        result.provider = "OTHER"
+
+
+@pytest.mark.parametrize("change,reason", [
+    ({"tenant_id": "tenant-b"}, "identity tenant mismatch"),
+    ({"owner_identity_id": "fw-id/missing"}, "not registered"),
+    ({"provider": "OTHER"}, "not approved"),
+    ({"credential_class": "PASSWORD"}, "not approved"),
+    ({"provider_subject_ref": "provider/other"}, "subject binding mismatch"),
+    ({"consent_ref": "raw consent"}, "consent_ref is invalid"),
+    ({"credential_handle_ref": "fwkeys://tenant-b/provider/openai-codex"}, "handle binding mismatch"),
+    ({"issued_at_epoch": 151}, "stale or expired"),
+    ({"expires_at_epoch": 150}, "stale or expired"),
+    ({"extra": "field"}, "binding is invalid"),
+])
+def test_delegated_provider_binding_denies_malformed_cross_tenant_or_stale_input(change, reason):
+    with pytest.raises(IdentityContractError, match=reason):
+        bind_delegated_provider_identity(binding(**change), registry=provider_registry(), now_epoch=150, audit=lambda *_args: None)
+
+
+def test_delegated_provider_binding_denies_inactive_subject_owner_mismatch_and_evidence_failure():
+    registry = provider_registry()
+    registry.revoke("fw-id/agent-codex-1", tenant_id="tenant-a", now_epoch=150)
+    with pytest.raises(IdentityContractError, match="must be active"):
+        bind_delegated_provider_identity(binding(), registry=registry, now_epoch=160, audit=lambda *_args: None)
+    mismatched = provider_registry()
+    other = validate_identity_record(record(identity_id="fw-id/human-other", identity_kind="HUMAN", owner_identity_ref="fw-id/human-other", provider_subject_ref=None, credential_handle_ref=None, expires_at_epoch=None))
+    mismatched.register(other)
+    with pytest.raises(IdentityContractError, match="owner mismatch"):
+        bind_delegated_provider_identity(binding(owner_identity_id=other.identity_id), registry=mismatched, now_epoch=150, audit=lambda *_args: None)
+    with pytest.raises(IdentityContractError, match="Evidence write failed"):
+        bind_delegated_provider_identity(binding(), registry=provider_registry(), now_epoch=150, audit=lambda *_args: (_ for _ in ()).throw(OSError("offline")))
+
+
+@pytest.mark.parametrize("field,value", [("consent_ref", "approval/Bearer abcdefghijkl"), ("provider_subject_ref", "provider/ya29.abcdefghijk")])
+def test_delegated_provider_binding_rejects_raw_credential_material(field, value):
+    with pytest.raises(IdentityContractError, match="credential material"):
+        bind_delegated_provider_identity(binding(**{field: value}), registry=provider_registry(), now_epoch=150, audit=lambda *_args: None)
