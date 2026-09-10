@@ -372,7 +372,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-SOC-03 — Deterministic incident timeline projection
 - Requirement: FW-SOC bounded case timeline
-- State: READY
+- State: DONE
 - Priority: P0
 - Dependencies: FW-SOC-02
 - Approval: FW-SOC remains active under D-022.
@@ -389,6 +389,27 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no case persistence, playbook execution, credential, network, filesystem, deployment, containment, remediation, recovery, or response authority is added.
 - Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
 - Security considerations: a timeline is a reference-only audit projection and cannot authorize or execute an action.
+- Completion evidence: exact candidate `01c29518727ea37f5db82980e0b0b174477c53d1`; focused 32 passed; AnythingLLM/Qwen exact APPROVE/LOW with no blockers or missing tests; full 1127 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with only the existing dependency/identity/compliance YELLOW findings.
+
+### FW-SOC-04 — Bounded response playbook proposal
+- Requirement: FW-SOC deterministic Security Response Playbook seam
+- State: READY
+- Priority: P0
+- Dependencies: FW-SOC-03
+- Approval: FW-SOC remains active under D-022; proposal generation grants no response authority.
+- Description: Produce an immutable tenant/incident-bound response playbook proposal from exact approved action classes and canonical policy/approval/Action Ticket references, without issuing tickets, mutating incidents, or executing actions.
+- Target path: swarm/soc.py
+- Allowed paths: swarm/soc.py, tests/test_soc.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_soc.py tests/test_action_ticket.py tests/test_policy_gate.py
+- Acceptance criteria:
+  - exact bounded playbook/action-step schema with deterministic ordering, dependency references, and rollback/checkpoint requirements;
+  - every proposed mutation step requires existing canonical policy-decision, approval, and Action Ticket references while read-only steps cannot claim mutation authority;
+  - strict tenant/incident binding, DRY_RUN, engaged kill-switch evidence, disabled deployment, and no authority expansion;
+  - Evidence succeeds before immutable output and contains references rather than credential, event, or free-form source payloads;
+  - malformed, duplicate, cyclic, cross-tenant, unsupported-action, missing-authority-reference, excessive, and Evidence-failure inputs deny safely;
+  - no ticket issuance/consumption, policy evaluation, incident mutation, playbook execution, deployment, containment, remediation, recovery, or response authority is added.
+- Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
+- Security considerations: the result is an inert proposal consumed only by later canonical authorization and execution gates.
 
 ### FW-BME-02 — Deterministic phishing and spoof classification
 - Requirement: FW-BME phishing/BEC/authentication signal evaluation

@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: FW-SOC-02 deterministic cross-domain attack-story projection accepted
-- Next task: claim FW-SOC-03 deterministic incident timeline projection under existing D-022 approval.
+- Current focus: FW-SOC-03 deterministic incident timeline projection accepted
+- Next task: claim FW-SOC-04 bounded response playbook proposal under existing D-022 approval.
 - Harness role: permanent ForgeWarden Core subsystem and default controller for ForgeWarden's own development; one governed architecture serves both roles under D-023.
 - Worker transport direction: registered local CLIs and explicitly approved API-backed workers; API keys are resolved only through FW-KEYS secret handles inside trusted adapters and never enter model context or lifecycle evidence.
 - Provider authentication direction: deterministic OpenAI, Anthropic, and Google/Gemini profiles with provider-specific official OAuth where available and approved API-key classes otherwise; Gemini CLI is registered as `agy` for read-only roles, FW-ID owns delegated identity, and FW-KEYS owns all credential material.
@@ -34,17 +34,17 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-SOC-02
-- Starting commit: 875186ef7e5a136672702e6d589706e56a99d854
-- Candidate commit: c89987fcb7061ffebc858548d052b051c6f233cc
-- Accepted commit: c89987fcb7061ffebc858548d052b051c6f233cc
-- Files changed: deterministic attack-story projection, canonical SOC ownership metadata, and focused regression tests
-- Deterministic validation: focused 30 passed; full 1117 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with only dependency/identity/compliance YELLOW findings
+- Task ID: FW-SOC-03
+- Starting commit: 5f655239ad3a769e17f5d118c7fd550952e9cfc0
+- Candidate commit: 01c29518727ea37f5db82980e0b0b174477c53d1
+- Accepted commit: 01c29518727ea37f5db82980e0b0b174477c53d1
+- Files changed: deterministic immutable SOC incident timeline projection and focused regression tests
+- Deterministic validation: focused 32 passed; full 1127 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with only dependency/identity/compliance YELLOW findings
 - Independent review: AnythingLLM/Qwen exact APPROVE/LOW with no blockers or missing tests
 - Gemini review: disabled and not required under D-020
-- Unresolved findings: none for FW-SOC-02; historical dependency/identity/compliance YELLOW findings remain
+- Unresolved findings: none for FW-SOC-03; historical dependency/identity/compliance YELLOW findings remain
 - Blocker: live Azure use remains disabled until interactive Entra login and credit/deployment evidence pass; this does not block offline swarm hardening
-- Next action: claim FW-SOC-03
+- Next action: claim FW-SOC-04
 
 - Completion inventory: `docs/completion-audit-2026-09-09.md` (baseline `0afcbdd`).
 - FWQ-0008 implementation and binding hardening exist; VALIDATED retains a historical provenance caveat, not an implementation assignment. FWQ-0009 is recorded accepted and unchanged at source/test level from its reviewed candidate.
@@ -54,6 +54,8 @@ On every restart or continuation:
 - Latest broad Core closure: FWQ-0064, 833 passed/1 skipped, all hard checks/Golden Path passing, YELLOW pre-existing findings.
 
 ## Execution log
+
+- 2026-09-09: FW-SOC-03 accepted at `01c29518727ea37f5db82980e0b0b174477c53d1`. ForgeWarden now projects bounded caller-supplied incident, normalized-event, Evidence, review, approval, recovery, and disposition references into an immutable tenant/incident-bound timeline. Entry types and timestamps are exact, IDs are unique, ordering is deterministic, and a terminal incident requires one final disposition entry. Evidence must succeed before return and excludes incident titles. Focused 32 passed; AnythingLLM/Qwen exact APPROVE/LOW with no blockers/missing tests; full 1127 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with only existing YELLOW findings. No persistence, playbook execution, credential, network, filesystem, deployment, containment, remediation, recovery, or response authority was added. FW-SOC-04 is next.
 
 - 2026-09-09: FW-SOC-02 accepted at `c89987fcb7061ffebc858548d052b051c6f233cc`. Same-tenant validated incident projections now correlate deterministically through exact shared affected-object or normalized-event references into immutable Evidence-first attack stories with bounded incident/reference counts, stable ordering, maximum severity, and time range. SOC canonical ownership now points to `swarm.soc.SOCIncidentProjection`. Focused 30 passed. An initial AnythingLLM response became malformed while reconsidering a false fixture-context concern and was rejected; a fresh bounded exact review returned APPROVE/LOW with no blockers/missing tests. Full 1117 passed/1 skipped; integrity hard checks and 4 Golden Paths pass, and SOC is no longer a missing owner. No persistence, event copying, model inference, playbook, credential, network, filesystem, deployment, containment, remediation, or response authority was added. FW-SOC-03 is next.
 
