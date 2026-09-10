@@ -594,7 +594,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-KEYS-003 — Identity and harness secret-handle admission binding
 - Requirement: FW-KEYS consumer integration
-- State: READY
+- State: DONE
 - Priority: P0
 - Dependencies: FW-KEYS-002
 - Approval: deterministic secret-handle admission is activated under D-024; material resolution and provider activation remain unauthorized.
@@ -610,6 +610,26 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no authentication, provider call, network, process, Git, deployment, policy, Action Ticket, or response authority is added.
 - Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
 - Security considerations: a valid handle proves only bounded metadata admission; it grants no permission to use the referenced material.
+- Completion evidence: exact candidate `5569690c74569d56e0bb1d8336fa1ccbcb3b1b5f`; focused 121 passed; exact Claude Code job `phase2a-5569690c74569d56e0bb1d83` returned APPROVE/LOW with no blockers or missing tests; full 1255 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with YELLOW only for the existing dependency and Defined FW-COMP/FW-AID owners.
+
+### FW-KEYS-004 — Trusted catalog verification-key lifecycle binding
+- Requirement: FW-KEYS trusted verification consumer integration
+- State: READY
+- Priority: P0
+- Dependencies: FW-KEYS-003
+- Approval: deterministic verification-key metadata binding is activated under D-024; signing material and live key backends remain unauthorized.
+- Description: Bind TrustedSignatureCatalog definition admission and accepted-cache recovery to exact ACTIVE tenant/class/generation FW-KEYS verification metadata without moving signature policy or definition ownership into FW-KEYS.
+- Target path: swarm/anti_malware.py
+- Allowed paths: swarm/keys.py, swarm/anti_malware.py, tests/test_keys.py, tests/test_anti_malware.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_keys.py tests/test_anti_malware.py
+- Acceptance criteria:
+  - signed definition admission records an exact tenant-bound non-exportable SIGNING_KEY or TRUST_ANCHOR handle generation from the canonical registry;
+  - inactive, expired, revoked, rotated, cross-tenant, owner/class, generation, signer-ID, or catalog substitution fails closed before a trusted snapshot/cache is accepted;
+  - accepted-cache recovery rechecks current key metadata and denies stale key generations or lifecycle state;
+  - TrustedSignatureCatalog retains definition/signature verification ownership and no key material or backend locator enters definitions, caches, logs, prompts, reviews, or Evidence;
+  - no key generation, signing, secret resolution, vault/HSM access, filesystem hook, network, process, deployment, quarantine, remediation, or response authority is added.
+- Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
+- Security considerations: FW-KEYS supplies lifecycle metadata only; cryptographic verification remains within the existing trusted catalog boundary.
 
 ### FW-BME-02 — Deterministic phishing and spoof classification
 - Requirement: FW-BME phishing/BEC/authentication signal evaluation
