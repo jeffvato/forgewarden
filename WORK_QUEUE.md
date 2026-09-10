@@ -474,7 +474,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-ID-003 — Delegated provider identity reference binding
 - Requirement: FW-ID delegated provider identity foundation
-- State: READY
+- State: DONE
 - Priority: P0
 - Dependencies: FW-ID-002
 - Approval: FW-ID and bounded provider identity references are activated under D-024; live authentication remains prohibited.
@@ -490,6 +490,26 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no OAuth exchange, token resolution, credential access, persistence, network, deployment, or response authority is added.
 - Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
 - Security considerations: delegated provider metadata records consent attribution only; FW-KEYS retains secrets and trusted transport adapters remain inactive.
+- Completion evidence: exact candidate `ef38dafa15a22c8a52c73c0d0c081685d5103155`; focused 62 passed; two AnythingLLM/Qwen responses were rejected as invalid evidence (one truncated, one wrong SHA with a false standard-library claim); exact Claude Code review job `phase2a-e3113ec9151641c89ecd128f` returned APPROVE/LOW with no blockers or missing tests; full 1193 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with only existing dependency/compliance YELLOW findings.
+
+### FW-ID-004 — Harness worker identity enforcement
+- Requirement: FW-ID and FW-HARNESS worker admission binding
+- State: READY
+- Priority: P0
+- Dependencies: FW-ID-003
+- Approval: FW-ID harness integration is activated under D-024; worker authority remains unchanged.
+- Description: Require each harness worker request to bind an exact ACTIVE tenant-scoped FW-ID identity and, for API workers, an exact delegated provider identity reference before deterministic invocation admission.
+- Target path: swarm/harness_worker.py
+- Allowed paths: swarm/identity.py, swarm/harness_worker.py, tests/test_identity.py, tests/test_harness_worker.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_identity.py tests/test_harness_worker.py tests/test_harness_core.py
+- Acceptance criteria:
+  - worker registration/request admission binds worker ID, FW-ID subject, tenant, role, provider/model registration, task/context/budget, and lifecycle state exactly;
+  - API admission additionally requires a matching unexpired delegated provider binding and opaque FW-KEYS handle while CLI admission cannot claim one;
+  - cross-tenant, unknown, inactive, owner/provider/handle mismatch, replayed/stale binding, and unapproved-role cases fail closed;
+  - identity checks occur before an invocation plan is returned and do not let workers mutate identity or workflow state;
+  - no process invocation, OAuth exchange, credential resolution, network activation, Git, deployment, or response authority is added.
+- Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
+- Security considerations: FW-ID proves actor binding only; harness, Model Broker, policy, budgets, and leases retain their existing independent gates.
 
 ### FW-BME-02 — Deterministic phishing and spoof classification
 - Requirement: FW-BME phishing/BEC/authentication signal evaluation

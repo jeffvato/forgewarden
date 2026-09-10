@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: FW-ID-002 deterministic tenant-bound identity registry accepted
-- Next task: FW-ID-003 delegated provider identity reference binding under D-024.
+- Current focus: FW-ID-003 delegated provider identity binding accepted
+- Next task: FW-ID-004 harness worker identity enforcement under D-024.
 - Harness role: permanent ForgeWarden Core subsystem and default controller for ForgeWarden's own development; one governed architecture serves both roles under D-023.
 - Worker transport direction: registered local CLIs and explicitly approved API-backed workers; API keys are resolved only through FW-KEYS secret handles inside trusted adapters and never enter model context or lifecycle evidence.
 - Provider authentication direction: deterministic OpenAI, Anthropic, and Google/Gemini profiles with provider-specific official OAuth where available and approved API-key classes otherwise; Gemini CLI is registered as `agy` for read-only roles, FW-ID owns delegated identity, and FW-KEYS owns all credential material.
@@ -34,17 +34,17 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-ID-002
-- Starting commit: 98603a37d016ca6daf73884a485bc897c524a8f0
-- Candidate commit: 1a082004f8e041afadd13d068189a5fabc92fe36
-- Accepted commit: 1a082004f8e041afadd13d068189a5fabc92fe36
-- Files changed: canonical in-memory identity registry, lifecycle timestamps, Evidence-first transitions, and concurrency/reentrancy regressions
-- Deterministic validation: focused 134 passed; full 1176 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with only dependency/compliance YELLOW findings
-- Independent review: AnythingLLM/Qwen exact APPROVE/LOW with no blockers or missing tests
+- Task ID: FW-ID-003
+- Starting commit: 7d9fac3d31550acf19d89710b521e7b2c838aa6b
+- Candidate commit: ef38dafa15a22c8a52c73c0d0c081685d5103155
+- Accepted commit: ef38dafa15a22c8a52c73c0d0c081685d5103155
+- Files changed: immutable delegated provider identity reference binding and focused boundary regressions
+- Deterministic validation: focused 62 passed; full 1193 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with only dependency/compliance YELLOW findings
+- Independent review: Claude Code exact APPROVE/LOW with no blockers or missing tests (`phase2a-e3113ec9151641c89ecd128f`); two prior Qwen responses were invalid and not counted
 - Gemini review: disabled and not required under D-020
-- Unresolved findings: none for FW-ID-002; historical dependency/compliance YELLOW findings remain
+- Unresolved findings: none for FW-ID-003; historical dependency/compliance YELLOW findings remain
 - Blocker: live Azure use remains disabled until interactive Entra login and credit/deployment evidence pass; this does not block offline swarm hardening
-- Next action: implement FW-ID-003.
+- Next action: implement FW-ID-004.
 
 - Completion inventory: `docs/completion-audit-2026-09-09.md` (baseline `0afcbdd`).
 - FWQ-0008 implementation and binding hardening exist; VALIDATED retains a historical provenance caveat, not an implementation assignment. FWQ-0009 is recorded accepted and unchanged at source/test level from its reviewed candidate.
@@ -54,6 +54,8 @@ On every restart or continuation:
 - Latest broad Core closure: FWQ-0064, 833 passed/1 skipped, all hard checks/Golden Path passing, YELLOW pre-existing findings.
 
 ## Execution log
+
+- 2026-09-10: FW-ID-003 accepted at `ef38dafa15a22c8a52c73c0d0c081685d5103155`. ForgeWarden now creates immutable tenant-bound delegated provider identity references for OpenAI, Anthropic, Google, and Azure only when subject and owner identities are ACTIVE and exactly bound, consent is current, provider/credential classes are approved, and the opaque FW-KEYS handle matches the tenant and subject. Evidence succeeds before return and excludes the handle. Focused 62 passed; two Qwen responses were invalid and rejected; exact Claude Code APPROVE/LOW with no blockers/missing tests; full 1193 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with only dependency/compliance YELLOW findings. No OAuth exchange, token resolution, credential access, worker/model approval, persistence, network, deployment, or response authority was added. FW-ID-004 is next.
 
 - 2026-09-10: FW-ID-002 accepted at `1a082004f8e041afadd13d068189a5fabc92fe36`. ForgeWarden now has a create-once tenant-bound identity registry with Evidence-first registration, deterministic activation/revocation/expiration, tenant-only lookup/snapshots, stale/replay denial, immutable returned records, and reentrant/concurrent operation reservations. Focused 134 passed. An initial AnythingLLM/Qwen rejection incorrectly inferred mutable records but legitimately requested concurrency proof; the repaired cumulative exact review returned APPROVE/LOW with no blockers/missing tests. Full 1176 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with only dependency/compliance YELLOW findings. Registry membership grants no authentication, role, capability, credential, policy, ticket, network, deployment, or response authority. FW-ID-003 is next.
 
