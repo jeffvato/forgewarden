@@ -11,6 +11,7 @@ from typing import Any, Mapping
 
 from .harness_context import BudgetAdmission, ContextPacket
 from .harness_task import HarnessTask
+from .identity import DelegatedProviderIdentity, IdentityContractError, IdentityRegistry
 
 
 _IDENTIFIER = re.compile(r"^[a-z][a-z0-9_.-]{0,127}$")
@@ -50,6 +51,7 @@ class WorkerRegistration:
     credential_class: str | None = None
     network_approved: bool = False
     configuration_hash: str | None = None
+    identity_ref: str | None = None
 
     def __post_init__(self) -> None:
         if not all(_IDENTIFIER.fullmatch(value) for value in (self.worker_id, self.provider, self.model_id)):
@@ -58,6 +60,8 @@ class WorkerRegistration:
             raise HarnessWorkerError("worker roles are missing or invalid")
         if self.configuration_hash is not None and not _SHA.fullmatch(self.configuration_hash):
             raise HarnessWorkerError("worker configuration hash is invalid")
+        if self.identity_ref is not None and not re.fullmatch(r"fw-id/[a-z][a-z0-9_.-]{0,126}", self.identity_ref):
+            raise HarnessWorkerError("worker identity reference is invalid")
         if self.transport == WorkerTransport.CLI:
             if not self.executable or not _EXECUTABLE.fullmatch(self.executable) or self.route_id is not None or self.credential_class is not None or self.network_approved:
                 raise HarnessWorkerError("CLI workers require only a registered executable")
@@ -132,9 +136,9 @@ class WorkerRegistry:
 def default_cli_registrations(*, codex_model: str, claude_model: str, gemini_model: str) -> tuple[WorkerRegistration, ...]:
     """Return the explicit initial CLI identities; it does not discover executables."""
     return (
-        WorkerRegistration("codex-cli", "openai", codex_model, WorkerTransport.CLI, (WorkerRole.CODE_WRITER,), True, executable="codex"),
-        WorkerRegistration("claude-cli", "anthropic", claude_model, WorkerTransport.CLI, (WorkerRole.READ_ONLY_REVIEWER, WorkerRole.ANALYST), True, executable="claude"),
-        WorkerRegistration("gemini-agy", "google", gemini_model, WorkerTransport.CLI, (WorkerRole.READ_ONLY_REVIEWER, WorkerRole.ANALYST), True, executable="agy"),
+        WorkerRegistration("codex-cli", "openai", codex_model, WorkerTransport.CLI, (WorkerRole.CODE_WRITER,), True, executable="codex", identity_ref="fw-id/codex-cli"),
+        WorkerRegistration("claude-cli", "anthropic", claude_model, WorkerTransport.CLI, (WorkerRole.READ_ONLY_REVIEWER, WorkerRole.ANALYST), True, executable="claude", identity_ref="fw-id/claude-cli"),
+        WorkerRegistration("gemini-agy", "google", gemini_model, WorkerTransport.CLI, (WorkerRole.READ_ONLY_REVIEWER, WorkerRole.ANALYST), True, executable="agy", identity_ref="fw-id/gemini-agy"),
     )
 
 
@@ -160,6 +164,43 @@ def plan_invocation(registry: WorkerRegistry, request: WorkerRequest) -> Invocat
     if request.credential_handle is None or not _SECRET_HANDLE.fullmatch(request.credential_handle):
         raise HarnessWorkerError("API request requires an opaque FW-KEYS handle")
     return InvocationPlan(registration.worker_id, registration.provider, registration.model_id, registration.transport, request.role, request.task.task_id, request.context.sha256, None, registration.route_id, request.credential_handle, "canonical-context-v1-request-body", (), request.role == WorkerRole.CODE_WRITER)
+
+
+def plan_identity_bound_invocation(
+    registry: WorkerRegistry, request: WorkerRequest, *, identity_registry: IdentityRegistry,
+    tenant_id: str, now_epoch: int, provider_binding: DelegatedProviderIdentity | None = None,
+) -> InvocationPlan:
+    """Require canonical active FW-ID binding before ordinary invocation admission."""
+    registration = registry.get(request.worker_id)
+    if registration.identity_ref is None:
+        raise HarnessWorkerError("worker registration lacks an FW-ID identity")
+    try:
+        identity = identity_registry.get(registration.identity_ref, tenant_id=tenant_id)
+    except IdentityContractError as exc:
+        raise HarnessWorkerError("worker FW-ID admission denied") from exc
+    if not isinstance(now_epoch, int) or isinstance(now_epoch, bool) or now_epoch < 0:
+        raise HarnessWorkerError("worker identity admission time is invalid")
+    if identity.lifecycle_state != "ACTIVE" or identity.identity_kind != "AI_AGENT" or (identity.expires_at_epoch is not None and now_epoch >= identity.expires_at_epoch):
+        raise HarnessWorkerError("worker FW-ID identity is not an active AI agent")
+    if registration.transport == WorkerTransport.CLI:
+        if provider_binding is not None:
+            raise HarnessWorkerError("CLI worker cannot claim a delegated provider binding")
+    else:
+        if not isinstance(provider_binding, DelegatedProviderIdentity):
+            raise HarnessWorkerError("API worker requires a delegated provider identity")
+        provider_name = provider_binding.provider.lower()
+        if provider_name != registration.provider or provider_binding.subject_identity_id != identity.identity_id or provider_binding.tenant_id != tenant_id:
+            raise HarnessWorkerError("delegated provider identity does not match worker")
+        expected_class = f"{registration.provider}-{provider_binding.credential_class.lower().replace('_', '-')}"
+        if registration.credential_class != expected_class:
+            raise HarnessWorkerError("delegated credential class does not match worker registration")
+        if provider_binding.mode != "DRY_RUN" or provider_binding.deployment != "DISABLED" or provider_binding.authority_granted:
+            raise HarnessWorkerError("delegated provider identity claims authority")
+        if not provider_binding.issued_at_epoch <= now_epoch < provider_binding.expires_at_epoch:
+            raise HarnessWorkerError("delegated provider identity is stale")
+        if request.credential_handle != provider_binding.credential_handle_ref:
+            raise HarnessWorkerError("delegated credential handle does not match worker request")
+    return plan_invocation(registry, request)
 
 
 def validate_worker_output(request: WorkerRequest, payload: Mapping[str, Any]) -> WorkerOutput:

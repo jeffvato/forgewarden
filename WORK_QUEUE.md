@@ -501,7 +501,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 - Description: Require each harness worker request to bind an exact ACTIVE tenant-scoped FW-ID identity and, for API workers, an exact delegated provider identity reference before deterministic invocation admission.
 - Target path: swarm/harness_worker.py
 - Allowed paths: swarm/identity.py, swarm/harness_worker.py, tests/test_identity.py, tests/test_harness_worker.py, WORK_QUEUE.md, SWARM_STATUS.md
-- Test command: python3 -m pytest -q tests/test_identity.py tests/test_harness_worker.py tests/test_harness_core.py
+- Test command: python3 -m pytest -q tests/test_identity.py tests/test_harness_worker.py tests/test_harness_controller.py
 - Acceptance criteria:
   - worker registration/request admission binds worker ID, FW-ID subject, tenant, role, provider/model registration, task/context/budget, and lifecycle state exactly;
   - API admission additionally requires a matching unexpired delegated provider binding and opaque FW-KEYS handle while CLI admission cannot claim one;

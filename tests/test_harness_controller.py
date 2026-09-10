@@ -10,6 +10,7 @@ from swarm.harness_controller import GovernedHarnessController, TaskExecution
 from swarm.harness_models import HarnessModelRequest
 from swarm.harness_task import HarnessTask, TaskStatus
 from swarm.harness_worker import WorkerRegistration, WorkerRegistry, WorkerRole, WorkerTransport
+from swarm.identity import IdentityRegistry, validate_identity_record
 from swarm.review_handoff import ReviewResult
 
 
@@ -46,8 +47,10 @@ def controller(tmp_path, *, sink=lambda event, payload: None, limits=None):
     runner = AutonomousOrchestrator(tmp_path / "state.json", tmp_path / "repo", specs)
     bound = limits or BudgetLimits(4, 100, 0, 60, 0, 10_000)
     ledger = BudgetLedger(bound, {value.task_id: bound for value in tasks})
-    registry = WorkerRegistry((WorkerRegistration("codex-cli", "openai", "gpt-approved", WorkerTransport.CLI, (WorkerRole.CODE_WRITER,), True, executable="codex"),))
-    return GovernedHarnessController(orchestrator=runner, tasks=tasks, task_tenants={value.task_id: "tenant-one" for value in tasks}, executions={value.task_id: execution(value) for value in tasks}, workers=registry, budgets=ledger, authority_resolver=authority, model_resolver=models, evidence_sink=sink, timestamp=lambda: NOW)
+    registry = WorkerRegistry((WorkerRegistration("codex-cli", "openai", "gpt-approved", WorkerTransport.CLI, (WorkerRole.CODE_WRITER,), True, executable="codex", identity_ref="fw-id/codex-cli"),))
+    identities = IdentityRegistry(lambda *_args: None)
+    identities.register(validate_identity_record({"schema_version": "1", "identity_id": "fw-id/codex-cli", "tenant_id": "tenant-one", "identity_kind": "AI_AGENT", "owner_identity_ref": "fw-id/owner", "purpose": "bounded test worker", "lifecycle_state": "ACTIVE", "created_at_epoch": 1, "lifecycle_changed_at_epoch": 1, "expires_at_epoch": 9_999_999_999, "provider_subject_ref": "provider/openai-codex", "credential_handle_ref": "fwkeys://tenant-one/provider/openai-codex"}))
+    return GovernedHarnessController(orchestrator=runner, tasks=tasks, task_tenants={value.task_id: "tenant-one" for value in tasks}, executions={value.task_id: execution(value) for value in tasks}, workers=registry, budgets=ledger, identity_registry=identities, authority_resolver=authority, model_resolver=models, evidence_sink=sink, timestamp=lambda: NOW)
 
 
 def executor(plan):
