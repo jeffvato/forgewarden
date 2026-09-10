@@ -11,6 +11,7 @@ from typing import Any, Callable, Mapping
 
 MAX_INCIDENT_REFS = 64
 MAX_STORY_INCIDENTS = 32
+MAX_TIMELINE_ENTRIES = 128
 MAX_INCIDENT_TEXT_BYTES = 512
 _KEYS = frozenset({
     "incident_id", "tenant_id", "title", "severity", "status",
@@ -21,6 +22,8 @@ _SEVERITIES = frozenset({"LOW", "MEDIUM", "HIGH", "CRITICAL"})
 _STATUSES = frozenset({"OPEN", "TRIAGED", "INVESTIGATING", "RESOLVED", "CLOSED"})
 _ACTIVE = frozenset({"OPEN", "TRIAGED", "INVESTIGATING"})
 _DISPOSITIONS = frozenset({"NONE", "TRUE_POSITIVE", "FALSE_POSITIVE", "MITIGATED", "ACCEPTED_RISK"})
+_TIMELINE_TYPES = frozenset({"DETECTION", "REVIEW", "APPROVAL", "RECOVERY", "DISPOSITION"})
+_TIMELINE_KEYS = frozenset({"entry_id", "tenant_id", "incident_id", "occurred_at_epoch", "entry_type", "actor_ref", "source_ref", "evidence_ref"})
 
 
 class SOCIncidentDenied(PermissionError):
@@ -75,6 +78,28 @@ class SOCAttackStoryProjection:
     trust: str = "UNTRUSTED_CASE_FACT"
     mode: str = "DRY_RUN"
     action: str = "CORRELATE_ONLY"
+
+
+@dataclass(frozen=True)
+class SOCTimelineEntry:
+    entry_id: str
+    tenant_id: str
+    incident_id: str
+    occurred_at_epoch: int
+    entry_type: str
+    actor_ref: str
+    source_ref: str
+    evidence_ref: str
+
+
+@dataclass(frozen=True)
+class SOCIncidentTimeline:
+    tenant_id: str
+    incident_id: str
+    entries: tuple[SOCTimelineEntry, ...]
+    trust: str = "UNTRUSTED_CASE_FACT"
+    mode: str = "DRY_RUN"
+    action: str = "PROJECT_ONLY"
 
 
 def project_soc_incident(
@@ -187,3 +212,54 @@ def project_attack_story(
         exact_story_id, expected_tenant, incident_ids, shared_affected,
         shared_events, severity, first_seen, last_seen,
     )
+
+
+def project_incident_timeline(
+    incident: SOCIncidentProjection, entries: tuple[Mapping[str, Any], ...], *,
+    tenant_id: str, audit: Callable[[str, dict[str, Any]], None],
+) -> SOCIncidentTimeline:
+    """Project ordered reference-only case history without executing recovery."""
+    if not isinstance(entries, tuple) or not 1 <= len(entries) <= MAX_TIMELINE_ENTRIES or not callable(audit):
+        raise SOCIncidentDenied("TIMELINE_INPUT_INVALID")
+    expected_tenant = _text(tenant_id, "TENANT")
+    bound_incident = _validate_projection(incident, expected_tenant)
+    normalized: list[SOCTimelineEntry] = []
+    for item in entries:
+        if not isinstance(item, Mapping) or set(item) != _TIMELINE_KEYS:
+            raise SOCIncidentDenied("TIMELINE_ENTRY_INVALID")
+        if item.get("tenant_id") != expected_tenant or item.get("incident_id") != bound_incident.incident_id:
+            raise SOCIncidentDenied("TIMELINE_BINDING_MISMATCH")
+        occurred = item.get("occurred_at_epoch")
+        entry_type = item.get("entry_type")
+        if not isinstance(occurred, int) or isinstance(occurred, bool) or not bound_incident.created_at_epoch <= occurred <= bound_incident.updated_at_epoch or entry_type not in _TIMELINE_TYPES:
+            raise SOCIncidentDenied("TIMELINE_ENTRY_INVALID")
+        normalized.append(SOCTimelineEntry(
+            _text(item.get("entry_id"), "TIMELINE_ENTRY_ID"), expected_tenant,
+            bound_incident.incident_id, occurred, entry_type,
+            _text(item.get("actor_ref"), "ACTOR_REF"),
+            _text(item.get("source_ref"), "SOURCE_REF"),
+            _text(item.get("evidence_ref"), "EVIDENCE_REF"),
+        ))
+    entry_ids = tuple(item.entry_id for item in normalized)
+    if len(set(entry_ids)) != len(entry_ids):
+        raise SOCIncidentDenied("TIMELINE_ENTRY_DUPLICATE")
+    ordered = tuple(sorted(normalized, key=lambda item: (item.occurred_at_epoch, item.entry_id)))
+    dispositions = tuple(item for item in ordered if item.entry_type == "DISPOSITION")
+    if len(dispositions) > 1 or (bound_incident.status in _ACTIVE and dispositions) or (bound_incident.status not in _ACTIVE and (len(dispositions) != 1 or ordered[-1] != dispositions[0])):
+        raise SOCIncidentDenied("TIMELINE_DISPOSITION_INVALID")
+    try:
+        audit("soc_incident_timeline_projected", {
+            "tenant_id": expected_tenant, "incident_id": bound_incident.incident_id,
+            "entries": [
+                {"entry_id": item.entry_id, "occurred_at_epoch": item.occurred_at_epoch,
+                 "entry_type": item.entry_type, "actor_ref": item.actor_ref,
+                 "source_ref": item.source_ref, "evidence_ref": item.evidence_ref}
+                for item in ordered
+            ],
+            "count": len(ordered), "trust": "UNTRUSTED_CASE_FACT",
+            "mode": "DRY_RUN", "action": "PROJECT_ONLY",
+            "response_executed": False, "deployment": "DISABLED",
+        })
+    except Exception as exc:
+        raise SOCIncidentDenied("EVIDENCE_WRITE_FAILED") from exc
+    return SOCIncidentTimeline(expected_tenant, bound_incident.incident_id, ordered)
