@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: FW-BME-03 dangerous-delivery classification accepted
-- Next task: claim FW-SOC-01 tenant-bound incident projection under existing D-022 approval.
+- Current focus: FW-SOC-01 tenant-bound incident projection accepted
+- Next task: claim FW-SOC-02 deterministic cross-domain attack-story projection under existing D-022 approval.
 - Harness role: permanent ForgeWarden Core subsystem and default controller for ForgeWarden's own development; one governed architecture serves both roles under D-023.
 - Worker transport direction: registered local CLIs and explicitly approved API-backed workers; API keys are resolved only through FW-KEYS secret handles inside trusted adapters and never enter model context or lifecycle evidence.
 - Provider authentication direction: deterministic OpenAI, Anthropic, and Google/Gemini profiles with provider-specific official OAuth where available and approved API-key classes otherwise; Gemini CLI is registered as `agy` for read-only roles, FW-ID owns delegated identity, and FW-KEYS owns all credential material.
@@ -34,17 +34,17 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-BME-03
-- Starting commit: cc4bd6f2a9a12a85c82301a3499bd78863029e7b
-- Candidate commit: c5769c7002e8f2ffb3ae9885b20bbe8d81df88c6
-- Accepted commit: c5769c7002e8f2ffb3ae9885b20bbe8d81df88c6
-- Files changed: dangerous-delivery classifier, shared observation boundary validation, and focused regression tests
-- Deterministic validation: focused 28 passed; full 1095 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with unchanged YELLOW findings
+- Task ID: FW-SOC-01
+- Starting commit: 84befe1439b514df6b196c62aa0163301c4197c7
+- Candidate commit: d036c4d101c08fdaf081d9070fdb6046e9f03fd4
+- Accepted commit: d036c4d101c08fdaf081d9070fdb6046e9f03fd4
+- Files changed: tenant-bound immutable SOC incident projection and focused regression tests
+- Deterministic validation: focused 46 passed; full 1113 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with unchanged YELLOW findings
 - Independent review: AnythingLLM/Qwen exact APPROVE/LOW with no blockers or missing tests
 - Gemini review: disabled and not required under D-020
-- Unresolved findings: none for FW-BME-03; historical caveats and pre-existing YELLOW findings remain
+- Unresolved findings: none for FW-SOC-01; canonical integrity ownership metadata still reports the pre-existing SOC placeholder and is included in FW-SOC-02
 - Blocker: live Azure use remains disabled until interactive Entra login and credit/deployment evidence pass; this does not block offline swarm hardening
-- Next action: claim FW-SOC-01
+- Next action: claim FW-SOC-02
 
 - Completion inventory: `docs/completion-audit-2026-09-09.md` (baseline `0afcbdd`).
 - FWQ-0008 implementation and binding hardening exist; VALIDATED retains a historical provenance caveat, not an implementation assignment. FWQ-0009 is recorded accepted and unchanged at source/test level from its reviewed candidate.
@@ -54,6 +54,8 @@ On every restart or continuation:
 - Latest broad Core closure: FWQ-0064, 833 passed/1 skipped, all hard checks/Golden Path passing, YELLOW pre-existing findings.
 
 ## Execution log
+
+- 2026-09-09: FW-SOC-01 accepted at `d036c4d101c08fdaf081d9070fdb6046e9f03fd4`. ForgeWarden now produces an immutable tenant-bound incident projection containing only bounded canonical normalized-event, Evidence, and affected-object references. Exact state/disposition and timestamp invariants deny malformed or contradictory case facts; Evidence must succeed before return. Focused 46 passed; AnythingLLM/Qwen exact APPROVE/LOW with no blockers/missing tests; full 1113 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with unchanged YELLOW findings. No SIEM storage, event/evidence duplication, correlation, playbook, network, filesystem, credential, deployment, containment, remediation, or response authority was added. FW-SOC-02 is next under D-022.
 
 - 2026-09-09: FW-BME-03 accepted at `c5769c7002e8f2ffb3ae9885b20bbe8d81df88c6`. Exact normalized HTML-smuggling, dangerous-download, redirect-chain, and prompt-injection indicators now produce Evidence-first WARN-only findings with deterministic distinct-signal confidence. Shared boundary validation preserves tenant isolation, immutable untrusted input, DRY_RUN/DETECT_ONLY, and omits URLs and sender content from Evidence. Focused 28 passed; AnythingLLM/Qwen exact APPROVE/LOW with no blockers/missing tests; full 1095 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with unchanged YELLOW findings. No browser, mailbox, fetch, scan, filesystem, process, credential, deployment, quarantine, remediation, or response authority was added. FW-SOC-01 is next under D-022.
 

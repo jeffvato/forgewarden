@@ -331,7 +331,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-SOC-01 — Tenant-bound incident projection
 - Requirement: FW-SOC case and incident foundation
-- State: READY
+- State: DONE
 - Priority: P0
 - Dependencies: FW-BME-03
 - Approval: FW-SOC follows completed FW-BME under D-022.
@@ -347,6 +347,27 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no SIEM storage, correlation, playbook, network, filesystem, credential, deployment, containment, remediation, or response authority is added.
 - Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
 - Security considerations: an incident projection is an untrusted case fact until deterministic validation and canonical Evidence succeed; it grants no action authority.
+- Completion evidence: exact candidate `d036c4d101c08fdaf081d9070fdb6046e9f03fd4`; focused 46 passed; AnythingLLM/Qwen exact APPROVE/LOW with no blockers or missing tests; full 1113 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with unchanged YELLOW findings.
+
+### FW-SOC-02 — Deterministic cross-domain attack-story projection
+- Requirement: FW-SOC bounded cross-domain correlation
+- State: READY
+- Priority: P0
+- Dependencies: FW-SOC-01
+- Approval: FW-SOC remains active under D-022.
+- Description: Correlate a bounded caller-supplied set of validated incident projections into an immutable tenant-bound attack story using exact shared affected/event references and canonical Evidence, without storing incidents or executing response.
+- Target path: swarm/soc.py
+- Allowed paths: swarm/soc.py, tests/test_soc.py, swarm/integrity.py, tests/test_integrity.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_soc.py tests/test_integrity.py
+- Acceptance criteria:
+  - strict same-tenant incident and reference binding with deterministic ordering and bounded incident/reference counts;
+  - correlation requires exact shared affected or normalized-event references and records explicit contributing incident IDs;
+  - canonical ownership metadata identifies `swarm.soc` without weakening other owners;
+  - Evidence succeeds before immutable output and omits free-form incident titles;
+  - malformed, duplicate, cross-tenant, uncorrelated, excessive, mutable-authority, and Evidence-failure inputs deny safely;
+  - no SIEM persistence, event copying, model inference, playbook, network, filesystem, credential, deployment, containment, remediation, or response authority is added.
+- Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
+- Security considerations: correlation is a reference-only case projection and grants no authority or confidence-based action.
 
 ### FW-BME-02 — Deterministic phishing and spoof classification
 - Requirement: FW-BME phishing/BEC/authentication signal evaluation
