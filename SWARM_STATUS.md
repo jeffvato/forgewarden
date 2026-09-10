@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: FW-KEYS-003 identity and harness secret-handle admission binding accepted
-- Next task: FW-KEYS-004 trusted catalog verification-key lifecycle binding under D-024.
+- Current focus: FW-KEYS-004 trusted catalog verification-key lifecycle binding accepted
+- Next task: FW-KEYS-005 integrated secret-handle lifecycle proof under D-024.
 - Harness role: permanent ForgeWarden Core subsystem and default controller for ForgeWarden's own development; one governed architecture serves both roles under D-023.
 - Worker transport direction: registered local CLIs and explicitly approved API-backed workers; API keys are resolved only through FW-KEYS secret handles inside trusted adapters and never enter model context or lifecycle evidence.
 - Provider authentication direction: deterministic OpenAI, Anthropic, and Google/Gemini profiles with provider-specific official OAuth where available and approved API-key classes otherwise; Gemini CLI is registered as `agy` for read-only roles, FW-ID owns delegated identity, and FW-KEYS owns all credential material.
@@ -34,17 +34,17 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-KEYS-003
-- Starting commit: cfaf0f3f862952f45b2c69aeb1ffbec694ddf1a4
-- Candidate commit: 5569690c74569d56e0bb1d8336fa1ccbcb3b1b5f
-- Accepted commit: 5569690c74569d56e0bb1d8336fa1ccbcb3b1b5f
-- Files changed: delegated provider-to-key lifecycle binding, exact generation capture, API invocation revalidation, controller registry integration, and revocation/expiration/rotation/replay regressions
-- Deterministic validation: focused 121 passed; full 1255 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with YELLOW only for dependency and Defined FW-COMP/FW-AID owners
-- Independent review: Claude Code exact APPROVE/LOW with no blockers or missing tests (`phase2a-5569690c74569d56e0bb1d83`)
+- Task ID: FW-KEYS-004
+- Starting commit: 9f02a00ea03a881752667fa535c1ae10ecf9ccdc
+- Candidate commit: efec39cb2c91294473766908e7590bd433b0a9f8
+- Accepted commit: efec39cb2c91294473766908e7590bd433b0a9f8
+- Files changed: trusted catalog publisher-key lifecycle binding, exact tenant/owner/class/generation capture, acceptance and cache revalidation, and lifecycle/substitution regressions
+- Deterministic validation: focused 100 passed; full 1256 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with YELLOW only for dependency and Defined FW-COMP/FW-AID owners
+- Independent review: Claude Code exact APPROVE/LOW with no blockers or missing tests (`phase2a-efec39cb2c91294473766908`)
 - Gemini review: disabled and not required under D-020
-- Unresolved findings: none for FW-KEYS-003; runtime FW-AID and FW-COMP remain explicitly Defined
+- Unresolved findings: none for FW-KEYS-004; runtime FW-AID and FW-COMP remain explicitly Defined
 - Blocker: live Azure use remains disabled until interactive Entra login and credit/deployment evidence pass; this does not block offline Core work
-- Next action: implement FW-KEYS-004.
+- Next action: implement FW-KEYS-005.
 
 - Completion inventory: `docs/completion-audit-2026-09-09.md` (baseline `0afcbdd`).
 - FWQ-0008 implementation and binding hardening exist; VALIDATED retains a historical provenance caveat, not an implementation assignment. FWQ-0009 is recorded accepted and unchanged at source/test level from its reviewed candidate.
@@ -54,6 +54,8 @@ On every restart or continuation:
 - Latest broad Core closure: FWQ-0064, 833 passed/1 skipped, all hard checks/Golden Path passing, YELLOW pre-existing findings.
 
 ## Execution log
+
+- 2026-09-10: FW-KEYS-004 accepted at `efec39cb2c91294473766908e7590bd433b0a9f8`. TrustedSignatureCatalog publisher verification now requires an exact create-once ACTIVE tenant/owner/class-bound FW-KEYS record and captures its generation without exposing its opaque handle. Durable sequence acceptance, content caching, and accepted-cache recovery recheck current lifecycle metadata so expiration, revocation, generation replacement, replay, and substitution fail closed. Focused 100 passed. The first candidate's exact review returned APPROVE/LOW but named three missing edge tests and was rejected; the repaired exact Claude review returned APPROVE/LOW with no blockers/missing tests. Full 1256 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with only dependency and Defined FW-COMP/FW-AID YELLOW findings. No key material, backend, resolution, authentication, signing, network, process, deployment, containment, remediation, recovery execution, or response authority was added. FW-KEYS-005 is next.
 
 - 2026-09-10: FW-KEYS-003 accepted at `5569690c74569d56e0bb1d8336fa1ccbcb3b1b5f`. Delegated provider identity binding now requires an exact ACTIVE tenant/owner/credential-class-matched canonical secret-handle record and captures its generation. API worker planning rechecks key lifecycle, expiry, exact binding, and generation at invocation time, so revocation, expiration, rotation, replay, and substitution fail closed; CLI workers remain handle-free. Focused 121 passed; exact Claude APPROVE/LOW with no blockers/missing tests; full 1255 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with only dependency and Defined FW-COMP/FW-AID YELLOW findings. No secret resolution, authentication, provider call, network, process, Git, policy, Action Ticket, deployment, or response authority was added. FW-KEYS-004 is next.
 

@@ -614,7 +614,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-KEYS-004 — Trusted catalog verification-key lifecycle binding
 - Requirement: FW-KEYS trusted verification consumer integration
-- State: READY
+- State: DONE
 - Priority: P0
 - Dependencies: FW-KEYS-003
 - Approval: deterministic verification-key metadata binding is activated under D-024; signing material and live key backends remain unauthorized.
@@ -630,6 +630,26 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no key generation, signing, secret resolution, vault/HSM access, filesystem hook, network, process, deployment, quarantine, remediation, or response authority is added.
 - Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
 - Security considerations: FW-KEYS supplies lifecycle metadata only; cryptographic verification remains within the existing trusted catalog boundary.
+- Completion evidence: repaired exact candidate `efec39cb2c91294473766908e7590bd433b0a9f8`; focused 100 passed; exact Claude Code job `phase2a-efec39cb2c91294473766908` returned APPROVE/LOW with no blockers or missing tests after the first candidate's three legitimate edge-test findings were added; full 1256 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with YELLOW only for the existing dependency and Defined FW-COMP/FW-AID owners.
+
+### FW-KEYS-005 — Integrated secret-handle lifecycle proof
+- Requirement: FW-KEYS integrated lifecycle acceptance
+- State: READY
+- Priority: P0
+- Dependencies: FW-KEYS-004
+- Approval: deterministic metadata-only lifecycle integration is activated under D-024; secret resolution and live provider/key backends remain unauthorized.
+- Description: Prove one canonical FW-KEYS lifecycle across identity-bound harness admission and trusted catalog verification, including lifecycle invalidation, generation replacement, Evidence minimization, and Product Integrity ownership.
+- Target path: tests/test_keys.py
+- Allowed paths: swarm/keys.py, swarm/identity.py, swarm/harness_worker.py, swarm/harness_controller.py, swarm/anti_malware.py, swarm/integrity.py, tests/test_keys.py, tests/test_identity.py, tests/test_harness_worker.py, tests/test_harness_controller.py, tests/test_anti_malware.py, tests/test_integrity.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_keys.py tests/test_identity.py tests/test_harness_worker.py tests/test_harness_controller.py tests/test_anti_malware.py tests/test_integrity.py
+- Acceptance criteria:
+  - one deterministic proof composes canonical registration, activation, exact tenant/owner/class/generation consumer binding, harness API admission, and trusted catalog verification/accepted-cache recovery;
+  - revocation, expiration, replacement generation, stale provider binding, and stale catalog verification independently fail closed at their consumer boundaries;
+  - canonical Evidence records bounded lifecycle metadata and outcomes without handle values, backend locators, purposes, public/private key material, credentials, or secrets;
+  - Product Integrity identifies SecretHandleRegistry and the existing identity/harness/catalog consumers as the canonical partial FW-KEYS implementation with an honest metadata-only limitation;
+  - no backend, vault/HSM access, material resolution, authentication, signing, encryption, network, process, Git, deployment, containment, remediation, recovery execution, or response authority is added.
+- Expected validation: focused Linux integrated proof, exact independent read-only review, then full suite/integrity once.
+- Security considerations: lifecycle proof must use disposable in-memory registries and caller-supplied public fixtures only; registry membership and public verification never grant material use.
 
 ### FW-BME-02 — Deterministic phishing and spoof classification
 - Requirement: FW-BME phishing/BEC/authentication signal evaluation
