@@ -2,7 +2,7 @@ from dataclasses import FrozenInstanceError
 
 import pytest
 
-from swarm.soc import MAX_INCIDENT_REFS, MAX_STORY_INCIDENTS, MAX_TIMELINE_ENTRIES, SOCIncidentDenied, project_attack_story, project_incident_timeline, project_soc_incident, propose_response_playbook
+from swarm.soc import MAX_INCIDENT_REFS, MAX_STORY_INCIDENTS, MAX_TIMELINE_ENTRIES, SOCIncidentDenied, project_attack_story, project_incident_timeline, project_soc_dry_run_lifecycle, project_soc_incident, propose_response_playbook
 
 
 def incident(**changes):
@@ -274,3 +274,72 @@ def test_playbook_evidence_failure_returns_no_proposal():
             projected(), (playbook_step(),), playbook_id="playbook-1", tenant_id="tenant-a",
             audit=lambda *_args: (_ for _ in ()).throw(OSError("offline")),
         )
+
+
+def lifecycle(audit, **changes):
+    values = {
+        "records": (
+            incident(),
+            incident(incident_id="incident-2", evidence_refs=["evidence/record-2"]),
+        ),
+        "primary_incident_id": "incident-1", "story_id": "story-1",
+        "timeline_entries": (timeline_entry(),), "playbook_id": "playbook-1",
+        "playbook_steps": (playbook_step(), mutating_step()),
+        "tenant_id": "tenant-a", "now_epoch": 120,
+        "accepted_policy_decision_refs": ("policy/decision-1",),
+        "accepted_action_ticket_refs": ("ticket/one",),
+        "kill_switch_state": "ENGAGED", "deployment_state": "DISABLED",
+        "audit": audit,
+    }
+    values.update(changes)
+    return project_soc_dry_run_lifecycle(**values)
+
+
+def test_integrated_lifecycle_is_reference_only_deterministic_and_uses_one_evidence_sink():
+    calls = []
+    result = lifecycle(lambda *args: calls.append(args))
+    assert tuple(item.incident_id for item in result.incidents) == ("incident-1", "incident-2")
+    assert result.attack_story.incident_ids == ("incident-1", "incident-2")
+    assert result.timeline.incident_id == result.playbook.incident_id == "incident-1"
+    assert tuple(step.step_id for step in result.playbook.steps) == ("step-1", "step-2")
+    assert [event for event, _ in calls] == [
+        "soc_incident_projected", "soc_incident_projected",
+        "soc_attack_story_projected", "soc_incident_timeline_projected",
+        "soc_response_playbook_proposed",
+    ]
+    assert all(evidence["tenant_id"] == "tenant-a" for _, evidence in calls)
+    assert result.mode == "DRY_RUN" and result.deployment == "DISABLED"
+    assert result.kill_switch == "ENGAGED" and not result.authority_expanded
+    with pytest.raises(FrozenInstanceError):
+        result.mode = "LIVE"
+
+
+@pytest.mark.parametrize("failed_event,expected_events", [
+    ("soc_incident_projected", []),
+    ("soc_attack_story_projected", ["soc_incident_projected", "soc_incident_projected"]),
+    ("soc_incident_timeline_projected", ["soc_incident_projected", "soc_incident_projected", "soc_attack_story_projected"]),
+    ("soc_response_playbook_proposed", ["soc_incident_projected", "soc_incident_projected", "soc_attack_story_projected", "soc_incident_timeline_projected"]),
+])
+def test_integrated_lifecycle_evidence_failure_stops_all_later_stages(failed_event, expected_events):
+    calls = []
+
+    def audit(event, evidence):
+        if event == failed_event:
+            raise OSError("offline")
+        calls.append((event, evidence))
+
+    with pytest.raises(SOCIncidentDenied, match="EVIDENCE_WRITE_FAILED"):
+        lifecycle(audit)
+    assert [event for event, _ in calls] == expected_events
+
+
+@pytest.mark.parametrize("changes,reason", [
+    ({"records": (incident(tenant_id="tenant-b"), incident(incident_id="incident-2"))}, "TENANT_MISMATCH"),
+    ({"accepted_policy_decision_refs": ("policy/other",)}, "LIFECYCLE_POLICY_REFERENCE_DENIED"),
+    ({"accepted_action_ticket_refs": ()}, "LIFECYCLE_TICKET_REFERENCE_DENIED"),
+    ({"kill_switch_state": "DISENGAGED"}, "LIFECYCLE_SAFETY_STATE_INVALID"),
+    ({"deployment_state": "ENABLED"}, "LIFECYCLE_SAFETY_STATE_INVALID"),
+])
+def test_integrated_lifecycle_denies_boundary_authority_and_safety_failures(changes, reason):
+    with pytest.raises(SOCIncidentDenied, match=reason):
+        lifecycle(lambda *_args: None, **changes)

@@ -132,6 +132,18 @@ class SOCPlaybookProposal:
     action: str = "PROPOSE_ONLY"
 
 
+@dataclass(frozen=True)
+class SOCDryRunLifecycle:
+    incidents: tuple[SOCIncidentProjection, ...]
+    attack_story: SOCAttackStoryProjection
+    timeline: SOCIncidentTimeline
+    playbook: SOCPlaybookProposal
+    mode: str = "DRY_RUN"
+    deployment: str = "DISABLED"
+    kill_switch: str = "ENGAGED"
+    authority_expanded: bool = False
+
+
 def project_soc_incident(
     record: Mapping[str, Any], *, tenant_id: str, now_epoch: int,
     audit: Callable[[str, dict[str, Any]], None],
@@ -383,3 +395,67 @@ def propose_response_playbook(
     except Exception as exc:
         raise SOCIncidentDenied("EVIDENCE_WRITE_FAILED") from exc
     return SOCPlaybookProposal(exact_playbook_id, expected_tenant, bound_incident.incident_id, ordered)
+
+
+def project_soc_dry_run_lifecycle(
+    records: tuple[Mapping[str, Any], ...], *, primary_incident_id: str,
+    story_id: str, timeline_entries: tuple[Mapping[str, Any], ...],
+    playbook_id: str, playbook_steps: tuple[Mapping[str, Any], ...],
+    tenant_id: str, now_epoch: int,
+    accepted_policy_decision_refs: tuple[str, ...],
+    accepted_action_ticket_refs: tuple[str, ...],
+    kill_switch_state: str, deployment_state: str,
+    audit: Callable[[str, dict[str, Any]], None],
+) -> SOCDryRunLifecycle:
+    """Compose accepted SOC projections while retaining external authority ownership."""
+    if not isinstance(records, tuple) or not 2 <= len(records) <= MAX_STORY_INCIDENTS or not callable(audit):
+        raise SOCIncidentDenied("LIFECYCLE_INPUT_INVALID")
+    if kill_switch_state != "ENGAGED" or deployment_state != "DISABLED":
+        raise SOCIncidentDenied("LIFECYCLE_SAFETY_STATE_INVALID")
+    expected_tenant = _text(tenant_id, "TENANT")
+    primary_id = _text(primary_incident_id, "INCIDENT_ID")
+    policies = _reference_set(accepted_policy_decision_refs, "POLICY_DECISION_REFS")
+    tickets = _reference_set(accepted_action_ticket_refs, "ACTION_TICKET_REFS", allow_empty=True)
+
+    incidents = tuple(
+        project_soc_incident(record, tenant_id=expected_tenant, now_epoch=now_epoch, audit=audit)
+        for record in records
+    )
+    matching = tuple(item for item in incidents if item.incident_id == primary_id)
+    if len(matching) != 1:
+        raise SOCIncidentDenied("LIFECYCLE_PRIMARY_INCIDENT_INVALID")
+    story = project_attack_story(
+        incidents, story_id=story_id, tenant_id=expected_tenant, audit=audit,
+    )
+    timeline = project_incident_timeline(
+        matching[0], timeline_entries, tenant_id=expected_tenant, audit=audit,
+    )
+    _validate_lifecycle_authority_refs(playbook_steps, policies, tickets)
+    playbook = propose_response_playbook(
+        matching[0], playbook_steps, playbook_id=playbook_id,
+        tenant_id=expected_tenant, audit=audit,
+    )
+    return SOCDryRunLifecycle(incidents, story, timeline, playbook)
+
+
+def _reference_set(value: Any, field: str, *, allow_empty: bool = False) -> frozenset[str]:
+    if not isinstance(value, tuple) or len(value) > MAX_INCIDENT_REFS or (not value and not allow_empty):
+        raise SOCIncidentDenied(f"{field}_INVALID")
+    refs = tuple(_text(item, field) for item in value)
+    if len(set(refs)) != len(refs):
+        raise SOCIncidentDenied(f"{field}_DUPLICATE")
+    return frozenset(refs)
+
+
+def _validate_lifecycle_authority_refs(
+    steps: tuple[Mapping[str, Any], ...], policies: frozenset[str], tickets: frozenset[str],
+) -> None:
+    if not isinstance(steps, tuple):
+        raise SOCIncidentDenied("PLAYBOOK_INPUT_INVALID")
+    for step in steps:
+        if not isinstance(step, Mapping):
+            raise SOCIncidentDenied("PLAYBOOK_STEP_INVALID")
+        if step.get("policy_decision_ref") not in policies:
+            raise SOCIncidentDenied("LIFECYCLE_POLICY_REFERENCE_DENIED")
+        if step.get("action_class") in MUTATING_ACTIONS and step.get("action_ticket_ref") not in tickets:
+            raise SOCIncidentDenied("LIFECYCLE_TICKET_REFERENCE_DENIED")
