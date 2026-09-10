@@ -634,7 +634,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-KEYS-005 — Integrated secret-handle lifecycle proof
 - Requirement: FW-KEYS integrated lifecycle acceptance
-- State: READY
+- State: DONE
 - Priority: P0
 - Dependencies: FW-KEYS-004
 - Approval: deterministic metadata-only lifecycle integration is activated under D-024; secret resolution and live provider/key backends remain unauthorized.
@@ -650,6 +650,26 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no backend, vault/HSM access, material resolution, authentication, signing, encryption, network, process, Git, deployment, containment, remediation, recovery execution, or response authority is added.
 - Expected validation: focused Linux integrated proof, exact independent read-only review, then full suite/integrity once.
 - Security considerations: lifecycle proof must use disposable in-memory registries and caller-supplied public fixtures only; registry membership and public verification never grant material use.
+- Completion evidence: exact candidate `30f99d8337af77fc02e405cf27cbd55f7ed7335a`; focused 187 passed; exact Claude Code job `phase2a-30f99d8337af77fc02e405cf` returned APPROVE/LOW with no blockers or missing tests; full 1257 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with YELLOW only for the existing dependency and Defined FW-COMP/FW-AID owners. Product Integrity now reports FW-KEYS Proven with its metadata-only limitation explicit.
+
+### FW-EVID-001 — Evidence inventory and canonical envelope contract
+- Requirement: FW-EVID canonical evidence ownership
+- State: READY
+- Priority: P0
+- Dependencies: FW-KEYS-005
+- Approval: deterministic local Evidence metadata is activated under D-024; external storage, signing, export, and network transport remain unauthorized.
+- Description: Inventory existing audit/evidence producers and establish one immutable tenant-bound canonical Evidence envelope that they can adopt without replacing their owned payload schemas or creating a competing log.
+- Target path: swarm/evidence.py
+- Allowed paths: swarm/evidence.py, swarm/core.py, swarm/harness_evidence.py, swarm/accepted_work_evidence.py, swarm/audit_integrity.py, swarm/integrity.py, docs/fw-evid-inventory.md, tests/test_evidence.py, tests/test_integrity.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_evidence.py tests/test_audit_integrity.py tests/test_accepted_work_evidence.py tests/test_harness_evidence.py tests/test_integrity.py
+- Acceptance criteria:
+  - the inventory names existing producers, schemas, stores, integrity checks, canonical owners, overlaps, and concrete gaps without declaring existing payload formats obsolete;
+  - the immutable envelope uses a stable schema/version and exact evidence, tenant, event, actor, subject, timestamp, classification, payload-schema, payload-digest, previous-record-digest, and correlation/reference fields with bounded values;
+  - unknown fields, cross-tenant references, invalid timestamps/digests/classifications, duplicate references, mutable input, and secret-shaped metadata fail closed;
+  - the envelope stores payload hashes and bounded references rather than raw sensitive payloads and grants no signing, append, storage, export, policy, ticket, Git, deployment, or response authority;
+  - Product Integrity recognizes the canonical FW-EVID envelope while honestly retaining partial status until append-only lifecycle and chain verification are proven.
+- Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
+- Security considerations: this milestone defines metadata and ownership only; AuditLog migration, signing, retention, export, external stores, and incident evidence lifecycle require later bounded tasks.
 
 ### FW-BME-02 — Deterministic phishing and spoof classification
 - Requirement: FW-BME phishing/BEC/authentication signal evaluation
