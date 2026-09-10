@@ -136,3 +136,38 @@ def test_identity_bound_api_plan_requires_exact_current_provider_binding():
     wrong_class = WorkerRegistry((replace(api_registration(), identity_ref="fw-id/codex-cli", credential_class="openai-oauth-token-set"),))
     with pytest.raises(HarnessWorkerError, match="credential class"):
         plan_identity_bound_invocation(wrong_class, api_request, identity_registry=ids, tenant_id="tenant", now_epoch=10, provider_binding=binding)
+
+
+def test_integrated_identity_lifecycle_binds_provider_worker_and_revocation_fail_closed():
+    events = []
+    ids = IdentityRegistry(lambda *args: events.append(args))
+    owner = validate_identity_record({"schema_version": "1", "identity_id": "fw-id/owner", "tenant_id": "tenant", "identity_kind": "HUMAN", "owner_identity_ref": "fw-id/owner", "purpose": "owner", "lifecycle_state": "ACTIVE", "created_at_epoch": 1, "lifecycle_changed_at_epoch": 1, "expires_at_epoch": None, "provider_subject_ref": None, "credential_handle_ref": None})
+    worker = validate_identity_record({"schema_version": "1", "identity_id": "fw-id/codex-cli", "tenant_id": "tenant", "identity_kind": "AI_AGENT", "owner_identity_ref": owner.identity_id, "purpose": "bounded worker", "lifecycle_state": "ACTIVE", "created_at_epoch": 1, "lifecycle_changed_at_epoch": 1, "expires_at_epoch": 100, "provider_subject_ref": "provider/openai-worker", "credential_handle_ref": "fwkeys://tenant/provider/openai-worker"})
+    ids.register(owner)
+    ids.register(worker)
+    binding = bind_delegated_provider_identity({"binding_id": "fw-id-binding/openai-api", "tenant_id": "tenant", "subject_identity_id": worker.identity_id, "owner_identity_id": owner.identity_id, "provider": "OPENAI", "provider_subject_ref": "provider/openai-worker", "consent_ref": "approval/provider-one", "credential_class": "API_KEY", "credential_handle_ref": "fwkeys://tenant/provider/openai-worker", "issued_at_epoch": 1, "expires_at_epoch": 90}, registry=ids, now_epoch=10, audit=lambda *args: events.append(args))
+    workers = WorkerRegistry((WorkerRegistration("openai-api", "openai", "approved-model", WorkerTransport.API, (WorkerRole.CODE_WRITER,), True, route_id="provider.openai.responses", credential_class="openai-api-key", network_approved=True, identity_ref=worker.identity_id),))
+    worker_request = request("openai-api", credential="fwkeys://tenant/provider/openai-worker")
+    plan = plan_identity_bound_invocation(workers, worker_request, identity_registry=ids, tenant_id="tenant", now_epoch=10, provider_binding=binding)
+    assert plan.worker_id == "openai-api" and plan.task_id == worker_request.task.task_id
+    assert [event for event, _ in events] == ["fw_id_registered", "fw_id_registered", "fw_id_provider_identity_bound"]
+    ids.revoke(worker.identity_id, tenant_id="tenant", now_epoch=20)
+    with pytest.raises(HarnessWorkerError, match="not an active"):
+        plan_identity_bound_invocation(workers, worker_request, identity_registry=ids, tenant_id="tenant", now_epoch=21, provider_binding=binding)
+    assert events[-1][0] == "fw_id_lifecycle_changed" and events[-1][1]["lifecycle_state"] == "REVOKED"
+
+
+def test_integrated_identity_and_provider_expiration_boundaries_deny_admission():
+    ids = IdentityRegistry(lambda *_args: None)
+    owner = validate_identity_record({"schema_version": "1", "identity_id": "fw-id/owner", "tenant_id": "tenant", "identity_kind": "HUMAN", "owner_identity_ref": "fw-id/owner", "purpose": "owner", "lifecycle_state": "ACTIVE", "created_at_epoch": 1, "lifecycle_changed_at_epoch": 1, "expires_at_epoch": None, "provider_subject_ref": None, "credential_handle_ref": None})
+    worker = validate_identity_record({"schema_version": "1", "identity_id": "fw-id/codex-cli", "tenant_id": "tenant", "identity_kind": "AI_AGENT", "owner_identity_ref": owner.identity_id, "purpose": "worker", "lifecycle_state": "ACTIVE", "created_at_epoch": 1, "lifecycle_changed_at_epoch": 1, "expires_at_epoch": 100, "provider_subject_ref": "provider/openai-worker", "credential_handle_ref": "fwkeys://tenant/provider/openai-worker"})
+    ids.register(owner); ids.register(worker)
+    wire = {"binding_id": "fw-id-binding/openai-api", "tenant_id": "tenant", "subject_identity_id": worker.identity_id, "owner_identity_id": owner.identity_id, "provider": "OPENAI", "provider_subject_ref": "provider/openai-worker", "consent_ref": "approval/provider-one", "credential_class": "API_KEY", "credential_handle_ref": "fwkeys://tenant/provider/openai-worker", "issued_at_epoch": 1, "expires_at_epoch": 90}
+    binding = bind_delegated_provider_identity(wire, registry=ids, now_epoch=10, audit=lambda *_args: None)
+    workers = WorkerRegistry((WorkerRegistration("openai-api", "openai", "approved-model", WorkerTransport.API, (WorkerRole.CODE_WRITER,), True, route_id="provider.openai.responses", credential_class="openai-api-key", network_approved=True, identity_ref=worker.identity_id),))
+    worker_request = request("openai-api", credential="fwkeys://tenant/provider/openai-worker")
+    with pytest.raises(HarnessWorkerError, match="delegated provider identity is stale"):
+        plan_identity_bound_invocation(workers, worker_request, identity_registry=ids, tenant_id="tenant", now_epoch=90, provider_binding=binding)
+    identity_lifetime_binding = bind_delegated_provider_identity({**wire, "expires_at_epoch": 100}, registry=ids, now_epoch=10, audit=lambda *_args: None)
+    with pytest.raises(HarnessWorkerError, match="not an active"):
+        plan_identity_bound_invocation(workers, worker_request, identity_registry=ids, tenant_id="tenant", now_epoch=100, provider_binding=identity_lifetime_binding)

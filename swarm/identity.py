@@ -236,6 +236,9 @@ def bind_delegated_provider_identity(
     issued, expires = value["issued_at_epoch"], value["expires_at_epoch"]
     if any(not isinstance(item, int) or isinstance(item, bool) for item in (issued, expires)) or not issued <= now_epoch < expires:
         raise IdentityContractError("consent is stale or expired")
+    identity_expirations = tuple(item for item in (subject.expires_at_epoch, owner.expires_at_epoch) if item is not None)
+    if identity_expirations and expires > min(identity_expirations):
+        raise IdentityContractError("provider binding exceeds identity lifetime")
     result = DelegatedProviderIdentity(binding_id, tenant, subject.identity_id, owner.identity_id, provider, provider_ref, consent_ref, credential_class, handle, issued, expires)
     try:
         audit("fw_id_provider_identity_bound", {"binding_id": binding_id, "tenant_id": tenant, "subject_identity_id": subject.identity_id, "owner_identity_id": owner.identity_id, "provider": provider, "provider_subject_ref": provider_ref, "consent_ref": consent_ref, "credential_class": credential_class, "issued_at_epoch": issued, "expires_at_epoch": expires, "mode": "DRY_RUN", "deployment": "DISABLED", "authority_granted": False, "credential_resolved": False})

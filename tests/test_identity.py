@@ -208,6 +208,7 @@ def test_delegated_provider_binding_is_immutable_evidence_first_and_authority_fr
     ({"credential_handle_ref": "fwkeys://tenant-b/provider/openai-codex"}, "handle binding mismatch"),
     ({"issued_at_epoch": 151}, "stale or expired"),
     ({"expires_at_epoch": 150}, "stale or expired"),
+    ({"expires_at_epoch": 201}, "exceeds identity lifetime"),
     ({"extra": "field"}, "binding is invalid"),
 ])
 def test_delegated_provider_binding_denies_malformed_cross_tenant_or_stale_input(change, reason):

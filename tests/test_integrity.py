@@ -14,6 +14,7 @@ def test_functionality_map_distinguishes_proven_from_not_yet_proven():
     assert states["FW-CORE"] == "Proven"
     assert states["FW-ASOC-01"] == "Proven"
     assert states["FW-ASOC-02"] == "Proven"
+    assert states["FW-ID"] == "Proven"
     assert states["FW-INTEGRITY"] == "Implemented"
 
 
