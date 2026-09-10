@@ -70,3 +70,25 @@ def test_unknown_raw_payload_and_mutable_reference_input_are_rejected():
         validate_evidence_envelope(envelope() | {"payload": {"secret": "value"}})
     with pytest.raises(EvidenceContractError, match="sorted tuple"):
         validate_evidence_envelope(envelope(evidence_references=["fw-evid/tenant-a/review/0001"]))
+
+
+def test_optional_and_reference_count_boundaries_are_explicit():
+    minimal = validate_evidence_envelope(envelope(
+        correlation_id=None, previous_record_sha256=None, evidence_references=(),
+    ))
+    assert minimal.correlation_id is None and minimal.evidence_references == ()
+    references = tuple(f"fw-evid/tenant-a/reference/{index:03d}" for index in range(128))
+    assert len(validate_evidence_envelope(envelope(evidence_references=references)).evidence_references) == 128
+    with pytest.raises(EvidenceContractError, match="bounded"):
+        validate_evidence_envelope(envelope(evidence_references=references + ("fw-evid/tenant-a/reference/128",)))
+
+
+@pytest.mark.parametrize("change", [
+    {"tenant_id": "t" * 129},
+    {"evidence_id": "fw-evid/tenant-a/" + "x" * 240},
+    {"event_type": " "},
+    {"actor_ref": " fw-id/actor"},
+])
+def test_length_and_whitespace_boundaries_fail_closed(change):
+    with pytest.raises(EvidenceContractError, match="invalid"):
+        validate_evidence_envelope(envelope(**change))
