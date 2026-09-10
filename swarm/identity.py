@@ -10,6 +10,8 @@ from dataclasses import dataclass, replace
 from threading import Lock
 from typing import Any, Callable, Mapping
 
+from .keys import KeyContractError, SecretHandleRegistry
+
 
 IDENTITY_KINDS = frozenset({"HUMAN", "SERVICE", "WORKLOAD", "DEVICE", "AI_AGENT", "OAUTH_CLIENT"})
 LIFECYCLE_STATES = frozenset({"PROVISIONED", "ACTIVE", "REVOKED", "EXPIRED"})
@@ -192,17 +194,21 @@ class DelegatedProviderIdentity:
     credential_handle_ref: str
     issued_at_epoch: int
     expires_at_epoch: int
+    credential_generation: int
     mode: str = "DRY_RUN"
     deployment: str = "DISABLED"
     authority_granted: bool = False
 
 
 def bind_delegated_provider_identity(
-    value: Mapping[str, Any], *, registry: IdentityRegistry, now_epoch: int,
+    value: Mapping[str, Any], *, registry: IdentityRegistry,
+    key_registry: SecretHandleRegistry, now_epoch: int,
     audit: Callable[[str, dict[str, Any]], None],
 ) -> DelegatedProviderIdentity:
     """Bind consent metadata to active identities without resolving credentials."""
-    if not isinstance(value, Mapping) or set(value) != _BINDING_FIELDS or not isinstance(registry, IdentityRegistry) or not callable(audit):
+    if (not isinstance(value, Mapping) or set(value) != _BINDING_FIELDS
+            or not isinstance(registry, IdentityRegistry)
+            or not isinstance(key_registry, SecretHandleRegistry) or not callable(audit)):
         raise IdentityContractError("delegated provider binding is invalid")
     if not isinstance(now_epoch, int) or isinstance(now_epoch, bool) or now_epoch < 0:
         raise IdentityContractError("binding time is invalid")
@@ -239,9 +245,18 @@ def bind_delegated_provider_identity(
     identity_expirations = tuple(item for item in (subject.expires_at_epoch, owner.expires_at_epoch) if item is not None)
     if identity_expirations and expires > min(identity_expirations):
         raise IdentityContractError("provider binding exceeds identity lifetime")
-    result = DelegatedProviderIdentity(binding_id, tenant, subject.identity_id, owner.identity_id, provider, provider_ref, consent_ref, credential_class, handle, issued, expires)
     try:
-        audit("fw_id_provider_identity_bound", {"binding_id": binding_id, "tenant_id": tenant, "subject_identity_id": subject.identity_id, "owner_identity_id": owner.identity_id, "provider": provider, "provider_subject_ref": provider_ref, "consent_ref": consent_ref, "credential_class": credential_class, "issued_at_epoch": issued, "expires_at_epoch": expires, "mode": "DRY_RUN", "deployment": "DISABLED", "authority_granted": False, "credential_resolved": False})
+        key = key_registry.get(handle, tenant_id=tenant)
+    except KeyContractError as exc:
+        raise IdentityContractError("credential handle admission denied") from exc
+    if (key.lifecycle_state != "ACTIVE"
+            or (key.expires_at_epoch is not None and now_epoch >= key.expires_at_epoch)
+            or key.owner_identity_ref != subject.identity_id
+            or key.credential_class != credential_class):
+        raise IdentityContractError("credential handle binding is not active or exact")
+    result = DelegatedProviderIdentity(binding_id, tenant, subject.identity_id, owner.identity_id, provider, provider_ref, consent_ref, credential_class, handle, issued, expires, key.generation)
+    try:
+        audit("fw_id_provider_identity_bound", {"binding_id": binding_id, "tenant_id": tenant, "subject_identity_id": subject.identity_id, "owner_identity_id": owner.identity_id, "provider": provider, "provider_subject_ref": provider_ref, "consent_ref": consent_ref, "credential_class": credential_class, "credential_generation": key.generation, "issued_at_epoch": issued, "expires_at_epoch": expires, "mode": "DRY_RUN", "deployment": "DISABLED", "authority_granted": False, "credential_resolved": False})
     except Exception as exc:
         raise IdentityContractError("Evidence write failed") from exc
     return result

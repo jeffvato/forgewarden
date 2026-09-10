@@ -12,6 +12,7 @@ from .harness_models import HarnessModelRequest, admit_harness_model
 from .harness_task import HarnessTask, TaskStatus
 from .harness_worker import WorkerOutput, WorkerRegistry, WorkerRequest, WorkerRole, plan_identity_bound_invocation, validate_worker_output
 from .identity import DelegatedProviderIdentity, IdentityRegistry
+from .keys import SecretHandleRegistry
 from .mission_control import MissionControlView, project_mission_control
 from .review_handoff import ReviewResult
 
@@ -45,7 +46,7 @@ class GovernedHarnessController:
         self, *, orchestrator: AutonomousOrchestrator, tasks: tuple[HarnessTask, ...],
         task_tenants: Mapping[str, str], executions: Mapping[str, TaskExecution],
         workers: WorkerRegistry, budgets: BudgetLedger,
-        identity_registry: IdentityRegistry,
+        identity_registry: IdentityRegistry, key_registry: SecretHandleRegistry,
         authority_resolver: Callable[[Mapping[str, Any]], Mapping[str, Any]],
         model_resolver: Callable[[Mapping[str, Any]], Mapping[str, Any]],
         evidence_sink: Callable[[str, dict[str, Any]], None], timestamp: Callable[[], str],
@@ -54,7 +55,9 @@ class GovernedHarnessController:
         self.tasks = {task.task_id: task for task in tasks}
         if not tasks or len(self.tasks) != len(tasks) or set(self.tasks) != set(executions) or set(self.tasks) != set(task_tenants):
             raise HarnessControllerError("controller task, execution, and tenant registries must match")
-        self.task_tenants, self.executions, self.workers, self.budgets, self.identity_registry = dict(task_tenants), dict(executions), workers, budgets, identity_registry
+        if not isinstance(identity_registry, IdentityRegistry) or not isinstance(key_registry, SecretHandleRegistry):
+            raise HarnessControllerError("controller requires canonical identity and key registries")
+        self.task_tenants, self.executions, self.workers, self.budgets, self.identity_registry, self.key_registry = dict(task_tenants), dict(executions), workers, budgets, identity_registry, key_registry
         self.authority_resolver, self.model_resolver, self.evidence_sink, self.timestamp = authority_resolver, model_resolver, evidence_sink, timestamp
         self._packets: dict[str, ContextPacket] = {}
         self._outputs: dict[str, WorkerOutput] = {}
@@ -74,7 +77,7 @@ class GovernedHarnessController:
             admit_harness_authority(task, worker, execution.authority_request, now=int(lease.expires_at - self.orchestrator.lease_seconds), authority_resolver=self.authority_resolver)
             admit_harness_model(task, packet, worker, execution.model_request, now=int(lease.expires_at - self.orchestrator.lease_seconds), model_resolver=self.model_resolver)
             request = WorkerRequest(task, packet, budget, execution.worker_id, execution.role, execution.credential_handle)
-            plan = plan_identity_bound_invocation(self.workers, request, identity_registry=self.identity_registry, tenant_id=self.task_tenants[task.task_id], now_epoch=int(lease.expires_at - self.orchestrator.lease_seconds), provider_binding=execution.provider_binding)
+            plan = plan_identity_bound_invocation(self.workers, request, identity_registry=self.identity_registry, tenant_id=self.task_tenants[task.task_id], now_epoch=int(lease.expires_at - self.orchestrator.lease_seconds), provider_binding=execution.provider_binding, key_registry=self.key_registry)
             emit_harness_evidence(event="task_started", tenant_id=self.task_tenants[task.task_id], task_tenant_id=self.task_tenants[task.task_id], actor_id="harness-controller", task=task, context=packet, evidence_sink=self.evidence_sink, worker=worker, policy_decision="PASSED", acceptance_decision="PENDING", timestamp=self.timestamp())
             output = validate_worker_output(request, worker_executor(plan))
             emit_harness_evidence(event="worker_completed", tenant_id=self.task_tenants[task.task_id], task_tenant_id=self.task_tenants[task.task_id], actor_id="harness-controller", task=task, context=packet, evidence_sink=self.evidence_sink, worker=worker, worker_output=output, policy_decision="PASSED", acceptance_decision="PENDING", timestamp=self.timestamp())

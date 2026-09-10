@@ -12,6 +12,7 @@ from typing import Any, Mapping
 from .harness_context import BudgetAdmission, ContextPacket
 from .harness_task import HarnessTask
 from .identity import DelegatedProviderIdentity, IdentityContractError, IdentityRegistry
+from .keys import KeyContractError, SecretHandleRegistry
 
 
 _IDENTIFIER = re.compile(r"^[a-z][a-z0-9_.-]{0,127}$")
@@ -169,6 +170,7 @@ def plan_invocation(registry: WorkerRegistry, request: WorkerRequest) -> Invocat
 def plan_identity_bound_invocation(
     registry: WorkerRegistry, request: WorkerRequest, *, identity_registry: IdentityRegistry,
     tenant_id: str, now_epoch: int, provider_binding: DelegatedProviderIdentity | None = None,
+    key_registry: SecretHandleRegistry | None = None,
 ) -> InvocationPlan:
     """Require canonical active FW-ID binding before ordinary invocation admission."""
     registration = registry.get(request.worker_id)
@@ -200,6 +202,18 @@ def plan_identity_bound_invocation(
             raise HarnessWorkerError("delegated provider identity is stale")
         if request.credential_handle != provider_binding.credential_handle_ref:
             raise HarnessWorkerError("delegated credential handle does not match worker request")
+        if not isinstance(key_registry, SecretHandleRegistry):
+            raise HarnessWorkerError("API worker requires the canonical FW-KEYS registry")
+        try:
+            key = key_registry.get(provider_binding.credential_handle_ref, tenant_id=tenant_id)
+        except KeyContractError as exc:
+            raise HarnessWorkerError("FW-KEYS admission denied") from exc
+        if (key.lifecycle_state != "ACTIVE"
+                or (key.expires_at_epoch is not None and now_epoch >= key.expires_at_epoch)
+                or key.owner_identity_ref != identity.identity_id
+                or key.credential_class != provider_binding.credential_class
+                or key.generation != provider_binding.credential_generation):
+            raise HarnessWorkerError("FW-KEYS handle is stale, inactive, or mismatched")
     return plan_invocation(registry, request)
 
 
