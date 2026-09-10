@@ -1,8 +1,12 @@
 from dataclasses import FrozenInstanceError, asdict
+from threading import Event, Thread
 
 import pytest
 
-from swarm.evidence import EvidenceContractError, EvidenceEnvelope, validate_evidence_envelope
+from swarm.evidence import (
+    EvidenceContractError, EvidenceEnvelope, EvidenceLedger,
+    evidence_record_sha256, validate_evidence_envelope,
+)
 
 
 def envelope(**changes):
@@ -92,3 +96,87 @@ def test_optional_and_reference_count_boundaries_are_explicit():
 def test_length_and_whitespace_boundaries_fail_closed(change):
     with pytest.raises(EvidenceContractError, match="invalid"):
         validate_evidence_envelope(envelope(**change))
+
+
+def test_tenant_ledger_appends_exact_chain_after_durability():
+    writes = []
+    ledger = EvidenceLedger("tenant-a", lambda item, digest: writes.append((item, digest)))
+    first = validate_evidence_envelope(envelope())
+    first_record = ledger.append(first)
+    second = validate_evidence_envelope(envelope(
+        evidence_id="fw-evid/tenant-a/task/0002", payload_sha256="b" * 64,
+        previous_record_sha256=first_record.record_sha256,
+    ))
+    second_record = ledger.append(second)
+    assert first_record.record_sha256 == evidence_record_sha256(first)
+    assert ledger.tenant_snapshot("tenant-a") == (first_record, second_record)
+    assert writes == [(first, first_record.record_sha256), (second, second_record.record_sha256)]
+    with pytest.raises(FrozenInstanceError):
+        first_record.record_sha256 = "c" * 64
+
+
+def test_ledger_denies_replay_forks_cross_tenant_and_invalid_input():
+    ledger = EvidenceLedger("tenant-a", lambda *_args: None)
+    first = validate_evidence_envelope(envelope())
+    accepted = ledger.append(first)
+    with pytest.raises(EvidenceContractError, match="previous-record"):
+        ledger.append(validate_evidence_envelope(envelope(evidence_id="fw-evid/tenant-a/task/0002")))
+    with pytest.raises(EvidenceContractError, match="duplicate or replay"):
+        ledger.append(validate_evidence_envelope(envelope(previous_record_sha256=accepted.record_sha256)))
+    with pytest.raises(EvidenceContractError, match="tenant mismatch"):
+        ledger.append(validate_evidence_envelope(envelope(
+            tenant_id="tenant-b", evidence_id="fw-evid/tenant-b/task/0001",
+            actor_tenant_id="tenant-b", subject_tenant_id="tenant-b",
+            correlation_id="fw-corr/tenant-b/fwq-9001",
+            evidence_references=("fw-evid/tenant-b/review/0001",),
+            previous_record_sha256=accepted.record_sha256,
+        )))
+    with pytest.raises(EvidenceContractError, match="validated"):
+        ledger.append(envelope())
+    with pytest.raises(EvidenceContractError, match="tenant mismatch"):
+        ledger.tenant_snapshot("tenant-b")
+    assert ledger.tenant_snapshot("tenant-a") == (accepted,)
+
+
+def test_durability_failure_and_reentrant_or_concurrent_append_leave_no_state():
+    failed = EvidenceLedger("tenant-a", lambda *_args: (_ for _ in ()).throw(OSError("offline")))
+    first = validate_evidence_envelope(envelope())
+    with pytest.raises(EvidenceContractError, match="durability write failed"):
+        failed.append(first)
+    assert failed.tenant_snapshot("tenant-a") == ()
+
+    entered = Event()
+    release = Event()
+    ledger = None
+    reentrant_errors = []
+
+    def sink(item, _digest):
+        try:
+            ledger.append(item)
+        except EvidenceContractError as exc:
+            reentrant_errors.append(str(exc))
+        entered.set()
+        assert release.wait(2)
+
+    ledger = EvidenceLedger("tenant-a", sink)
+    worker = Thread(target=lambda: ledger.append(first))
+    worker.start()
+    assert entered.wait(2)
+    with pytest.raises(EvidenceContractError, match="already pending"):
+        ledger.append(first)
+    release.set()
+    worker.join(2)
+    assert not worker.is_alive()
+    assert reentrant_errors == ["Evidence append is already pending"]
+    assert len(ledger.tenant_snapshot("tenant-a")) == 1
+
+
+def test_ledger_and_sink_receive_no_raw_payload_or_authority_methods():
+    captured = []
+    ledger = EvidenceLedger("tenant-a", lambda item, digest: captured.append((item, digest)))
+    record = ledger.append(validate_evidence_envelope(envelope()))
+    assert captured == [(record.envelope, record.record_sha256)]
+    assert not hasattr(record.envelope, "payload")
+    assert not any(hasattr(ledger, name) for name in (
+        "sign", "export", "authorize", "issue_ticket", "deploy", "execute", "rollback",
+    ))

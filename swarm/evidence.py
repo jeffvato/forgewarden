@@ -7,9 +7,12 @@ append, signing, export, policy, or response authority.
 from __future__ import annotations
 
 import re
+import hashlib
+import json
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Mapping
+from threading import Lock
 
 
 CLASSIFICATIONS = frozenset({"PUBLIC", "INTERNAL", "CONFIDENTIAL", "RESTRICTED"})
@@ -125,3 +128,74 @@ def validate_evidence_envelope(value: Mapping[str, Any]) -> EvidenceEnvelope:
     if not isinstance(value, Mapping) or set(value) != _FIELDS:
         raise EvidenceContractError("Evidence envelope field set is invalid")
     return EvidenceEnvelope(**{field: value[field] for field in _FIELDS})
+
+
+@dataclass(frozen=True)
+class EvidenceRecord:
+    """One immutable envelope and its deterministic content digest."""
+
+    envelope: EvidenceEnvelope
+    record_sha256: str
+
+
+def evidence_record_sha256(envelope: EvidenceEnvelope) -> str:
+    """Hash every canonical envelope field without accepting a raw payload."""
+    if not isinstance(envelope, EvidenceEnvelope):
+        raise EvidenceContractError("validated Evidence envelope is required")
+    body = {field: getattr(envelope, field) for field in sorted(_FIELDS)}
+    encoded = json.dumps(body, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode("ascii")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+class EvidenceLedger:
+    """Create-once tenant ledger with write-before-state chain admission."""
+
+    def __init__(self, tenant_id: str, durability_sink: Any):
+        self.tenant_id = _text(tenant_id, "tenant_id", _TENANT, 128)
+        if not callable(durability_sink):
+            raise EvidenceContractError("Evidence ledger requires a durability sink")
+        self._durability_sink = durability_sink
+        self._records: list[EvidenceRecord] = []
+        self._evidence_ids: set[str] = set()
+        self._record_hashes: set[str] = set()
+        self._pending = False
+        self._lock = Lock()
+
+    def append(self, envelope: EvidenceEnvelope) -> EvidenceRecord:
+        if not isinstance(envelope, EvidenceEnvelope):
+            raise EvidenceContractError("validated Evidence envelope is required")
+        if envelope.tenant_id != self.tenant_id:
+            raise EvidenceContractError("Evidence ledger tenant mismatch")
+        digest = evidence_record_sha256(envelope)
+        with self._lock:
+            if self._pending:
+                raise EvidenceContractError("Evidence append is already pending")
+            expected_previous = self._records[-1].record_sha256 if self._records else None
+            if envelope.previous_record_sha256 != expected_previous:
+                raise EvidenceContractError("Evidence previous-record link is stale or forked")
+            if envelope.evidence_id in self._evidence_ids or digest in self._record_hashes:
+                raise EvidenceContractError("Evidence record is a duplicate or replay")
+            self._pending = True
+        record = EvidenceRecord(envelope, digest)
+        try:
+            try:
+                self._durability_sink(envelope, digest)
+            except Exception as exc:
+                raise EvidenceContractError("Evidence durability write failed") from exc
+            with self._lock:
+                expected_previous = self._records[-1].record_sha256 if self._records else None
+                if envelope.previous_record_sha256 != expected_previous:
+                    raise EvidenceContractError("Evidence chain changed during append")
+                self._records.append(record)
+                self._evidence_ids.add(envelope.evidence_id)
+                self._record_hashes.add(digest)
+        finally:
+            with self._lock:
+                self._pending = False
+        return record
+
+    def tenant_snapshot(self, tenant_id: str) -> tuple[EvidenceRecord, ...]:
+        if tenant_id != self.tenant_id:
+            raise EvidenceContractError("Evidence ledger tenant mismatch")
+        with self._lock:
+            return tuple(self._records)
