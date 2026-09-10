@@ -25,6 +25,7 @@ def test_canonical_ownership_exposes_missing_roadmap_primitives_honestly():
     assert CANONICAL_OWNERSHIP["mcp_access"]["implementation"] == "swarm.mcp_gateway.MCPGateway"
     assert CANONICAL_OWNERSHIP["identity"]["implementation"] == "swarm.identity.IdentityRecord"
     assert CANONICAL_OWNERSHIP["identity"]["status"] == "IMPLEMENTED_PARTIAL"
+    assert CANONICAL_OWNERSHIP["evidence"]["implementation"].startswith("swarm.evidence.EvidenceEnvelope")
     assert CANONICAL_OWNERSHIP["cryptographic_authority"]["implementation"].startswith("swarm.keys.SecretHandleRegistry")
     assert CANONICAL_OWNERSHIP["cryptographic_authority"]["status"] == "IMPLEMENTED_PARTIAL"
     assert CANONICAL_OWNERSHIP["normalized_events"]["implementation"] == "swarm.normalized_events.NormalizedEventStore"

@@ -20,7 +20,7 @@ CANONICAL_OWNERSHIP: dict[str, dict[str, Any]] = {
     "agent_authority": {"owner": "FW-ASOC", "implementation": "swarm.asoc.CapabilityAuthorizer", "status": "IMPLEMENTED"},
     "model_selection": {"owner": "Model Broker", "implementation": "swarm.model_broker.ModelBroker", "status": "IMPLEMENTED"},
     "mcp_access": {"owner": "MCP Gateway", "implementation": "swarm.mcp_gateway.MCPGateway", "status": "IMPLEMENTED"},
-    "evidence": {"owner": "FW-EVID", "implementation": "swarm.core.AuditLog / evidence modules", "status": "IMPLEMENTED_PARTIAL"},
+    "evidence": {"owner": "FW-EVID", "implementation": "swarm.evidence.EvidenceEnvelope / swarm.core.AuditLog", "status": "IMPLEMENTED_PARTIAL"},
     "recovery": {"owner": "FW-REC", "implementation": "swarm.autonomous_loop recovery sequencing", "status": "IMPLEMENTED_PARTIAL"},
     "normalized_events": {"owner": "canonical ForgeWarden Event Schema", "implementation": "swarm.normalized_events.NormalizedEventStore", "status": "IMPLEMENTED_PARTIAL"},
     "soc_incidents": {"owner": "FW-SOC", "implementation": "swarm.soc.SOCIncidentProjection", "status": "IMPLEMENTED_PARTIAL"},
