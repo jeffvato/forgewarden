@@ -1,0 +1,29 @@
+{
+  "adjudication": null,
+  "candidate_commit": "9b9ce277313d105b894608da3f33d8f39de126b2",
+  "deployment": "DISABLED",
+  "job_id": "phase2a-0077aabbccddeeff00112233",
+  "kill_switch": "ENGAGED",
+  "mutation_allowed": false,
+  "reviews": [
+    {
+      "provider": "CLAUDE",
+      "result": {
+        "blocking_findings": [],
+        "job_id": "phase2a-0077aabbccddeeff00112233",
+        "non_blocking_notes": [
+          "Test suite uses 40-char hashes; 64-char boundary not explicitly validated but regex is correct",
+          "File escape logic assumes allow-list containment check; no symlink or hardlink guards but input validation enforces relative paths"
+        ],
+        "proposed_rules": [],
+        "reasoning_summary": "Patch implements bounded Monitor \u2192 Repair \u2192 Review governance with evidence-first logging, strict anomaly precedence (security before efficiency), inert repair requests (REQUEST_ONLY/executed=False), exact recovery acceptance (validation=PASSED AND verdict=APPROVE AND risk=LOW required), and comprehensive constraint enforcement. All eight anomaly types route correctly; kill_switch/evidence/identity/file_scope anomalies escalate/stop without repair; only stuck_workflow and test_degradation create repairable requests. No authority expansion, deployment, rollback, or process management. Input validation prevents identity spoofing (ID regex), filesystem escape (path validation with \"..\" and absolute check), and resource exhaustion (retry/time bounds). Evidence sink failures propagate with no fallback. Dataclasses are frozen; logic is deterministic with no randomness or external state. Test suite covers happy path, all anomaly types, precedence ordering, evidence failures, repair authorization, recovery review criteria, and input validation. Focused patch adds 255 lines across 2 new files only.",
+        "reviewed_commit": "9b9ce277313d105b894608da3f33d8f39de126b2",
+        "risk": "LOW",
+        "tests_missing": [],
+        "verdict": "APPROVE"
+      },
+      "state": "APPROVED"
+    }
+  ],
+  "state": "APPROVED"
+}
