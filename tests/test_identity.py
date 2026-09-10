@@ -1,4 +1,5 @@
 from dataclasses import FrozenInstanceError
+from threading import Event, Thread
 
 import pytest
 
@@ -57,6 +58,8 @@ def test_registry_is_evidence_first_create_once_and_tenant_bound():
     assert events[0][0] == "fw_id_registered" and not events[0][1]["authority_granted"]
     assert "purpose" not in events[0][1] and "credential_handle_ref" not in events[0][1]
     assert registry.get(identity.identity_id, tenant_id="tenant-a") is identity
+    with pytest.raises(FrozenInstanceError):
+        registry.get(identity.identity_id, tenant_id="tenant-a").purpose = "changed"
     with pytest.raises(IdentityContractError, match="tenant mismatch"):
         registry.get(identity.identity_id, tenant_id="tenant-b")
     with pytest.raises(IdentityContractError, match="already registered"):
@@ -122,3 +125,48 @@ def test_registry_reentrant_duplicate_is_denied_without_state_replacement():
     registry = IdentityRegistry(audit)
     registry.register(identity)
     assert registry.get(identity.identity_id, tenant_id="tenant-a") is identity
+
+
+def test_concurrent_registration_for_same_identity_is_denied_while_reserved():
+    entered, release = Event(), Event()
+    identity = validate_identity_record(record())
+
+    def audit(event, _evidence):
+        if event == "fw_id_registered":
+            entered.set()
+            assert release.wait(2)
+
+    registry = IdentityRegistry(audit)
+    worker = Thread(target=registry.register, args=(identity,))
+    worker.start()
+    assert entered.wait(2)
+    with pytest.raises(IdentityContractError, match="pending"):
+        registry.register(identity)
+    release.set()
+    worker.join(2)
+    assert not worker.is_alive()
+    assert registry.get(identity.identity_id, tenant_id="tenant-a") is identity
+
+
+def test_concurrent_transition_for_same_identity_is_denied_while_reserved():
+    entered, release = Event(), Event()
+    block_transition = False
+
+    def audit(event, _evidence):
+        if event == "fw_id_lifecycle_changed" and block_transition:
+            entered.set()
+            assert release.wait(2)
+
+    registry = IdentityRegistry(audit)
+    identity = validate_identity_record(record(lifecycle_state="PROVISIONED"))
+    registry.register(identity)
+    block_transition = True
+    worker = Thread(target=lambda: registry.activate(identity.identity_id, tenant_id="tenant-a", now_epoch=110))
+    worker.start()
+    assert entered.wait(2)
+    with pytest.raises(IdentityContractError, match="pending"):
+        registry.revoke(identity.identity_id, tenant_id="tenant-a", now_epoch=111)
+    release.set()
+    worker.join(2)
+    assert not worker.is_alive()
+    assert registry.get(identity.identity_id, tenant_id="tenant-a").lifecycle_state == "ACTIVE"
