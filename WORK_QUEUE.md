@@ -494,7 +494,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-ID-004 — Harness worker identity enforcement
 - Requirement: FW-ID and FW-HARNESS worker admission binding
-- State: READY
+- State: DONE
 - Priority: P0
 - Dependencies: FW-ID-003
 - Approval: FW-ID harness integration is activated under D-024; worker authority remains unchanged.
@@ -510,6 +510,26 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no process invocation, OAuth exchange, credential resolution, network activation, Git, deployment, or response authority is added.
 - Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
 - Security considerations: FW-ID proves actor binding only; harness, Model Broker, policy, budgets, and leases retain their existing independent gates.
+- Completion evidence: exact candidate `672b6ff99113a3b565c3dbbc33acaaad686e8c0d`; focused 67 passed; exact Claude Code job `phase2a-b532f38b788748c9962df546` returned APPROVE/LOW with no blockers or missing tests; full 1195 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with only existing dependency/compliance YELLOW findings.
+
+### FW-ID-005 — Integrated identity lifecycle proof
+- Requirement: FW-ID initial lifecycle integration
+- State: READY
+- Priority: P0
+- Dependencies: FW-ID-004
+- Approval: FW-ID integration is activated under D-024.
+- Description: Prove one deterministic identity lifecycle from create-once owner/worker registration through provider-reference binding, harness admission, revocation, and replay denial using canonical Evidence and no duplicated authority owner.
+- Target path: tests/test_identity.py
+- Allowed paths: swarm/identity.py, swarm/harness_worker.py, tests/test_identity.py, tests/test_harness_worker.py, tests/test_harness_controller.py, swarm/integrity.py, tests/test_integrity.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_identity.py tests/test_harness_worker.py tests/test_harness_controller.py tests/test_integrity.py
+- Acceptance criteria:
+  - one fixture lifecycle binds tenant, owner, worker, delegated provider identity, worker registration, task/context/budget, and invocation plan exactly;
+  - canonical Evidence order is deterministic and any Evidence failure prevents the dependent identity/admission stage;
+  - revocation, expiration, replay, cross-tenant substitution, provider/handle mismatch, and authority-shaped identity input remain denied;
+  - Product Integrity marks the initial FW-ID slice Proven while accurately recording remaining production identity limitations;
+  - no authentication, OAuth exchange, credential resolution, persistence, network activation, process execution, Git, deployment, or response authority is added.
+- Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
+- Security considerations: the proof demonstrates attribution and fail-closed admission; it does not authenticate a real principal or grant action authority.
 
 ### FW-BME-02 — Deterministic phishing and spoof classification
 - Requirement: FW-BME phishing/BEC/authentication signal evaluation
