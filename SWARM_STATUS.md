@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: FW-ID initial lifecycle Proven through FW-ID-005
-- Next task: FW-KEYS-001 canonical secret-handle inventory and metadata contract under D-024.
+- Current focus: FW-KEYS-001 canonical secret-handle metadata contract accepted
+- Next task: FW-KEYS-002 Evidence-first secret-handle registry and lifecycle under D-024.
 - Harness role: permanent ForgeWarden Core subsystem and default controller for ForgeWarden's own development; one governed architecture serves both roles under D-023.
 - Worker transport direction: registered local CLIs and explicitly approved API-backed workers; API keys are resolved only through FW-KEYS secret handles inside trusted adapters and never enter model context or lifecycle evidence.
 - Provider authentication direction: deterministic OpenAI, Anthropic, and Google/Gemini profiles with provider-specific official OAuth where available and approved API-key classes otherwise; Gemini CLI is registered as `agy` for read-only roles, FW-ID owns delegated identity, and FW-KEYS owns all credential material.
@@ -34,17 +34,17 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-ID-005
-- Starting commit: b6451d063b7f5f54f2dab09ab39d7633979230bb
-- Candidate commit: de01fef00bcd95ad04beab592ea053a6cb4491c2
-- Accepted commit: de01fef00bcd95ad04beab592ea053a6cb4491c2
-- Files changed: integrated identity lifecycle proof, provider-binding lifetime guard, expiration/replay regressions, and FW-ID Product Integrity proof
-- Deterministic validation: focused 78 passed; full 1198 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with only dependency/compliance YELLOW findings
-- Independent review: Claude Code exact APPROVE/LOW with no blockers or missing tests (`phase2a-121d5b011d3a41d1837db7e9`)
+- Task ID: FW-KEYS-001
+- Starting commit: 7d3f88770c4786a932158b81c6d6cb455d4e9f6c
+- Candidate commit: ca866fdfb800c20ec89a804a83ed01a8572c9955
+- Accepted commit: ca866fdfb800c20ec89a804a83ed01a8572c9955
+- Files changed: canonical immutable secret-handle metadata contract, secret/failure-path tests, ownership inventory, and Product Integrity mapping
+- Deterministic validation: initial focused 98 passed; repair-focused 30 passed; final full 1224 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with only dependency/compliance YELLOW findings
+- Independent review: repaired exact Claude Code APPROVE/LOW with no blockers or missing tests (`phase2a-ca866fdfb800c20ec89a804a`)
 - Gemini review: disabled and not required under D-020
-- Unresolved findings: none for the FW-ID initial lifecycle; historical dependency/compliance YELLOW findings remain
-- Blocker: live Azure use remains disabled until interactive Entra login and credit/deployment evidence pass; this does not block offline swarm hardening
-- Next action: implement FW-KEYS-001.
+- Unresolved findings: none for FW-KEYS-001; historical dependency/compliance YELLOW findings remain
+- Blocker: live Azure use remains disabled until interactive Entra login and credit/deployment evidence pass; this does not block offline Core work
+- Next action: implement FW-KEYS-002.
 
 - Completion inventory: `docs/completion-audit-2026-09-09.md` (baseline `0afcbdd`).
 - FWQ-0008 implementation and binding hardening exist; VALIDATED retains a historical provenance caveat, not an implementation assignment. FWQ-0009 is recorded accepted and unchanged at source/test level from its reviewed candidate.
@@ -54,6 +54,8 @@ On every restart or continuation:
 - Latest broad Core closure: FWQ-0064, 833 passed/1 skipped, all hard checks/Golden Path passing, YELLOW pre-existing findings.
 
 ## Execution log
+
+- 2026-09-10: FW-KEYS-001 accepted at `ca866fdfb800c20ec89a804a83ed01a8572c9955`. ForgeWarden now has one immutable exact tenant-bound metadata contract for opaque non-exportable secret handles, including credential class, FW-ID owner, purpose, backend trust-domain class, lifecycle timestamps, and generation. Secret-shaped values, unknown fields, cross-tenant handles, exportable policy, and authority-shaped behavior fail closed. An initial full-suite failure identified a literal private-key marker in a test fixture; the fixture was repaired without weakening runtime rejection and the repaired exact candidate received Claude APPROVE/LOW with no blockers/missing tests. Final full 1224 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with only dependency/compliance YELLOW findings. No secret backend, resolution, authentication, OAuth, signing, encryption, network, Git, deployment, or response authority was added. FW-KEYS-002 is next.
 
 - 2026-09-10: FW-ID-005 accepted at `de01fef00bcd95ad04beab592ea053a6cb4491c2`. The integrated deterministic lifecycle proves create-once tenant/owner/worker registration, bounded delegated-provider binding, identity-bound harness admission, revocation, expiration, and replay denial with canonical Evidence ordering. A lifetime guard now prevents provider bindings from outliving either bound identity. Focused 78 passed; repaired exact Claude Code APPROVE/LOW with no blockers/missing tests; full 1198 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with only dependency/compliance YELLOW findings. No authentication, OAuth, credential resolution, persistence, process, network, Git, deployment, or response authority was added. FW-KEYS-001 is next.
 

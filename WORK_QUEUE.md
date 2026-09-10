@@ -534,7 +534,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-KEYS-001 — Canonical secret-handle inventory and metadata contract
 - Requirement: FW-KEYS foundation
-- State: READY
+- State: DONE
 - Priority: P0
 - Dependencies: FW-ID-005
 - Approval: FW-KEYS is activated under D-024; no new credential class or live secret backend is authorized.
@@ -550,6 +550,26 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - Product Integrity recognizes FW-KEYS as the canonical partial owner while accurately recording remaining production limitations.
 - Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
 - Security considerations: this milestone defines metadata only; no vault, HSM, environment-variable, credential-file, OAuth, network, or backend access is added.
+- Completion evidence: repaired exact candidate `ca866fdfb800c20ec89a804a83ed01a8572c9955`; initial focused 98 passed and exact Claude approved LOW with no blockers/missing tests. The first full suite found one repository-hygiene failure caused by a literal private-key marker in an adversarial test fixture; the fixture was repaired without weakening runtime secret rejection. Repair-focused 30 passed; repaired exact Claude job `phase2a-ca866fdfb800c20ec89a804a` returned APPROVE/LOW with no blockers or missing tests. Full 1224 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with only the existing dependency/compliance YELLOW findings.
+
+### FW-KEYS-002 — Evidence-first secret-handle registry and lifecycle
+- Requirement: FW-KEYS deterministic metadata lifecycle
+- State: READY
+- Priority: P0
+- Dependencies: FW-KEYS-001
+- Approval: FW-KEYS lifecycle metadata is activated under D-024; secret material and live backends remain unauthorized.
+- Description: Add a create-once tenant-bound registry for validated secret-handle metadata with deterministic activation, revocation, expiration, generation replacement, replay denial, and canonical Evidence-before-state transitions.
+- Target path: swarm/keys.py
+- Allowed paths: swarm/keys.py, tests/test_keys.py, swarm/integrity.py, tests/test_integrity.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_keys.py tests/test_integrity.py
+- Acceptance criteria:
+  - registration is create-once and tenant-scoped, with immutable tenant snapshots and exact handle lookup;
+  - lifecycle transitions and generation replacement follow a closed deterministic graph with stale, duplicate, cross-tenant, expired, and replayed inputs denied;
+  - canonical Evidence succeeds before every state mutation and contains only bounded metadata, never handle values, backend locators, or secret material;
+  - concurrent or reentrant operations on one handle fail closed without corrupting registry state;
+  - registry membership grants no credential access, authentication, signing, encryption, policy, approval, Action Ticket, Git, deployment, or response authority.
+- Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
+- Security considerations: all state remains in-memory DRY_RUN metadata; no backend, vault, HSM, environment, file, OAuth, network, or secret-resolution path is added.
 
 ### FW-BME-02 — Deterministic phishing and spoof classification
 - Requirement: FW-BME phishing/BEC/authentication signal evaluation
