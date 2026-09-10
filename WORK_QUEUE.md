@@ -554,7 +554,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-KEYS-002 — Evidence-first secret-handle registry and lifecycle
 - Requirement: FW-KEYS deterministic metadata lifecycle
-- State: READY
+- State: DONE
 - Priority: P0
 - Dependencies: FW-KEYS-001
 - Approval: FW-KEYS lifecycle metadata is activated under D-024; secret material and live backends remain unauthorized.
@@ -570,6 +570,26 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - registry membership grants no credential access, authentication, signing, encryption, policy, approval, Action Ticket, Git, deployment, or response authority.
 - Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
 - Security considerations: all state remains in-memory DRY_RUN metadata; no backend, vault, HSM, environment, file, OAuth, network, or secret-resolution path is added.
+- Completion evidence: exact candidate `328620664045ed01ff2028dfa6619a6ab25a9f4a`; focused 51 passed; exact Claude Code job `phase2a-328620664045ed01ff2028df` returned APPROVE/LOW with no blockers or missing tests; full 1241 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with only the existing dependency/compliance YELLOW findings.
+
+### FW-KEYS-003 — Identity and harness secret-handle admission binding
+- Requirement: FW-KEYS consumer integration
+- State: READY
+- Priority: P0
+- Dependencies: FW-KEYS-002
+- Approval: deterministic secret-handle admission is activated under D-024; material resolution and provider activation remain unauthorized.
+- Description: Require delegated provider identity binding and API worker admission to reference the exact ACTIVE tenant/owner/class-matched FW-KEYS registry record and generation before an invocation plan can be returned.
+- Target path: swarm/identity.py
+- Allowed paths: swarm/keys.py, swarm/identity.py, swarm/harness_worker.py, swarm/harness_controller.py, tests/test_keys.py, tests/test_identity.py, tests/test_harness_worker.py, tests/test_harness_controller.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_keys.py tests/test_identity.py tests/test_harness_worker.py tests/test_harness_controller.py
+- Acceptance criteria:
+  - delegated provider binding requires an exact ACTIVE non-expired registry record for the same handle, tenant, subject owner, and credential class;
+  - API worker admission rechecks the bound handle lifecycle and generation at plan time so revocation, expiration, rotation, replay, or substitution denies safely;
+  - CLI workers remain credential-handle free and existing identity/model/role/task/context/budget gates remain independently enforced;
+  - handle metadata is consulted without resolving, exporting, logging, or passing secret material to a worker, reviewer, task state, or Evidence;
+  - no authentication, provider call, network, process, Git, deployment, policy, Action Ticket, or response authority is added.
+- Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
+- Security considerations: a valid handle proves only bounded metadata admission; it grants no permission to use the referenced material.
 
 ### FW-BME-02 — Deterministic phishing and spoof classification
 - Requirement: FW-BME phishing/BEC/authentication signal evaluation

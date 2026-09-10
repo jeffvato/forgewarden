@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: FW-KEYS-001 canonical secret-handle metadata contract accepted
-- Next task: FW-KEYS-002 Evidence-first secret-handle registry and lifecycle under D-024.
+- Current focus: FW-KEYS-002 Evidence-first secret-handle registry and lifecycle accepted
+- Next task: FW-KEYS-003 identity and harness secret-handle admission binding under D-024.
 - Harness role: permanent ForgeWarden Core subsystem and default controller for ForgeWarden's own development; one governed architecture serves both roles under D-023.
 - Worker transport direction: registered local CLIs and explicitly approved API-backed workers; API keys are resolved only through FW-KEYS secret handles inside trusted adapters and never enter model context or lifecycle evidence.
 - Provider authentication direction: deterministic OpenAI, Anthropic, and Google/Gemini profiles with provider-specific official OAuth where available and approved API-key classes otherwise; Gemini CLI is registered as `agy` for read-only roles, FW-ID owns delegated identity, and FW-KEYS owns all credential material.
@@ -34,17 +34,17 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-KEYS-001
-- Starting commit: 7d3f88770c4786a932158b81c6d6cb455d4e9f6c
-- Candidate commit: ca866fdfb800c20ec89a804a83ed01a8572c9955
-- Accepted commit: ca866fdfb800c20ec89a804a83ed01a8572c9955
-- Files changed: canonical immutable secret-handle metadata contract, secret/failure-path tests, ownership inventory, and Product Integrity mapping
-- Deterministic validation: initial focused 98 passed; repair-focused 30 passed; final full 1224 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with only dependency/compliance YELLOW findings
-- Independent review: repaired exact Claude Code APPROVE/LOW with no blockers or missing tests (`phase2a-ca866fdfb800c20ec89a804a`)
+- Task ID: FW-KEYS-002
+- Starting commit: fa37cc56e47e72e6dbe74f937ba163bcb422f714
+- Candidate commit: 328620664045ed01ff2028dfa6619a6ab25a9f4a
+- Accepted commit: 328620664045ed01ff2028dfa6619a6ab25a9f4a
+- Files changed: Evidence-first secret-handle registry, deterministic lifecycle and generation replacement, concurrency/reentrancy safeguards, and focused regressions
+- Deterministic validation: focused 51 passed; full 1241 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with only dependency/compliance YELLOW findings
+- Independent review: Claude Code exact APPROVE/LOW with no blockers or missing tests (`phase2a-328620664045ed01ff2028df`)
 - Gemini review: disabled and not required under D-020
-- Unresolved findings: none for FW-KEYS-001; historical dependency/compliance YELLOW findings remain
+- Unresolved findings: none for FW-KEYS-002; historical dependency/compliance YELLOW findings remain
 - Blocker: live Azure use remains disabled until interactive Entra login and credit/deployment evidence pass; this does not block offline Core work
-- Next action: implement FW-KEYS-002.
+- Next action: implement FW-KEYS-003.
 
 - Completion inventory: `docs/completion-audit-2026-09-09.md` (baseline `0afcbdd`).
 - FWQ-0008 implementation and binding hardening exist; VALIDATED retains a historical provenance caveat, not an implementation assignment. FWQ-0009 is recorded accepted and unchanged at source/test level from its reviewed candidate.
@@ -54,6 +54,8 @@ On every restart or continuation:
 - Latest broad Core closure: FWQ-0064, 833 passed/1 skipped, all hard checks/Golden Path passing, YELLOW pre-existing findings.
 
 ## Execution log
+
+- 2026-09-10: FW-KEYS-002 accepted at `328620664045ed01ff2028dfa6619a6ab25a9f4a`. ForgeWarden now has a create-once tenant-scoped in-memory registry for validated secret-handle metadata with Evidence-before-state registration, activation, revocation, expiration, and exact generation replacement. Closed lifecycle, timestamp, tenant, immutable-binding, replay, Evidence-failure, concurrency, and reentrancy checks fail closed. Evidence excludes handle values, backend classes, and purposes. Focused 51 passed; exact Claude APPROVE/LOW with no blockers/missing tests; full 1241 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with only dependency/compliance YELLOW findings. No secret material, backend, resolution, authentication, signing, encryption, network, Git, deployment, or response authority was added. FW-KEYS-003 is next.
 
 - 2026-09-10: FW-KEYS-001 accepted at `ca866fdfb800c20ec89a804a83ed01a8572c9955`. ForgeWarden now has one immutable exact tenant-bound metadata contract for opaque non-exportable secret handles, including credential class, FW-ID owner, purpose, backend trust-domain class, lifecycle timestamps, and generation. Secret-shaped values, unknown fields, cross-tenant handles, exportable policy, and authority-shaped behavior fail closed. An initial full-suite failure identified a literal private-key marker in a test fixture; the fixture was repaired without weakening runtime rejection and the repaired exact candidate received Claude APPROVE/LOW with no blockers/missing tests. Final full 1224 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with only dependency/compliance YELLOW findings. No secret backend, resolution, authentication, OAuth, signing, encryption, network, Git, deployment, or response authority was added. FW-KEYS-002 is next.
 
