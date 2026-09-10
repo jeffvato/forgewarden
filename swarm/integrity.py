@@ -23,7 +23,7 @@ CANONICAL_OWNERSHIP: dict[str, dict[str, Any]] = {
     "evidence": {"owner": "FW-EVID", "implementation": "swarm.core.AuditLog / evidence modules", "status": "IMPLEMENTED_PARTIAL"},
     "recovery": {"owner": "FW-REC", "implementation": "swarm.autonomous_loop recovery sequencing", "status": "IMPLEMENTED_PARTIAL"},
     "normalized_events": {"owner": "canonical ForgeWarden Event Schema", "implementation": "swarm.normalized_events.NormalizedEventStore", "status": "IMPLEMENTED_PARTIAL"},
-    "soc_incidents": {"owner": "FW-SOC", "implementation": "not_yet_present_in_checkout", "status": "DEFINED"},
+    "soc_incidents": {"owner": "FW-SOC", "implementation": "swarm.soc.SOCIncidentProjection", "status": "IMPLEMENTED_PARTIAL"},
     "compliance": {"owner": "FW-COMP", "implementation": "roadmap only", "status": "DEFINED"},
 }
 
