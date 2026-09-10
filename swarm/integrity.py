@@ -14,7 +14,7 @@ from typing import Any, Iterable
 
 
 CANONICAL_OWNERSHIP: dict[str, dict[str, Any]] = {
-    "identity": {"owner": "FW-ID", "implementation": "not_yet_present_in_checkout", "status": "DEFINED"},
+    "identity": {"owner": "FW-ID", "implementation": "swarm.identity.IdentityRecord", "status": "IMPLEMENTED_PARTIAL"},
     "cryptographic_authority": {"owner": "FW-KEYS / FW-ROOT", "implementation": "swarm.asoc.HMACLeaseSigner", "status": "IMPLEMENTED_PARTIAL"},
     "policy_decisions": {"owner": "FW-ROOT/Z3", "implementation": "swarm.policy_gate.DeterministicPolicy", "status": "IMPLEMENTED_PARTIAL"},
     "agent_authority": {"owner": "FW-ASOC", "implementation": "swarm.asoc.CapabilityAuthorizer", "status": "IMPLEMENTED"},

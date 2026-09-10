@@ -432,6 +432,25 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 - Security considerations: this is an integration proof over inert accepted interfaces, not a response engine.
 - Completion evidence: exact candidate `a4c2534f9223a9af522838bbac7a0d8dadbbbc67`; focused 103 passed; AnythingLLM/Qwen exact APPROVE/LOW with no blockers or missing tests; full 1145 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with only the existing dependency/identity/compliance YELLOW findings.
 
+### FW-ID-001 — Canonical identity inventory and contract
+- Requirement: FW-ID identity and authority foundation
+- State: READY
+- Priority: P0
+- Dependencies: FW-SOC-05
+- Approval: FW-ID is explicitly activated under D-024.
+- Description: Inventory existing identity consumers and establish one immutable tenant-bound canonical identity metadata contract without granting authority or duplicating FW-ASOC, FW-KEYS, FW-EVID, policy, approval, Action Ticket, Model Broker, or MCP ownership.
+- Target path: swarm/identity.py
+- Allowed paths: swarm/identity.py, tests/test_identity.py, swarm/integrity.py, tests/test_integrity.py, docs/fw-id-inventory.md, DECISIONS.md, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_identity.py tests/test_integrity.py tests/test_asoc.py tests/test_harness_worker.py
+- Acceptance criteria:
+  - stable immutable identity records bind exact schema version, identity ID, tenant, bounded kind, owner, purpose, lifecycle timestamps, and optional provider/FW-KEYS references;
+  - identity metadata contains no permissions, capabilities, policy decision, approval, Action Ticket, model approval, Evidence payload, secret, or execution authority;
+  - malformed schemas, unsupported kinds/states, invalid timestamps, unbounded references, and credential-like material fail closed;
+  - existing identity consumers and their canonical owners are documented and Product Integrity no longer reports identity as roadmap-only;
+  - no registry persistence, authentication, OAuth exchange, credential resolution, network, deployment, or response authority is added.
+- Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
+- Security considerations: identity establishes attribution and binding only; all authority remains in canonical deterministic policy and ticket/lease owners.
+
 ### FW-BME-02 — Deterministic phishing and spoof classification
 - Requirement: FW-BME phishing/BEC/authentication signal evaluation
 - State: DONE

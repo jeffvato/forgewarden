@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: FW-SOC-05 integrated incident-to-playbook dry-run proof accepted
-- Next task: none currently authorized and READY; await an explicit substantive Core phase/task decision without recreating successor placeholders.
+- Current focus: FW-ID-001 canonical identity inventory and contract under D-024
+- Next task: complete FW-ID-001, then continue the explicitly activated FW-ID sequence.
 - Harness role: permanent ForgeWarden Core subsystem and default controller for ForgeWarden's own development; one governed architecture serves both roles under D-023.
 - Worker transport direction: registered local CLIs and explicitly approved API-backed workers; API keys are resolved only through FW-KEYS secret handles inside trusted adapters and never enter model context or lifecycle evidence.
 - Provider authentication direction: deterministic OpenAI, Anthropic, and Google/Gemini profiles with provider-specific official OAuth where available and approved API-key classes otherwise; Gemini CLI is registered as `agy` for read-only roles, FW-ID owns delegated identity, and FW-KEYS owns all credential material.
