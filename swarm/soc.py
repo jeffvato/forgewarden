@@ -8,6 +8,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Callable, Mapping
 
+from .asoc import MUTATING_ACTIONS, READ_ONLY_ACTIONS
+
 
 MAX_INCIDENT_REFS = 64
 MAX_STORY_INCIDENTS = 32
@@ -24,6 +26,7 @@ _ACTIVE = frozenset({"OPEN", "TRIAGED", "INVESTIGATING"})
 _DISPOSITIONS = frozenset({"NONE", "TRUE_POSITIVE", "FALSE_POSITIVE", "MITIGATED", "ACCEPTED_RISK"})
 _TIMELINE_TYPES = frozenset({"DETECTION", "REVIEW", "APPROVAL", "RECOVERY", "DISPOSITION"})
 _TIMELINE_KEYS = frozenset({"entry_id", "tenant_id", "incident_id", "occurred_at_epoch", "entry_type", "actor_ref", "source_ref", "evidence_ref"})
+_PLAYBOOK_KEYS = frozenset({"step_id", "tenant_id", "incident_id", "action_class", "capability", "resource_ref", "depends_on", "policy_decision_ref", "approval_ref", "action_ticket_ref", "checkpoint_ref", "rollback_ref"})
 
 
 class SOCIncidentDenied(PermissionError):
@@ -100,6 +103,33 @@ class SOCIncidentTimeline:
     trust: str = "UNTRUSTED_CASE_FACT"
     mode: str = "DRY_RUN"
     action: str = "PROJECT_ONLY"
+
+
+@dataclass(frozen=True)
+class SOCPlaybookStep:
+    step_id: str
+    action_class: str
+    capability: str
+    resource_ref: str
+    depends_on: tuple[str, ...]
+    policy_decision_ref: str
+    approval_ref: str | None
+    action_ticket_ref: str | None
+    checkpoint_ref: str | None
+    rollback_ref: str | None
+
+
+@dataclass(frozen=True)
+class SOCPlaybookProposal:
+    playbook_id: str
+    tenant_id: str
+    incident_id: str
+    steps: tuple[SOCPlaybookStep, ...]
+    mode: str = "DRY_RUN"
+    deployment: str = "DISABLED"
+    kill_switch: str = "ENGAGED"
+    authority_expanded: bool = False
+    action: str = "PROPOSE_ONLY"
 
 
 def project_soc_incident(
@@ -263,3 +293,93 @@ def project_incident_timeline(
     except Exception as exc:
         raise SOCIncidentDenied("EVIDENCE_WRITE_FAILED") from exc
     return SOCIncidentTimeline(expected_tenant, bound_incident.incident_id, ordered)
+
+
+def _optional_ref(value: Any, field: str) -> str | None:
+    return None if value is None else _text(value, field)
+
+
+def _ordered_playbook_steps(steps: Mapping[str, SOCPlaybookStep]) -> tuple[SOCPlaybookStep, ...]:
+    remaining = set(steps)
+    completed: set[str] = set()
+    ordered: list[SOCPlaybookStep] = []
+    while remaining:
+        ready = sorted(step_id for step_id in remaining if set(steps[step_id].depends_on) <= completed)
+        if not ready:
+            raise SOCIncidentDenied("PLAYBOOK_DEPENDENCY_CYCLE")
+        for step_id in ready:
+            ordered.append(steps[step_id])
+            completed.add(step_id)
+            remaining.remove(step_id)
+    return tuple(ordered)
+
+
+def propose_response_playbook(
+    incident: SOCIncidentProjection, raw_steps: tuple[Mapping[str, Any], ...], *,
+    playbook_id: str, tenant_id: str,
+    audit: Callable[[str, dict[str, Any]], None],
+) -> SOCPlaybookProposal:
+    """Validate one inert playbook proposal without evaluating or using authority."""
+    if not isinstance(raw_steps, tuple) or not 1 <= len(raw_steps) <= 32 or not callable(audit):
+        raise SOCIncidentDenied("PLAYBOOK_INPUT_INVALID")
+    expected_tenant = _text(tenant_id, "TENANT")
+    bound_incident = _validate_projection(incident, expected_tenant)
+    exact_playbook_id = _text(playbook_id, "PLAYBOOK_ID")
+    steps: dict[str, SOCPlaybookStep] = {}
+    for raw in raw_steps:
+        if not isinstance(raw, Mapping) or set(raw) != _PLAYBOOK_KEYS:
+            raise SOCIncidentDenied("PLAYBOOK_STEP_INVALID")
+        if raw.get("tenant_id") != expected_tenant or raw.get("incident_id") != bound_incident.incident_id:
+            raise SOCIncidentDenied("PLAYBOOK_BINDING_MISMATCH")
+        step_id = _text(raw.get("step_id"), "PLAYBOOK_STEP_ID")
+        if step_id in steps:
+            raise SOCIncidentDenied("PLAYBOOK_STEP_DUPLICATE")
+        action_class = raw.get("action_class")
+        if action_class not in READ_ONLY_ACTIONS | MUTATING_ACTIONS:
+            raise SOCIncidentDenied("PLAYBOOK_ACTION_UNSUPPORTED")
+        depends = raw.get("depends_on")
+        if not isinstance(depends, (list, tuple)) or len(depends) > 31:
+            raise SOCIncidentDenied("PLAYBOOK_DEPENDENCY_INVALID")
+        dependencies = tuple(_text(item, "PLAYBOOK_DEPENDENCY") for item in depends)
+        if len(set(dependencies)) != len(dependencies) or step_id in dependencies:
+            raise SOCIncidentDenied("PLAYBOOK_DEPENDENCY_INVALID")
+        approval = _optional_ref(raw.get("approval_ref"), "APPROVAL_REF")
+        ticket = _optional_ref(raw.get("action_ticket_ref"), "ACTION_TICKET_REF")
+        checkpoint = _optional_ref(raw.get("checkpoint_ref"), "CHECKPOINT_REF")
+        rollback = _optional_ref(raw.get("rollback_ref"), "ROLLBACK_REF")
+        if action_class in MUTATING_ACTIONS:
+            if None in (approval, ticket, checkpoint, rollback):
+                raise SOCIncidentDenied("PLAYBOOK_MUTATION_AUTHORITY_MISSING")
+        elif any(value is not None for value in (approval, ticket, checkpoint, rollback)):
+            raise SOCIncidentDenied("PLAYBOOK_READ_ONLY_AUTHORITY_INVALID")
+        steps[step_id] = SOCPlaybookStep(
+            step_id, action_class, _text(raw.get("capability"), "CAPABILITY"),
+            _text(raw.get("resource_ref"), "RESOURCE_REF"), dependencies,
+            _text(raw.get("policy_decision_ref"), "POLICY_DECISION_REF"),
+            approval, ticket, checkpoint, rollback,
+        )
+    if any(dependency not in steps for step in steps.values() for dependency in step.depends_on):
+        raise SOCIncidentDenied("PLAYBOOK_DEPENDENCY_UNKNOWN")
+    ordered = _ordered_playbook_steps(steps)
+    try:
+        audit("soc_response_playbook_proposed", {
+            "playbook_id": exact_playbook_id, "tenant_id": expected_tenant,
+            "incident_id": bound_incident.incident_id,
+            "steps": [
+                {"step_id": step.step_id, "action_class": step.action_class,
+                 "capability": step.capability, "resource_ref": step.resource_ref,
+                 "depends_on": list(step.depends_on),
+                 "policy_decision_ref": step.policy_decision_ref,
+                 "approval_ref": step.approval_ref,
+                 "action_ticket_ref": step.action_ticket_ref,
+                 "checkpoint_ref": step.checkpoint_ref,
+                 "rollback_ref": step.rollback_ref}
+                for step in ordered
+            ],
+            "mode": "DRY_RUN", "deployment": "DISABLED",
+            "kill_switch": "ENGAGED", "authority_expanded": False,
+            "action": "PROPOSE_ONLY", "response_executed": False,
+        })
+    except Exception as exc:
+        raise SOCIncidentDenied("EVIDENCE_WRITE_FAILED") from exc
+    return SOCPlaybookProposal(exact_playbook_id, expected_tenant, bound_incident.incident_id, ordered)

@@ -2,7 +2,7 @@ from dataclasses import FrozenInstanceError
 
 import pytest
 
-from swarm.soc import MAX_INCIDENT_REFS, MAX_STORY_INCIDENTS, MAX_TIMELINE_ENTRIES, SOCIncidentDenied, project_attack_story, project_incident_timeline, project_soc_incident
+from swarm.soc import MAX_INCIDENT_REFS, MAX_STORY_INCIDENTS, MAX_TIMELINE_ENTRIES, SOCIncidentDenied, project_attack_story, project_incident_timeline, project_soc_incident, propose_response_playbook
 
 
 def incident(**changes):
@@ -199,5 +199,78 @@ def test_incident_timeline_revalidates_incident_authority_and_evidence_failure()
     with pytest.raises(SOCIncidentDenied, match="EVIDENCE_WRITE_FAILED"):
         project_incident_timeline(
             projected(), (timeline_entry(),), tenant_id="tenant-a",
+            audit=lambda *_args: (_ for _ in ()).throw(OSError("offline")),
+        )
+
+
+def playbook_step(step_id="step-1", **changes):
+    value = {
+        "step_id": step_id, "tenant_id": "tenant-a", "incident_id": "incident-1",
+        "action_class": "ANALYZE", "capability": "telemetry.read",
+        "resource_ref": "asset/device-a", "depends_on": [],
+        "policy_decision_ref": "policy/decision-1", "approval_ref": None,
+        "action_ticket_ref": None, "checkpoint_ref": None, "rollback_ref": None,
+    }
+    value.update(changes)
+    return value
+
+
+def mutating_step(step_id="step-2", **changes):
+    value = playbook_step(
+        step_id, action_class="ISOLATE_ENDPOINT", capability="endpoint.isolate.request",
+        depends_on=["step-1"], approval_ref="approval/one",
+        action_ticket_ref="ticket/one", checkpoint_ref="checkpoint/one",
+        rollback_ref="rollback/one",
+    )
+    value.update(changes)
+    return value
+
+
+def test_playbook_proposal_orders_dependencies_and_remains_inert_evidence_first():
+    calls = []
+    proposal = propose_response_playbook(
+        projected(), (mutating_step(), playbook_step()), playbook_id="playbook-1",
+        tenant_id="tenant-a", audit=lambda *args: calls.append(args),
+    )
+    assert tuple(step.step_id for step in proposal.steps) == ("step-1", "step-2")
+    assert proposal.mode == "DRY_RUN" and proposal.deployment == "DISABLED"
+    assert proposal.kill_switch == "ENGAGED" and not proposal.authority_expanded
+    assert proposal.action == "PROPOSE_ONLY"
+    assert calls[0][0] == "soc_response_playbook_proposed" and calls[0][1]["response_executed"] is False
+
+
+@pytest.mark.parametrize("change,reason", [
+    ({"action_class": "DEPLOY"}, "PLAYBOOK_ACTION_UNSUPPORTED"),
+    ({"tenant_id": "tenant-b"}, "PLAYBOOK_BINDING_MISMATCH"),
+    ({"incident_id": "incident-other"}, "PLAYBOOK_BINDING_MISMATCH"),
+    ({"extra": "value"}, "PLAYBOOK_STEP_INVALID"),
+])
+def test_playbook_denies_unsupported_malformed_or_cross_tenant_steps(change, reason):
+    with pytest.raises(SOCIncidentDenied, match=reason):
+        propose_response_playbook(projected(), (playbook_step(**change),), playbook_id="playbook-1", tenant_id="tenant-a", audit=lambda *_args: None)
+
+
+def test_playbook_mutation_requires_all_authority_and_recovery_references():
+    for field in ("approval_ref", "action_ticket_ref", "checkpoint_ref", "rollback_ref"):
+        with pytest.raises(SOCIncidentDenied, match="PLAYBOOK_MUTATION_AUTHORITY_MISSING"):
+            propose_response_playbook(projected(), (mutating_step(depends_on=[], **{field: None}),), playbook_id="playbook-1", tenant_id="tenant-a", audit=lambda *_args: None)
+    with pytest.raises(SOCIncidentDenied, match="PLAYBOOK_READ_ONLY_AUTHORITY_INVALID"):
+        propose_response_playbook(projected(), (playbook_step(action_ticket_ref="ticket/forbidden"),), playbook_id="playbook-1", tenant_id="tenant-a", audit=lambda *_args: None)
+
+
+def test_playbook_denies_duplicate_unknown_and_cyclic_dependencies():
+    with pytest.raises(SOCIncidentDenied, match="PLAYBOOK_STEP_DUPLICATE"):
+        propose_response_playbook(projected(), (playbook_step(), playbook_step()), playbook_id="playbook-1", tenant_id="tenant-a", audit=lambda *_args: None)
+    with pytest.raises(SOCIncidentDenied, match="PLAYBOOK_DEPENDENCY_UNKNOWN"):
+        propose_response_playbook(projected(), (playbook_step(depends_on=["missing"]),), playbook_id="playbook-1", tenant_id="tenant-a", audit=lambda *_args: None)
+    cycle = (playbook_step("step-1", depends_on=["step-2"]), playbook_step("step-2", depends_on=["step-1"]))
+    with pytest.raises(SOCIncidentDenied, match="PLAYBOOK_DEPENDENCY_CYCLE"):
+        propose_response_playbook(projected(), cycle, playbook_id="playbook-1", tenant_id="tenant-a", audit=lambda *_args: None)
+
+
+def test_playbook_evidence_failure_returns_no_proposal():
+    with pytest.raises(SOCIncidentDenied, match="EVIDENCE_WRITE_FAILED"):
+        propose_response_playbook(
+            projected(), (playbook_step(),), playbook_id="playbook-1", tenant_id="tenant-a",
             audit=lambda *_args: (_ for _ in ()).throw(OSError("offline")),
         )
