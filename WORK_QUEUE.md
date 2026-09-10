@@ -10,7 +10,7 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 
 - Only approved active-phase work may be claimed.
 - Codex is the sole application-code writer.
-- Claude Code reviews exact candidate commits and returns findings only. Gemini is not required or enabled for the active workflow (D-020).
+- Claude Code or the authorized AnythingLLM/Qwen fallback reviews exact candidate commits and returns findings only. Gemini is not required or enabled for the active workflow (D-020/D-021).
 - A task is DONE only when acceptance criteria, deterministic validation, and review requirements are satisfied.
 - Do not mark placeholders, interfaces without behavior, untested code, or documentation-only claims as complete.
 - If one task is blocked, record the blocker and move to another independent READY task when safe.
@@ -64,7 +64,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FWQ-0078 — Integrated governed harness lifecycle proof
 - Requirement: FW-HARNESS-013 initial permanent harness integration
-- State: READY
+- State: DONE
 - Priority: P0
 - Dependencies: FWQ-0077
 - Approval: integration of accepted FW-HARNESS components is approved by the master requirement; external activation, new authority, and deployment remain prohibited.
@@ -81,6 +81,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - fixture-only workers/reviewers are used; no live provider, credential resolution, network, deployment, remediation, or response authority is added.
 - Expected validation: focused end-to-end Linux proof, exact Claude review, then full suite/integrity once.
 - Security considerations: this integration may compose accepted interfaces but may not bypass any one of their fail-closed checks.
+- Completion evidence: exact candidate `2ccc389e566daf6c4a46ed1c50b53bd8d86b0aa5`; focused 211 passed; Claude was unavailable after two bounded exact-commit attempts; AnythingLLM/Qwen exact APPROVE/LOW with no blockers or missing tests after canonical boundary-test reconciliation; full 1088 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with unchanged YELLOW findings.
 
 ### FWQ-0077 — Harness Monitor → Repair → Review governance
 - Requirement: FW-HARNESS-012 anomaly and recovery governance
@@ -309,11 +310,11 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-BME-03 — Deterministic dangerous-delivery classification
 - Requirement: FW-BME dangerous download, redirect, HTML-smuggling, and prompt-injection signals
-- State: BLOCKED
+- State: READY
 - Priority: P0
 - Dependencies: FW-BME-02
 - Approval: FW-BME is active under D-022.
-- Blocking reason: deferred by the explicit FW-HARNESS Core priority in D-023; resume only through a later authorized queue transition.
+- Queue transition: FW-HARNESS-013 completed the explicit D-023 priority; resume the already approved D-022 milestone without expanding its scope.
 - Description: Classify exact normalized dangerous-delivery indicators into Evidence-first warn-only findings without fetching links, opening content, scanning files, or invoking AV/quarantine behavior.
 - Target path: swarm/browser_email.py
 - Allowed paths: swarm/browser_email.py, tests/test_browser_email.py, WORK_QUEUE.md, SWARM_STATUS.md

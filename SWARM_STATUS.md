@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: FW-HARNESS-012 accepted; FW-HARNESS-013 integrated lifecycle proof is next
-- Next task: claim FWQ-0078 to compose the accepted harness interfaces in one fixture-driven restart-safe continuous lifecycle.
+- Current focus: FW-HARNESS-013 initial permanent harness integration accepted
+- Next task: claim FW-BME-03 deterministic dangerous-delivery classification under its existing D-022 approval.
 - Harness role: permanent ForgeWarden Core subsystem and default controller for ForgeWarden's own development; one governed architecture serves both roles under D-023.
 - Worker transport direction: registered local CLIs and explicitly approved API-backed workers; API keys are resolved only through FW-KEYS secret handles inside trusted adapters and never enter model context or lifecycle evidence.
 - Provider authentication direction: deterministic OpenAI, Anthropic, and Google/Gemini profiles with provider-specific official OAuth where available and approved API-key classes otherwise; Gemini CLI is registered as `agy` for read-only roles, FW-ID owns delegated identity, and FW-KEYS owns all credential material.
@@ -18,7 +18,7 @@
 - Codex role: sole application-code writer
 - Claude role: architecture/requirements/adversarial reviewer
 - Gemini role: disabled for the active workflow; no longer a required reviewer (D-020).
-- AnythingLLM/Qwen role: authorized independent read-only reviewer using user-specified `qwen/qwen3.8-27b` (D-021); Windows API docs verified at `http://127.0.0.1:57307/api/docs`; user named workspace `n8n`. Exact slug, WSL connectivity and configured model remain unverified.
+- AnythingLLM/Qwen role: authorized independent read-only reviewer using user-specified `qwen/qwen3.8-27b` (D-021); Windows local API and exact workspace slug `n8n` are verified. Groq input-token rate limits require fresh bounded review threads.
 
 ## Resume protocol
 
@@ -29,22 +29,22 @@ On every restart or continuation:
 3. Reconcile this status file with actual repository evidence.
 4. If a task was interrupted, resume from the last provably valid checkpoint rather than restarting the project.
 5. Otherwise claim the highest-priority READY task whose dependencies are complete.
-6. Run the Codex → deterministic validation → Claude Code exact-commit review → Codex repair/revalidation cycle. Require validated APPROVE/LOW with no blocking findings or missing tests; do not invoke Gemini.
+6. Run the Codex → deterministic validation → independent exact-commit review → Codex repair/revalidation cycle. Prefer Claude Code and use the authorized AnythingLLM/Qwen fallback when Claude is unavailable. Require validated APPROVE/LOW with no blocking findings or missing tests; do not invoke Gemini.
 7. After acceptance, checkpoint and immediately continue to the next READY task.
 
 ## Work-unit checkpoint
 
-- Task ID: FWQ-0072
-- Starting commit: 05843269712abd1952a90c1f1aac96c2b3209eaf
-- Candidate commit: 83386cb09f38c97774db43ca4bc340396d617186
-- Accepted commit: 83386cb09f38c97774db43ca4bc340396d617186
-- Files changed: FW-HARNESS-004 worker contracts, FW-HARNESS-007 Azure reviewer, FWQ-0072 verifier repair, tests and evidence
-- Deterministic validation: focused 38/29/18 passed; combined full 968 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with unchanged YELLOW findings
-- Claude review: exact APPROVE/LOW for `005afed`, `0584326`, and `83386cb`; no blockers or missing tests
+- Task ID: FWQ-0078
+- Starting commit: 857eab782ef9e22eaa828a3ba8c0c235fb3198e3
+- Candidate commit: 2ccc389e566daf6c4a46ed1c50b53bd8d86b0aa5
+- Accepted commit: 2ccc389e566daf6c4a46ed1c50b53bd8d86b0aa5
+- Files changed: governed harness composition root, scheduler accepted-commit persistence/callback, canonical worker ID budget admission, integration tests, and queue/status metadata
+- Deterministic validation: focused 211 passed; full 1088 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with unchanged YELLOW findings
+- Independent review: Claude unavailable after two bounded exact attempts; AnythingLLM/Qwen exact APPROVE/LOW with no blockers or missing tests
 - Gemini review: disabled and not required under D-020
-- Unresolved findings: none for bounded FW-RANSOM/FW-MCP or FW-BME-01/02; historical caveats and pre-existing YELLOW findings remain
+- Unresolved findings: none for FW-HARNESS-013; historical caveats and pre-existing YELLOW findings remain
 - Blocker: live Azure use remains disabled until interactive Entra login and credit/deployment evidence pass; this does not block offline swarm hardening
-- Next action: claim FWQ-0069
+- Next action: claim FW-BME-03
 
 - Completion inventory: `docs/completion-audit-2026-09-09.md` (baseline `0afcbdd`).
 - FWQ-0008 implementation and binding hardening exist; VALIDATED retains a historical provenance caveat, not an implementation assignment. FWQ-0009 is recorded accepted and unchanged at source/test level from its reviewed candidate.
@@ -54,6 +54,8 @@ On every restart or continuation:
 - Latest broad Core closure: FWQ-0064, 833 passed/1 skipped, all hard checks/Golden Path passing, YELLOW pre-existing findings.
 
 ## Execution log
+
+- 2026-09-09: FW-HARNESS-013 accepted at `2ccc389e566daf6c4a46ed1c50b53bd8d86b0aa5`. The permanent Core composition root now drives two dependent fixture tasks through canonical context/budget admission, authority/model gates, scoped worker output, deterministic validation, trusted commit callback, independent exact review, scheduler-owned acceptance, canonical lifecycle Evidence, persistent resulting commits, automatic continuation, restart non-replay, and Mission Control projection. Focused 211 passed. Claude produced no verdict after two bounded exact-review attempts; no approval was inferred. The authorized AnythingLLM/Qwen fallback returned exact APPROVE/LOW with no blockers or missing tests after reconciling its initial duplicated boundary-test requests. Full 1088 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with unchanged YELLOW findings. No live provider, credential resolution, network, deployment, remediation, or response authority was added. The initial permanent FW-HARNESS definition is complete; FW-BME-03 resumes next under existing D-022 approval.
 
 - 2026-09-09: FW-HARNESS-012 accepted at `9b9ce277313d105b894608da3f33d8f39de126b2`. Deterministic monitoring classifies kill-switch, Evidence, identity, scope, resource, retry, stuck-workflow, and test-degradation conditions with security-first precedence and canonical Evidence. Only stuck/test conditions create inert bounded repair requests; recovery status requires exact validation and independent APPROVE/LOW review, otherwise escalation. No restart, rollback, repair, or response is executed. Focused 150 passed; exact Claude APPROVE/LOW with no blockers/missing tests; full 1081 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with unchanged YELLOW findings. FW-HARNESS-013 integrated lifecycle proof is next.
 
