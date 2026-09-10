@@ -146,6 +146,43 @@ def classify_phishing_spoof(
     audit: Callable[[str, dict[str, Any]], None],
 ) -> BrowserEmailFinding | None:
     """Classify exact fixture signals without interpreting content or taking action."""
+    expected_tenant, indicator_signals, auth_failures = _validated_observation(observation, tenant_id, audit)
+    signals = indicator_signals | auth_failures
+
+    threat_signals = signals & {
+        "BEC_DISPLAY_NAME", "LOOKALIKE_DOMAIN", "PHISHING_DOMAIN", "QR_PHISHING",
+        "REDIRECT_CHAIN",
+    }
+    confidence: str | None = None
+    if len(threat_signals) >= 2 or (threat_signals and "DMARC_FAIL" in auth_failures):
+        confidence = "HIGH"
+    elif threat_signals or len(auth_failures) >= 2:
+        confidence = "MEDIUM"
+    elif auth_failures:
+        confidence = "LOW"
+    if confidence is None:
+        return None
+    ordered_signals = tuple(sorted(signals))
+    try:
+        audit("browser_email_phishing_classified", {
+            "event_id": observation.event_id, "tenant_id": expected_tenant,
+            "signals": list(ordered_signals), "confidence": confidence,
+            "recommendations": ["WARN"], "trust": "UNTRUSTED_DATA",
+            "mode": "DRY_RUN", "action": "DETECT_ONLY",
+            "response_executed": False, "deployment": "DISABLED",
+        })
+    except Exception as exc:
+        raise BrowserEmailFixtureDenied("EVIDENCE_WRITE_FAILED") from exc
+    return BrowserEmailFinding(
+        observation.event_id, expected_tenant, ordered_signals, confidence,
+    )
+
+
+def _validated_observation(
+    observation: BrowserEmailObservation, tenant_id: str,
+    audit: Callable[[str, dict[str, Any]], None],
+) -> tuple[str, set[str], set[str]]:
+    """Revalidate one immutable untrusted observation at each classifier seam."""
     if not isinstance(observation, BrowserEmailObservation) or not callable(audit):
         raise BrowserEmailFixtureDenied("OBSERVATION_INVALID")
     expected_tenant = _text(tenant_id, "TENANT")
@@ -167,32 +204,33 @@ def classify_phishing_spoof(
         raise BrowserEmailFixtureDenied("OBSERVATION_INVALID")
 
     signals = set(observation.related_indicators)
+    auth_failures: set[str] = set()
     if observation.source == "EMAIL_FIXTURE":
         auth = dict(observation.authentication_results)
         if observation.sender is None or set(auth) != _AUTH_KEYS or any(value not in _AUTH_VALUES for value in auth.values()):
             raise BrowserEmailFixtureDenied("OBSERVATION_INVALID")
         _text(observation.sender, "SENDER")
-        signals.update(f"{key}_FAIL" for key, value in auth.items() if value == "FAIL")
+        auth_failures.update(f"{key}_FAIL" for key, value in auth.items() if value == "FAIL")
     elif observation.sender is not None or observation.authentication_results:
         raise BrowserEmailFixtureDenied("OBSERVATION_INVALID")
+    return expected_tenant, signals, auth_failures
 
-    threat_signals = signals & {
-        "BEC_DISPLAY_NAME", "LOOKALIKE_DOMAIN", "PHISHING_DOMAIN", "QR_PHISHING",
-        "REDIRECT_CHAIN",
+
+def classify_dangerous_delivery(
+    observation: BrowserEmailObservation, *, tenant_id: str,
+    audit: Callable[[str, dict[str, Any]], None],
+) -> BrowserEmailFinding | None:
+    """Classify exact delivery indicators without opening or fetching content."""
+    expected_tenant, indicators, _auth_failures = _validated_observation(observation, tenant_id, audit)
+    signals = indicators & {
+        "DANGEROUS_DOWNLOAD", "HTML_SMUGGLING", "PROMPT_INJECTION", "REDIRECT_CHAIN",
     }
-    auth_failures = signals & {"SPF_FAIL", "DKIM_FAIL", "DMARC_FAIL"}
-    confidence: str | None = None
-    if len(threat_signals) >= 2 or (threat_signals and "DMARC_FAIL" in auth_failures):
-        confidence = "HIGH"
-    elif threat_signals or len(auth_failures) >= 2:
-        confidence = "MEDIUM"
-    elif auth_failures:
-        confidence = "LOW"
-    if confidence is None:
+    if not signals:
         return None
+    confidence = "LOW" if len(signals) == 1 else "MEDIUM" if len(signals) == 2 else "HIGH"
     ordered_signals = tuple(sorted(signals))
     try:
-        audit("browser_email_phishing_classified", {
+        audit("browser_email_dangerous_delivery_classified", {
             "event_id": observation.event_id, "tenant_id": expected_tenant,
             "signals": list(ordered_signals), "confidence": confidence,
             "recommendations": ["WARN"], "trust": "UNTRUSTED_DATA",

@@ -2,7 +2,7 @@ import pytest
 
 from dataclasses import replace
 
-from swarm.browser_email import BrowserEmailFixtureDenied, classify_phishing_spoof, normalize_browser_email_fixture
+from swarm.browser_email import BrowserEmailFixtureDenied, classify_dangerous_delivery, classify_phishing_spoof, normalize_browser_email_fixture
 
 
 def browser_fixture(**overrides):
@@ -137,4 +137,54 @@ def test_classifier_evidence_failure_denies_finding():
         classify_phishing_spoof(
             normalized(browser_fixture(related_indicators=["PHISHING_DOMAIN"])),
             tenant_id="tenant-a", audit=lambda *_args: (_ for _ in ()).throw(RuntimeError("offline")),
+        )
+
+
+@pytest.mark.parametrize("signals,confidence", [
+    (["HTML_SMUGGLING"], "LOW"),
+    (["DANGEROUS_DOWNLOAD", "REDIRECT_CHAIN"], "MEDIUM"),
+    (["PROMPT_INJECTION", "HTML_SMUGGLING", "DANGEROUS_DOWNLOAD"], "HIGH"),
+    (["REDIRECT_CHAIN", "PROMPT_INJECTION", "HTML_SMUGGLING", "DANGEROUS_DOWNLOAD"], "HIGH"),
+])
+def test_dangerous_delivery_confidence_uses_distinct_exact_signals(signals, confidence):
+    finding = classify_dangerous_delivery(
+        normalized(browser_fixture(related_indicators=signals)), tenant_id="tenant-a",
+        audit=lambda *_args: None,
+    )
+    assert finding.signals == tuple(sorted(signals))
+    assert finding.confidence == confidence
+    assert finding.recommendations == ("WARN",)
+    assert finding.mode == "DRY_RUN" and finding.action == "DETECT_ONLY"
+
+
+def test_dangerous_delivery_ignores_other_signals_and_evidence_omits_content():
+    evidence = []
+    observation = normalized(email_fixture(
+        sender="private-sender@fixture.test", urls=["https://secret.fixture.test/path"],
+        related_indicators=["PHISHING_DOMAIN", "DANGEROUS_DOWNLOAD"],
+    ))
+    finding = classify_dangerous_delivery(
+        observation, tenant_id="tenant-a", audit=lambda *args: evidence.append(args),
+    )
+    assert finding.signals == ("DANGEROUS_DOWNLOAD",) and finding.confidence == "LOW"
+    assert evidence[0][0] == "browser_email_dangerous_delivery_classified"
+    assert evidence[0][1]["response_executed"] is False
+    assert "urls" not in evidence[0][1] and "sender" not in evidence[0][1]
+
+
+def test_dangerous_delivery_returns_none_without_exact_delivery_signal():
+    observation = normalized(browser_fixture(related_indicators=["PHISHING_DOMAIN"]))
+    assert classify_dangerous_delivery(observation, tenant_id="tenant-a", audit=lambda *_args: None) is None
+
+
+def test_dangerous_delivery_revalidates_tenant_authority_and_evidence():
+    observation = normalized(browser_fixture(related_indicators=["PROMPT_INJECTION"]))
+    with pytest.raises(BrowserEmailFixtureDenied, match="TENANT_MISMATCH"):
+        classify_dangerous_delivery(observation, tenant_id="tenant-b", audit=lambda *_args: None)
+    with pytest.raises(BrowserEmailFixtureDenied, match="OBSERVATION_AUTHORITY_INVALID"):
+        classify_dangerous_delivery(replace(observation, mode="LIVE"), tenant_id="tenant-a", audit=lambda *_args: None)
+    with pytest.raises(BrowserEmailFixtureDenied, match="EVIDENCE_WRITE_FAILED"):
+        classify_dangerous_delivery(
+            observation, tenant_id="tenant-a",
+            audit=lambda *_args: (_ for _ in ()).throw(RuntimeError("offline")),
         )
