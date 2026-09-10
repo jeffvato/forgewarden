@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: FW-ID-001 canonical identity inventory and contract under D-024
-- Next task: complete FW-ID-001, then continue the explicitly activated FW-ID sequence.
+- Current focus: FW-ID-001 canonical identity contract accepted
+- Next task: FW-ID-002 deterministic tenant-bound identity registry under D-024.
 - Harness role: permanent ForgeWarden Core subsystem and default controller for ForgeWarden's own development; one governed architecture serves both roles under D-023.
 - Worker transport direction: registered local CLIs and explicitly approved API-backed workers; API keys are resolved only through FW-KEYS secret handles inside trusted adapters and never enter model context or lifecycle evidence.
 - Provider authentication direction: deterministic OpenAI, Anthropic, and Google/Gemini profiles with provider-specific official OAuth where available and approved API-key classes otherwise; Gemini CLI is registered as `agy` for read-only roles, FW-ID owns delegated identity, and FW-KEYS owns all credential material.
@@ -34,17 +34,17 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-SOC-05
-- Starting commit: 4f0bd50352e93f5b30f2d36f8e7138bf6a8bbaf6
-- Candidate commit: a4c2534f9223a9af522838bbac7a0d8dadbbbc67
-- Accepted commit: a4c2534f9223a9af522838bbac7a0d8dadbbbc67
-- Files changed: bounded SOC dry-run lifecycle composition and focused integration regression tests
-- Deterministic validation: focused 103 passed; full 1145 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with only dependency/identity/compliance YELLOW findings
+- Task ID: FW-ID-001
+- Starting commit: 41104df9ea030cbacf0b4e06b73aeb3eaf49dc4b
+- Candidate commit: 2d89726dd8c5d69a61b86d33de3f3fc56c8d2bfd
+- Accepted commit: 2d89726dd8c5d69a61b86d33de3f3fc56c8d2bfd
+- Files changed: canonical identity contract, consumer inventory, ownership mapping, phase decision, and focused regressions
+- Deterministic validation: focused 145 passed; full 1168 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with only dependency/compliance YELLOW findings
 - Independent review: AnythingLLM/Qwen exact APPROVE/LOW with no blockers or missing tests
 - Gemini review: disabled and not required under D-020
-- Unresolved findings: none for FW-SOC-05; historical dependency/identity/compliance YELLOW findings remain
+- Unresolved findings: none for FW-ID-001; historical dependency/compliance YELLOW findings remain
 - Blocker: live Azure use remains disabled until interactive Entra login and credit/deployment evidence pass; this does not block offline swarm hardening
-- Next action: select a genuinely new substantive Core milestone only after explicit phase/task authorization; do not regenerate queue-population placeholders.
+- Next action: implement FW-ID-002.
 
 - Completion inventory: `docs/completion-audit-2026-09-09.md` (baseline `0afcbdd`).
 - FWQ-0008 implementation and binding hardening exist; VALIDATED retains a historical provenance caveat, not an implementation assignment. FWQ-0009 is recorded accepted and unchanged at source/test level from its reviewed candidate.
@@ -54,6 +54,8 @@ On every restart or continuation:
 - Latest broad Core closure: FWQ-0064, 833 passed/1 skipped, all hard checks/Golden Path passing, YELLOW pre-existing findings.
 
 ## Execution log
+
+- 2026-09-10: FW-ID-001 accepted at `2d89726dd8c5d69a61b86d33de3f3fc56c8d2bfd`. ForgeWarden now has one immutable tenant-bound identity metadata contract with exact kinds, lifecycle timestamps, owner references, bounded provider-subject references, and tenant-matched opaque FW-KEYS handles. Existing identity consumers and authority boundaries are inventoried; Product Integrity now recognizes FW-ID as the canonical partial owner. Focused 145 passed; AnythingLLM/Qwen exact APPROVE/LOW with no blockers/missing tests; full 1168 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with only dependency/compliance YELLOW findings. No registration persistence, authentication, OAuth exchange, credential resolution, permission, capability, policy, ticket, network, deployment, or response authority was added. FW-ID-002 is next.
 
 - 2026-09-10: FW-SOC-05 accepted at `a4c2534f9223a9af522838bbac7a0d8dadbbbc67`. One immutable DRY_RUN lifecycle now composes tenant-bound incident projections, attack-story correlation, timeline projection, and inert playbook proposal through one canonical Evidence callback. Deterministic stage ordering stops later projections on every Evidence failure; exact external policy and Action Ticket reference sets, tenant binding, engaged kill switch, and disabled deployment fail closed. Focused 103 passed; AnythingLLM/Qwen exact APPROVE/LOW with no blockers/missing tests; full 1145 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with only existing YELLOW findings. No persistence, model inference, ticket issuance/consumption, policy evaluation, execution, deployment, containment, remediation, recovery, credential, network, filesystem, or response authority was added. No approved READY task remains.
 

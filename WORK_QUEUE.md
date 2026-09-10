@@ -434,7 +434,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-ID-001 — Canonical identity inventory and contract
 - Requirement: FW-ID identity and authority foundation
-- State: READY
+- State: DONE
 - Priority: P0
 - Dependencies: FW-SOC-05
 - Approval: FW-ID is explicitly activated under D-024.
@@ -450,6 +450,26 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no registry persistence, authentication, OAuth exchange, credential resolution, network, deployment, or response authority is added.
 - Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
 - Security considerations: identity establishes attribution and binding only; all authority remains in canonical deterministic policy and ticket/lease owners.
+- Completion evidence: exact candidate `2d89726dd8c5d69a61b86d33de3f3fc56c8d2bfd`; focused 145 passed; AnythingLLM/Qwen exact APPROVE/LOW with no blockers or missing tests; full 1168 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with identity ownership implemented and only the existing dependency/compliance YELLOW findings.
+
+### FW-ID-002 — Deterministic tenant-bound identity registry
+- Requirement: FW-ID lifecycle ownership
+- State: READY
+- Priority: P0
+- Dependencies: FW-ID-001
+- Approval: FW-ID is explicitly activated under D-024.
+- Description: Add the canonical in-memory identity registry with Evidence-first create-once registration, exact tenant lookup, and deterministic activation, revocation, and expiration transitions without authenticating actors or granting authority.
+- Target path: swarm/identity.py
+- Allowed paths: swarm/identity.py, tests/test_identity.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_identity.py tests/test_asoc.py
+- Acceptance criteria:
+  - create-once registration rejects duplicate IDs across all tenants and records canonical Evidence before mutation;
+  - lookup requires exact tenant binding and cannot enumerate another tenant;
+  - lifecycle transitions are deterministic, timestamp-valid, terminal after revocation/expiration, and Evidence-first;
+  - Evidence failure, replay, invalid transition, tenant mismatch, unknown identity, and stale timestamps leave state unchanged;
+  - records remain immutable metadata and grant no role, capability, credential, policy, approval, Action Ticket, authentication, network, deployment, or response authority.
+- Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
+- Security considerations: registry membership establishes identity existence only; deterministic authority owners must separately authorize every action.
 
 ### FW-BME-02 — Deterministic phishing and spoof classification
 - Requirement: FW-BME phishing/BEC/authentication signal evaluation
