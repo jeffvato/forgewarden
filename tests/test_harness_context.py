@@ -77,6 +77,11 @@ def test_budget_admission_is_atomic_across_task_and_session():
     assert snapshot["session"].model_calls == 1 and snapshot["session"].tokens == 20
 
 
+def test_budget_admission_uses_the_canonical_lowercase_worker_registry_id():
+    admitted = BudgetLedger(limits(), {"FWQ-0067": limits()}).admit("FWQ-0067", "codex-cli", BudgetRequest(tokens=1))
+    assert admitted.worker_id == "codex-cli"
+
+
 def test_session_exhaustion_stops_a_different_task_without_consumption():
     ledger = BudgetLedger(limits(calls=1), {"FWQ-0067": limits(), "FWQ-0068": limits()})
     ledger.admit("FWQ-0067", "CODEX", BudgetRequest())

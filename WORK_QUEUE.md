@@ -70,7 +70,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 - Approval: integration of accepted FW-HARNESS components is approved by the master requirement; external activation, new authority, and deployment remain prohibited.
 - Description: Wire the accepted canonical task, context, budget, worker, authority, model, validation, review, Git/checkpoint, Evidence, recovery, continuation, and Mission Control interfaces into one deterministic fixture-driven lifecycle proving restart-safe automatic advancement.
 - Target path: swarm/harness_controller.py
-- Allowed paths: swarm/harness_controller.py, swarm/autonomous_loop.py, tests/test_harness_controller.py, tests/test_autonomous_loop.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Allowed paths: swarm/harness_controller.py, swarm/autonomous_loop.py, swarm/harness_context.py, tests/test_harness_controller.py, tests/test_autonomous_loop.py, tests/test_harness_context.py, WORK_QUEUE.md, SWARM_STATUS.md
 - Test command: python3 -m pytest -q tests/test_harness_controller.py tests/test_autonomous_loop.py tests/test_harness_task.py tests/test_harness_context.py tests/test_harness_worker.py tests/test_harness_authority.py tests/test_harness_models.py tests/test_harness_evidence.py tests/test_harness_recovery.py tests/test_mission_control.py
 - Acceptance criteria:
   - one controller selects the next authorized dependency-complete task and advances through context, budget, authority/model admission, worker result, validation, exact review, trusted checkpoint, Evidence, and next task;

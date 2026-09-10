@@ -596,7 +596,7 @@ class AutonomousOrchestrator:
     def _checkpoint(self, task: TaskSpec, state: Mapping[str, Any], *, starting: str, candidate: str | None, accepted: str | None, validation: tuple[str, ...], reviews: tuple[str, ...], next_action: str) -> None:
         write_checkpoint(self.checkpoint_path, WorkUnitCheckpoint("ForgeWarden Core", task.task_id, starting, candidate, accepted, (), validation, reviews[0] if reviews else "not started", reviews[1] if len(reviews) > 1 else "not started", (), None, next_action))
 
-    def run(self, *, dispatch: Callable[[TaskSpec, WorkerLease], WorkerResult], validate: Callable[[TaskSpec, WorkerResult], bool], commit: Callable[[TaskSpec, WorkerResult], str], review: Callable[[TaskSpec, str, WorkerLease], tuple[str, ...]], repair: Callable[[TaskSpec, WorkerResult, WorkerLease], WorkerResult] | None = None, max_steps: int | None = None, authorized: Callable[[], bool] | None = None, review_resolver: Callable[[TaskSpec, Mapping[str, Any]], str] | None = None, blocker_resolver: Callable[[TaskSpec, Mapping[str, Any]], bool] | None = None, plan_tasks: tuple[TaskSpec, ...] = ()) -> dict[str, Any]:
+    def run(self, *, dispatch: Callable[[TaskSpec, WorkerLease], WorkerResult], validate: Callable[[TaskSpec, WorkerResult], bool], commit: Callable[[TaskSpec, WorkerResult], str], review: Callable[[TaskSpec, str, WorkerLease], tuple[str, ...]], repair: Callable[[TaskSpec, WorkerResult, WorkerLease], WorkerResult] | None = None, max_steps: int | None = None, authorized: Callable[[], bool] | None = None, review_resolver: Callable[[TaskSpec, Mapping[str, Any]], str] | None = None, blocker_resolver: Callable[[TaskSpec, Mapping[str, Any]], bool] | None = None, plan_tasks: tuple[TaskSpec, ...] = (), accepted: Callable[[TaskSpec, str], None] | None = None) -> dict[str, Any]:
         self._enforce_safety()
         state = self._load()
         steps = 0
@@ -690,8 +690,10 @@ class AutonomousOrchestrator:
                 if not reviews_approved and any(item.upper() not in {"APPROVED", "APPROVE", "LOW"} for item in reviews):
                     raise AutonomousLoopError("review rejected candidate")
                 self._stage(state, task, "acceptance", authorized)
+                if accepted is not None:
+                    accepted(task, candidate)
                 self._checkpoint(task, state, starting=state.get("repository_head_before") or candidate, candidate=candidate, accepted=candidate, validation=result.tests, reviews=reviews, next_action="select next eligible task")
-                record["state"] = "DONE"; state["completed_tasks"].append(task.task_id); state["repository_head_after"] = candidate; state["test_results"] = list(result.tests); state["reviewer_result"] = list(reviews); state["acceptance_result"] = "PASSED"
+                record["state"] = "DONE"; record["resulting_commit"] = candidate; state["completed_tasks"].append(task.task_id); state["repository_head_after"] = candidate; state["test_results"] = list(result.tests); state["reviewer_result"] = list(reviews); state["acceptance_result"] = "PASSED"
                 self._log("task_accepted", task_id=task.task_id, candidate_commit=candidate)
             except SupervisorInterrupted as exc:
                 record["state"] = "READY"

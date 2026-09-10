@@ -16,7 +16,7 @@ from .harness_task import HarnessTask, task_to_record
 
 
 _SHA = re.compile(r"^[0-9a-fA-F]{40,64}$")
-_WORKER = re.compile(r"^[A-Z][A-Z0-9_-]{0,63}$")
+_WORKER = re.compile(r"^[A-Za-z][A-Za-z0-9_.-]{0,127}$")
 _KINDS = frozenset({"requirement", "architecture_constraint", "relevant_file", "dependency_contract", "recent_commit", "task_state", "failed_attempt", "review_finding", "test_failure", "required_interface", "forbidden_change"})
 
 
