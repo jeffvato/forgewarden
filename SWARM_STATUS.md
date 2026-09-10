@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: FW-KEYS-005 integrated secret-handle lifecycle proof accepted; FW-KEYS is Proven within its metadata-only scope
-- Next task: FW-EVID-001 Evidence inventory and canonical envelope contract under D-024.
+- Current focus: FW-EVID-001 candidate awaiting an available exact read-only review
+- Next task: complete FW-EVID-001 review/acceptance, then continue the FW-EVID lifecycle under D-024.
 - Harness role: permanent ForgeWarden Core subsystem and default controller for ForgeWarden's own development; one governed architecture serves both roles under D-023.
 - Worker transport direction: registered local CLIs and explicitly approved API-backed workers; API keys are resolved only through FW-KEYS secret handles inside trusted adapters and never enter model context or lifecycle evidence.
 - Provider authentication direction: deterministic OpenAI, Anthropic, and Google/Gemini profiles with provider-specific official OAuth where available and approved API-key classes otherwise; Gemini CLI is registered as `agy` for read-only roles, FW-ID owns delegated identity, and FW-KEYS owns all credential material.
@@ -34,17 +34,17 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-KEYS-005
-- Starting commit: 27daa648272ce99e72fad9e8ee13e0bc4710d02c
-- Candidate commit: 30f99d8337af77fc02e405cf27cbd55f7ed7335a
-- Accepted commit: 30f99d8337af77fc02e405cf27cbd55f7ed7335a
-- Files changed: integrated identity/harness/catalog lifecycle proof and corrected Product Integrity ownership/functionality state
-- Deterministic validation: focused 187 passed; full 1257 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with YELLOW only for dependency and Defined FW-COMP/FW-AID owners
-- Independent review: Claude Code exact APPROVE/LOW with no blockers or missing tests (`phase2a-30f99d8337af77fc02e405cf`)
+- Task ID: FW-EVID-001
+- Starting commit: 0e50887bbd382944d62a19269a307b6ac334580b
+- Candidate commit: ad76ff095581a7a52a5a1c49574aefca227a89f8
+- Accepted commit: pending
+- Files changed: canonical immutable Evidence envelope, Evidence producer/owner inventory, Product Integrity owner mapping, and failure-path tests
+- Deterministic validation: focused 65 passed; broad validation awaits exact review
+- Independent review: unavailable; initial Claude attempt and one bounded retry reached the verifier turn limit without a verdict
 - Gemini review: disabled and not required under D-020
-- Unresolved findings: none for FW-KEYS; runtime FW-AID and FW-COMP remain explicitly Defined
-- Blocker: live Azure use remains disabled until interactive Entra login and credit/deployment evidence pass; this does not block offline Core work
-- Next action: implement FW-EVID-001.
+- Unresolved findings: no reviewer findings were returned; FW-EVID-001 remains unaccepted
+- Blocker: B-034 exact read-only review resource unavailable after bounded retries
+- Next action: review unchanged candidate `ad76ff095581a7a52a5a1c49574aefca227a89f8` when an authorized reviewer is available.
 
 - Completion inventory: `docs/completion-audit-2026-09-09.md` (baseline `0afcbdd`).
 - FWQ-0008 implementation and binding hardening exist; VALIDATED retains a historical provenance caveat, not an implementation assignment. FWQ-0009 is recorded accepted and unchanged at source/test level from its reviewed candidate.
