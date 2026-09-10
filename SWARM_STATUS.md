@@ -3,7 +3,7 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: FW-KEYS-002 Evidence-first secret-handle registry and lifecycle accepted
+- Current focus: FW-AID-001 permanent Core architecture accepted; ordered D-024 work resumes
 - Next task: FW-KEYS-003 identity and harness secret-handle admission binding under D-024.
 - Harness role: permanent ForgeWarden Core subsystem and default controller for ForgeWarden's own development; one governed architecture serves both roles under D-023.
 - Worker transport direction: registered local CLIs and explicitly approved API-backed workers; API keys are resolved only through FW-KEYS secret handles inside trusted adapters and never enter model context or lifecycle evidence.
@@ -34,17 +34,17 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-KEYS-002
-- Starting commit: fa37cc56e47e72e6dbe74f937ba163bcb422f714
-- Candidate commit: 328620664045ed01ff2028dfa6619a6ab25a9f4a
-- Accepted commit: 328620664045ed01ff2028dfa6619a6ab25a9f4a
-- Files changed: Evidence-first secret-handle registry, deterministic lifecycle and generation replacement, concurrency/reentrancy safeguards, and focused regressions
-- Deterministic validation: focused 51 passed; full 1241 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with only dependency/compliance YELLOW findings
-- Independent review: Claude Code exact APPROVE/LOW with no blockers or missing tests (`phase2a-328620664045ed01ff2028df`)
+- Task ID: FW-AID-001
+- Starting commit: ce2ed80303dcf8a4b361ae0e9500a856c687b7d5
+- Candidate commit: 9e3e0230c5bc5aa3cfca740c9aae46b7d1e44438
+- Accepted commit: 9e3e0230c5bc5aa3cfca740c9aae46b7d1e44438
+- Files changed: permanent FW-AID architecture/decision/requirements, threat and telemetry design, canonical integration inventory, endpoint/harness/Mission Control/security/integrity documentation, and documentation-registry tests
+- Deterministic validation: focused 31 passed after one corrected wording assertion; architecture-only scope did not require the full product suite
+- Independent review: first Claude attempt exhausted its bounded turn limit and was rejected; one bounded exact retry returned APPROVE/LOW with no blockers or missing tests (`phase2a-9e3e0230c5bc5aa3cfca740c`)
 - Gemini review: disabled and not required under D-020
-- Unresolved findings: none for FW-KEYS-002; historical dependency/compliance YELLOW findings remain
+- Unresolved findings: runtime FW-AID capabilities remain explicitly Defined and will proceed incrementally; no defect blocks FW-KEYS-003
 - Blocker: live Azure use remains disabled until interactive Entra login and credit/deployment evidence pass; this does not block offline Core work
-- Next action: implement FW-KEYS-003.
+- Next action: resume FW-KEYS-003.
 
 - Completion inventory: `docs/completion-audit-2026-09-09.md` (baseline `0afcbdd`).
 - FWQ-0008 implementation and binding hardening exist; VALIDATED retains a historical provenance caveat, not an implementation assignment. FWQ-0009 is recorded accepted and unchanged at source/test level from its reviewed candidate.
@@ -54,6 +54,8 @@ On every restart or continuation:
 - Latest broad Core closure: FWQ-0064, 833 passed/1 skipped, all hard checks/Golden Path passing, YELLOW pre-existing findings.
 
 ## Execution log
+
+- 2026-09-10: FW-AID-001 accepted at `9e3e0230c5bc5aa3cfca740c9aae46b7d1e44438`. FW-AID is now an explicit permanent Core family under D-025 with stable requirements FW-AID-001 through FW-AID-010, ten AI threat classes, privacy-minimized telemetry, behavioral baselines, cross-domain attack stories, deterministic containment and kill-switch boundaries, FW-EVID chronology, Mission Control visibility, harness separation, endpoint integration, and safe adversarial testing. Existing AV, endpoint, Identity, Keys, MCP, model, event, policy, SOC, Evidence, Recovery, harness, and Mission Control owners are reused. Focused 31 passed; a first unavailable Claude result was rejected and one bounded exact retry returned APPROVE/LOW with no blockers/missing tests. Product Integrity reports FW-AID honestly as Defined. No runtime detector, live telemetry, sensor/hook, credential, network/process/container control, containment, recovery execution, deployment, or response authority was added. FW-KEYS-003 remains next.
 
 - 2026-09-10: FW-KEYS-002 accepted at `328620664045ed01ff2028dfa6619a6ab25a9f4a`. ForgeWarden now has a create-once tenant-scoped in-memory registry for validated secret-handle metadata with Evidence-before-state registration, activation, revocation, expiration, and exact generation replacement. Closed lifecycle, timestamp, tenant, immutable-binding, replay, Evidence-failure, concurrency, and reentrancy checks fail closed. Evidence excludes handle values, backend classes, and purposes. Focused 51 passed; exact Claude APPROVE/LOW with no blockers/missing tests; full 1241 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with only dependency/compliance YELLOW findings. No secret material, backend, resolution, authentication, signing, encryption, network, Git, deployment, or response authority was added. FW-KEYS-003 is next.
 

@@ -22,7 +22,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-AID-001 — Core architecture, threat, and ownership inventory
 - Requirement: FW-AID permanent Core foundation
-- State: REVIEW
+- State: DONE
 - Priority: P0
 - Dependencies: D-025
 - Approval: FW-AID architecture and incremental fixture-only implementation are explicitly activated by D-025.
@@ -38,6 +38,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no runtime detector, live telemetry source, sensor/hook, credential access, network/process/container control, containment, quarantine, recovery execution, deployment, or response authority is added.
 - Expected validation: focused documentation/registry proof and exact independent read-only review; no full product suite is required because this is an architecture-only change.
 - Security considerations: architecture text and registry metadata cannot become authority; future execution remains gated by bounded milestones and canonical owners.
+- Completion evidence: exact candidate `9e3e0230c5bc5aa3cfca740c9aae46b7d1e44438`; focused documentation/registry proof 31 passed after correcting one wording assertion. The first exact Claude attempt exhausted its bounded turn limit and was not counted; one bounded unchanged-candidate retry returned exact APPROVE/LOW with no blockers or missing tests under job `phase2a-9e3e0230c5bc5aa3cfca740c`. No full product suite was required for this architecture-only milestone.
 
 ### FWQ-0072 — Claude structured-review terminal turn
 - Requirement: FW-HARNESS reviewer availability repair
