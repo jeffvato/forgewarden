@@ -351,7 +351,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-SOC-02 — Deterministic cross-domain attack-story projection
 - Requirement: FW-SOC bounded cross-domain correlation
-- State: READY
+- State: DONE
 - Priority: P0
 - Dependencies: FW-SOC-01
 - Approval: FW-SOC remains active under D-022.
@@ -368,6 +368,27 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no SIEM persistence, event copying, model inference, playbook, network, filesystem, credential, deployment, containment, remediation, or response authority is added.
 - Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
 - Security considerations: correlation is a reference-only case projection and grants no authority or confidence-based action.
+- Completion evidence: exact candidate `c89987fcb7061ffebc858548d052b051c6f233cc`; focused 30 passed; AnythingLLM/Qwen exact APPROVE/LOW with no blockers or missing tests after one malformed self-correcting response and a fresh bounded retry; full 1117 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with SOC ownership now registered and only the existing dependency/identity/compliance YELLOW findings.
+
+### FW-SOC-03 — Deterministic incident timeline projection
+- Requirement: FW-SOC bounded case timeline
+- State: READY
+- Priority: P0
+- Dependencies: FW-SOC-02
+- Approval: FW-SOC remains active under D-022.
+- Description: Build one immutable tenant-bound chronological case timeline from bounded caller-supplied incident, normalized-event, Evidence, review, approval, recovery, and disposition references without copying source records or executing playbooks.
+- Target path: swarm/soc.py
+- Allowed paths: swarm/soc.py, tests/test_soc.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_soc.py
+- Acceptance criteria:
+  - exact bounded timeline-entry types, timestamps, actor references, source references, and Evidence references;
+  - strict tenant/incident binding, unique entry IDs, deterministic chronological ordering, and terminal-disposition chronology;
+  - source event, Evidence, approval, and recovery records remain owned by their canonical systems and are referenced rather than copied;
+  - Evidence succeeds before immutable output and free-form source content is excluded;
+  - malformed, duplicate, cross-tenant, excessive, out-of-order terminal, authority-bearing, and Evidence-failure inputs deny safely;
+  - no case persistence, playbook execution, credential, network, filesystem, deployment, containment, remediation, recovery, or response authority is added.
+- Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
+- Security considerations: a timeline is a reference-only audit projection and cannot authorize or execute an action.
 
 ### FW-BME-02 — Deterministic phishing and spoof classification
 - Requirement: FW-BME phishing/BEC/authentication signal evaluation
