@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: FW-EVID-001 candidate awaiting an available exact read-only review
-- Next task: complete FW-EVID-001 review/acceptance, then continue the FW-EVID lifecycle under D-024.
+- Current focus: FW-EVID-001 Evidence inventory and canonical envelope accepted
+- Next task: FW-EVID-002 Evidence-first append-only ledger and chain verification under D-024.
 - Harness role: permanent ForgeWarden Core subsystem and default controller for ForgeWarden's own development; one governed architecture serves both roles under D-023.
 - Worker transport direction: registered local CLIs and explicitly approved API-backed workers; API keys are resolved only through FW-KEYS secret handles inside trusted adapters and never enter model context or lifecycle evidence.
 - Provider authentication direction: deterministic OpenAI, Anthropic, and Google/Gemini profiles with provider-specific official OAuth where available and approved API-key classes otherwise; Gemini CLI is registered as `agy` for read-only roles, FW-ID owns delegated identity, and FW-KEYS owns all credential material.
@@ -36,15 +36,15 @@ On every restart or continuation:
 
 - Task ID: FW-EVID-001
 - Starting commit: 0e50887bbd382944d62a19269a307b6ac334580b
-- Candidate commit: ad76ff095581a7a52a5a1c49574aefca227a89f8
-- Accepted commit: pending
-- Files changed: canonical immutable Evidence envelope, Evidence producer/owner inventory, Product Integrity owner mapping, and failure-path tests
-- Deterministic validation: focused 65 passed; broad validation awaits exact review
-- Independent review: unavailable; initial Claude attempt and one bounded retry reached the verifier turn limit without a verdict
+- Candidate commit: bf87e0c6c89e774d2c896772837648dd20e7e9c1
+- Accepted commit: bf87e0c6c89e774d2c896772837648dd20e7e9c1
+- Files changed: canonical immutable Evidence envelope, Evidence producer/owner inventory, Product Integrity owner mapping, boundary and failure-path tests
+- Deterministic validation: focused 70 passed; full 1283 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with YELLOW only for dependency and Defined FW-COMP/FW-AID owners
+- Independent review: exact Claude repair APPROVE/LOW with no blockers or missing tests (`phase2a-bf87e0c6c89e774d2c896772`)
 - Gemini review: disabled and not required under D-020
-- Unresolved findings: no reviewer findings were returned; FW-EVID-001 remains unaccepted
-- Blocker: B-034 exact read-only review resource unavailable after bounded retries
-- Next action: review unchanged candidate `ad76ff095581a7a52a5a1c49574aefca227a89f8` when an authorized reviewer is available.
+- Unresolved findings: none for FW-EVID-001; runtime FW-AID and FW-COMP remain explicitly Defined
+- Blocker: live Azure use remains disabled until interactive Entra login and credit/deployment evidence pass; this does not block offline Core work
+- Next action: implement FW-EVID-002.
 
 - Completion inventory: `docs/completion-audit-2026-09-09.md` (baseline `0afcbdd`).
 - FWQ-0008 implementation and binding hardening exist; VALIDATED retains a historical provenance caveat, not an implementation assignment. FWQ-0009 is recorded accepted and unchanged at source/test level from its reviewed candidate.
@@ -54,6 +54,8 @@ On every restart or continuation:
 - Latest broad Core closure: FWQ-0064, 833 passed/1 skipped, all hard checks/Golden Path passing, YELLOW pre-existing findings.
 
 ## Execution log
+
+- 2026-09-10: FW-EVID-001 accepted at `bf87e0c6c89e774d2c896772837648dd20e7e9c1`. ForgeWarden now has an immutable tenant-bound canonical Evidence envelope and an explicit inventory preserving existing AuditLog, audit-integrity, harness, accepted-work, review, release, normalized-event, and domain payload owners. The envelope binds payload hashes and bounded references without raw payloads or authority. The exact source review requested length, reference-count, optional-field, and whitespace boundaries; the exact repair closed all gaps and received Claude APPROVE/LOW with no blockers/missing tests. Focused 70 passed; full 1283 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with only dependency and Defined FW-COMP/FW-AID YELLOW findings. No storage migration, signing, export, transport, policy, ticket, Git, deployment, containment, recovery, or response authority was added. FW-EVID-002 is next.
 
 - 2026-09-10: FW-KEYS-005 accepted at `30f99d8337af77fc02e405cf27cbd55f7ed7335a`. One deterministic integrated proof now composes the canonical SecretHandleRegistry with delegated provider identity, harness API admission, TrustedSignatureCatalog verification, durable sequence acceptance, and accepted-cache recovery. Generation replacement invalidates stale provider admission; signer revocation invalidates cache recovery; Evidence remains free of handles, backend locators, and public key material. Product Integrity now reports FW-KEYS Proven within its explicit in-memory metadata-only boundary. Focused 187 passed; exact Claude APPROVE/LOW with no blockers/missing tests; full 1257 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with only dependency and Defined FW-COMP/FW-AID YELLOW findings. No backend, vault/HSM access, material resolution, authentication, signing, encryption, network, process, Git, deployment, containment, remediation, recovery execution, or response authority was added. FW-EVID-001 is next.
 

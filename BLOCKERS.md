@@ -12,6 +12,7 @@ This file records only genuine blockers that require Customer Root authority, un
 - Independent READY work: none within the ordered D-024 sequence while FW-EVID-001 awaits its required review.
 - Current candidate/checkpoint: candidate `ad76ff095581a7a52a5a1c49574aefca227a89f8`; last accepted checkpoint `0e50887bbd382944d62a19269a307b6ac334580b`.
 - First resume action: submit the unchanged exact candidate through an authorized independent read-only reviewer when capacity is available; proceed only on a schema-valid exact APPROVE/LOW result.
+- Resolution: the earlier attempts were forced into oversized-patch file mode even though the exact patch was within the inline bound. A later bounded inline review returned APPROVE/LOW and identified four boundary-test groups; exact repair `bf87e0c6c89e774d2c896772837648dd20e7e9c1` closed them and received APPROVE/LOW with no blockers or missing tests. Full validation and integrity then passed their hard gates.
 
 Audit reconciliation (2026-09-09): entries with a Resolution are historical, even if their headings omit “resolved”. Do not reopen them from the earlier Exact condition text. B-002 is resolved by D-020. FWQ-0008's missing original acceptance payload in the bounded search is a provenance caveat, not a mandate to reimplement/review it repeatedly. See `docs/completion-audit-2026-09-09.md`. The policy/code mismatch FWQ-0063 and subsequent snapshot-lifetime defect FWQ-0064 are accepted with preserved exact review/full-gate evidence. Optional AnythingLLM connectivity does not block Claude review.
 

@@ -654,7 +654,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-EVID-001 — Evidence inventory and canonical envelope contract
 - Requirement: FW-EVID canonical evidence ownership
-- State: READY
+- State: DONE
 - Priority: P0
 - Dependencies: FW-KEYS-005
 - Approval: deterministic local Evidence metadata is activated under D-024; external storage, signing, export, and network transport remain unauthorized.
@@ -670,6 +670,26 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - Product Integrity recognizes the canonical FW-EVID envelope while honestly retaining partial status until append-only lifecycle and chain verification are proven.
 - Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
 - Security considerations: this milestone defines metadata and ownership only; AuditLog migration, signing, retention, export, external stores, and incident evidence lifecycle require later bounded tasks.
+- Completion evidence: source candidate `ad76ff095581a7a52a5a1c49574aefca227a89f8` and exact repair candidate `bf87e0c6c89e774d2c896772837648dd20e7e9c1`; focused 70 passed; the source review returned APPROVE/LOW but requested four boundary-test groups, all added in the repair; exact repair Claude Code job `phase2a-bf87e0c6c89e774d2c896772` returned APPROVE/LOW with no blockers or missing tests; full 1283 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with YELLOW only for the existing dependency and Defined FW-COMP/FW-AID owners.
+
+### FW-EVID-002 — Evidence-first append-only ledger and chain verification
+- Requirement: FW-EVID deterministic lifecycle integrity
+- State: READY
+- Priority: P0
+- Dependencies: FW-EVID-001
+- Approval: bounded in-memory append and caller-supplied durability acknowledgement are activated under D-024; external storage, signing, export, and transport remain unauthorized.
+- Description: Add a create-once tenant-scoped ledger for canonical envelopes with deterministic record hashes, exact previous-record linkage, duplicate/replay denial, and write-before-state ordering.
+- Target path: swarm/evidence.py
+- Allowed paths: swarm/evidence.py, tests/test_evidence.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_evidence.py
+- Acceptance criteria:
+  - append accepts only validated canonical envelopes for one exact tenant and requires the exact current previous-record digest;
+  - a deterministic canonical record digest binds every envelope field, and tenant snapshots preserve append order without exposing mutable state;
+  - duplicate evidence IDs, record hashes, stale/forked links, cross-tenant input, concurrent/reentrant append, and durability-sink failure fail closed without state mutation;
+  - the durability sink receives only the validated envelope and resulting digest, with no raw payload, secret, signing key, backend locator, or expanded authority;
+  - ledger membership grants no mutation of prior records, signing, export, policy, approval, Action Ticket, Git, deployment, containment, recovery, or response authority.
+- Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
+- Security considerations: this is an in-memory DRY_RUN lifecycle boundary; filesystem/database migration, cryptographic signing, retention, replication, and external export remain later milestones.
 
 ### FW-BME-02 — Deterministic phishing and spoof classification
 - Requirement: FW-BME phishing/BEC/authentication signal evaluation
