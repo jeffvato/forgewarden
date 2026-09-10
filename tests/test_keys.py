@@ -2,7 +2,21 @@ from dataclasses import FrozenInstanceError, asdict
 from threading import Event, Thread
 
 import pytest
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
+from swarm.anti_malware import (
+    AcceptedCatalogCache, AntiMalwareError, DurableCatalogSequenceStore, FWKeysCatalogTrustRoot,
+    PublisherVerificationKey, SignedCatalogBundle, TrustedSignatureCatalog,
+    catalog_snapshot_sha256, verify_signed_catalog_bundle,
+)
+from swarm.harness_context import BudgetAdmission, BudgetUsage, ContextItem, build_context_packet
+from swarm.harness_task import HarnessTask, TaskStatus
+from swarm.harness_worker import (
+    HarnessWorkerError, WorkerRegistration, WorkerRegistry, WorkerRequest,
+    WorkerRole, WorkerTransport, plan_identity_bound_invocation,
+)
+from swarm.identity import IdentityRegistry, bind_delegated_provider_identity, validate_identity_record
 from swarm.keys import (
     KeyContractError, SecretHandleRecord, SecretHandleRegistry,
     validate_secret_handle_record,
@@ -282,3 +296,117 @@ def test_registry_exposes_no_material_or_authority_methods():
         "resolve", "read_secret", "export", "sign", "encrypt", "authenticate",
         "authorize", "issue_ticket", "deploy", "execute",
     ))
+
+
+def test_integrated_keys_lifecycle_governs_harness_and_catalog_consumers(tmp_path):
+    events = []
+    audit = lambda event, evidence: events.append((event, dict(evidence)))
+    keys = SecretHandleRegistry(audit)
+    provider = keys.register(validate_secret_handle_record(record(
+        lifecycle_state="PROVISIONED", lifecycle_changed_at_epoch=100,
+    )))
+    provider = keys.activate(provider.handle_id, tenant_id="tenant-a", now_epoch=110)
+    signer = keys.register(validate_secret_handle_record(record(
+        handle_id="fwkeys://tenant-a/signing/catalog", credential_class="SIGNING_KEY",
+        owner_identity_ref="fw-id/catalog-signer", purpose="catalog verification reference",
+        lifecycle_state="PROVISIONED", lifecycle_changed_at_epoch=100, expires_at_epoch=300,
+    )))
+    signer = keys.activate(signer.handle_id, tenant_id="tenant-a", now_epoch=110)
+
+    identities = IdentityRegistry(audit)
+    owner = identities.register(validate_identity_record({
+        "schema_version": "1", "identity_id": "fw-id/human-owner-1", "tenant_id": "tenant-a",
+        "identity_kind": "HUMAN", "owner_identity_ref": "fw-id/human-owner-1", "purpose": "owner",
+        "lifecycle_state": "ACTIVE", "created_at_epoch": 100, "lifecycle_changed_at_epoch": 100,
+        "expires_at_epoch": None, "provider_subject_ref": None, "credential_handle_ref": None,
+    }))
+    worker = identities.register(validate_identity_record({
+        "schema_version": "1", "identity_id": "fw-id/agent-codex-1", "tenant_id": "tenant-a",
+        "identity_kind": "AI_AGENT", "owner_identity_ref": owner.identity_id, "purpose": "bounded worker",
+        "lifecycle_state": "ACTIVE", "created_at_epoch": 100, "lifecycle_changed_at_epoch": 100,
+        "expires_at_epoch": 250, "provider_subject_ref": "provider/openai-codex",
+        "credential_handle_ref": provider.handle_id,
+    }))
+    provider_binding = bind_delegated_provider_identity({
+        "binding_id": "fw-id-binding/integrated", "tenant_id": "tenant-a",
+        "subject_identity_id": worker.identity_id, "owner_identity_id": owner.identity_id,
+        "provider": "OPENAI", "provider_subject_ref": "provider/openai-codex",
+        "consent_ref": "approval/integrated", "credential_class": "OAUTH_TOKEN_SET",
+        "credential_handle_ref": provider.handle_id, "issued_at_epoch": 110, "expires_at_epoch": 240,
+    }, registry=identities, key_registry=keys, now_epoch=120, audit=audit)
+
+    task = HarnessTask(
+        "FWQ-9001", "FW-KEYS-005", "Integrated keys proof", "fixture", TaskStatus.READY,
+        0, "CODE_WRITER", "approved-model", "/repo", "2026-09-10T12:00:00+00:00",
+        relevant_files=("swarm/keys.py",),
+    )
+    context = build_context_packet(task, (
+        ContextItem("architecture_constraint", "D-024", "AI has no authority"),
+        ContextItem("task_state", task.task_id, "ready"),
+        ContextItem("forbidden_change", "deployment", "disabled"),
+    ))
+    request = WorkerRequest(
+        task, context,
+        BudgetAdmission(task.task_id, "openai-api", BudgetUsage(model_calls=1), BudgetUsage(model_calls=1)),
+        "openai-api", WorkerRole.CODE_WRITER, provider.handle_id,
+    )
+    workers = WorkerRegistry((WorkerRegistration(
+        "openai-api", "openai", "approved-model", WorkerTransport.API,
+        (WorkerRole.CODE_WRITER,), True, route_id="provider.openai.responses",
+        credential_class="openai-oauth-token-set", network_approved=True,
+        identity_ref=worker.identity_id,
+    ),))
+    assert plan_identity_bound_invocation(
+        workers, request, identity_registry=identities, tenant_id="tenant-a", now_epoch=120,
+        provider_binding=provider_binding, key_registry=keys,
+    ).worker_id == "openai-api"
+
+    private_key = Ed25519PrivateKey.generate()
+    public_key = private_key.public_key().public_bytes(serialization.Encoding.Raw, serialization.PublicFormat.Raw)
+    publisher_key = PublisherVerificationKey("FW Labs", "integrated", public_key)
+    trust_root = FWKeysCatalogTrustRoot(
+        "fw-keys-root",
+        Ed25519PrivateKey.generate().public_key().public_bytes(serialization.Encoding.Raw, serialization.PublicFormat.Raw),
+        (publisher_key,),
+    ).bind_verification_key(
+        "FW Labs", "integrated", registry=keys, record=signer, tenant_id="tenant-a",
+        owner_identity_ref="fw-id/catalog-signer", credential_class="SIGNING_KEY", now_epoch=120,
+    )
+    snapshot = catalog_snapshot_sha256("fw-av-integrated", "1.0.0", ("FW Labs",), (), ())
+    catalog = TrustedSignatureCatalog("fw-av-integrated", "1.0.0", ("FW Labs",), (), (), snapshot)
+    unsigned = {
+        "publisher_id": "FW Labs", "key_id": "integrated", "catalog_id": catalog.catalog_id,
+        "catalog_version": catalog.catalog_version, "catalog_snapshot_sha256": catalog.snapshot_sha256,
+        "sequence": 1, "issued_at_epoch": 110, "expires_at_epoch": 240,
+    }
+    signed = SignedCatalogBundle(
+        signature=private_key.sign(SignedCatalogBundle(signature=b"x" * 64, **unsigned).signing_bytes()),
+        **unsigned,
+    )
+    verified = verify_signed_catalog_bundle(trust_root, signed, catalog, now_epoch=120)
+    store = DurableCatalogSequenceStore(tmp_path / "integrated-keys.sqlite3")
+    accepted = store.accept(verified, audit, now_epoch=120)
+    store.cache_accepted_catalog(accepted, catalog, audit, now_epoch=120)
+    recovered_cache = AcceptedCatalogCache()
+    store.recover_cached_catalog(trust_root, signed, now_epoch=120, cache=recovered_cache, audit=audit)
+    assert recovered_cache.current(accepted, now_epoch=120).catalog.snapshot_sha256 == snapshot
+
+    provider_replacement = validate_secret_handle_record(record(
+        lifecycle_state="PROVISIONED", created_at_epoch=130, lifecycle_changed_at_epoch=130,
+        expires_at_epoch=300, generation=2,
+    ))
+    keys.replace_generation(provider.handle_id, provider_replacement, tenant_id="tenant-a", now_epoch=130)
+    keys.activate(provider.handle_id, tenant_id="tenant-a", now_epoch=131)
+    with pytest.raises(HarnessWorkerError, match="stale, inactive, or mismatched"):
+        plan_identity_bound_invocation(
+            workers, request, identity_registry=identities, tenant_id="tenant-a", now_epoch=140,
+            provider_binding=provider_binding, key_registry=keys,
+        )
+    keys.revoke(signer.handle_id, tenant_id="tenant-a", now_epoch=140)
+    with pytest.raises(AntiMalwareError, match="not current and active"):
+        store.recover_cached_catalog(trust_root, signed, now_epoch=150, cache=AcceptedCatalogCache(), audit=audit)
+
+    rendered_evidence = repr(events)
+    assert provider.handle_id not in rendered_evidence and signer.handle_id not in rendered_evidence
+    assert "TRUSTED_ADAPTER" not in rendered_evidence
+    assert public_key.hex() not in rendered_evidence

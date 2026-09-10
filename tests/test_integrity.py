@@ -15,7 +15,7 @@ def test_functionality_map_distinguishes_proven_from_not_yet_proven():
     assert states["FW-ASOC-01"] == "Proven"
     assert states["FW-ASOC-02"] == "Proven"
     assert states["FW-ID"] == "Proven"
-    assert states["FW-KEYS"] == "Implemented"
+    assert states["FW-KEYS"] == "Proven"
     assert states["FW-INTEGRITY"] == "Implemented"
 
 
@@ -25,7 +25,7 @@ def test_canonical_ownership_exposes_missing_roadmap_primitives_honestly():
     assert CANONICAL_OWNERSHIP["mcp_access"]["implementation"] == "swarm.mcp_gateway.MCPGateway"
     assert CANONICAL_OWNERSHIP["identity"]["implementation"] == "swarm.identity.IdentityRecord"
     assert CANONICAL_OWNERSHIP["identity"]["status"] == "IMPLEMENTED_PARTIAL"
-    assert CANONICAL_OWNERSHIP["cryptographic_authority"]["implementation"].startswith("swarm.keys.SecretHandleRecord")
+    assert CANONICAL_OWNERSHIP["cryptographic_authority"]["implementation"].startswith("swarm.keys.SecretHandleRegistry")
     assert CANONICAL_OWNERSHIP["cryptographic_authority"]["status"] == "IMPLEMENTED_PARTIAL"
     assert CANONICAL_OWNERSHIP["normalized_events"]["implementation"] == "swarm.normalized_events.NormalizedEventStore"
     assert CANONICAL_OWNERSHIP["normalized_events"]["status"] == "IMPLEMENTED_PARTIAL"
