@@ -310,7 +310,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-BME-03 — Deterministic dangerous-delivery classification
 - Requirement: FW-BME dangerous download, redirect, HTML-smuggling, and prompt-injection signals
-- State: READY
+- State: DONE
 - Priority: P0
 - Dependencies: FW-BME-02
 - Approval: FW-BME is active under D-022.
@@ -325,8 +325,28 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - every finding recommends WARN and no quarantine or link action is proposed or executed;
   - Evidence failure denies output and raw URLs/sender content stay out of Evidence;
   - no browser/mailbox/network/filesystem/process/credential/deployment/response authority is added.
-- Expected validation: focused Linux proof, exact Claude review, then full suite/integrity once.
+- Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
 - Security considerations: content and indicators remain caller-supplied untrusted data; AV trust/catalog boundaries are unchanged.
+- Completion evidence: exact candidate `c5769c7002e8f2ffb3ae9885b20bbe8d81df88c6`; focused 28 passed; AnythingLLM/Qwen exact APPROVE/LOW with no blockers or missing tests; full 1095 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with unchanged YELLOW findings.
+
+### FW-SOC-01 — Tenant-bound incident projection
+- Requirement: FW-SOC case and incident foundation
+- State: READY
+- Priority: P0
+- Dependencies: FW-BME-03
+- Approval: FW-SOC follows completed FW-BME under D-022.
+- Description: Produce one immutable tenant-bound incident projection from caller-supplied canonical normalized-event and Evidence references, without creating a second event/evidence store or adding response authority.
+- Target path: swarm/soc.py
+- Allowed paths: swarm/soc.py, tests/test_soc.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_soc.py tests/test_normalized_events.py
+- Acceptance criteria:
+  - strict bounded schema for incident ID, tenant, title, severity, status, timestamps, affected references, normalized-event references, Evidence references, and disposition;
+  - normalized-event and Evidence payloads remain owned by their canonical systems and are referenced rather than copied;
+  - immutable deterministic output requires tenant match and Evidence success before return;
+  - malformed, duplicate, cross-tenant, excessive, unsupported-state, and Evidence-failure inputs deny safely;
+  - no SIEM storage, correlation, playbook, network, filesystem, credential, deployment, containment, remediation, or response authority is added.
+- Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
+- Security considerations: an incident projection is an untrusted case fact until deterministic validation and canonical Evidence succeed; it grants no action authority.
 
 ### FW-BME-02 — Deterministic phishing and spoof classification
 - Requirement: FW-BME phishing/BEC/authentication signal evaluation
