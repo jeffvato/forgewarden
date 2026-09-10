@@ -414,7 +414,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-SOC-05 — Integrated incident-to-playbook dry-run proof
 - Requirement: FW-SOC initial bounded lifecycle integration
-- State: READY
+- State: DONE
 - Priority: P0
 - Dependencies: FW-SOC-04
 - Approval: composition of accepted FW-SOC interfaces is approved under D-022; execution and response authority remain prohibited.
@@ -430,6 +430,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no model inference, persistence, playbook execution, credential, network, filesystem, deployment, containment, remediation, recovery, or response authority is added.
 - Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
 - Security considerations: this is an integration proof over inert accepted interfaces, not a response engine.
+- Completion evidence: exact candidate `a4c2534f9223a9af522838bbac7a0d8dadbbbc67`; focused 103 passed; AnythingLLM/Qwen exact APPROVE/LOW with no blockers or missing tests; full 1145 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with only the existing dependency/identity/compliance YELLOW findings.
 
 ### FW-BME-02 — Deterministic phishing and spoof classification
 - Requirement: FW-BME phishing/BEC/authentication signal evaluation
