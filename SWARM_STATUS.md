@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: FW-SOC-03 deterministic incident timeline projection accepted
-- Next task: claim FW-SOC-04 bounded response playbook proposal under existing D-022 approval.
+- Current focus: FW-SOC-04 bounded response playbook proposal accepted
+- Next task: claim FW-SOC-05 integrated incident-to-playbook dry-run proof under existing D-022 approval.
 - Harness role: permanent ForgeWarden Core subsystem and default controller for ForgeWarden's own development; one governed architecture serves both roles under D-023.
 - Worker transport direction: registered local CLIs and explicitly approved API-backed workers; API keys are resolved only through FW-KEYS secret handles inside trusted adapters and never enter model context or lifecycle evidence.
 - Provider authentication direction: deterministic OpenAI, Anthropic, and Google/Gemini profiles with provider-specific official OAuth where available and approved API-key classes otherwise; Gemini CLI is registered as `agy` for read-only roles, FW-ID owns delegated identity, and FW-KEYS owns all credential material.
@@ -34,17 +34,17 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-SOC-03
-- Starting commit: 5f655239ad3a769e17f5d118c7fd550952e9cfc0
-- Candidate commit: 01c29518727ea37f5db82980e0b0b174477c53d1
-- Accepted commit: 01c29518727ea37f5db82980e0b0b174477c53d1
-- Files changed: deterministic immutable SOC incident timeline projection and focused regression tests
-- Deterministic validation: focused 32 passed; full 1127 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with only dependency/identity/compliance YELLOW findings
+- Task ID: FW-SOC-04
+- Starting commit: b4f673bef72b299a7e7cad44307643b93fcaa080
+- Candidate commit: a36d5a75f043720ac625aeaea4da99cf03f75bf3
+- Accepted commit: a36d5a75f043720ac625aeaea4da99cf03f75bf3
+- Files changed: bounded deterministic inert SOC playbook proposal and focused regression tests
+- Deterministic validation: focused 65 passed; full 1135 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with only dependency/identity/compliance YELLOW findings
 - Independent review: AnythingLLM/Qwen exact APPROVE/LOW with no blockers or missing tests
 - Gemini review: disabled and not required under D-020
-- Unresolved findings: none for FW-SOC-03; historical dependency/identity/compliance YELLOW findings remain
+- Unresolved findings: none for FW-SOC-04; historical dependency/identity/compliance YELLOW findings remain
 - Blocker: live Azure use remains disabled until interactive Entra login and credit/deployment evidence pass; this does not block offline swarm hardening
-- Next action: claim FW-SOC-04
+- Next action: claim FW-SOC-05
 
 - Completion inventory: `docs/completion-audit-2026-09-09.md` (baseline `0afcbdd`).
 - FWQ-0008 implementation and binding hardening exist; VALIDATED retains a historical provenance caveat, not an implementation assignment. FWQ-0009 is recorded accepted and unchanged at source/test level from its reviewed candidate.
@@ -54,6 +54,8 @@ On every restart or continuation:
 - Latest broad Core closure: FWQ-0064, 833 passed/1 skipped, all hard checks/Golden Path passing, YELLOW pre-existing findings.
 
 ## Execution log
+
+- 2026-09-09: FW-SOC-04 accepted at `a36d5a75f043720ac625aeaea4da99cf03f75bf3`. ForgeWarden now creates immutable inert response playbook proposals with canonical read-only/mutating action classes, deterministic acyclic dependency order, and exact policy references. Mutating proposals require approval, Action Ticket, checkpoint, and rollback references; read-only steps are forbidden from claiming them. Output remains DRY_RUN/PROPOSE_ONLY with deployment disabled, kill switch engaged, and no authority expansion. Focused 65 passed; AnythingLLM/Qwen corrected its unsupported `PASS` token to exact APPROVE/LOW with no blockers/missing tests; full 1135 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with only existing YELLOW findings. No ticket issuance/consumption, policy evaluation, incident mutation, execution, deployment, containment, remediation, recovery, or response authority was added. FW-SOC-05 is next.
 
 - 2026-09-09: FW-SOC-03 accepted at `01c29518727ea37f5db82980e0b0b174477c53d1`. ForgeWarden now projects bounded caller-supplied incident, normalized-event, Evidence, review, approval, recovery, and disposition references into an immutable tenant/incident-bound timeline. Entry types and timestamps are exact, IDs are unique, ordering is deterministic, and a terminal incident requires one final disposition entry. Evidence must succeed before return and excludes incident titles. Focused 32 passed; AnythingLLM/Qwen exact APPROVE/LOW with no blockers/missing tests; full 1127 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with only existing YELLOW findings. No persistence, playbook execution, credential, network, filesystem, deployment, containment, remediation, recovery, or response authority was added. FW-SOC-04 is next.
 

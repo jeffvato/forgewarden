@@ -393,7 +393,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-SOC-04 — Bounded response playbook proposal
 - Requirement: FW-SOC deterministic Security Response Playbook seam
-- State: READY
+- State: DONE
 - Priority: P0
 - Dependencies: FW-SOC-03
 - Approval: FW-SOC remains active under D-022; proposal generation grants no response authority.
@@ -410,6 +410,26 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no ticket issuance/consumption, policy evaluation, incident mutation, playbook execution, deployment, containment, remediation, recovery, or response authority is added.
 - Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
 - Security considerations: the result is an inert proposal consumed only by later canonical authorization and execution gates.
+- Completion evidence: exact candidate `a36d5a75f043720ac625aeaea4da99cf03f75bf3`; focused 65 passed; AnythingLLM/Qwen corrected an unsupported verdict token and returned exact APPROVE/LOW with no blockers or missing tests; full 1135 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with only the existing dependency/identity/compliance YELLOW findings.
+
+### FW-SOC-05 — Integrated incident-to-playbook dry-run proof
+- Requirement: FW-SOC initial bounded lifecycle integration
+- State: READY
+- Priority: P0
+- Dependencies: FW-SOC-04
+- Approval: composition of accepted FW-SOC interfaces is approved under D-022; execution and response authority remain prohibited.
+- Description: Prove one deterministic fixture lifecycle from tenant-bound incident references through attack story, incident timeline, and inert playbook proposal using one canonical Evidence sink and no duplicated state owner.
+- Target path: tests/test_soc.py
+- Allowed paths: swarm/soc.py, tests/test_soc.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_soc.py tests/test_normalized_events.py tests/test_action_ticket.py tests/test_policy_gate.py
+- Acceptance criteria:
+  - one fixture-driven proof composes the accepted incident, story, timeline, and playbook interfaces with exact tenant/incident/reference binding;
+  - canonical Evidence ordering is deterministic and failure at every stage prevents later projections;
+  - cross-tenant, malformed reference, failed policy-reference, missing ticket-reference, and kill-switch/safety-state cases remain denied;
+  - outputs remain immutable reference-only DRY_RUN projections and no stage owns or copies normalized events, Evidence, policy, approvals, or Action Tickets;
+  - no model inference, persistence, playbook execution, credential, network, filesystem, deployment, containment, remediation, recovery, or response authority is added.
+- Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
+- Security considerations: this is an integration proof over inert accepted interfaces, not a response engine.
 
 ### FW-BME-02 — Deterministic phishing and spoof classification
 - Requirement: FW-BME phishing/BEC/authentication signal evaluation
