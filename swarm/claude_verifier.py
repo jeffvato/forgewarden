@@ -18,10 +18,10 @@ from .core import SwarmError, validate_contract
 MODEL = MODEL_ALIASES["haiku"]
 TIMEOUT_SECONDS = 180
 MAX_OUTPUT_BYTES = 131072
-# Current Claude structured-output execution reports three turns when the model
-# requests its one permitted read or completes the schema wrapper. Three keeps
+# Current Claude structured-output execution may report four turns when the model
+# requests its one permitted read or completes the schema wrapper. Four keeps
 # the verifier bounded while allowing that terminal structured-output turn.
-MAX_TURNS = 3
+MAX_TURNS = 4
 
 
 def _write_diagnostic(path: Path | None, payload: dict[str, Any]) -> None:
