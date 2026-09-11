@@ -3,7 +3,14 @@ from dataclasses import replace
 import pytest
 
 from swarm.harness_context import ContextItem, build_context_packet
-from swarm.harness_evidence import HarnessEvidenceError, emit_harness_evidence
+from swarm.evidence import EvidenceLedger
+from swarm.harness_evidence import (
+    HarnessEvidenceError,
+    HarnessLifecycleEvidence,
+    append_harness_evidence,
+    emit_harness_evidence,
+    harness_lifecycle_payload_sha256,
+)
 from swarm.harness_task import HarnessTask, TaskStatus
 from swarm.harness_worker import WorkerOutput, WorkerRegistration, WorkerRole, WorkerTransport
 
@@ -139,3 +146,69 @@ def test_worker_model_substitution_denies_without_output():
 def test_lifecycle_collections_are_bounded():
     with pytest.raises(HarnessEvidenceError, match="excessive"):
         emit(test_results=tuple(f"result-{index}" for index in range(257)))
+
+
+def test_canonical_adapter_binds_exact_payload_and_chain():
+    durable = []
+    ledger = EvidenceLedger("tenant-one", lambda envelope, digest: durable.append((envelope, digest)))
+    first = emit()
+    first_record = append_harness_evidence(
+        first, ledger=ledger, correlation_id="fw-corr/tenant-one/fwq-0074",
+    )
+    assert first_record.envelope.payload_sha256 == harness_lifecycle_payload_sha256(first)
+    assert first_record.envelope.actor_ref == "fw-id/controller-one"
+    assert first_record.envelope.subject_ref == "fw-task/fwq-0074"
+    assert first_record.envelope.previous_record_sha256 is None
+    second = replace(first, event="task_checkpointed", timestamp="2026-09-09T00:00:01Z")
+    second_record = append_harness_evidence(second, ledger=ledger)
+    assert second_record.envelope.previous_record_sha256 == first_record.record_sha256
+    assert tuple(record.record_sha256 for record in ledger.tenant_snapshot("tenant-one")) == (
+        first_record.record_sha256, second_record.record_sha256,
+    )
+    assert len(durable) == 2
+
+
+def test_canonical_adapter_rejects_replay_cross_tenant_and_invalid_payload():
+    ledger = EvidenceLedger("tenant-one", lambda *_args: None)
+    lifecycle = emit()
+    append_harness_evidence(lifecycle, ledger=ledger)
+    with pytest.raises(HarnessEvidenceError, match="admission"):
+        append_harness_evidence(lifecycle, ledger=ledger)
+    other = EvidenceLedger("tenant-two", lambda *_args: None)
+    with pytest.raises(HarnessEvidenceError, match="tenant"):
+        append_harness_evidence(lifecycle, ledger=other)
+    fabricated = replace(lifecycle, mode="LIVE")
+    with pytest.raises(HarnessEvidenceError, match="cannot grant authority"):
+        append_harness_evidence(fabricated, ledger=ledger)
+    with pytest.raises(HarnessEvidenceError, match="required"):
+        append_harness_evidence({"tenant_id": "tenant-one"}, ledger=ledger)  # type: ignore[arg-type]
+
+
+def test_canonical_adapter_denies_durability_failure_without_admission():
+    def fail(_envelope, _digest):
+        raise RuntimeError("offline")
+    ledger = EvidenceLedger("tenant-one", fail)
+    with pytest.raises(HarnessEvidenceError, match="admission"):
+        append_harness_evidence(emit(), ledger=ledger)
+    assert ledger.tenant_snapshot("tenant-one") == ()
+
+
+@pytest.mark.parametrize("changes", [
+    {"classification": "SECRET"},
+    {"correlation_id": "fw-corr/tenant-two/fwq-0074"},
+    {"evidence_references": ("fw-evid/tenant-two/other",)},
+])
+def test_canonical_adapter_denies_metadata_substitution(changes):
+    ledger = EvidenceLedger("tenant-one", lambda *_args: None)
+    with pytest.raises((HarnessEvidenceError, ValueError)):
+        append_harness_evidence(emit(), ledger=ledger, **changes)
+
+
+def test_canonical_adapter_retains_no_raw_payload_or_secret_material():
+    ledger = EvidenceLedger("tenant-one", lambda *_args: None)
+    lifecycle = emit(reviewer_findings=("bounded result",))
+    record = append_harness_evidence(lifecycle, ledger=ledger)
+    envelope_text = repr(record.envelope)
+    assert "bounded result" not in envelope_text
+    assert not hasattr(record.envelope, "payload")
+    assert record.envelope.authority_granted is False
