@@ -1,12 +1,44 @@
 import pytest
 
 from swarm.policy_gate import (
+    CORE_INVARIANTS,
+    CoreInvariant,
     DeterministicPolicy,
     PolicyContext,
     PolicyInvariantError,
     PolicyRule,
     validate_safety_evidence,
+    validate_invariant_manifest,
 )
+
+
+def test_core_invariant_manifest_is_complete_unique_and_immutable():
+    assert validate_invariant_manifest() is CORE_INVARIANTS
+    assert [item.invariant_id for item in CORE_INVARIANTS] == [f"FW-INV-{index:03d}" for index in range(1, 10)]
+    with pytest.raises(AttributeError):
+        CORE_INVARIANTS[0].owner = "AI"  # type: ignore[misc]
+
+
+def test_core_invariant_manifest_rejects_duplicates_and_missing_rules():
+    with pytest.raises(PolicyInvariantError, match="unique"):
+        validate_invariant_manifest(CORE_INVARIANTS[:-1] + (CORE_INVARIANTS[0],))
+    with pytest.raises(PolicyInvariantError, match="incomplete"):
+        validate_invariant_manifest(CORE_INVARIANTS[:-1])
+    with pytest.raises(PolicyInvariantError, match="non-empty tuple"):
+        validate_invariant_manifest([])  # type: ignore[arg-type]
+
+
+def test_core_invariant_rejects_unversioned_id():
+    with pytest.raises(PolicyInvariantError, match="ID"):
+        CoreInvariant("AI-CAN-DECIDE", "FW-ROOT", "unsafe", "DENY")
+
+
+@pytest.mark.parametrize("field,value", [("owner", None), ("statement", " "), ("enforcement", "x" * 257)])
+def test_core_invariant_rejects_malformed_bounded_fields(field, value):
+    values = {"owner": "FW-ROOT", "statement": "AI is bounded", "enforcement": "DENY"}
+    values[field] = value
+    with pytest.raises(PolicyInvariantError, match="non-empty bounded string"):
+        CoreInvariant("FW-INV-010", **values)
 
 
 def evidence(**overrides):

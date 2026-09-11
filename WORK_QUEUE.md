@@ -859,6 +859,25 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 - Completion evidence: exact candidate `dda243e755c4f21b565aca762d5f9cb949ec35df`; focused 32 passed; exact Claude review `phase2a-dda243e755c4f21b565aca76` APPROVE/LOW with no blockers or missing tests; full 1381 passed/1 skipped; Product Integrity fresh full 1381 passed/1 skipped, all hard checks and 4 Golden Paths passed with only pre-existing `tzdata` and Defined FW-COMP/FW-AID YELLOW findings.
 
 
+### FW-INTEGRITY-001 — Machine-readable Core invariants and ownership drift gate
+- Requirement: FW-INTEGRITY invariant enforcement and architecture drift prevention
+- State: IMPLEMENTING
+- Priority: P0
+- Dependencies: FW-HARNESS-017 and FW-UX-001
+- Approval: deterministic metadata and validation inside existing FW-ROOT/FW-INTEGRITY owners are authorized; no new policy language or authority is added.
+- Description: Encode the approved project-wide AI authority and safety invariants as immutable machine-readable policy metadata and make Product Integrity fail closed on incomplete invariants or duplicate canonical implementations.
+- Target path: swarm/policy_gate.py
+- Allowed paths: swarm/policy_gate.py, swarm/integrity.py, tests/test_policy_gate.py, tests/test_integrity.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_policy_gate.py tests/test_integrity.py
+- Acceptance criteria:
+  - stable invariant IDs bind existing owners, plain-language statements, and deterministic enforcement classes for self-authority, Z3/Action Tickets, tenancy, Evidence, kill switch/deployment, review, model assurance, MCP/tool authority, and monitoring separation;
+  - the immutable manifest rejects malformed, duplicate, missing, or unversioned entries;
+  - Product Integrity validates the manifest and canonical ownership registry on every run and treats validation failure as a hard failure;
+  - duplicate canonical implementations and malformed ownership records fail closed without creating a competing registry;
+  - no model, tool, Git, credential, network, deployment, containment, recovery, or response authority is added.
+- Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
+- Security considerations: this milestone makes existing rules machine-consumable; domain controls remain the enforcement owners.
+
 ### FW-UX-001 — Mission Control showcase foundation
 - Requirement: FW-UX Mission Control and honest Demo Mode
 - State: DONE

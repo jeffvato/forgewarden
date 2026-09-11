@@ -3,10 +3,37 @@ import subprocess
 import sys
 from pathlib import Path
 
-from swarm.integrity import CANONICAL_OWNERSHIP, FUNCTIONALITY_MAP, run_product_integrity_gate
+from swarm.integrity import CANONICAL_OWNERSHIP, FUNCTIONALITY_MAP, run_product_integrity_gate, validate_canonical_ownership
 
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def test_canonical_ownership_validation_detects_duplicate_implementations():
+    assert validate_canonical_ownership()["model_selection"] == "Model Broker"
+    altered = {key: dict(value) for key, value in CANONICAL_OWNERSHIP.items()}
+    altered["identity"]["implementation"] = altered["model_selection"]["implementation"]
+    try:
+        validate_canonical_ownership(altered)
+    except ValueError as exc:
+        assert "duplicate canonical implementation" in str(exc)
+    else:
+        raise AssertionError("duplicate canonical implementation was accepted")
+
+
+def test_canonical_ownership_validation_rejects_malformed_records():
+    for malformed in (
+        {},
+        {"identity": {"owner": "FW-ID", "implementation": "swarm.identity.IdentityRecord"}},
+        {"identity": {"owner": "FW-ID", "implementation": "x" * 513, "status": "IMPLEMENTED"}},
+        {"identity": {"owner": " ", "implementation": "swarm.identity.IdentityRecord", "status": "IMPLEMENTED"}},
+    ):
+        try:
+            validate_canonical_ownership(malformed)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("malformed canonical ownership was accepted")
 
 
 def test_functionality_map_distinguishes_proven_from_not_yet_proven():
@@ -67,6 +94,8 @@ def test_gate_reports_current_repository_health_and_dependency_risk():
     assert report["checks"]["build"]
     assert report["checks"]["startup"]
     assert report["checks"]["configuration"]
+    assert report["checks"]["invariant_manifest"]
+    assert report["checks"]["architecture_ownership"]
     assert report["checks"]["tests"]
     assert report["checks"]["golden_path"]
     assert report["head"]

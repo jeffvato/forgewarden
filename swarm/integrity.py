@@ -11,6 +11,7 @@ import subprocess
 import sys
 from pathlib import Path
 from typing import Any, Iterable
+from .policy_gate import PolicyInvariantError, validate_invariant_manifest
 
 
 CANONICAL_OWNERSHIP: dict[str, dict[str, Any]] = {
@@ -39,6 +40,26 @@ FUNCTIONALITY_MAP: tuple[dict[str, Any], ...] = (
     {"requirement_id": "FW-AID", "state": "Defined", "component": "docs/fw-aid-architecture.md", "dependencies": ["FW-AV", "FW-ENDPOINT", "FW-ID", "FW-KEYS", "FW-MCP", "Model Broker", "NormalizedEventStore", "FW-SOC", "FW-ROOT/Z3", "FW-EVID", "FW-REC", "FW-HARNESS", "Mission Control"], "user_surface": "future Mission Control AI Security / Agent Defense view", "unit_tests": "NOT_STARTED", "integration_tests": "NOT_STARTED", "golden_path": "NOT_STARTED", "limitations": "architecture and requirement registry only; no runtime telemetry, detection, correlation, containment, live sensor, network/process control, or response authority"},
     {"requirement_id": "FW-INTEGRITY", "state": "Implemented", "component": "swarm.integrity", "dependencies": ["Git", "Python", "pytest", "documentation registry"], "user_surface": "integrity gate report", "unit_tests": "PASS", "integration_tests": "IN_PROGRESS", "golden_path": "first baseline path established", "limitations": "database migration checks are not applicable to this repository yet"},
 )
+
+
+def validate_canonical_ownership(ownership: dict[str, dict[str, Any]] = CANONICAL_OWNERSHIP) -> dict[str, str]:
+    """Detect duplicate or malformed canonical component declarations."""
+    if not ownership:
+        raise ValueError("canonical ownership registry is empty")
+    normalized: dict[str, str] = {}
+    implementations: set[str] = set()
+    for component, record in ownership.items():
+        if not isinstance(component, str) or not isinstance(record, dict) or set(record) != {"owner", "implementation", "status"}:
+            raise ValueError("canonical ownership record is malformed")
+        owner, implementation, status = record["owner"], record["implementation"], record["status"]
+        if not all(isinstance(value, str) and value.strip() and len(value) <= 512 for value in (owner, implementation, status)):
+            raise ValueError("canonical ownership value is malformed")
+        if implementation not in {"roadmap only", "architecture and requirements only"}:
+            if implementation in implementations:
+                raise ValueError("duplicate canonical implementation detected")
+            implementations.add(implementation)
+        normalized[component] = owner
+    return normalized
 
 
 def _run(command: list[str], cwd: Path, timeout: int = 120) -> dict[str, Any]:
@@ -75,6 +96,12 @@ def run_product_integrity_gate(root: Path, *, test_command: Iterable[str] | None
     build = _run([sys.executable, "-m", "compileall", "-q", "swarm"], root)
     startup = _run([sys.executable, "-c", "import swarm.core, swarm.console, swarm.asoc, swarm.integrity"], root)
     config = _config_check(root)
+    try:
+        invariants = validate_invariant_manifest()
+        ownership = validate_canonical_ownership()
+        architecture = {"passed": True, "invariant_ids": [item.invariant_id for item in invariants], "owners": ownership}
+    except (PolicyInvariantError, ValueError) as exc:
+        architecture = {"passed": False, "reason": str(exc)}
     tests = _run(list(test_command or [sys.executable, "-m", "pytest", "-q"]), root, 300)
     golden = _run(
         list(golden_command or ["bash", "scripts/run-asoc-golden-path.sh"]), root, 180,
@@ -88,10 +115,10 @@ def run_product_integrity_gate(root: Path, *, test_command: Iterable[str] | None
         findings.append({"severity": "YELLOW", "area": "dependencies", "reason": "pip check reports missing or incompatible packages"})
     if missing_owners:
         findings.append({"severity": "YELLOW", "area": "architecture", "reason": "roadmap ownership has no concrete module: " + ", ".join(missing_owners)})
-    checks = {"repository": git["clean"], "build": build["passed"], "startup": startup["passed"], "configuration": config["passed"], "tests": tests["passed"], "golden_path": golden.get("passed", False)}
+    checks = {"repository": git["clean"], "build": build["passed"], "startup": startup["passed"], "configuration": config["passed"], "invariant_manifest": architecture["passed"], "architecture_ownership": architecture["passed"], "tests": tests["passed"], "golden_path": golden.get("passed", False)}
     hard_failures = [name for name, passed in checks.items() if not passed and name != "golden_path"]
     decision = "RED" if hard_failures else ("YELLOW" if findings or not golden.get("passed") else "GREEN")
-    return {"schema_version": "1", "decision": decision, "head": git["head"], "checks": checks, "findings": findings, "missing_canonical_owners": missing_owners, "dependency_check": dependencies, "commands": {"tests": tests, "golden_path": golden}, "functionality": [dict(item, last_validated_commit=git["head"]) for item in FUNCTIONALITY_MAP], "canonical_ownership": CANONICAL_OWNERSHIP}
+    return {"schema_version": "1", "decision": decision, "head": git["head"], "checks": checks, "findings": findings, "architecture_validation": architecture, "missing_canonical_owners": missing_owners, "dependency_check": dependencies, "commands": {"tests": tests, "golden_path": golden}, "functionality": [dict(item, last_validated_commit=git["head"]) for item in FUNCTIONALITY_MAP], "canonical_ownership": CANONICAL_OWNERSHIP}
 
 
 def write_gate_report(report: dict[str, Any], path: Path) -> None:

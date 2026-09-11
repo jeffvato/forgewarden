@@ -17,6 +17,48 @@ KILL_SWITCH_ENGAGED = "ENGAGED"
 KILL_SWITCH_CLEARED_FOR_DRY_RUN = "CLEARED_FOR_DRY_RUN"
 
 
+@dataclass(frozen=True)
+class CoreInvariant:
+    """Machine-readable project invariant owned by an existing control plane."""
+    invariant_id: str
+    owner: str
+    statement: str
+    enforcement: str
+
+    def __post_init__(self) -> None:
+        if not self.invariant_id.startswith("FW-INV-"):
+            raise PolicyInvariantError("invariant ID is invalid")
+        for field in ("owner", "statement", "enforcement"):
+            value = getattr(self, field)
+            if not isinstance(value, str) or not value.strip() or len(value) > 256:
+                raise PolicyInvariantError(f"{field} must be a non-empty bounded string")
+
+
+CORE_INVARIANTS: tuple[CoreInvariant, ...] = (
+    CoreInvariant("FW-INV-001", "FW-ROOT", "AI cannot grant or expand its own authority.", "DENY_BEFORE_MODEL"),
+    CoreInvariant("FW-INV-002", "FW-ROOT/Z3", "AI cannot bypass deterministic policy or forge Action Tickets.", "DENY_BEFORE_EXECUTION"),
+    CoreInvariant("FW-INV-003", "FW-ID", "Tenant boundaries require explicit tenant-bound authority.", "FAIL_CLOSED"),
+    CoreInvariant("FW-INV-004", "FW-EVID", "Protected Evidence cannot be altered to conceal activity.", "APPEND_ONLY"),
+    CoreInvariant("FW-INV-005", "FW-OPS", "AI cannot clear the kill switch or activate deployment.", "HUMAN_AUTHORITY_REQUIRED"),
+    CoreInvariant("FW-INV-006", "FW-HARNESS", "A writer cannot bypass required independent exact-commit review.", "EXACT_REVIEW_REQUIRED"),
+    CoreInvariant("FW-INV-007", "Model Broker", "Model unavailability cannot silently lower required assurance.", "NO_APPROVED_MODEL_FAIL_CLOSED"),
+    CoreInvariant("FW-INV-008", "MCP Gateway", "Tools cannot gain undeclared privileged authority.", "CAPABILITY_ADMISSION_REQUIRED"),
+    CoreInvariant("FW-INV-009", "FW-AID", "A protected agent cannot disable the monitoring protecting it.", "SEPARATION_OF_DUTIES"),
+)
+
+
+def validate_invariant_manifest(invariants: tuple[CoreInvariant, ...] = CORE_INVARIANTS) -> tuple[CoreInvariant, ...]:
+    """Fail closed on malformed, duplicate, or incomplete Core invariants."""
+    if not isinstance(invariants, tuple) or not invariants or not all(isinstance(item, CoreInvariant) for item in invariants):
+        raise PolicyInvariantError("invariant manifest must be a non-empty tuple")
+    ids = [item.invariant_id for item in invariants]
+    if len(ids) != len(set(ids)):
+        raise PolicyInvariantError("invariant IDs must be unique")
+    if set(ids) != {f"FW-INV-{index:03d}" for index in range(1, 10)}:
+        raise PolicyInvariantError("invariant manifest is incomplete")
+    return invariants
+
+
 def _policy_text(value: Any, field: str) -> str:
     if not isinstance(value, str) or not value.strip() or len(value) > 256:
         raise PolicyInvariantError(f"{field} must be a non-empty bounded string")
