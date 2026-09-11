@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: FW-EVID-004 canonical ledger durable AuditLog adapter accepted
-- Next task: FW-EVID-005 accepted-work canonical-envelope adapter under D-024.
+- Current focus: FW-EVID-005 accepted-work canonical-envelope adapter accepted
+- Next task: FW-EVID-006 integrated canonical Evidence lifecycle proof under D-024.
 - Harness role: permanent ForgeWarden Core subsystem and default controller for ForgeWarden's own development; one governed architecture serves both roles under D-023.
 - Worker transport direction: registered local CLIs and explicitly approved API-backed workers; API keys are resolved only through FW-KEYS secret handles inside trusted adapters and never enter model context or lifecycle evidence.
 - Provider authentication direction: deterministic OpenAI, Anthropic, and Google/Gemini profiles with provider-specific official OAuth where available and approved API-key classes otherwise; Gemini CLI is registered as `agy` for read-only roles, FW-ID owns delegated identity, and FW-KEYS owns all credential material.
@@ -34,17 +34,17 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-EVID-004
-- Starting commit: 95855c87a18c3ef91a4f6b1e156e2141ada35b59
-- Candidate commit: c2b5b46967e65ddc6676aad1631f268370829a7c
-- Accepted commit: c2b5b46967e65ddc6676aad1631f268370829a7c
-- Files changed: existing AuditLog canonical-record method, canonical durability adapter, bounded exact restart reconstruction, compatibility and failure-path tests
-- Deterministic validation: focused 78 passed; full 1308 passed/1 skipped; integrity fresh full 1308 passed/1 skipped, hard checks and 4 Golden Paths pass with YELLOW only for dependency and Defined FW-COMP/FW-AID owners
-- Independent review: exact Claude APPROVE/LOW with no blockers or missing tests (`phase2a-c2b5b46967e65ddc6676aad1`)
+- Task ID: FW-EVID-005
+- Starting commit: efc21e0fb09b44b49d37b37d6ea99f11d1548246
+- Candidate commit: 8b86578dbf6ede0236b45d00b856c648cd39198e
+- Accepted commit: 8b86578dbf6ede0236b45d00b856c648cd39198e
+- Files changed: accepted-work canonical-envelope adapter and commit/review/policy/tenant/chain/durability/data-minimization tests
+- Deterministic validation: focused 59 passed; full 1312 passed/1 skipped; integrity fresh full 1312 passed/1 skipped, hard checks and 4 Golden Paths pass with YELLOW only for dependency and Defined FW-COMP/FW-AID owners
+- Independent review: exact Claude APPROVE/LOW with no blockers or missing tests (`phase2a-8b86578dbf6ede0236b45d00`)
 - Gemini review: disabled and not required under D-020
-- Unresolved findings: none for FW-EVID-004; runtime FW-AID and FW-COMP remain explicitly Defined
+- Unresolved findings: none for FW-EVID-005; runtime FW-AID and FW-COMP remain explicitly Defined
 - Blocker: live Azure use remains disabled until interactive Entra login and credit/deployment evidence pass; this does not block offline Core work
-- Next action: implement FW-EVID-005.
+- Next action: implement FW-EVID-006.
 
 - Completion inventory: `docs/completion-audit-2026-09-09.md` (baseline `0afcbdd`).
 - FWQ-0008 implementation and binding hardening exist; VALIDATED retains a historical provenance caveat, not an implementation assignment. FWQ-0009 is recorded accepted and unchanged at source/test level from its reviewed candidate.
@@ -54,6 +54,8 @@ On every restart or continuation:
 - Latest broad Core closure: FWQ-0064, 833 passed/1 skipped, all hard checks/Golden Path passing, YELLOW pre-existing findings.
 
 ## Execution log
+
+- 2026-09-10: FW-EVID-005 accepted at `8b86578dbf6ede0236b45d00b856c648cd39198e`. Exact accepted-work bundles now remain owned and revalidated by their existing schema while canonical tenant Evidence binds the full validated bundle digest, exact job/commit/review/policy facts, actor, time, classification, correlation, references, and current ledger chain. Replay, substitution, cross-tenant, and durability failures deny without admission, and canonical envelopes retain no provider prose or raw payload. Focused 59 passed; exact Claude APPROVE/LOW with no blockers/missing tests; full and Product Integrity fresh full each passed 1312/1, all hard gates, and 4 Golden Paths with only dependency and Defined FW-COMP/FW-AID YELLOW findings. FW-EVID-006 is next.
 
 - 2026-09-10: FW-EVID-004 accepted at `c2b5b46967e65ddc6676aad1631f268370829a7c`. The canonical tenant ledger now persists exact envelope/digest records through the existing restricted AuditLog lock, no-follow, private-permission, flush, and fsync boundary before advancing memory state. Restart reconstruction revalidates exact schemas, hashes, tenants, chains, duplicates, replay, mixed legacy records, truncation, corruption, and byte/line/record limits. Focused 78 passed; after bounded provider-unavailable attempts, the exact repaired candidate received Claude APPROVE/LOW with no blockers/missing tests. Full and Product Integrity fresh full each passed 1308/1, all hard gates, and 4 Golden Paths with only dependency and Defined FW-COMP/FW-AID YELLOW findings. FW-EVID-005 is next.
 

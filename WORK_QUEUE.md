@@ -734,7 +734,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-EVID-005 — Accepted-work canonical-envelope adapter
 - Requirement: FW-EVID acceptance lifecycle integration
-- State: READY
+- State: DONE
 - Priority: P0
 - Dependencies: FW-EVID-004
 - Approval: bounded adaptation of already-validated accepted-work records is activated under D-024; reviewer policy migration, signing, export, replication, and transport remain unauthorized.
@@ -750,6 +750,26 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no reviewer-policy change, signing, export, transport, Git mutation, deployment, containment, recovery execution, or response authority is added.
 - Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
 - Security considerations: this adapter consumes the existing accepted-work schema unchanged; any future reviewer-policy schema evolution requires its own explicit deterministic migration.
+- Completion evidence: exact candidate `8b86578dbf6ede0236b45d00b856c648cd39198e`; focused 59 passed; exact Claude Code job `phase2a-8b86578dbf6ede0236b45d00` returned APPROVE/LOW with no blockers or missing tests; full 1312 passed/1 skipped; Product Integrity fresh full 1312 passed/1 skipped, 4 Golden Paths, and all hard checks passed with YELLOW only for the existing `tzdata` dependency and Defined FW-COMP/FW-AID owners.
+
+### FW-EVID-006 — Integrated canonical Evidence lifecycle proof
+- Requirement: FW-EVID lifecycle acceptance
+- State: READY
+- Priority: P0
+- Dependencies: FW-EVID-005
+- Approval: deterministic local DRY_RUN lifecycle proof is activated under D-024; signing, retention enforcement, external export, replication, and transport remain unauthorized.
+- Description: Prove one tenant-bound lifecycle from validated harness facts through canonical append, accepted-work binding, durable AuditLog persistence, restart reconstruction, and replay/tamper denial using the existing owners.
+- Target path: tests/test_evidence_lifecycle.py
+- Allowed paths: swarm/evidence.py, swarm/harness_evidence.py, swarm/accepted_work_evidence.py, swarm/integrity.py, tests/test_evidence_lifecycle.py, tests/test_evidence.py, tests/test_harness_evidence.py, tests/test_accepted_work_evidence.py, docs/fw-evid-inventory.md, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_evidence.py tests/test_harness_evidence.py tests/test_accepted_work_evidence.py tests/test_evidence_lifecycle.py
+- Acceptance criteria:
+  - one deterministic proof composes validated harness lifecycle payloads, exact accepted-work evidence, canonical envelopes, tenant chain admission, durable private AuditLog persistence, and exact restart reconstruction;
+  - restart continues only from the exact recovered tail and denies duplicate, stale, forked, cross-tenant, tampered, truncated, or durability-failed evidence without claiming acceptance;
+  - payload owners remain authoritative and canonical Evidence retains only hashes and bounded references, with no raw prompts, context, provider prose, model output, secrets, handles, or backend locators;
+  - Product Integrity reports FW-EVID Proven only within its explicit local DRY_RUN, unsigned, non-exporting boundary;
+  - no policy, approval, Action Ticket, Git mutation, signing, deployment, containment, recovery execution, or response authority is added.
+- Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
+- Security considerations: proof covers deterministic lifecycle and restart integrity only; cryptographic signing, retention execution, replication, and external export remain separately gated.
 
 ### FW-BME-02 — Deterministic phishing and spoof classification
 - Requirement: FW-BME phishing/BEC/authentication signal evaluation
