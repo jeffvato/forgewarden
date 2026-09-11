@@ -16,6 +16,7 @@ from .core import (
     redact,
     write_mailbox_json,
 )
+from .evidence import EvidenceContractError, EvidenceEnvelope, EvidenceLedger, EvidenceRecord
 
 
 class AcceptedEvidenceError(SwarmError):
@@ -232,3 +233,47 @@ def read_accepted_evidence(
         )
     except SwarmError as exc:
         raise AcceptedEvidenceError(str(exc)) from exc
+
+
+def append_accepted_evidence(
+    bundle: Mapping[str, Any], *, expected_job_id: str,
+    expected_candidate_commit: str, tenant_id: str, actor_id: str,
+    occurred_at: str, ledger: EvidenceLedger, classification: str = "INTERNAL",
+    correlation_id: str | None = None,
+    evidence_references: tuple[str, ...] = (),
+) -> EvidenceRecord:
+    """Adapt one exact accepted-work bundle into canonical tenant Evidence."""
+    validated = _validate(
+        bundle,
+        expected_job_id=expected_job_id,
+        expected_candidate_commit=expected_candidate_commit,
+    )
+    if not isinstance(ledger, EvidenceLedger) or ledger.tenant_id != tenant_id:
+        raise AcceptedEvidenceError("accepted Evidence ledger tenant mismatch")
+    payload_sha256 = hashlib.sha256(_canonical(validated)).hexdigest()
+    prior = ledger.tenant_snapshot(tenant_id)
+    previous = prior[-1].record_sha256 if prior else None
+    try:
+        envelope = EvidenceEnvelope(
+            schema_version="1",
+            evidence_id=f"fw-evid/{tenant_id}/accepted-work/{validated['job_id']}/{payload_sha256[:16]}",
+            tenant_id=tenant_id,
+            event_type="work_accepted",
+            actor_ref=f"fw-id/{actor_id}",
+            actor_tenant_id=tenant_id,
+            subject_ref=f"fw-task/{validated['job_id']}",
+            subject_tenant_id=tenant_id,
+            occurred_at=occurred_at,
+            classification=classification,
+            payload_schema_id="fw-schema/accepted-work/v1",
+            payload_sha256=payload_sha256,
+            previous_record_sha256=previous,
+            correlation_id=correlation_id,
+            evidence_references=evidence_references,
+            mode="DRY_RUN",
+            deployment="DISABLED",
+            authority_granted=False,
+        )
+        return ledger.append(envelope)
+    except EvidenceContractError as exc:
+        raise AcceptedEvidenceError("canonical accepted-work Evidence admission failed") from exc
