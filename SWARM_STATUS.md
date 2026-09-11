@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: FW-HARNESS-016 risk-bound approved model routing accepted
-- Next task: FW-HARNESS-017 bounded failure escalation and Failure Packets; FW-REC-003 remains queued.
+- Current focus: FW-HARNESS-017 bounded failure escalation and Failure Packets accepted
+- Next task: reconcile the project-wide invariants/drift directive with existing FW-ROOT/FW-INTEGRITY owners and begin the parallel Mission Control UI-1 stream after repository inventory; FW-REC-003 remains queued.
 - Harness role: permanent ForgeWarden Core subsystem and default controller for ForgeWarden's own development; one governed architecture serves both roles under D-023.
 - Worker transport direction: registered local CLIs and explicitly approved API-backed workers; API keys are resolved only through FW-KEYS secret handles inside trusted adapters and never enter model context or lifecycle evidence.
 - Provider authentication direction: deterministic OpenAI, Anthropic, and Google/Gemini profiles with provider-specific official OAuth where available and approved API-key classes otherwise; Gemini CLI is registered as `agy` for read-only roles, FW-ID owns delegated identity, and FW-KEYS owns all credential material.
@@ -34,17 +34,17 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-HARNESS-016
-- Starting commit: f559b38c0373aaad530117f3a455f971cecc81f9
-- Candidate commit: b647df6b8b78c5703da99909e247a03d21653ae1
-- Accepted commit: b647df6b8b78c5703da99909e247a03d21653ae1
-- Files changed: Approved Model Registry candidate projection, assurance-bound deterministic routing, equivalent failover proof, and architecture documentation
-- Deterministic validation: focused 65 passed; full 1396 passed/1 skipped; integrity fresh full 1396 passed/1 skipped, hard checks and 4 Golden Paths pass with YELLOW only for dependency and Defined FW-COMP/FW-AID owners
-- Independent review: exact Claude APPROVE/LOW with no blockers or missing tests (`phase2a-b647df6b8b78c5703da99909`)
+- Task ID: FW-HARNESS-017
+- Starting commit: 979b8d352295ee3b69c021064c741eb15b3d7b8e
+- Candidate commit: 9d196c4032da456d2d2274eecdd15e3a8d33ebf9
+- Accepted commit: 9d196c4032da456d2d2274eecdd15e3a8d33ebf9
+- Files changed: deterministic failure/escalation classifier, bounded canonical Failure Packet, architecture documentation, and adversarial/boundary tests
+- Deterministic validation: focused 75 passed; full 1421 passed/1 skipped; integrity fresh full 1421 passed/1 skipped, hard checks and 4 Golden Paths pass with YELLOW only for dependency and Defined FW-COMP/FW-AID owners
+- Independent review: exact Claude APPROVE/LOW with no blockers or missing tests (`phase2a-9d196c4032da456d2d2274ee`)
 - Gemini review: disabled and not required under D-020
-- Unresolved findings: bounded failure escalation and canonical Failure Packets remain for FW-HARNESS-017
+- Unresolved findings: project-wide invariant manifest/drift integration and Mission Control showcase inventory are next
 - Blocker: none
-- Next action: implement FW-HARNESS-017.
+- Next action: complete both inventories, then queue one bounded canonical Core control and one bounded UI-1 milestone.
 
 - Completion inventory: `docs/completion-audit-2026-09-09.md` (baseline `0afcbdd`).
 - FWQ-0008 implementation and binding hardening exist; VALIDATED retains a historical provenance caveat, not an implementation assignment. FWQ-0009 is recorded accepted and unchanged at source/test level from its reviewed candidate.
@@ -54,6 +54,8 @@ On every restart or continuation:
 - Latest broad Core closure: FWQ-0064, 833 passed/1 skipped, all hard checks/Golden Path passing, YELLOW pre-existing findings.
 
 ## Execution log
+
+- 2026-09-11: FW-HARNESS-017 accepted at `9d196c4032da456d2d2274eecdd15e3a8d33ebf9`. First ordinary failure permits one same-tier repair; repeated same or different failures escalate one tier; security/architecture uncertainty escalates; scope, budget, kill-switch, and Evidence failures block; T4 requires human escalation. Immutable bounded tenant Failure Packets are Evidence-first and replay-denied and execute nothing. Focused 75 passed; exact Claude APPROVE/LOW with no blockers/missing tests; full and integrity fresh full each passed 1421/1 with all hard gates and 4 Golden Paths. The project-wide operating contract and parallel Mission Control showcase directive are now being reconciled against canonical owners.
 
 - 2026-09-11: FW-HARNESS-016 accepted at `b647df6b8b78c5703da99909e247a03d21653ae1`. The Harness now binds exact deterministic risk tiers into a bounded Approved Model Registry projection and chooses the lowest-cost eligible approved candidate satisfying tenant, environment, role, data, tools, and assurance. T4/human/denied decisions select nothing; unavailable providers can fall back only to a separately approved same-or-higher tier; no candidate fails closed with the canonical assurance error. Routes grant no invocation or deployment authority. Focused 65 passed; exact Claude APPROVE/LOW; full and integrity fresh full each passed 1396/1 with all hard gates and 4 Golden Paths. FW-HARNESS-017 is next.
 

@@ -795,7 +795,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-HARNESS-017 — Bounded failure escalation and failure packets
 - Requirement: FW-HARNESS deterministic repair/escalation control
-- State: READY
+- State: DONE
 - Priority: P0
 - Dependencies: FW-HARNESS-016 and FW-HARNESS-012
 - Approval: metadata-only failure classification, escalation, and Evidence packets are authorized; repair/rollback execution and authority expansion remain unauthorized.
@@ -812,6 +812,8 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no worker invocation, repair, rollback, Git/filesystem/process/network/deployment/credential/containment or authority mutation is added.
 - Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
 - Security considerations: escalation is deterministic metadata consumed by existing controllers and cannot grant a model additional capability.
+- Completion evidence: exact candidate `9d196c4032da456d2d2274eecdd15e3a8d33ebf9`; focused 75 passed after closing every reviewer-requested boundary test; exact Claude review `phase2a-9d196c4032da456d2d2274ee` APPROVE/LOW with no blockers or missing tests; full 1421 passed/1 skipped; Product Integrity fresh full 1421 passed/1 skipped, all hard checks and 4 Golden Paths passed with only pre-existing `tzdata` and Defined FW-COMP/FW-AID YELLOW findings.
+
 
 ### FW-HARNESS-016 — Risk-bound approved model routing
 - Requirement: FW-HARNESS Model Broker assurance integration
