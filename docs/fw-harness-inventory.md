@@ -73,3 +73,21 @@ FW-AID enforcement state protecting it, and FW-AID cannot control harness Git,
 acceptance, credentials, policy, or deployment. Current integration is
 DRY_RUN/DETECT_ONLY and adds no live monitoring hook, process/network control,
 credential access, or containment execution.
+
+
+## 2026-09-11 directive reconciliation
+
+FW-HARNESS-001 through FW-HARNESS-014 already implement or map task intake,
+persistent transitions, dependency scheduling, minimized hashed context,
+multi-dimensional budgets, registered CLI/API workers, FW-ID/FW-KEYS binding,
+canonical model admission and equivalent fallback, Action Ticket/lease
+admission, exact validation/review/Git acceptance, lifecycle Evidence,
+Mission Control, anomaly/repair review, and self-hosted continuation.
+
+The new directive exposes one concrete missing control: a canonical deterministic
+risk classifier between task normalization and the existing Model Broker.
+FW-HARNESS-015 owns policy-configured T0-T4 assurance metadata, hard invariant
+denial, security component/path promotion, and dangerous capability promotion.
+It does not select a vendor model or issue authority. Later bounded work may bind
+its decision into existing model admission, escalation, failure packets,
+FW-AID telemetry, and Mission Control after this contract is accepted.

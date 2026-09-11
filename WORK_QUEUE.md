@@ -793,6 +793,26 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 - Completion evidence: exact candidate `bb8f2a64adf3563581b8e81fab21598cc95ad2fc`; focused 95 passed; exact Claude Code job `phase2a-bb8f2a64adf3563581b8e81f` returned APPROVE/LOW with no blockers or missing tests; full 1329 passed/1 skipped; Product Integrity fresh full 1329 passed/1 skipped, 4 Golden Paths, and all hard checks passed with YELLOW only for the existing `tzdata` dependency and Defined FW-COMP/FW-AID owners. Product Integrity now reports FW-EVID Proven within its local unsigned DRY_RUN boundary.
 
 
+### FW-HARNESS-015 — Deterministic risk classification and assurance tiers
+- Requirement: FW-HARNESS deterministic task risk and routing assurance
+- State: IN_PROGRESS
+- Priority: P0
+- Dependencies: FW-HARNESS-014
+- Approval: deterministic classification metadata is authorized; model invocation, provider activation, and authority expansion are not.
+- Description: Add policy-configured T0-T4 classification, security path/component and dangerous-capability promotion, and hard invariant denial before Model Broker selection.
+- Target path: swarm/harness_risk.py
+- Allowed paths: swarm/harness_risk.py, tests/test_harness_risk.py, docs/fw-harness-inventory.md, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_harness_risk.py
+- Acceptance criteria:
+  - configurable scoring and exact 0/20/40/60/80 boundaries assign T0-T4 deterministically;
+  - security components/paths and dangerous capabilities impose minimum tiers independently of model suggestions;
+  - self-authority expansion, Z3/ticket/tenant/Evidence/kill-switch/deployment/approval bypass and unrestricted host authority deny before model routing;
+  - T4 records require human authorization and no eligible model is selected by the classifier;
+  - unknown signals, malformed policy, tier downgrade requests, and cross-tenant facts fail closed;
+  - output is immutable auditable metadata and grants no model, tool, Git, deployment, credential, network, filesystem, process, or response authority.
+- Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
+- Security considerations: classification is deterministic policy input to the existing Model Broker; no router LLM or model authorization is introduced.
+
 ### FW-REC-003 — Deterministic interruption and resume admission
 - Requirement: FW-REC safe resume coordination
 - State: READY
