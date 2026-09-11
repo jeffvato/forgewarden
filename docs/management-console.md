@@ -1,6 +1,6 @@
-# Forgewarden management console
+# ForgeWarden Mission Control
 
-Forgewarden includes a local-only management console. It is a control plane
+ForgeWarden includes a local-only Mission Control interface. It is a control plane
 for safety visibility and guardrail-checked task planning; it does not invoke a
 model, clear the kill switch, deploy, restart services, or access remote
 systems.

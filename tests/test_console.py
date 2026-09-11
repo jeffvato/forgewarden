@@ -5,23 +5,47 @@ from tempfile import TemporaryDirectory
 import http.client
 import socket
 import threading
+import subprocess
 from http import HTTPStatus
 from http.server import ThreadingHTTPServer
 from swarm.console import addon_audit_snapshot, addon_snapshot, approval_snapshot, dispatch_plan, evidence_snapshot, installation_snapshot, job_detail, jobs_snapshot, load_profiles, ConsoleHandler
 from swarm.core import SwarmError
+from swarm.mission_control_demo import DEMO_SCENARIO_ID, mission_control_demo_snapshot
 
 class ConsoleTests(unittest.TestCase):
+    def test_frontend_contract_and_rendering_boundaries(self):
+        root = Path(__file__).parents[1]
+        result = subprocess.run(["node", "tests/test_console_frontend.js"], cwd=root, text=True, capture_output=True, check=False)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_mission_control_demo_is_explicit_deterministic_and_non_authorizing(self):
+        first = mission_control_demo_snapshot()
+        second = mission_control_demo_snapshot()
+        self.assertEqual(first, second)
+        self.assertEqual(first["data_mode"], "DEMO")
+        self.assertEqual(first["scenario"]["id"], DEMO_SCENARIO_ID)
+        self.assertFalse(first["provenance"]["live_backend_connected"])
+        self.assertFalse(first["provenance"]["cryptographic_verification_performed"])
+        self.assertFalse(first["safety"]["mutation_allowed"])
+        self.assertEqual(first["safety"]["deployment"], "DISABLED")
+        self.assertIn("SIMULATED", first["evidence"]["chain_status"])
+        first["assets"][0]["value"] = 0
+        self.assertEqual(second["assets"][0]["value"], 1204)
+
     def test_console_exposes_navigation_and_status_accessibility_hooks(self):
         html = (Path(__file__).parents[1] / "console" / "index.html").read_text(encoding="utf-8")
         script = (Path(__file__).parents[1] / "console" / "app.js").read_text(encoding="utf-8")
         self.assertIn('<nav aria-label="Primary navigation">', html)
-        self.assertIn("$('connection').setAttribute('aria-live', 'polite')", script)
-        self.assertIn("$('result').setAttribute('aria-live', 'polite')", script)
-        self.assertIn("item.setAttribute('aria-current'", script)
-        self.assertIn("item.removeAttribute('aria-current')", script)
-        self.assertIn("function renderAddons", script)
-        self.assertIn("id = 'addon-registry'", script)
-        self.assertIn("manifest.name || manifest.id || 'Unknown add-on'", script)
+        self.assertIn("$('connection').setAttribute('aria-live','polite')", script)
+        self.assertIn("setAttribute('aria-current','page')", script)
+        self.assertIn("removeAttribute('aria-current')", script)
+        self.assertIn("class MissionControlClient", script)
+        self.assertIn("function validateSnapshot", script)
+        self.assertIn("s.safety?.mutation_allowed!==false", script)
+        self.assertIn("DEMO ENVIRONMENT", html)
+        self.assertIn("SIMULATED DATA · BACKEND NOT CONNECTED", html)
+        self.assertIn("AI Intrusion Defense", html)
+        self.assertIn("Evidence Vault", html)
     def test_profiles_are_complete_and_global_guards_are_inherited(self):
         profiles = load_profiles(); self.assertEqual({p["id"] for p in profiles},{"codex-writer","gemini-reviewer","claude-verifier","claude-auditor","fable-analyst"})
         for profile in profiles: self.assertTrue({"production","deployment","credentials","databases","remote_hosts"}.issubset(profile["forbidden_actions"]))
@@ -114,6 +138,12 @@ class ConsoleTests(unittest.TestCase):
             resp = conn.getresponse()
             self.assertEqual(resp.status, HTTPStatus.OK)
             self.assertIn("records", json.loads(resp.read().decode()))
+            conn.request("GET", "/api/mission-control")
+            resp = conn.getresponse()
+            self.assertEqual(resp.status, HTTPStatus.OK)
+            snapshot = json.loads(resp.read().decode())
+            self.assertEqual(snapshot["data_mode"], "DEMO")
+            self.assertEqual(snapshot["scenario"]["id"], DEMO_SCENARIO_ID)
             conn.request("GET", "/api/jobs/not%20a%20job")
             resp = conn.getresponse()
             self.assertEqual(resp.status, HTTPStatus.BAD_REQUEST)

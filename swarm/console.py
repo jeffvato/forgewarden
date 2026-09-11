@@ -10,6 +10,7 @@ from .paths import runtime_root
 from .phase2a import safety_status, workflow_status
 from .addons import AddonManager, AddonManifestError
 from .desktop_bridge import job_status as bridge_job_status, recent_audit
+from .mission_control_demo import mission_control_demo_snapshot
 
 ROOT = Path(__file__).resolve().parents[1]
 PROFILE_PATH = ROOT / "config" / "llm-profiles.json"
@@ -144,6 +145,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                 self._json(HTTPStatus.INTERNAL_SERVER_ERROR, {"error": str(exc)})
             return
         if route == "/api/approvals": self._json(HTTPStatus.OK, approval_snapshot()); return
+        if route == "/api/mission-control": self._json(HTTPStatus.OK, mission_control_demo_snapshot()); return
         assets = {"/":("index.html","text/html; charset=utf-8"),"/styles.css":("styles.css","text/css; charset=utf-8"),"/app.js":("app.js","text/javascript; charset=utf-8")}
         if route not in assets: self._json(HTTPStatus.NOT_FOUND, {"error":"not found"}); return
         filename, content_type = assets[route]

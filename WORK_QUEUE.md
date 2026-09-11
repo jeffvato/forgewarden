@@ -859,6 +859,25 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 - Completion evidence: exact candidate `dda243e755c4f21b565aca762d5f9cb949ec35df`; focused 32 passed; exact Claude review `phase2a-dda243e755c4f21b565aca76` APPROVE/LOW with no blockers or missing tests; full 1381 passed/1 skipped; Product Integrity fresh full 1381 passed/1 skipped, all hard checks and 4 Golden Paths passed with only pre-existing `tzdata` and Defined FW-COMP/FW-AID YELLOW findings.
 
 
+### FW-UX-001 — Mission Control showcase foundation
+- Requirement: FW-UX Mission Control and honest Demo Mode
+- State: REVIEW
+- Priority: P0
+- Dependencies: FW-HARNESS-008, FW-AID-001, FW-SOC-03, and FW-EVID-006
+- Approval: the project-wide Mission Control showcase directive authorizes a reusable read-only UI and explicitly labeled deterministic demo data; live backend activation and response execution remain unauthorized.
+- Description: Replace the legacy operations overview with the first reusable ForgeWarden Mission Control experience backed by one bounded provider contract and the deterministic `DEMO-AI-RANSOM-001` scenario.
+- Target path: swarm/mission_control_demo.py
+- Allowed paths: swarm/mission_control_demo.py, swarm/console.py, console/index.html, console/app.js, console/styles.css, tests/test_console.py, docs/management-console.md, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_console.py tests/test_mission_control.py
+- Acceptance criteria:
+  - a single read-only provider snapshot identifies schema, DEMO mode, scenario, provenance, safety state, implementation status, posture, assets, incident, AI security, Harness, simulated actions, and Evidence preview;
+  - `DEMO-AI-RANSOM-001` is deterministic and returned as a fresh projection, with production backend disconnected, mutation denied, deployment disabled, kill switch engaged, and no cryptographic verification claim;
+  - Mission Control visibly presents the demo boundary plus posture, asset counts, one correlated AI/ransomware attack story, AI Defense, Harness lifecycle, actions, executive posture, and Evidence preview;
+  - the browser client validates the provider envelope before rendering and escapes provider strings;
+  - the existing dependency-free frontend and loopback read-only server remain canonical, with no package, external font, credential, network transport, deployment, containment, recovery, or response authority added.
+- Expected validation: focused Linux proof, visual desktop/tablet inspection, exact independent read-only review, then full suite/integrity once.
+- Security considerations: every showcased action and review is explicitly simulated; the demo provider cannot authorize, execute, attest, or write state.
+
 ### FW-REC-003 — Deterministic interruption and resume admission
 - Requirement: FW-REC safe resume coordination
 - State: READY
