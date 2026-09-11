@@ -793,9 +793,29 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 - Completion evidence: exact candidate `bb8f2a64adf3563581b8e81fab21598cc95ad2fc`; focused 95 passed; exact Claude Code job `phase2a-bb8f2a64adf3563581b8e81f` returned APPROVE/LOW with no blockers or missing tests; full 1329 passed/1 skipped; Product Integrity fresh full 1329 passed/1 skipped, 4 Golden Paths, and all hard checks passed with YELLOW only for the existing `tzdata` dependency and Defined FW-COMP/FW-AID owners. Product Integrity now reports FW-EVID Proven within its local unsigned DRY_RUN boundary.
 
 
+### FW-HARNESS-017 — Bounded failure escalation and failure packets
+- Requirement: FW-HARNESS deterministic repair/escalation control
+- State: READY
+- Priority: P0
+- Dependencies: FW-HARNESS-016 and FW-HARNESS-012
+- Approval: metadata-only failure classification, escalation, and Evidence packets are authorized; repair/rollback execution and authority expansion remain unauthorized.
+- Description: Classify repeated failures and scope/reviewer/security conditions into same-tier repair, tier escalation, block, or human escalation, and emit one bounded canonical Failure Packet.
+- Target path: swarm/harness_failure.py
+- Allowed paths: swarm/harness_failure.py, swarm/harness_risk.py, swarm/harness_recovery.py, tests/test_harness_failure.py, docs/fw-harness-inventory.md, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_harness_failure.py tests/test_harness_risk.py tests/test_harness_recovery.py
+- Acceptance criteria:
+  - first ordinary failure permits at most one same-tier repair; repeated same error escalates one tier;
+  - security/architecture findings, unexpected cross-subsystem impact, unknown security implications, scope escape, exhausted budgets, and T4 boundaries deterministically escalate or block;
+  - model confidence and requested tier are advisory and cannot lower the outcome;
+  - Failure Packet binds task/tier/attempts/models/validations/failures/files/diff/reviewer/escalation/evidence/recommended action with bounded redacted fields;
+  - Evidence failure emits no packet and no repair/escalation admission;
+  - no worker invocation, repair, rollback, Git/filesystem/process/network/deployment/credential/containment or authority mutation is added.
+- Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
+- Security considerations: escalation is deterministic metadata consumed by existing controllers and cannot grant a model additional capability.
+
 ### FW-HARNESS-016 — Risk-bound approved model routing
 - Requirement: FW-HARNESS Model Broker assurance integration
-- State: READY
+- State: DONE
 - Priority: P0
 - Dependencies: FW-HARNESS-015 and FW-HARNESS-011
 - Approval: deterministic registry eligibility and routing metadata are authorized; provider activation and model invocation remain separately gated.
@@ -812,6 +832,8 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - model suggestions cannot alter risk, tier, registry approval, capabilities, budgets, or authority.
 - Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
 - Security considerations: Model Broker remains the model-eligibility owner; FW-HARNESS supplies deterministic assurance requirements and cannot approve models.
+- Completion evidence: exact candidate `b647df6b8b78c5703da99909e247a03d21653ae1`; focused 65 passed; exact Claude review `phase2a-b647df6b8b78c5703da99909` APPROVE/LOW with no blockers or missing tests; full 1396 passed/1 skipped; Product Integrity fresh full 1396 passed/1 skipped, all hard checks and 4 Golden Paths passed with only pre-existing `tzdata` and Defined FW-COMP/FW-AID YELLOW findings.
+
 
 ### FW-HARNESS-015 — Deterministic risk classification and assurance tiers
 - Requirement: FW-HARNESS deterministic task risk and routing assurance

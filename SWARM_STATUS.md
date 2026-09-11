@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: FW-HARNESS-015 deterministic risk classification and assurance tiers accepted
-- Next task: FW-HARNESS-016 risk-bound approved model routing; FW-REC-003 remains queued and unchanged.
+- Current focus: FW-HARNESS-016 risk-bound approved model routing accepted
+- Next task: FW-HARNESS-017 bounded failure escalation and Failure Packets; FW-REC-003 remains queued.
 - Harness role: permanent ForgeWarden Core subsystem and default controller for ForgeWarden's own development; one governed architecture serves both roles under D-023.
 - Worker transport direction: registered local CLIs and explicitly approved API-backed workers; API keys are resolved only through FW-KEYS secret handles inside trusted adapters and never enter model context or lifecycle evidence.
 - Provider authentication direction: deterministic OpenAI, Anthropic, and Google/Gemini profiles with provider-specific official OAuth where available and approved API-key classes otherwise; Gemini CLI is registered as `agy` for read-only roles, FW-ID owns delegated identity, and FW-KEYS owns all credential material.
@@ -34,17 +34,17 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-HARNESS-015
-- Starting commit: 757d1818af6ca8715bf79aa74f1185ec295baa26
-- Candidate commit: dda243e755c4f21b565aca762d5f9cb949ec35df
-- Accepted commit: dda243e755c4f21b565aca762d5f9cb949ec35df
-- Files changed: deterministic policy-configured risk classifier, assurance tiers, hard invariant denials, architecture reconciliation, and adversarial tests
-- Deterministic validation: focused 32 passed; full 1381 passed/1 skipped; integrity fresh full 1381 passed/1 skipped, hard checks and 4 Golden Paths pass with YELLOW only for dependency and Defined FW-COMP/FW-AID owners
-- Independent review: exact Claude APPROVE/LOW with no blockers or missing tests (`phase2a-dda243e755c4f21b565aca76`)
+- Task ID: FW-HARNESS-016
+- Starting commit: f559b38c0373aaad530117f3a455f971cecc81f9
+- Candidate commit: b647df6b8b78c5703da99909e247a03d21653ae1
+- Accepted commit: b647df6b8b78c5703da99909e247a03d21653ae1
+- Files changed: Approved Model Registry candidate projection, assurance-bound deterministic routing, equivalent failover proof, and architecture documentation
+- Deterministic validation: focused 65 passed; full 1396 passed/1 skipped; integrity fresh full 1396 passed/1 skipped, hard checks and 4 Golden Paths pass with YELLOW only for dependency and Defined FW-COMP/FW-AID owners
+- Independent review: exact Claude APPROVE/LOW with no blockers or missing tests (`phase2a-b647df6b8b78c5703da99909`)
 - Gemini review: disabled and not required under D-020
-- Unresolved findings: risk decisions are not yet bound into Model Broker selection; FW-HARNESS-016 owns that integration
+- Unresolved findings: bounded failure escalation and canonical Failure Packets remain for FW-HARNESS-017
 - Blocker: none
-- Next action: implement FW-HARNESS-016.
+- Next action: implement FW-HARNESS-017.
 
 - Completion inventory: `docs/completion-audit-2026-09-09.md` (baseline `0afcbdd`).
 - FWQ-0008 implementation and binding hardening exist; VALIDATED retains a historical provenance caveat, not an implementation assignment. FWQ-0009 is recorded accepted and unchanged at source/test level from its reviewed candidate.
@@ -54,6 +54,8 @@ On every restart or continuation:
 - Latest broad Core closure: FWQ-0064, 833 passed/1 skipped, all hard checks/Golden Path passing, YELLOW pre-existing findings.
 
 ## Execution log
+
+- 2026-09-11: FW-HARNESS-016 accepted at `b647df6b8b78c5703da99909e247a03d21653ae1`. The Harness now binds exact deterministic risk tiers into a bounded Approved Model Registry projection and chooses the lowest-cost eligible approved candidate satisfying tenant, environment, role, data, tools, and assurance. T4/human/denied decisions select nothing; unavailable providers can fall back only to a separately approved same-or-higher tier; no candidate fails closed with the canonical assurance error. Routes grant no invocation or deployment authority. Focused 65 passed; exact Claude APPROVE/LOW; full and integrity fresh full each passed 1396/1 with all hard gates and 4 Golden Paths. FW-HARNESS-017 is next.
 
 - 2026-09-11: FW-HARNESS-015 accepted at `dda243e755c4f21b565aca762d5f9cb949ec35df`. Policy-configured task facts now produce immutable T0-T4 assurance metadata, while exact invariant violations deny before any model invocation. Security components/paths and dangerous capabilities impose minimum tiers; protected authority work requires human authorization; cross-tenant, unknown, malformed, and model-requested downgrades fail closed. Model Broker remains the separate eligibility owner. Focused 32 passed; exact Claude APPROVE/LOW with no blockers/missing tests; full and Product Integrity fresh full each passed 1381/1 with all hard gates and 4 Golden Paths. FW-HARNESS-016 is next.
 
