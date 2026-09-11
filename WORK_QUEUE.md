@@ -774,7 +774,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-EVID-006 — Integrated canonical Evidence lifecycle proof
 - Requirement: FW-EVID lifecycle acceptance
-- State: READY
+- State: DONE
 - Priority: P0
 - Dependencies: FW-EVID-005
 - Approval: deterministic local DRY_RUN lifecycle proof is activated under D-024; signing, retention enforcement, external export, replication, and transport remain unauthorized.
@@ -790,6 +790,26 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no policy, approval, Action Ticket, Git mutation, signing, deployment, containment, recovery execution, or response authority is added.
 - Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
 - Security considerations: proof covers deterministic lifecycle and restart integrity only; cryptographic signing, retention execution, replication, and external export remain separately gated.
+- Completion evidence: exact candidate `bb8f2a64adf3563581b8e81fab21598cc95ad2fc`; focused 95 passed; exact Claude Code job `phase2a-bb8f2a64adf3563581b8e81f` returned APPROVE/LOW with no blockers or missing tests; full 1329 passed/1 skipped; Product Integrity fresh full 1329 passed/1 skipped, 4 Golden Paths, and all hard checks passed with YELLOW only for the existing `tzdata` dependency and Defined FW-COMP/FW-AID owners. Product Integrity now reports FW-EVID Proven within its local unsigned DRY_RUN boundary.
+
+### FW-REC-001 — Recovery ownership inventory and canonical checkpoint contract
+- Requirement: FW-REC recovery and rollback coordination
+- State: READY
+- Priority: P0
+- Dependencies: FWQ-0079
+- Approval: deterministic metadata-only recovery/checkpoint contract is activated under D-024; restore, rollback mutation, process restart, deletion, repair, containment, and deployment remain unauthorized.
+- Description: Inventory existing recovery, resume, checkpoint, worktree, Evidence, and rollback-proposal owners and establish one immutable tenant/task/stage checkpoint contract without replacing their implementations.
+- Target path: swarm/recovery.py
+- Allowed paths: swarm/recovery.py, swarm/autonomous_loop.py, swarm/work_checkpoint.py, swarm/harness_recovery.py, swarm/evidence.py, tests/test_recovery.py, tests/test_autonomous_loop.py, tests/test_work_checkpoint.py, tests/test_harness_recovery.py, docs/fw-rec-inventory.md, swarm/integrity.py, tests/test_integrity.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_recovery.py tests/test_autonomous_loop.py tests/test_work_checkpoint.py tests/test_harness_recovery.py tests/test_integrity.py
+- Acceptance criteria:
+  - inventory names the canonical owners for task state, stage checkpoints, Git/worktree state, Evidence, accepted commit, retry/budget state, interruption classification, rollback proposals, and operator decisions;
+  - one exact immutable contract binds tenant, task, requirement, stage, starting/current commit, changed-file digest, validation/review status, consumed authority references, budget/retry counters, Evidence tail, timestamp, and safe resume decision;
+  - unknown fields, malformed timestamps/hashes, cross-tenant references, impossible stage/state combinations, stale authority, secret-shaped input, and any claimed recovery execution authority fail closed;
+  - the contract contains no method that restores, rolls back, restarts, deletes, repairs, deploys, contains, or mutates Git/files/processes;
+  - existing autonomous-loop, work-checkpoint, harness-recovery, quarantine-recovery, and domain recovery owners remain authoritative through documented adapters.
+- Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
+- Security considerations: FW-REC-001 is metadata and decision evidence only; later bounded milestones may coordinate existing recovery mechanisms but cannot execute response without separate authority.
 
 ### FW-BME-02 — Deterministic phishing and spoof classification
 - Requirement: FW-BME phishing/BEC/authentication signal evaluation
