@@ -103,3 +103,14 @@ Provider failure excludes the failed registry entry but cannot lower assurance.
 Denied or T4/human-gated risk selects nothing. The route is metadata with
 invocation and deployment authority disabled; provider calls remain owned by
 the separately admitted worker transport.
+
+
+## FW-HARNESS-017 failure control
+
+The deterministic failure classifier permits one same-tier repair for a first
+ordinary failure. Repeated or materially different failures escalate one tier;
+security and architecture uncertainty escalates; scope, budget, kill-switch and
+Evidence failures block; T4 escalation requires human authority. Its immutable
+Failure Packet contains bounded tenant-bound Evidence metadata and performs no
+worker, repair, rollback, Git, filesystem, process, network, credential,
+containment or deployment action.
