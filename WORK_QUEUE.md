@@ -793,9 +793,29 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 - Completion evidence: exact candidate `bb8f2a64adf3563581b8e81fab21598cc95ad2fc`; focused 95 passed; exact Claude Code job `phase2a-bb8f2a64adf3563581b8e81f` returned APPROVE/LOW with no blockers or missing tests; full 1329 passed/1 skipped; Product Integrity fresh full 1329 passed/1 skipped, 4 Golden Paths, and all hard checks passed with YELLOW only for the existing `tzdata` dependency and Defined FW-COMP/FW-AID owners. Product Integrity now reports FW-EVID Proven within its local unsigned DRY_RUN boundary.
 
 
+### FW-HARNESS-016 — Risk-bound approved model routing
+- Requirement: FW-HARNESS Model Broker assurance integration
+- State: READY
+- Priority: P0
+- Dependencies: FW-HARNESS-015 and FW-HARNESS-011
+- Approval: deterministic registry eligibility and routing metadata are authorized; provider activation and model invocation remain separately gated.
+- Description: Bind an exact RiskDecision minimum tier into the existing Approved Model Registry admission so only same-or-higher assurance candidates can be selected, with equivalent failover and no vendor names in policy logic.
+- Target path: swarm/harness_models.py
+- Allowed paths: swarm/harness_models.py, swarm/harness_risk.py, tests/test_harness_models.py, tests/test_harness_risk.py, docs/fw-harness-inventory.md, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_harness_models.py tests/test_harness_risk.py
+- Acceptance criteria:
+  - registry candidates declare capability tier, approved roles/data classes/tools, tenant and environment;
+  - selection deterministically chooses the lowest-cost eligible approved candidate satisfying the risk tier and exact task constraints;
+  - T4/human-required and denied decisions never select or invoke a model;
+  - provider failure permits only an explicitly approved equivalent at the same or higher tier, never a silent downgrade;
+  - no approved candidate returns NO_APPROVED_MODEL_AVAILABLE_FOR_REQUIRED_ASSURANCE_LEVEL;
+  - model suggestions cannot alter risk, tier, registry approval, capabilities, budgets, or authority.
+- Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
+- Security considerations: Model Broker remains the model-eligibility owner; FW-HARNESS supplies deterministic assurance requirements and cannot approve models.
+
 ### FW-HARNESS-015 — Deterministic risk classification and assurance tiers
 - Requirement: FW-HARNESS deterministic task risk and routing assurance
-- State: IN_PROGRESS
+- State: DONE
 - Priority: P0
 - Dependencies: FW-HARNESS-014
 - Approval: deterministic classification metadata is authorized; model invocation, provider activation, and authority expansion are not.
@@ -812,6 +832,8 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - output is immutable auditable metadata and grants no model, tool, Git, deployment, credential, network, filesystem, process, or response authority.
 - Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
 - Security considerations: classification is deterministic policy input to the existing Model Broker; no router LLM or model authorization is introduced.
+- Completion evidence: exact candidate `dda243e755c4f21b565aca762d5f9cb949ec35df`; focused 32 passed; exact Claude review `phase2a-dda243e755c4f21b565aca76` APPROVE/LOW with no blockers or missing tests; full 1381 passed/1 skipped; Product Integrity fresh full 1381 passed/1 skipped, all hard checks and 4 Golden Paths passed with only pre-existing `tzdata` and Defined FW-COMP/FW-AID YELLOW findings.
+
 
 ### FW-REC-003 — Deterministic interruption and resume admission
 - Requirement: FW-REC safe resume coordination

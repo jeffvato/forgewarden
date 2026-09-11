@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: FW-REC-002 durable recovery checkpoint persistence accepted
-- Next task: FW-REC-003 deterministic interruption and resume admission under D-024.
+- Current focus: FW-HARNESS-015 deterministic risk classification and assurance tiers accepted
+- Next task: FW-HARNESS-016 risk-bound approved model routing; FW-REC-003 remains queued and unchanged.
 - Harness role: permanent ForgeWarden Core subsystem and default controller for ForgeWarden's own development; one governed architecture serves both roles under D-023.
 - Worker transport direction: registered local CLIs and explicitly approved API-backed workers; API keys are resolved only through FW-KEYS secret handles inside trusted adapters and never enter model context or lifecycle evidence.
 - Provider authentication direction: deterministic OpenAI, Anthropic, and Google/Gemini profiles with provider-specific official OAuth where available and approved API-key classes otherwise; Gemini CLI is registered as `agy` for read-only roles, FW-ID owns delegated identity, and FW-KEYS owns all credential material.
@@ -34,17 +34,17 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-REC-002
-- Starting commit: f6688a45da44e76023939c26186b7fcba1cff1c2
-- Candidate commit: 70b881390e8f7aeb204a09098cbdfbba22579440
-- Accepted commit: 70b881390e8f7aeb204a09098cbdfbba22579440
-- Files changed: atomic private RecoveryCheckpoint persistence, restart reconstruction, binding/replay validation, tests, and inventory documentation
-- Deterministic validation: focused 20 passed; full 1349 passed/1 skipped; integrity fresh full 1349 passed/1 skipped, hard checks and 4 Golden Paths pass with YELLOW only for dependency and Defined FW-COMP/FW-AID owners
-- Independent review: exact Claude APPROVE/LOW with no blockers or missing tests (`phase2a-70b881390e8f7aeb204a0909`)
+- Task ID: FW-HARNESS-015
+- Starting commit: 757d1818af6ca8715bf79aa74f1185ec295baa26
+- Candidate commit: dda243e755c4f21b565aca762d5f9cb949ec35df
+- Accepted commit: dda243e755c4f21b565aca762d5f9cb949ec35df
+- Files changed: deterministic policy-configured risk classifier, assurance tiers, hard invariant denials, architecture reconciliation, and adversarial tests
+- Deterministic validation: focused 32 passed; full 1381 passed/1 skipped; integrity fresh full 1381 passed/1 skipped, hard checks and 4 Golden Paths pass with YELLOW only for dependency and Defined FW-COMP/FW-AID owners
+- Independent review: exact Claude APPROVE/LOW with no blockers or missing tests (`phase2a-dda243e755c4f21b565aca76`)
 - Gemini review: disabled and not required under D-020
-- Unresolved findings: none for FW-REC-002
+- Unresolved findings: risk decisions are not yet bound into Model Broker selection; FW-HARNESS-016 owns that integration
 - Blocker: none
-- Next action: implement FW-REC-003.
+- Next action: implement FW-HARNESS-016.
 
 - Completion inventory: `docs/completion-audit-2026-09-09.md` (baseline `0afcbdd`).
 - FWQ-0008 implementation and binding hardening exist; VALIDATED retains a historical provenance caveat, not an implementation assignment. FWQ-0009 is recorded accepted and unchanged at source/test level from its reviewed candidate.
@@ -54,6 +54,8 @@ On every restart or continuation:
 - Latest broad Core closure: FWQ-0064, 833 passed/1 skipped, all hard checks/Golden Path passing, YELLOW pre-existing findings.
 
 ## Execution log
+
+- 2026-09-11: FW-HARNESS-015 accepted at `dda243e755c4f21b565aca762d5f9cb949ec35df`. Policy-configured task facts now produce immutable T0-T4 assurance metadata, while exact invariant violations deny before any model invocation. Security components/paths and dangerous capabilities impose minimum tiers; protected authority work requires human authorization; cross-tenant, unknown, malformed, and model-requested downgrades fail closed. Model Broker remains the separate eligibility owner. Focused 32 passed; exact Claude APPROVE/LOW with no blockers/missing tests; full and Product Integrity fresh full each passed 1381/1 with all hard gates and 4 Golden Paths. FW-HARNESS-016 is next.
 
 - 2026-09-11: FW-REC-002 accepted at `70b881390e8f7aeb204a09098cbdfbba22579440`. Canonical recovery metadata now persists through a bounded versioned SHA-256 envelope, private temporary creation, fsync, atomic replacement, and strict reconstruction. Corruption, truncation, oversize input, unsafe paths/permissions, replay, stale Git/Evidence bindings, and cross-tenant state fail closed without executing recovery. Focused 20 passed; exact Claude APPROVE/LOW with no blockers/missing tests; full and Product Integrity fresh full each passed 1349/1 with all hard gates and 4 Golden Paths. FW-REC-003 is next.
 
