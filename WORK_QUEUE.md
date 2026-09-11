@@ -861,7 +861,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-UX-001 — Mission Control showcase foundation
 - Requirement: FW-UX Mission Control and honest Demo Mode
-- State: REVIEW
+- State: DONE
 - Priority: P0
 - Dependencies: FW-HARNESS-008, FW-AID-001, FW-SOC-03, and FW-EVID-006
 - Approval: the project-wide Mission Control showcase directive authorizes a reusable read-only UI and explicitly labeled deterministic demo data; live backend activation and response execution remain unauthorized.
@@ -877,6 +877,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - the existing dependency-free frontend and loopback read-only server remain canonical, with no package, external font, credential, network transport, deployment, containment, recovery, or response authority added.
 - Expected validation: focused Linux proof, visual desktop/tablet inspection, exact independent read-only review, then full suite/integrity once.
 - Security considerations: every showcased action and review is explicitly simulated; the demo provider cannot authorize, execute, attest, or write state.
+- Completion evidence: exact candidate `d68b457590986e29d3403d935480a0c4ae8559ad`; focused 26 passed; desktop visual inspection confirmed demo, safety, posture, attack-story, Harness, simulated action, and Evidence labels; exact Claude review `phase2a-68b457590986e29d3403d935` returned APPROVE/LOW with no blockers or missing tests; full 1423 passed/1 skipped; Product Integrity fresh full 1423 passed/1 skipped and 4 Golden Paths passed with YELLOW only for the pre-existing `tzdata` dependency and Defined FW-COMP/FW-AID owners.
 
 ### FW-REC-003 — Deterministic interruption and resume admission
 - Requirement: FW-REC safe resume coordination

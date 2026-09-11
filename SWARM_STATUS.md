@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: FW-HARNESS-017 bounded failure escalation and Failure Packets accepted
-- Next task: reconcile the project-wide invariants/drift directive with existing FW-ROOT/FW-INTEGRITY owners and begin the parallel Mission Control UI-1 stream after repository inventory; FW-REC-003 remains queued.
+- Current focus: FW-UX-001 Mission Control showcase foundation accepted
+- Next task: encode the project-wide machine-readable invariants and architecture-drift checks through existing FW-ROOT/FW-INTEGRITY owners; FW-REC-003 remains queued behind that bounded Core control milestone.
 - Harness role: permanent ForgeWarden Core subsystem and default controller for ForgeWarden's own development; one governed architecture serves both roles under D-023.
 - Worker transport direction: registered local CLIs and explicitly approved API-backed workers; API keys are resolved only through FW-KEYS secret handles inside trusted adapters and never enter model context or lifecycle evidence.
 - Provider authentication direction: deterministic OpenAI, Anthropic, and Google/Gemini profiles with provider-specific official OAuth where available and approved API-key classes otherwise; Gemini CLI is registered as `agy` for read-only roles, FW-ID owns delegated identity, and FW-KEYS owns all credential material.
@@ -34,17 +34,17 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-HARNESS-017
-- Starting commit: 979b8d352295ee3b69c021064c741eb15b3d7b8e
-- Candidate commit: 9d196c4032da456d2d2274eecdd15e3a8d33ebf9
-- Accepted commit: 9d196c4032da456d2d2274eecdd15e3a8d33ebf9
-- Files changed: deterministic failure/escalation classifier, bounded canonical Failure Packet, architecture documentation, and adversarial/boundary tests
-- Deterministic validation: focused 75 passed; full 1421 passed/1 skipped; integrity fresh full 1421 passed/1 skipped, hard checks and 4 Golden Paths pass with YELLOW only for dependency and Defined FW-COMP/FW-AID owners
-- Independent review: exact Claude APPROVE/LOW with no blockers or missing tests (`phase2a-9d196c4032da456d2d2274ee`)
+- Task ID: FW-UX-001
+- Starting commit: 6829e3bc38acdb16d15996916a8f201b093b707f
+- Candidate commit: d68b457590986e29d3403d935480a0c4ae8559ad
+- Accepted commit: d68b457590986e29d3403d935480a0c4ae8559ad
+- Files changed: deterministic demo provider, read-only Mission Control endpoint, dependency-free showcase shell/views, provider validation, and Python/JavaScript boundary tests
+- Deterministic validation: focused 26 passed; desktop visual inspection passed; full 1423 passed/1 skipped; integrity fresh full 1423 passed/1 skipped, hard checks and 4 Golden Paths pass with YELLOW only for the pre-existing dependency and Defined FW-COMP/FW-AID owners
+- Independent review: exact Claude APPROVE/LOW with no blockers or missing tests (`phase2a-68b457590986e29d3403d935`)
 - Gemini review: disabled and not required under D-020
-- Unresolved findings: project-wide invariant manifest/drift integration and Mission Control showcase inventory are next
+- Unresolved findings: machine-readable invariant manifest and architecture-drift checks remain the next bounded Core control; demo containment and cryptographic verification remain explicitly non-operational
 - Blocker: none
-- Next action: complete both inventories, then queue one bounded canonical Core control and one bounded UI-1 milestone.
+- Next action: implement the canonical invariant manifest and deterministic architecture-drift validation without creating another policy language.
 
 - Completion inventory: `docs/completion-audit-2026-09-09.md` (baseline `0afcbdd`).
 - FWQ-0008 implementation and binding hardening exist; VALIDATED retains a historical provenance caveat, not an implementation assignment. FWQ-0009 is recorded accepted and unchanged at source/test level from its reviewed candidate.
