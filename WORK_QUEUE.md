@@ -694,7 +694,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-EVID-003 — Harness lifecycle canonical-envelope adapter
 - Requirement: FW-EVID producer integration
-- State: READY
+- State: DONE
 - Priority: P0
 - Dependencies: FW-EVID-002
 - Approval: deterministic in-memory harness Evidence adaptation is activated under D-024; durable migration, signing, export, and transport remain unauthorized.
@@ -710,6 +710,26 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no worker, reviewer, Git, policy, approval, Action Ticket, credential, deployment, containment, recovery, or response authority is added.
 - Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
 - Security considerations: the adapter remains in-memory and DRY_RUN; durable AuditLog migration and signed chain-of-custody are separate milestones.
+- Completion evidence: exact candidate `3a4044c60a79ae440ff58edadf227df947d96500`; focused 61 passed; exact Claude Code job `phase2a-3a4044c60a79ae440ff58eda` returned APPROVE/LOW with no blockers or missing tests; full 1294 passed/1 skipped; Product Integrity fresh full 1294 passed/1 skipped, 4 Golden Paths, and all hard checks passed with YELLOW only for the existing `tzdata` dependency and Defined FW-COMP/FW-AID owners.
+
+### FW-EVID-004 — Canonical ledger durable AuditLog adapter
+- Requirement: FW-EVID durable lifecycle integration
+- State: READY
+- Priority: P0
+- Dependencies: FW-EVID-003
+- Approval: bounded local DRY_RUN persistence through the existing private AuditLog boundary is activated under D-024; schema migration, signing, export, replication, and transport remain unauthorized.
+- Description: Provide the canonical Evidence ledger with a deterministic durability sink backed by the existing restricted append-only AuditLog owner, without replacing its legacy event format or weakening its filesystem protections.
+- Target path: swarm/evidence.py
+- Allowed paths: swarm/evidence.py, swarm/core.py, swarm/audit_integrity.py, tests/test_evidence.py, tests/test_swarm.py, tests/test_audit_integrity.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_evidence.py tests/test_swarm.py tests/test_audit_integrity.py
+- Acceptance criteria:
+  - the adapter durably records the exact canonical envelope and record digest before ledger state advances, using the existing restricted local AuditLog writer and its locking, no-follow, permissions, flush, and fsync guarantees;
+  - restart reconstruction verifies every canonical record digest and exact tenant chain before admitting the recovered ledger state, and malformed, truncated, duplicate, replayed, forked, cross-tenant, or mixed legacy/canonical substitution fails closed;
+  - legacy AuditLog readers and accepted historical records remain compatible and no competing filesystem writer or Evidence format is created;
+  - raw producer payloads, prompts, model output, secrets, handles, and backend locators are never persisted by the canonical adapter;
+  - no signing, export, transport, policy, approval, Action Ticket, Git, deployment, containment, recovery execution, or response authority is added.
+- Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
+- Security considerations: persistence remains local, private, append-only, and DRY_RUN; retention, signing, external storage, replication, and export require later milestones.
 
 ### FW-BME-02 — Deterministic phishing and spoof classification
 - Requirement: FW-BME phishing/BEC/authentication signal evaluation
