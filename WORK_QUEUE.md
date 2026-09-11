@@ -674,7 +674,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-EVID-002 — Evidence-first append-only ledger and chain verification
 - Requirement: FW-EVID deterministic lifecycle integrity
-- State: READY
+- State: DONE
 - Priority: P0
 - Dependencies: FW-EVID-001
 - Approval: bounded in-memory append and caller-supplied durability acknowledgement are activated under D-024; external storage, signing, export, and transport remain unauthorized.
@@ -690,6 +690,26 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - ledger membership grants no mutation of prior records, signing, export, policy, approval, Action Ticket, Git, deployment, containment, recovery, or response authority.
 - Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
 - Security considerations: this is an in-memory DRY_RUN lifecycle boundary; filesystem/database migration, cryptographic signing, retention, replication, and external export remain later milestones.
+- Completion evidence: exact candidate `7ee285c6c655d05ff88c01eaa449af85cb7a46d1`; focused 30 passed; exact Claude Code job `phase2a-7ee285c6c655d05ff88c01ea` returned APPROVE/LOW with no blockers or missing tests. The first full run had one unrelated desktop MCP fixture child-reaping race after 1286 passes; that child had already exited and the exact failing test then passed once. Product Integrity's fresh full run passed 1287/1, all hard checks, and 4 Golden Paths, with YELLOW only for the existing dependency and Defined FW-COMP/FW-AID owners.
+
+### FW-EVID-003 — Harness lifecycle canonical-envelope adapter
+- Requirement: FW-EVID producer integration
+- State: READY
+- Priority: P0
+- Dependencies: FW-EVID-002
+- Approval: deterministic in-memory harness Evidence adaptation is activated under D-024; durable migration, signing, export, and transport remain unauthorized.
+- Description: Adapt the existing governed harness lifecycle payload into the canonical FW-EVID envelope and ledger without changing harness payload ownership or creating a second controller.
+- Target path: swarm/harness_evidence.py
+- Allowed paths: swarm/evidence.py, swarm/harness_evidence.py, swarm/harness_controller.py, tests/test_evidence.py, tests/test_harness_evidence.py, tests/test_harness_controller.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_evidence.py tests/test_harness_evidence.py tests/test_harness_controller.py
+- Acceptance criteria:
+  - canonical adaptation hashes the exact validated HarnessLifecycleEvidence payload and emits an envelope bound to the same tenant, task, actor, event time, classification, correlation, and prior ledger record;
+  - existing harness payload validation and sink ownership remain authoritative, and the adapter cannot accept an unvalidated mapping or substitute task/tenant/actor/event bindings;
+  - ledger failure denies canonical admission without claiming harness acceptance, while duplicate, replayed, stale-chain, and cross-tenant lifecycle facts fail closed;
+  - raw prompts, context content, model output, secrets, handles, backend locators, and unrestricted file content do not enter the envelope or ledger;
+  - no worker, reviewer, Git, policy, approval, Action Ticket, credential, deployment, containment, recovery, or response authority is added.
+- Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
+- Security considerations: the adapter remains in-memory and DRY_RUN; durable AuditLog migration and signed chain-of-custody are separate milestones.
 
 ### FW-BME-02 — Deterministic phishing and spoof classification
 - Requirement: FW-BME phishing/BEC/authentication signal evaluation

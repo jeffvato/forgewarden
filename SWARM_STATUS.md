@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: FW-EVID-001 Evidence inventory and canonical envelope accepted
-- Next task: FW-EVID-002 Evidence-first append-only ledger and chain verification under D-024.
+- Current focus: FW-EVID-002 Evidence-first append-only ledger and chain verification accepted
+- Next task: FW-EVID-003 harness lifecycle canonical-envelope adapter under D-024.
 - Harness role: permanent ForgeWarden Core subsystem and default controller for ForgeWarden's own development; one governed architecture serves both roles under D-023.
 - Worker transport direction: registered local CLIs and explicitly approved API-backed workers; API keys are resolved only through FW-KEYS secret handles inside trusted adapters and never enter model context or lifecycle evidence.
 - Provider authentication direction: deterministic OpenAI, Anthropic, and Google/Gemini profiles with provider-specific official OAuth where available and approved API-key classes otherwise; Gemini CLI is registered as `agy` for read-only roles, FW-ID owns delegated identity, and FW-KEYS owns all credential material.
@@ -34,17 +34,17 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-EVID-001
-- Starting commit: 0e50887bbd382944d62a19269a307b6ac334580b
-- Candidate commit: bf87e0c6c89e774d2c896772837648dd20e7e9c1
-- Accepted commit: bf87e0c6c89e774d2c896772837648dd20e7e9c1
-- Files changed: canonical immutable Evidence envelope, Evidence producer/owner inventory, Product Integrity owner mapping, boundary and failure-path tests
-- Deterministic validation: focused 70 passed; full 1283 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with YELLOW only for dependency and Defined FW-COMP/FW-AID owners
-- Independent review: exact Claude repair APPROVE/LOW with no blockers or missing tests (`phase2a-bf87e0c6c89e774d2c896772`)
+- Task ID: FW-EVID-002
+- Starting commit: bf36494c2248295931ccc70a8bfdfc08a40e58fa
+- Candidate commit: 7ee285c6c655d05ff88c01eaa449af85cb7a46d1
+- Accepted commit: 7ee285c6c655d05ff88c01eaa449af85cb7a46d1
+- Files changed: tenant-scoped append-only Evidence ledger, deterministic record hashing, write-before-state chain admission, and replay/concurrency/durability tests
+- Deterministic validation: focused 30 passed; initial full run 1286 passed/1 skipped plus one transient fixture failure; isolated fixture retry passed; integrity fresh full 1287 passed/1 skipped, hard checks and 4 Golden Paths pass with YELLOW only for dependency and Defined FW-COMP/FW-AID owners
+- Independent review: exact Claude APPROVE/LOW with no blockers or missing tests (`phase2a-7ee285c6c655d05ff88c01ea`)
 - Gemini review: disabled and not required under D-020
-- Unresolved findings: none for FW-EVID-001; runtime FW-AID and FW-COMP remain explicitly Defined
+- Unresolved findings: none for FW-EVID-002; runtime FW-AID and FW-COMP remain explicitly Defined
 - Blocker: live Azure use remains disabled until interactive Entra login and credit/deployment evidence pass; this does not block offline Core work
-- Next action: implement FW-EVID-002.
+- Next action: implement FW-EVID-003.
 
 - Completion inventory: `docs/completion-audit-2026-09-09.md` (baseline `0afcbdd`).
 - FWQ-0008 implementation and binding hardening exist; VALIDATED retains a historical provenance caveat, not an implementation assignment. FWQ-0009 is recorded accepted and unchanged at source/test level from its reviewed candidate.
@@ -54,6 +54,8 @@ On every restart or continuation:
 - Latest broad Core closure: FWQ-0064, 833 passed/1 skipped, all hard checks/Golden Path passing, YELLOW pre-existing findings.
 
 ## Execution log
+
+- 2026-09-10: FW-EVID-002 accepted at `7ee285c6c655d05ff88c01eaa449af85cb7a46d1`. ForgeWarden now has a tenant-scoped create-once in-memory ledger that hashes every canonical envelope field, enforces exact previous-record links, writes through the caller-supplied durability boundary before mutating state, and denies duplicate/replay/fork/cross-tenant/concurrent/reentrant input. Focused 30 passed; exact Claude APPROVE/LOW with no blockers/missing tests. The first broad run encountered one unrelated desktop MCP child-reaping race after 1286 passes; the child was already gone and its isolated test passed. Product Integrity's fresh full run passed 1287/1, all hard gates, and 4 Golden Paths with only dependency and Defined FW-COMP/FW-AID YELLOW findings. No raw payload, secret, signing, export, policy, ticket, Git, deployment, containment, recovery, or response authority was added. FW-EVID-003 is next.
 
 - 2026-09-10: FW-EVID-001 accepted at `bf87e0c6c89e774d2c896772837648dd20e7e9c1`. ForgeWarden now has an immutable tenant-bound canonical Evidence envelope and an explicit inventory preserving existing AuditLog, audit-integrity, harness, accepted-work, review, release, normalized-event, and domain payload owners. The envelope binds payload hashes and bounded references without raw payloads or authority. The exact source review requested length, reference-count, optional-field, and whitespace boundaries; the exact repair closed all gaps and received Claude APPROVE/LOW with no blockers/missing tests. Focused 70 passed; full 1283 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with only dependency and Defined FW-COMP/FW-AID YELLOW findings. No storage migration, signing, export, transport, policy, ticket, Git, deployment, containment, recovery, or response authority was added. FW-EVID-002 is next.
 
