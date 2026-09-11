@@ -793,9 +793,28 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 - Completion evidence: exact candidate `bb8f2a64adf3563581b8e81fab21598cc95ad2fc`; focused 95 passed; exact Claude Code job `phase2a-bb8f2a64adf3563581b8e81f` returned APPROVE/LOW with no blockers or missing tests; full 1329 passed/1 skipped; Product Integrity fresh full 1329 passed/1 skipped, 4 Golden Paths, and all hard checks passed with YELLOW only for the existing `tzdata` dependency and Defined FW-COMP/FW-AID owners. Product Integrity now reports FW-EVID Proven within its local unsigned DRY_RUN boundary.
 
 
+### FW-REC-003 — Deterministic interruption and resume admission
+- Requirement: FW-REC safe resume coordination
+- State: READY
+- Priority: P0
+- Dependencies: FW-REC-002
+- Approval: metadata-only resume admission is authorized under D-024; executing resume or rollback remains unauthorized.
+- Description: Deterministically classify an interruption against a reconstructed checkpoint and issue an immutable resume, block, or rollback-proposal admission record without invoking recovery.
+- Target path: swarm/recovery.py
+- Allowed paths: swarm/recovery.py, tests/test_recovery.py, docs/fw-rec-inventory.md, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_recovery.py
+- Acceptance criteria:
+  - classification binds exact checkpoint digest, tenant, task, current Git/Evidence facts, kill switch, authority freshness, validation/review state, and remaining budgets;
+  - only a consistent resumable nonterminal stage may produce RESUME; unknown interruption, stale bindings, exhausted limits, failed gates, terminal state, or disengaged kill switch blocks or requires a rollback proposal;
+  - admission records are immutable, bounded, tenant isolated, Evidence-first, and replay protected;
+  - Evidence failure returns no admission and consumes no replay identifier;
+  - no task execution, restore, rollback execution, restart, deletion, repair, Git mutation, containment, deployment, credential, network, filesystem, or process authority is added.
+- Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
+- Security considerations: resume admission is deterministic decision evidence consumed later by the trusted controller; it is not permission to perform recovery.
+
 ### FW-REC-002 — Durable recovery checkpoint persistence and reconstruction
 - Requirement: FW-REC persistent recovery metadata
-- State: READY
+- State: DONE
 - Priority: P0
 - Dependencies: FW-REC-001
 - Approval: bounded local DRY_RUN persistence is authorized under D-024; recovery execution remains unauthorized.
@@ -811,6 +830,8 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no restore, rollback execution, restart, deletion, repair, Git mutation, containment, deployment, credential, network, or process authority is added.
 - Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
 - Security considerations: the store contains bounded metadata and opaque references only; it cannot execute the recorded resume decision.
+- Completion evidence: exact candidate `70b881390e8f7aeb204a09098cbdfbba22579440`; focused 20 passed; exact Claude review `phase2a-70b881390e8f7aeb204a0909` APPROVE/LOW with no blockers or missing tests; full 1349 passed/1 skipped; Product Integrity fresh full 1349 passed/1 skipped, all hard checks and 4 Golden Paths passed with only pre-existing `tzdata` and Defined FW-COMP/FW-AID YELLOW findings.
+
 
 ### FW-REC-001 — Recovery ownership inventory and canonical checkpoint contract
 - Requirement: FW-REC recovery and rollback coordination

@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: FW-REC-001 canonical recovery checkpoint contract accepted
-- Next task: FW-REC-002 durable recovery checkpoint persistence and reconstruction under D-024.
+- Current focus: FW-REC-002 durable recovery checkpoint persistence accepted
+- Next task: FW-REC-003 deterministic interruption and resume admission under D-024.
 - Harness role: permanent ForgeWarden Core subsystem and default controller for ForgeWarden's own development; one governed architecture serves both roles under D-023.
 - Worker transport direction: registered local CLIs and explicitly approved API-backed workers; API keys are resolved only through FW-KEYS secret handles inside trusted adapters and never enter model context or lifecycle evidence.
 - Provider authentication direction: deterministic OpenAI, Anthropic, and Google/Gemini profiles with provider-specific official OAuth where available and approved API-key classes otherwise; Gemini CLI is registered as `agy` for read-only roles, FW-ID owns delegated identity, and FW-KEYS owns all credential material.
@@ -34,17 +34,17 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-REC-001
-- Starting commit: b8ba538f884495f50ccd4b772d4efb97ebd24154
-- Candidate commit: 4ffa96f611f5588850922d821ae0047699a94c76
-- Accepted commit: 4ffa96f611f5588850922d821ae0047699a94c76
-- Files changed: canonical immutable recovery checkpoint contract, ownership inventory, failure-path proof, and bounded Claude verifier terminal-turn repair
-- Deterministic validation: focused recovery 133 passed; verifier repair 20 passed; full 1343 passed/1 skipped; integrity fresh full 1343 passed/1 skipped, hard checks and 4 Golden Paths pass with YELLOW only for dependency and Defined FW-COMP/FW-AID owners
-- Independent review: exact Claude APPROVE/LOW with no blockers or missing tests (`phase2a-4ffa96f611f5588850922d82`)
+- Task ID: FW-REC-002
+- Starting commit: f6688a45da44e76023939c26186b7fcba1cff1c2
+- Candidate commit: 70b881390e8f7aeb204a09098cbdfbba22579440
+- Accepted commit: 70b881390e8f7aeb204a09098cbdfbba22579440
+- Files changed: atomic private RecoveryCheckpoint persistence, restart reconstruction, binding/replay validation, tests, and inventory documentation
+- Deterministic validation: focused 20 passed; full 1349 passed/1 skipped; integrity fresh full 1349 passed/1 skipped, hard checks and 4 Golden Paths pass with YELLOW only for dependency and Defined FW-COMP/FW-AID owners
+- Independent review: exact Claude APPROVE/LOW with no blockers or missing tests (`phase2a-70b881390e8f7aeb204a0909`)
 - Gemini review: disabled and not required under D-020
-- Unresolved findings: none for FW-REC-001
+- Unresolved findings: none for FW-REC-002
 - Blocker: none
-- Next action: implement FW-REC-002.
+- Next action: implement FW-REC-003.
 
 - Completion inventory: `docs/completion-audit-2026-09-09.md` (baseline `0afcbdd`).
 - FWQ-0008 implementation and binding hardening exist; VALIDATED retains a historical provenance caveat, not an implementation assignment. FWQ-0009 is recorded accepted and unchanged at source/test level from its reviewed candidate.
@@ -54,6 +54,8 @@ On every restart or continuation:
 - Latest broad Core closure: FWQ-0064, 833 passed/1 skipped, all hard checks/Golden Path passing, YELLOW pre-existing findings.
 
 ## Execution log
+
+- 2026-09-11: FW-REC-002 accepted at `70b881390e8f7aeb204a09098cbdfbba22579440`. Canonical recovery metadata now persists through a bounded versioned SHA-256 envelope, private temporary creation, fsync, atomic replacement, and strict reconstruction. Corruption, truncation, oversize input, unsafe paths/permissions, replay, stale Git/Evidence bindings, and cross-tenant state fail closed without executing recovery. Focused 20 passed; exact Claude APPROVE/LOW with no blockers/missing tests; full and Product Integrity fresh full each passed 1349/1 with all hard gates and 4 Golden Paths. FW-REC-003 is next.
 
 - 2026-09-11: FW-REC-001 accepted at `4ffa96f611f5588850922d821ae0047699a94c76`. The immutable RecoveryCheckpoint coordinates existing task, scheduler, Git/worktree, Evidence, monitoring, proposal, and operator-decision owners without replacing them or executing recovery. Exact schema, tenant and authority binding, timestamps/hashes, budgets/retries, interruption state, and safe-resume combinations fail closed. A bounded four-turn verifier repair matched the documented limit after two provider turn-limit failures. Focused recovery 133 passed; verifier repair 20 passed; exact Claude APPROVE/LOW with no blockers/missing tests; full and Product Integrity fresh full each passed 1343/1 with all hard gates and 4 Golden Paths. FW-REC-002 is next.
 
