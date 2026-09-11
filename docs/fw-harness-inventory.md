@@ -91,3 +91,15 @@ denial, security component/path promotion, and dangerous capability promotion.
 It does not select a vendor model or issue authority. Later bounded work may bind
 its decision into existing model admission, escalation, failure packets,
 FW-AID telemetry, and Mission Control after this contract is accepted.
+
+
+## FW-HARNESS-016 routing boundary
+
+`route_approved_model` consumes an immutable FW-HARNESS risk decision and a
+bounded projection from the existing Approved Model Registry. It filters exact
+tenant, environment, role, data class, tool scope, availability, approval and
+minimum assurance tier, then selects the lowest estimated-cost eligible entry.
+Provider failure excludes the failed registry entry but cannot lower assurance.
+Denied or T4/human-gated risk selects nothing. The route is metadata with
+invocation and deployment authority disabled; provider calls remain owned by
+the separately admitted worker transport.

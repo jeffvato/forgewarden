@@ -7,6 +7,7 @@ from dataclasses import asdict, dataclass
 from typing import Any, Callable, Mapping
 
 from .harness_context import ContextPacket
+from .harness_risk import AssuranceTier, RiskDecision
 from .harness_task import HarnessTask
 from .harness_worker import WorkerRegistration, WorkerRole
 
@@ -134,3 +135,120 @@ def admit_harness_model(
     normalized["role"] = WorkerRole(normalized["role"])
     normalized["tool_permissions"] = tuple(normalized["tool_permissions"])
     return HarnessModelAdmission(**normalized)
+
+
+@dataclass(frozen=True)
+class ApprovedModelCandidate:
+    """Bounded projection supplied by the existing Approved Model Registry."""
+    candidate_id: str
+    tenant_id: str
+    provider: str
+    model_id: str
+    environment: str
+    assurance_tier: AssuranceTier
+    allowed_roles: tuple[WorkerRole, ...]
+    allowed_data_classifications: tuple[str, ...]
+    allowed_tools: tuple[str, ...]
+    estimated_cost_microunits: int
+    registry_evidence_reference: str
+    approved: bool
+    available: bool
+
+    def __post_init__(self) -> None:
+        scalars = (self.candidate_id, self.tenant_id, self.provider, self.model_id,
+                   self.environment, self.registry_evidence_reference)
+        if any(not isinstance(value, str) or not _ID.fullmatch(value) for value in scalars):
+            raise HarnessModelError("registry candidate identity is malformed")
+        if not isinstance(self.assurance_tier, AssuranceTier):
+            raise HarnessModelError("registry candidate tier is malformed")
+        for values, maximum, name in (
+            (self.allowed_roles, 8, "roles"),
+            (self.allowed_data_classifications, 16, "data classes"),
+            (self.allowed_tools, 64, "tools"),
+        ):
+            if not isinstance(values, tuple) or not values or len(values) > maximum or len(set(values)) != len(values):
+                raise HarnessModelError(f"registry candidate {name} are malformed")
+        if any(not isinstance(role, WorkerRole) for role in self.allowed_roles):
+            raise HarnessModelError("registry candidate roles are malformed")
+        if any(not isinstance(value, str) or not _ID.fullmatch(value)
+               for value in self.allowed_data_classifications + self.allowed_tools):
+            raise HarnessModelError("registry candidate constraints are malformed")
+        if type(self.estimated_cost_microunits) is not int or self.estimated_cost_microunits < 0:
+            raise HarnessModelError("registry candidate cost is malformed")
+        if type(self.approved) is not bool or type(self.available) is not bool:
+            raise HarnessModelError("registry candidate state is malformed")
+
+
+@dataclass(frozen=True)
+class ModelRoute:
+    task_id: str
+    tenant_id: str
+    candidate_id: str
+    provider: str
+    model_id: str
+    environment: str
+    assurance_tier: AssuranceTier
+    required_tier: AssuranceTier
+    estimated_cost_microunits: int
+    registry_evidence_reference: str
+    fallback: bool
+    invocation_authorized: bool = False
+    deployment_authority: str = "DISABLED"
+
+
+_NO_MODEL = "NO_APPROVED_MODEL_AVAILABLE_FOR_REQUIRED_ASSURANCE_LEVEL"
+
+
+def route_approved_model(
+    risk: RiskDecision,
+    candidates: tuple[ApprovedModelCandidate, ...],
+    *,
+    task_id: str,
+    tenant_id: str,
+    role: WorkerRole,
+    data_classification: str,
+    required_tools: tuple[str, ...],
+    environment: str,
+    failed_candidate_ids: tuple[str, ...] = (),
+) -> ModelRoute:
+    """Select registry metadata only; provider invocation remains separately gated."""
+    if not isinstance(risk, RiskDecision) or risk.task_id != task_id or risk.tenant_id != tenant_id:
+        raise HarnessModelError("risk decision binding mismatch")
+    if (risk.disposition != "CLASSIFIED" or risk.human_authorization_required
+            or risk.tier is AssuranceTier.T4):
+        raise HarnessModelError("risk decision does not permit model routing")
+    if not isinstance(role, WorkerRole) or not _ID.fullmatch(data_classification) or not _ID.fullmatch(environment):
+        raise HarnessModelError("routing constraints are malformed")
+    if (not isinstance(required_tools, tuple) or len(required_tools) > 64
+            or len(set(required_tools)) != len(required_tools)
+            or any(not isinstance(tool, str) or not _ID.fullmatch(tool) for tool in required_tools)):
+        raise HarnessModelError("required tools are malformed")
+    if (not isinstance(candidates, tuple) or not candidates or len(candidates) > 128
+            or any(not isinstance(item, ApprovedModelCandidate) for item in candidates)
+            or len({item.candidate_id for item in candidates}) != len(candidates)):
+        raise HarnessModelError("registry candidate set is malformed")
+    if (not isinstance(failed_candidate_ids, tuple)
+            or len(set(failed_candidate_ids)) != len(failed_candidate_ids)
+            or any(value not in {item.candidate_id for item in candidates}
+                   for value in failed_candidate_ids)):
+        raise HarnessModelError("failed candidate set is malformed")
+    required = set(required_tools)
+    eligible = [
+        item for item in candidates
+        if item.approved and item.available and item.candidate_id not in failed_candidate_ids
+        and item.tenant_id == tenant_id and item.environment == environment
+        and item.assurance_tier >= risk.tier and role in item.allowed_roles
+        and data_classification in item.allowed_data_classifications
+        and required.issubset(item.allowed_tools)
+    ]
+    if not eligible:
+        raise HarnessModelError(_NO_MODEL)
+    selected = min(eligible, key=lambda item: (
+        item.estimated_cost_microunits, int(item.assurance_tier), item.candidate_id
+    ))
+    return ModelRoute(
+        task_id, tenant_id, selected.candidate_id, selected.provider,
+        selected.model_id, selected.environment, selected.assurance_tier,
+        risk.tier, selected.estimated_cost_microunits,
+        selected.registry_evidence_reference, bool(failed_candidate_ids),
+    )
