@@ -3,7 +3,7 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: FW-EVID-005 accepted-work canonical-envelope adapter accepted
+- Current focus: FW-HARNESS-014 self-hosted canonical development runtime accepted
 - Next task: FW-EVID-006 integrated canonical Evidence lifecycle proof under D-024.
 - Harness role: permanent ForgeWarden Core subsystem and default controller for ForgeWarden's own development; one governed architecture serves both roles under D-023.
 - Worker transport direction: registered local CLIs and explicitly approved API-backed workers; API keys are resolved only through FW-KEYS secret handles inside trusted adapters and never enter model context or lifecycle evidence.
@@ -34,15 +34,15 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-EVID-005
-- Starting commit: efc21e0fb09b44b49d37b37d6ea99f11d1548246
-- Candidate commit: 8b86578dbf6ede0236b45d00b856c648cd39198e
-- Accepted commit: 8b86578dbf6ede0236b45d00b856c648cd39198e
-- Files changed: accepted-work canonical-envelope adapter and commit/review/policy/tenant/chain/durability/data-minimization tests
-- Deterministic validation: focused 59 passed; full 1312 passed/1 skipped; integrity fresh full 1312 passed/1 skipped, hard checks and 4 Golden Paths pass with YELLOW only for dependency and Defined FW-COMP/FW-AID owners
-- Independent review: exact Claude APPROVE/LOW with no blockers or missing tests (`phase2a-8b86578dbf6ede0236b45d00`)
+- Task ID: FWQ-0079 / FW-HARNESS-014
+- Starting commit: d20bd3d0a430e77144ca41f9f61d0e449cfa847e
+- Candidate commit: 975750bf8bbb13c84da99c7c3cb37dfcb1b40207
+- Accepted commit: 975750bf8bbb13c84da99c7c3cb37dfcb1b40207
+- Files changed: canonical self-hosted runtime bridge, authoritative queue milestone, and full trusted-stage/failure-boundary integration tests
+- Deterministic validation: focused 109 passed; full 1326 passed/1 skipped; integrity fresh full 1326 passed/1 skipped, hard checks and 4 Golden Paths pass with YELLOW only for dependency and Defined FW-COMP/FW-AID owners
+- Independent review: exact Claude APPROVE/LOW with no blockers or missing tests (`phase2a-975750bf8bbb13c84da99c7c`)
 - Gemini review: disabled and not required under D-020
-- Unresolved findings: none for FW-EVID-005; runtime FW-AID and FW-COMP remain explicitly Defined
+- Unresolved findings: none for FW-HARNESS-014; runtime FW-AID and FW-COMP remain explicitly Defined
 - Blocker: live Azure use remains disabled until interactive Entra login and credit/deployment evidence pass; this does not block offline Core work
 - Next action: implement FW-EVID-006.
 
@@ -54,6 +54,8 @@ On every restart or continuation:
 - Latest broad Core closure: FWQ-0064, 833 passed/1 skipped, all hard checks/Golden Path passing, YELLOW pre-existing findings.
 
 ## Execution log
+
+- 2026-09-10: FW-HARNESS-014 accepted at `975750bf8bbb13c84da99c7c3cb37dfcb1b40207`. The canonical GovernedHarnessController now has one supported self-hosted runtime bridge to the existing CodexTaskAdapter, deterministic validation, trusted GitCheckpointController, ExactReviewAdapter, durable scheduler/recovery, Evidence, and Mission Control owners. Worker leases remain local CLI, scoped, DRY_RUN, non-deploying, credential-free, and unable to control Git, policy, approvals, or continuation. Fixture proofs cover authorization stops, step bounds, session binding, invalid plans/results, callback failures, reviewer substitution, symlink repositories, and dirty Git. Focused 109 passed; exact Claude APPROVE/LOW with no blockers/missing tests; full and Product Integrity fresh full each passed 1326/1 with all hard gates and 4 Golden Paths. FW-EVID-006 resumes next through the self-hosted controller path.
 
 - 2026-09-10: FW-EVID-005 accepted at `8b86578dbf6ede0236b45d00b856c648cd39198e`. Exact accepted-work bundles now remain owned and revalidated by their existing schema while canonical tenant Evidence binds the full validated bundle digest, exact job/commit/review/policy facts, actor, time, classification, correlation, references, and current ledger chain. Replay, substitution, cross-tenant, and durability failures deny without admission, and canonical envelopes retain no provider prose or raw payload. Focused 59 passed; exact Claude APPROVE/LOW with no blockers/missing tests; full and Product Integrity fresh full each passed 1312/1, all hard gates, and 4 Golden Paths with only dependency and Defined FW-COMP/FW-AID YELLOW findings. FW-EVID-006 is next.
 

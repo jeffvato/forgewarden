@@ -22,7 +22,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FWQ-0079 — Self-hosted canonical development harness activation
 - Requirement: FW-HARNESS-014 self-hosted engineering execution
-- State: READY
+- State: DONE
 - Priority: P0
 - Dependencies: FWQ-0078
 - Approval: Jeff explicitly authorized the accepted Core harness to control coding of remaining ForgeWarden jobs; execution remains local, bounded, DRY_RUN, kill-switch governed, and non-deploying.
@@ -38,6 +38,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - fixture-driven self-hosting proof covers the complete lifecycle without launching a live model, deploying, accessing credentials, or modifying repositories outside disposable test fixtures.
 - Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
 - Security considerations: activation uses existing local CLI capability only through deterministic mediation; it adds no arbitrary shell, product network transport, credential resolution, protected-branch merge, deployment, containment, remediation, or response authority.
+- Completion evidence: exact repaired candidate `975750bf8bbb13c84da99c7c3cb37dfcb1b40207`; focused 109 passed; exact Claude Code job `phase2a-975750bf8bbb13c84da99c7c` returned APPROVE/LOW with no blockers or missing tests after closing every requested failure-path proof; full 1326 passed/1 skipped; Product Integrity fresh full 1326 passed/1 skipped, 4 Golden Paths, and all hard checks passed with YELLOW only for the existing `tzdata` dependency and Defined FW-COMP/FW-AID owners.
 
 ### FW-AID-001 — Core architecture, threat, and ownership inventory
 - Requirement: FW-AID permanent Core foundation
