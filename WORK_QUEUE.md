@@ -20,6 +20,25 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 
 Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical implementation is not new work. FWQ-0008 VALIDATED preserves a provenance caveat, not a request to rebuild or automatically repeat review. FWQ-0012–0016 are reconciled DONE from existing implementation and recorded proof.
 
+### FWQ-0079 — Self-hosted canonical development harness activation
+- Requirement: FW-HARNESS-014 self-hosted engineering execution
+- State: READY
+- Priority: P0
+- Dependencies: FWQ-0078
+- Approval: Jeff explicitly authorized the accepted Core harness to control coding of remaining ForgeWarden jobs; execution remains local, bounded, DRY_RUN, kill-switch governed, and non-deploying.
+- Description: Connect the canonical GovernedHarnessController to the existing real CodexTaskAdapter, deterministic validation, trusted GitCheckpointController, ExactReviewAdapter, persistent queue/recovery, canonical Evidence, and Mission Control path through one supported self-hosting runtime rather than a second orchestrator.
+- Target path: swarm/harness_runtime.py
+- Allowed paths: swarm/harness_runtime.py, swarm/harness_controller.py, swarm/cli.py, swarm/control_manifest.py, tests/test_harness_runtime.py, tests/test_harness_controller.py, tests/test_autonomous_loop.py, tests/test_task_selection.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_harness_runtime.py tests/test_harness_controller.py tests/test_autonomous_loop.py tests/test_task_selection.py
+- Acceptance criteria:
+  - one supported runtime maps the authoritative selected queue task and canonical task/execution records to the existing Codex, validation, trusted Git, exact review, Evidence, recovery, and Mission Control owners without duplicating them;
+  - the worker never receives Git, policy, approval, credential, kill-switch, deployment, or self-expansion authority, and only the trusted callback path can validate, commit, review, accept, checkpoint, or continue;
+  - restart resumes the exact durable task/stage, completed work is never replayed, and the next dependency-complete authorized task advances automatically;
+  - missing identity, key/model/authority admission, malformed worker output, path escape, dirty Git, validation failure, review failure/unavailability, Evidence failure, exhausted budget/retry, or engaged stop decision fails closed before later stages;
+  - fixture-driven self-hosting proof covers the complete lifecycle without launching a live model, deploying, accessing credentials, or modifying repositories outside disposable test fixtures.
+- Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
+- Security considerations: activation uses existing local CLI capability only through deterministic mediation; it adds no arbitrary shell, product network transport, credential resolution, protected-branch merge, deployment, containment, remediation, or response authority.
+
 ### FW-AID-001 — Core architecture, threat, and ownership inventory
 - Requirement: FW-AID permanent Core foundation
 - State: DONE
