@@ -792,9 +792,29 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 - Security considerations: proof covers deterministic lifecycle and restart integrity only; cryptographic signing, retention execution, replication, and external export remain separately gated.
 - Completion evidence: exact candidate `bb8f2a64adf3563581b8e81fab21598cc95ad2fc`; focused 95 passed; exact Claude Code job `phase2a-bb8f2a64adf3563581b8e81f` returned APPROVE/LOW with no blockers or missing tests; full 1329 passed/1 skipped; Product Integrity fresh full 1329 passed/1 skipped, 4 Golden Paths, and all hard checks passed with YELLOW only for the existing `tzdata` dependency and Defined FW-COMP/FW-AID owners. Product Integrity now reports FW-EVID Proven within its local unsigned DRY_RUN boundary.
 
+
+### FW-REC-002 — Durable recovery checkpoint persistence and reconstruction
+- Requirement: FW-REC persistent recovery metadata
+- State: READY
+- Priority: P0
+- Dependencies: FW-REC-001
+- Approval: bounded local DRY_RUN persistence is authorized under D-024; recovery execution remains unauthorized.
+- Description: Persist and reconstruct the canonical RecoveryCheckpoint through one bounded atomic local store that detects corruption, truncation, replay, symlink paths, and stale Evidence/Git bindings without performing recovery.
+- Target path: swarm/recovery.py
+- Allowed paths: swarm/recovery.py, tests/test_recovery.py, docs/fw-rec-inventory.md, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_recovery.py
+- Acceptance criteria:
+  - atomic restricted-permission checkpoint replacement with an exact schema/version/content digest;
+  - restart reconstruction revalidates the complete canonical contract before returning state;
+  - corrupt, truncated, oversized, symlinked, replayed, stale Git/Evidence, and cross-tenant records fail closed;
+  - persistence failure never reports a successful checkpoint;
+  - no restore, rollback execution, restart, deletion, repair, Git mutation, containment, deployment, credential, network, or process authority is added.
+- Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
+- Security considerations: the store contains bounded metadata and opaque references only; it cannot execute the recorded resume decision.
+
 ### FW-REC-001 — Recovery ownership inventory and canonical checkpoint contract
 - Requirement: FW-REC recovery and rollback coordination
-- State: READY
+- State: DONE
 - Priority: P0
 - Dependencies: FWQ-0079
 - Approval: deterministic metadata-only recovery/checkpoint contract is activated under D-024; restore, rollback mutation, process restart, deletion, repair, containment, and deployment remain unauthorized.
@@ -810,6 +830,8 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - existing autonomous-loop, work-checkpoint, harness-recovery, quarantine-recovery, and domain recovery owners remain authoritative through documented adapters.
 - Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
 - Security considerations: FW-REC-001 is metadata and decision evidence only; later bounded milestones may coordinate existing recovery mechanisms but cannot execute response without separate authority.
+
+- Completion evidence: exact candidate `4ffa96f611f5588850922d821ae0047699a94c76`; focused recovery validation 133 passed and verifier repair validation 20 passed; exact Claude review `phase2a-4ffa96f611f5588850922d82` APPROVE/LOW with no blockers or missing tests; full suite 1343 passed/1 skipped; Product Integrity repeated the full 1343/1 proof, all hard checks and 4 Golden Paths passed, with only pre-existing `tzdata` and Defined FW-COMP/FW-AID YELLOW findings.
 
 ### FW-BME-02 — Deterministic phishing and spoof classification
 - Requirement: FW-BME phishing/BEC/authentication signal evaluation

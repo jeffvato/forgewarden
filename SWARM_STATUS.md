@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: FW-EVID-006 integrated canonical Evidence lifecycle proof accepted
-- Next task: FW-REC-001 recovery ownership inventory and canonical checkpoint contract under D-024.
+- Current focus: FW-REC-001 canonical recovery checkpoint contract accepted
+- Next task: FW-REC-002 durable recovery checkpoint persistence and reconstruction under D-024.
 - Harness role: permanent ForgeWarden Core subsystem and default controller for ForgeWarden's own development; one governed architecture serves both roles under D-023.
 - Worker transport direction: registered local CLIs and explicitly approved API-backed workers; API keys are resolved only through FW-KEYS secret handles inside trusted adapters and never enter model context or lifecycle evidence.
 - Provider authentication direction: deterministic OpenAI, Anthropic, and Google/Gemini profiles with provider-specific official OAuth where available and approved API-key classes otherwise; Gemini CLI is registered as `agy` for read-only roles, FW-ID owns delegated identity, and FW-KEYS owns all credential material.
@@ -34,17 +34,17 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-EVID-006
-- Starting commit: 4e63fa22a943255ae6ed555cbf399d39332f6e9c
-- Candidate commit: bb8f2a64adf3563581b8e81fab21598cc95ad2fc
-- Accepted commit: bb8f2a64adf3563581b8e81fab21598cc95ad2fc
-- Files changed: integrated lifecycle proof, FW-EVID Product Integrity ownership, and explicit local unsigned DRY_RUN boundary documentation
-- Deterministic validation: focused 95 passed; full 1329 passed/1 skipped; integrity fresh full 1329 passed/1 skipped, hard checks and 4 Golden Paths pass with YELLOW only for dependency and Defined FW-COMP/FW-AID owners
-- Independent review: exact Claude APPROVE/LOW with no blockers or missing tests (`phase2a-bb8f2a64adf3563581b8e81f`)
+- Task ID: FW-REC-001
+- Starting commit: b8ba538f884495f50ccd4b772d4efb97ebd24154
+- Candidate commit: 4ffa96f611f5588850922d821ae0047699a94c76
+- Accepted commit: 4ffa96f611f5588850922d821ae0047699a94c76
+- Files changed: canonical immutable recovery checkpoint contract, ownership inventory, failure-path proof, and bounded Claude verifier terminal-turn repair
+- Deterministic validation: focused recovery 133 passed; verifier repair 20 passed; full 1343 passed/1 skipped; integrity fresh full 1343 passed/1 skipped, hard checks and 4 Golden Paths pass with YELLOW only for dependency and Defined FW-COMP/FW-AID owners
+- Independent review: exact Claude APPROVE/LOW with no blockers or missing tests (`phase2a-4ffa96f611f5588850922d82`)
 - Gemini review: disabled and not required under D-020
-- Unresolved findings: none for FW-EVID; runtime FW-AID and FW-COMP remain explicitly Defined
-- Blocker: live Azure use remains disabled until interactive Entra login and credit/deployment evidence pass; this does not block offline Core work
-- Next action: implement FW-REC-001.
+- Unresolved findings: none for FW-REC-001
+- Blocker: none
+- Next action: implement FW-REC-002.
 
 - Completion inventory: `docs/completion-audit-2026-09-09.md` (baseline `0afcbdd`).
 - FWQ-0008 implementation and binding hardening exist; VALIDATED retains a historical provenance caveat, not an implementation assignment. FWQ-0009 is recorded accepted and unchanged at source/test level from its reviewed candidate.
@@ -54,6 +54,8 @@ On every restart or continuation:
 - Latest broad Core closure: FWQ-0064, 833 passed/1 skipped, all hard checks/Golden Path passing, YELLOW pre-existing findings.
 
 ## Execution log
+
+- 2026-09-11: FW-REC-001 accepted at `4ffa96f611f5588850922d821ae0047699a94c76`. The immutable RecoveryCheckpoint coordinates existing task, scheduler, Git/worktree, Evidence, monitoring, proposal, and operator-decision owners without replacing them or executing recovery. Exact schema, tenant and authority binding, timestamps/hashes, budgets/retries, interruption state, and safe-resume combinations fail closed. A bounded four-turn verifier repair matched the documented limit after two provider turn-limit failures. Focused recovery 133 passed; verifier repair 20 passed; exact Claude APPROVE/LOW with no blockers/missing tests; full and Product Integrity fresh full each passed 1343/1 with all hard gates and 4 Golden Paths. FW-REC-002 is next.
 
 - 2026-09-10: FW-EVID-006 accepted at `bb8f2a64adf3563581b8e81fab21598cc95ad2fc`. One deterministic lifecycle now composes validated harness and accepted-work payload owners, canonical tenant envelopes, append-only chain admission, private AuditLog durability, exact restart reconstruction, continued tail append, and replay/cross-tenant/tamper denial. Canonical storage retains hashes and bounded references without raw worker/provider content or authority. Focused 95 passed; exact Claude APPROVE/LOW with no blockers/missing tests; full and Product Integrity fresh full each passed 1329/1 with all hard gates and 4 Golden Paths. Product Integrity reports FW-EVID Proven within its explicit local unsigned DRY_RUN boundary. FW-REC-001 is next.
 
