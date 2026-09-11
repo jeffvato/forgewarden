@@ -714,7 +714,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-EVID-004 — Canonical ledger durable AuditLog adapter
 - Requirement: FW-EVID durable lifecycle integration
-- State: READY
+- State: DONE
 - Priority: P0
 - Dependencies: FW-EVID-003
 - Approval: bounded local DRY_RUN persistence through the existing private AuditLog boundary is activated under D-024; schema migration, signing, export, replication, and transport remain unauthorized.
@@ -730,6 +730,26 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no signing, export, transport, policy, approval, Action Ticket, Git, deployment, containment, recovery execution, or response authority is added.
 - Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
 - Security considerations: persistence remains local, private, append-only, and DRY_RUN; retention, signing, external storage, replication, and export require later milestones.
+- Completion evidence: exact repaired candidate `c2b5b46967e65ddc6676aad1631f268370829a7c`; focused 78 passed; exact Claude Code job `phase2a-c2b5b46967e65ddc6676aad1` returned APPROVE/LOW with no blockers or missing tests after two bounded provider-unavailable attempts and repair of all earlier boundary-test findings; full 1308 passed/1 skipped; Product Integrity fresh full 1308 passed/1 skipped, 4 Golden Paths, and all hard checks passed with YELLOW only for the existing `tzdata` dependency and Defined FW-COMP/FW-AID owners.
+
+### FW-EVID-005 — Accepted-work canonical-envelope adapter
+- Requirement: FW-EVID acceptance lifecycle integration
+- State: READY
+- Priority: P0
+- Dependencies: FW-EVID-004
+- Approval: bounded adaptation of already-validated accepted-work records is activated under D-024; reviewer policy migration, signing, export, replication, and transport remain unauthorized.
+- Description: Bind the existing accepted-work evidence bundle to the canonical tenant ledger while retaining accepted-work validation, exact-commit/reviewer ownership, and create-once storage semantics.
+- Target path: swarm/accepted_work_evidence.py
+- Allowed paths: swarm/accepted_work_evidence.py, swarm/evidence.py, tests/test_accepted_work_evidence.py, tests/test_evidence.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_accepted_work_evidence.py tests/test_evidence.py
+- Acceptance criteria:
+  - only an exact bundle already validated by the accepted-work owner can be hashed and adapted, with exact job, candidate/accepted commit, review, validation, policy, and prior-event bindings preserved;
+  - the canonical envelope binds the same tenant, accepted task/job, controller actor, canonical timestamp, classification, correlation, payload digest, Evidence references, and exact current ledger chain;
+  - invalid, stale, duplicate, replayed, cross-tenant, commit-substituted, reviewer-substituted, or durability-failed acceptance records fail closed without ledger mutation;
+  - provider prose, raw prompts/context/model output, secrets, handles, backend locators, and unrestricted file content do not enter the canonical envelope;
+  - no reviewer-policy change, signing, export, transport, Git mutation, deployment, containment, recovery execution, or response authority is added.
+- Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
+- Security considerations: this adapter consumes the existing accepted-work schema unchanged; any future reviewer-policy schema evolution requires its own explicit deterministic migration.
 
 ### FW-BME-02 — Deterministic phishing and spoof classification
 - Requirement: FW-BME phishing/BEC/authentication signal evaluation
