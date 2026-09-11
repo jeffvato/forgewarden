@@ -323,6 +323,22 @@ class AuditLog:
 
     def record(self, job: Job, event: str, **data: Any) -> None:
         entry = {"timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "job_id": job.job_id, "state": job.state, "event": event, **_audit_data(data)}
+        self._append_entry(entry)
+
+    def record_canonical_evidence(self, envelope: Any, record_sha256: str) -> None:
+        """Durably append one already-validated canonical FW-EVID record."""
+        from dataclasses import asdict
+        from .evidence import EvidenceEnvelope, evidence_record_sha256
+
+        if not isinstance(envelope, EvidenceEnvelope) or record_sha256 != evidence_record_sha256(envelope):
+            raise SwarmError("canonical Evidence record binding is invalid")
+        self._append_entry({
+            "record_type": "fw_evidence_v1",
+            "envelope": asdict(envelope),
+            "record_sha256": record_sha256,
+        })
+
+    def _append_entry(self, entry: dict[str, Any]) -> None:
         lock_fd = os.open(self.lock_path, os.O_RDWR | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0), 0o600)
         with os.fdopen(lock_fd, "a+", encoding="ascii") as lock:
             fcntl.flock(lock.fileno(), fcntl.LOCK_EX)

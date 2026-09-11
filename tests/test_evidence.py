@@ -1,12 +1,14 @@
 from dataclasses import FrozenInstanceError, asdict
+import json
 from threading import Event, Thread
 
 import pytest
 
 from swarm.evidence import (
-    EvidenceContractError, EvidenceEnvelope, EvidenceLedger,
-    evidence_record_sha256, validate_evidence_envelope,
+    CanonicalAuditEvidenceStore, EvidenceContractError, EvidenceEnvelope, EvidenceLedger,
+    evidence_record_sha256, read_canonical_audit_records, validate_evidence_envelope,
 )
+from swarm.core import AuditLog
 
 
 def envelope(**changes):
@@ -180,3 +182,130 @@ def test_ledger_and_sink_receive_no_raw_payload_or_authority_methods():
     assert not any(hasattr(ledger, name) for name in (
         "sign", "export", "authorize", "issue_ticket", "deploy", "execute", "rollback",
     ))
+
+
+def test_canonical_audit_store_persists_and_recovers_exact_chain(tmp_path):
+    audit = AuditLog(tmp_path / "evidence.jsonl")
+    store = CanonicalAuditEvidenceStore(audit)
+    ledger = EvidenceLedger("tenant-a", store)
+    first = ledger.append(validate_evidence_envelope(envelope()))
+    second = ledger.append(validate_evidence_envelope(envelope(
+        evidence_id="fw-evid/tenant-a/task/0002", payload_sha256="b" * 64,
+        previous_record_sha256=first.record_sha256,
+    )))
+    recovered = CanonicalAuditEvidenceStore(AuditLog(audit.path)).recover("tenant-a")
+    assert recovered.tenant_snapshot("tenant-a") == (first, second)
+    assert audit.path.stat().st_mode & 0o777 == 0o600
+    text = audit.path.read_text(encoding="utf-8")
+    assert '"record_type": "fw_evidence_v1"' in text
+    assert "payload_sha256" in text and '"payload"' not in text
+
+
+def test_canonical_audit_store_recovers_missing_stream_as_empty(tmp_path):
+    recovered = CanonicalAuditEvidenceStore(AuditLog(tmp_path / "new.jsonl")).recover("tenant-a")
+    assert recovered.tenant_snapshot("tenant-a") == ()
+
+
+def test_canonical_audit_recovery_accepts_zero_byte_stream(tmp_path):
+    path = tmp_path / "empty.jsonl"
+    path.write_bytes(b"")
+    assert read_canonical_audit_records(path, "tenant-a") == ()
+
+
+@pytest.mark.parametrize("limit_name,limit,match", [
+    ("MAX_LEDGER_BYTES", 1, "oversized"),
+    ("MAX_LEDGER_RECORDS", 0, "too many records"),
+    ("MAX_LEDGER_LINE_BYTES", 1, "invalid line"),
+])
+def test_canonical_audit_recovery_enforces_bounded_stream_limits(tmp_path, monkeypatch, limit_name, limit, match):
+    audit = AuditLog(tmp_path / "evidence.jsonl")
+    EvidenceLedger("tenant-a", CanonicalAuditEvidenceStore(audit)).append(validate_evidence_envelope(envelope()))
+    monkeypatch.setattr(f"swarm.evidence.{limit_name}", limit)
+    with pytest.raises(EvidenceContractError, match=match):
+        read_canonical_audit_records(audit.path, "tenant-a")
+
+
+def test_canonical_audit_recovery_accepts_exact_byte_limit_and_rejects_one_less(tmp_path, monkeypatch):
+    audit = AuditLog(tmp_path / "evidence.jsonl")
+    EvidenceLedger("tenant-a", CanonicalAuditEvidenceStore(audit)).append(validate_evidence_envelope(envelope()))
+    size = len(audit.path.read_bytes())
+    monkeypatch.setattr("swarm.evidence.MAX_LEDGER_BYTES", size)
+    assert len(read_canonical_audit_records(audit.path, "tenant-a")) == 1
+    monkeypatch.setattr("swarm.evidence.MAX_LEDGER_BYTES", size - 1)
+    with pytest.raises(EvidenceContractError, match="oversized"):
+        read_canonical_audit_records(audit.path, "tenant-a")
+
+
+def test_canonical_audit_recovery_enforces_multi_record_count_boundary(tmp_path, monkeypatch):
+    audit = AuditLog(tmp_path / "evidence.jsonl")
+    ledger = EvidenceLedger("tenant-a", CanonicalAuditEvidenceStore(audit))
+    first = ledger.append(validate_evidence_envelope(envelope()))
+    ledger.append(validate_evidence_envelope(envelope(
+        evidence_id="fw-evid/tenant-a/task/0002", payload_sha256="b" * 64,
+        previous_record_sha256=first.record_sha256,
+    )))
+    monkeypatch.setattr("swarm.evidence.MAX_LEDGER_RECORDS", 2)
+    assert len(read_canonical_audit_records(audit.path, "tenant-a")) == 2
+    monkeypatch.setattr("swarm.evidence.MAX_LEDGER_RECORDS", 1)
+    with pytest.raises(EvidenceContractError, match="too many records"):
+        read_canonical_audit_records(audit.path, "tenant-a")
+
+
+def test_canonical_audit_recovery_denies_partial_and_invalid_utf8_records(tmp_path):
+    path = tmp_path / "corrupt.jsonl"
+    path.write_bytes(b'{"record_type":"fw_evidence_v1"}\n')
+    with pytest.raises(EvidenceContractError, match="mixed|substituted"):
+        read_canonical_audit_records(path, "tenant-a")
+    path.write_bytes(b"\xff\n")
+    with pytest.raises(EvidenceContractError, match="malformed JSON"):
+        read_canonical_audit_records(path, "tenant-a")
+
+
+@pytest.mark.parametrize("mutation,match", [
+    (lambda rows: rows + [{"timestamp": "2026-09-10T00:00:00Z", "job_id": "legacy", "state": "SUCCEEDED", "event": "done"}], "mixed"),
+    (lambda rows: [rows[0] | {"record_sha256": "f" * 64}], "digest"),
+    (lambda rows: [rows[0], rows[0]], "chain|duplicate|replay"),
+])
+def test_canonical_audit_recovery_denies_mixed_tampered_and_replayed_records(tmp_path, mutation, match):
+    audit = AuditLog(tmp_path / "evidence.jsonl")
+    ledger = EvidenceLedger("tenant-a", CanonicalAuditEvidenceStore(audit))
+    ledger.append(validate_evidence_envelope(envelope()))
+    rows = [json.loads(line) for line in audit.path.read_text(encoding="utf-8").splitlines()]
+    audit.path.write_text("\n".join(json.dumps(row) for row in mutation(rows)) + "\n", encoding="utf-8")
+    with pytest.raises(EvidenceContractError, match=match):
+        read_canonical_audit_records(audit.path, "tenant-a")
+
+
+def test_canonical_audit_recovery_denies_truncation_cross_tenant_and_fork(tmp_path):
+    audit = AuditLog(tmp_path / "evidence.jsonl")
+    ledger = EvidenceLedger("tenant-a", CanonicalAuditEvidenceStore(audit))
+    first = ledger.append(validate_evidence_envelope(envelope()))
+    ledger.append(validate_evidence_envelope(envelope(
+        evidence_id="fw-evid/tenant-a/task/0002", payload_sha256="b" * 64,
+        previous_record_sha256=first.record_sha256,
+    )))
+    with pytest.raises(EvidenceContractError, match="tenant"):
+        read_canonical_audit_records(audit.path, "tenant-b")
+    original = audit.path.read_bytes()
+    audit.path.write_bytes(original[:-1])
+    with pytest.raises(EvidenceContractError, match="truncated"):
+        read_canonical_audit_records(audit.path, "tenant-a")
+    audit.path.write_bytes(original)
+    rows = [json.loads(line) for line in original.decode().splitlines()]
+    rows[1]["envelope"]["previous_record_sha256"] = "0" * 64
+    changed_envelope = dict(rows[1]["envelope"])
+    changed_envelope["evidence_references"] = tuple(changed_envelope["evidence_references"])
+    rows[1]["record_sha256"] = evidence_record_sha256(validate_evidence_envelope(changed_envelope))
+    audit.path.write_text("\n".join(json.dumps(row) for row in rows) + "\n", encoding="utf-8")
+    with pytest.raises(EvidenceContractError, match="chain"):
+        read_canonical_audit_records(audit.path, "tenant-a")
+
+
+def test_canonical_audit_write_failure_does_not_advance_ledger(tmp_path, monkeypatch):
+    audit = AuditLog(tmp_path / "evidence.jsonl")
+    store = CanonicalAuditEvidenceStore(audit)
+    ledger = EvidenceLedger("tenant-a", store)
+    monkeypatch.setattr(audit, "record_canonical_evidence", lambda *_args: (_ for _ in ()).throw(OSError("offline")))
+    with pytest.raises(EvidenceContractError, match="durability write failed"):
+        ledger.append(validate_evidence_envelope(envelope()))
+    assert ledger.tenant_snapshot("tenant-a") == ()

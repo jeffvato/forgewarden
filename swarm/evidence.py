@@ -11,8 +11,15 @@ import hashlib
 import json
 from dataclasses import dataclass
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Mapping
 from threading import Lock
+
+
+MAX_LEDGER_BYTES = 4 * 1024 * 1024
+MAX_LEDGER_RECORDS = 4096
+MAX_LEDGER_LINE_BYTES = 64 * 1024
+_DURABLE_FIELDS = frozenset({"record_type", "envelope", "record_sha256"})
 
 
 CLASSIFICATIONS = frozenset({"PUBLIC", "INTERNAL", "CONFIDENTIAL", "RESTRICTED"})
@@ -199,3 +206,82 @@ class EvidenceLedger:
             raise EvidenceContractError("Evidence ledger tenant mismatch")
         with self._lock:
             return tuple(self._records)
+
+    def _recover(self, records: tuple[EvidenceRecord, ...]) -> None:
+        """Install an already-verified chain into a new empty ledger."""
+        with self._lock:
+            if self._records or self._pending:
+                raise EvidenceContractError("Evidence ledger recovery requires empty state")
+            self._records.extend(records)
+            self._evidence_ids.update(record.envelope.evidence_id for record in records)
+            self._record_hashes.update(record.record_sha256 for record in records)
+
+
+class CanonicalAuditEvidenceStore:
+    """Existing private AuditLog adapted as canonical ledger durability."""
+
+    def __init__(self, audit_log: Any):
+        from .core import AuditLog
+        if not isinstance(audit_log, AuditLog):
+            raise EvidenceContractError("canonical Evidence requires the trusted AuditLog")
+        self.audit_log = audit_log
+
+    def __call__(self, envelope: EvidenceEnvelope, record_sha256: str) -> None:
+        try:
+            self.audit_log.record_canonical_evidence(envelope, record_sha256)
+        except Exception as exc:
+            raise EvidenceContractError("canonical AuditLog write failed") from exc
+
+    def recover(self, tenant_id: str) -> EvidenceLedger:
+        records = read_canonical_audit_records(self.audit_log.path, tenant_id)
+        ledger = EvidenceLedger(tenant_id, self)
+        ledger._recover(records)
+        return ledger
+
+
+def read_canonical_audit_records(path: Any, tenant_id: str) -> tuple[EvidenceRecord, ...]:
+    """Read and verify an exact canonical-only AuditLog stream for restart recovery."""
+    from .core import read_restricted_bytes
+    tenant = _text(tenant_id, "tenant_id", _TENANT, 128)
+    path = Path(path)
+    if not path.exists():
+        return ()
+    try:
+        raw = read_restricted_bytes(path, "canonical Evidence audit")
+    except Exception as exc:
+        raise EvidenceContractError("canonical Evidence audit cannot be read") from exc
+    if len(raw) > MAX_LEDGER_BYTES or (raw and not raw.endswith(b"\n")):
+        raise EvidenceContractError("canonical Evidence audit is oversized or truncated")
+    lines = raw.splitlines()
+    if len(lines) > MAX_LEDGER_RECORDS:
+        raise EvidenceContractError("canonical Evidence audit has too many records")
+    records: list[EvidenceRecord] = []
+    ids: set[str] = set()
+    hashes: set[str] = set()
+    previous: str | None = None
+    for line in lines:
+        if not line or len(line) > MAX_LEDGER_LINE_BYTES:
+            raise EvidenceContractError("canonical Evidence audit contains an invalid line")
+        try:
+            value = json.loads(line.decode("utf-8"))
+        except (UnicodeError, json.JSONDecodeError) as exc:
+            raise EvidenceContractError("canonical Evidence audit contains malformed JSON") from exc
+        if not isinstance(value, Mapping) or set(value) != _DURABLE_FIELDS or value.get("record_type") != "fw_evidence_v1":
+            raise EvidenceContractError("canonical Evidence audit contains mixed or substituted records")
+        envelope_value = value.get("envelope")
+        if isinstance(envelope_value, Mapping) and isinstance(envelope_value.get("evidence_references"), list):
+            envelope_value = dict(envelope_value)
+            envelope_value["evidence_references"] = tuple(envelope_value["evidence_references"])
+        envelope = validate_evidence_envelope(envelope_value)
+        digest = evidence_record_sha256(envelope)
+        if value.get("record_sha256") != digest:
+            raise EvidenceContractError("canonical Evidence audit record digest mismatch")
+        if envelope.tenant_id != tenant or envelope.previous_record_sha256 != previous:
+            raise EvidenceContractError("canonical Evidence audit tenant or chain mismatch")
+        if envelope.evidence_id in ids or digest in hashes:
+            raise EvidenceContractError("canonical Evidence audit contains duplicate or replayed records")
+        records.append(EvidenceRecord(envelope, digest))
+        ids.add(envelope.evidence_id)
+        hashes.add(digest)
+        previous = digest
+    return tuple(records)
