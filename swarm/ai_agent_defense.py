@@ -8,6 +8,7 @@ from typing import Any
 from .endpoint_fixtures import EndpointFixtureDenied
 from .normalized_events import AIWorkloadSecurityEvent, NormalizedEventStore
 from .harness_evidence import HarnessLifecycleEvidence, validate_harness_lifecycle_evidence
+from .soc import SOCAttackStoryProjection, SOCIncidentDenied, project_attack_story, project_soc_incident
 
 class AIThreatClassificationError(ValueError): pass
 
@@ -105,3 +106,50 @@ class HarnessAIDMonitorAdapter:
   value={"schema_version":"1","event_id":binding.event_id,"tenant_id":self.tenant_id,"event_class":threat,"source":"fw-harness.fixture","classification":"INTERNAL","observed_at_epoch":int(datetime.fromisoformat(lifecycle.timestamp.replace("Z","+00:00")).timestamp()),"agent_ref":f"fw-id/{self.tenant_id}/{lifecycle.worker_id.lower()}","model_ref":f"fw-model/{self.tenant_id}/{lifecycle.model_id.lower()}","session_ref":binding.session_ref,"task_ref":f"fw-task/{self.tenant_id}/{lifecycle.task_id.lower()}","initiating_user_ref":f"fw-id/{self.tenant_id}/{lifecycle.actor_id.lower()}","purpose_sha256":lifecycle.context_sha256,"capability_lease_ref":binding.capability_lease_ref,"action_ticket_ref":binding.action_ticket_ref,"tool_category":tool,"mcp_server_ref":binding.mcp_server_ref,"target_resource_ref":binding.target_resource_ref,"decision":"DENIED" if lifecycle.denied_actions else "OBSERVED","anomaly_indicators":indicators,"evidence_references":binding.evidence_references,"mode":"DRY_RUN","action":"DETECT_ONLY","authority_granted":False}
   try: return self._store.admit_ai_security_event(value)
   except EndpointFixtureDenied as exc: raise AIThreatClassificationError("harness monitor admission failed") from exc
+
+
+_CROSS_DOMAINS=frozenset({"AV","ENDPOINT","IDENTITY","BROWSER_EMAIL","MCP","NETWORK"})
+_FACT_REF=re.compile(r"^fw-fact/([a-z][a-z0-9_.-]{0,127})/(AV|ENDPOINT|IDENTITY|BROWSER_EMAIL|MCP|NETWORK)/[a-z][a-z0-9_.:/-]{0,191}$")
+
+@dataclass(frozen=True)
+class CrossDomainSecurityFact:
+ tenant_id:str; domain:str; fact_ref:str; affected_ref:str; occurred_at_epoch:int; evidence_ref:str
+ def __post_init__(self):
+  match=_FACT_REF.fullmatch(self.fact_ref) if isinstance(self.fact_ref,str) else None
+  if self.domain not in _CROSS_DOMAINS or match is None or match.group(1)!=self.tenant_id or match.group(2)!=self.domain: raise AIThreatClassificationError("cross-domain fact binding invalid")
+  prefix=f"fw-evid/{self.tenant_id}/"
+  if not isinstance(self.evidence_ref,str) or not self.evidence_ref.startswith(prefix) or not isinstance(self.affected_ref,str) or not self.affected_ref or not isinstance(self.occurred_at_epoch,int) or isinstance(self.occurred_at_epoch,bool) or self.occurred_at_epoch<0: raise AIThreatClassificationError("cross-domain fact invalid")
+
+@dataclass(frozen=True)
+class AIAttackStory:
+ tenant_id:str; finding_id:str; source_event_id:str; agent_ref:str; model_ref:str; task_ref:str; facts:tuple[CrossDomainSecurityFact,...]; projection:SOCAttackStoryProjection; confidence:str="HIGH"; mode:str="DRY_ONLY"; action:str="CORRELATE_ONLY"; authority_granted:bool=False
+
+class AICrossDomainCorrelator:
+ """Compose validated references through canonical FW-SOC projections."""
+ def __init__(self,tenant_id:str,audit:Any):
+  if not isinstance(tenant_id,str) or not tenant_id or not callable(audit): raise AIThreatClassificationError("correlator configuration invalid")
+  self.tenant_id=tenant_id; self._audit=audit; self._stories:set[str]=set(); self._pending:set[str]=set(); self._lock=RLock()
+ def correlate(self,finding:AIThreatFinding,event:AIWorkloadSecurityEvent,facts:tuple[CrossDomainSecurityFact,...],*,story_id:str,ai_incident_id:str,domain_incident_id:str)->AIAttackStory:
+  if not isinstance(finding,AIThreatFinding) or not isinstance(event,AIWorkloadSecurityEvent) or finding.tenant_id!=self.tenant_id or event.tenant_id!=self.tenant_id or finding.source_event_id!=event.event_id or finding.agent_ref!=event.agent_ref or finding.threat_class!=event.event_class: raise AIThreatClassificationError("correlation source binding invalid")
+  if not isinstance(facts,tuple) or not 3<=len(facts)<=32 or any(not isinstance(item,CrossDomainSecurityFact) or item.tenant_id!=self.tenant_id for item in facts): raise AIThreatClassificationError("correlation facts invalid")
+  ordered=tuple(sorted(facts,key=lambda item:(item.occurred_at_epoch,item.fact_ref)))
+  if ordered!=facts or len({item.fact_ref for item in facts})!=len(facts): raise AIThreatClassificationError("correlation chronology or replay invalid")
+  domains={item.domain for item in facts}
+  if "ENDPOINT" not in domains or len(domains)<3: raise AIThreatClassificationError("insufficient cross-domain confidence")
+  with self._lock:
+   if story_id in self._stories or story_id in self._pending: raise AIThreatClassificationError("correlation replay or pending")
+   self._pending.add(story_id)
+  try:
+   shared_affected=[event.agent_ref]+sorted({item.affected_ref for item in facts})
+   evidence=sorted(set(finding.evidence_references)|{item.evidence_ref for item in facts})
+   common=dict(tenant_id=self.tenant_id,title="AI-enabled intrusion correlation",severity="CRITICAL" if finding.severity=="CRITICAL" else "HIGH",status="OPEN",created_at_epoch=min(event.observed_at_epoch,facts[0].occurred_at_epoch),updated_at_epoch=max(item.occurred_at_epoch for item in facts),affected_refs=shared_affected,normalized_event_refs=[event.event_id],evidence_refs=evidence,disposition="NONE")
+   ai=project_soc_incident(dict(common,incident_id=ai_incident_id),tenant_id=self.tenant_id,now_epoch=common["updated_at_epoch"],audit=self._audit)
+   domain=project_soc_incident(dict(common,incident_id=domain_incident_id),tenant_id=self.tenant_id,now_epoch=common["updated_at_epoch"],audit=self._audit)
+   projection=project_attack_story((ai,domain),story_id=story_id,tenant_id=self.tenant_id,audit=self._audit)
+   result=AIAttackStory(self.tenant_id,finding.finding_id,event.event_id,event.agent_ref,event.model_ref,event.task_ref,facts,projection)
+   with self._lock: self._stories.add(story_id)
+   return result
+  except SOCIncidentDenied as exc:
+   raise AIThreatClassificationError("cross-domain Evidence or projection failed") from exc
+  finally:
+   with self._lock: self._pending.discard(story_id)

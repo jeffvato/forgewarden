@@ -1086,7 +1086,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-AID-005 — Cross-domain AI intrusion correlation and attack story
 - Requirement: FW-AID canonical cross-domain correlation
-- State: READY
+- State: REVIEW
 - Priority: P0
 - Dependencies: FW-AID-004, FW-SOC-03, FW-AV, FW-ENDPOINT, FW-ID, FW-MCP
 - Approval: deterministic fixture-only correlation and inert attack-story projection are authorized; live collection, containment, and response remain unauthorized.

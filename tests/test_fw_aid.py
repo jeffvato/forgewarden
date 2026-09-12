@@ -1,4 +1,5 @@
 import copy
+from dataclasses import replace
 import pytest
 from swarm.endpoint_fixtures import EndpointFixtureDenied
 from swarm.normalized_events import AI_EVENT_CLASSES, NormalizedEventStore, validate_ai_workload_event
@@ -113,3 +114,33 @@ def test_harness_monitor_fails_closed_on_missing_cross_tenant_raw_unknown_replay
  assert store.pending_ai_security_events(tenant_id="tenant-a",agent_ref=first.agent_ref)==(first,)
  failed=HarnessAIDMonitorAdapter("tenant-a",NormalizedEventStore(lambda *_:(_ for _ in ()).throw(OSError("offline"))))
  with pytest.raises(AIThreatClassificationError,match="admission"): failed.observe(lifecycle(),binding())
+
+
+def cross_fact(domain,index,**changes):
+ value=dict(tenant_id="tenant-a",domain=domain,fact_ref=f"fw-fact/tenant-a/{domain}/fact-{index}",affected_ref=f"asset/{domain.lower()}",occurred_at_epoch=110+index,evidence_ref=f"fw-evid/tenant-a/{domain.lower()}-{index}"); value.update(changes); return CrossDomainSecurityFact(**value)
+
+def classified_source():
+ source=validate_ai_workload_event(event(event_class="AID-SECRETS",anomaly_indicators=["secret_access"],observed_at_epoch=100)); classifier=DeterministicAIThreatClassifier("tenant-a",lambda *_:None); finding=classifier.classify(source,finding_id="fw-finding/tenant-a/secrets-1"); return source,finding
+
+def test_cross_domain_correlation_uses_canonical_soc_attack_story_and_ordered_refs():
+ source,finding=classified_source(); calls=[]; correlator=AICrossDomainCorrelator("tenant-a",lambda *args:calls.append(args)); facts=(cross_fact("ENDPOINT",1),cross_fact("IDENTITY",2),cross_fact("NETWORK",3))
+ story=correlator.correlate(finding,source,facts,story_id="story-aid-1",ai_incident_id="incident-ai",domain_incident_id="incident-domain")
+ assert story.facts==facts and story.agent_ref==source.agent_ref and story.model_ref==source.model_ref and story.task_ref==source.task_ref
+ assert story.projection.incident_ids==("incident-ai","incident-domain") and story.projection.action=="CORRELATE_ONLY" and story.confidence=="HIGH" and not story.authority_granted
+ assert [call[0] for call in calls]==["soc_incident_projected","soc_incident_projected","soc_attack_story_projected"]
+
+def test_cross_domain_correlation_denies_baseline_like_insufficient_replay_chronology_and_tenant():
+ source,finding=classified_source(); calls=[]; correlator=AICrossDomainCorrelator("tenant-a",lambda *args:calls.append(args)); facts=(cross_fact("ENDPOINT",1),cross_fact("IDENTITY",2),cross_fact("NETWORK",3))
+ for bad in ((facts[0],facts[1]),(facts[1],facts[0],facts[2]),(facts[0],facts[0],facts[2])):
+  with pytest.raises(AIThreatClassificationError): correlator.correlate(finding,source,bad,story_id="bad",ai_incident_id="a",domain_incident_id="b")
+ foreign=replace(facts[0],tenant_id="tenant-b",fact_ref="fw-fact/tenant-b/ENDPOINT/f",evidence_ref="fw-evid/tenant-b/f")
+ with pytest.raises(AIThreatClassificationError): correlator.correlate(finding,source,(foreign,facts[1],facts[2]),story_id="cross",ai_incident_id="a",domain_incident_id="b")
+ result=correlator.correlate(finding,source,facts,story_id="good",ai_incident_id="a",domain_incident_id="b")
+ with pytest.raises(AIThreatClassificationError,match="replay"): correlator.correlate(finding,source,facts,story_id="good",ai_incident_id="c",domain_incident_id="d")
+ assert result.projection.story_id=="good"
+
+def test_cross_domain_correlation_revalidates_source_and_fails_closed_on_evidence():
+ source,finding=classified_source(); facts=(cross_fact("ENDPOINT",1),cross_fact("IDENTITY",2),cross_fact("MCP",3))
+ correlator=AICrossDomainCorrelator("tenant-a",lambda *_:(_ for _ in ()).throw(OSError("offline")))
+ with pytest.raises(AIThreatClassificationError,match="Evidence"): correlator.correlate(finding,source,facts,story_id="story",ai_incident_id="a",domain_incident_id="b")
+ with pytest.raises(AIThreatClassificationError,match="source binding"): AICrossDomainCorrelator("tenant-a",lambda *_:None).correlate(replace(finding,agent_ref="fw-id/tenant-a/other"),source,facts,story_id="story",ai_incident_id="a",domain_incident_id="b")

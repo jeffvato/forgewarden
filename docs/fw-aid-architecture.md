@@ -156,6 +156,9 @@ Examples include:
 
 The result is one tenant-bound attack story with chronology and Evidence
 references, not duplicate event stores or disconnected alerts.
+`AICrossDomainCorrelator` now requires ordered unique facts from at least three
+domains including Endpoint, revalidates the exact AI event/finding binding, and
+uses canonical FW-SOC incident and attack-story projections.
 
 ## Deterministic containment and kill switch
 
