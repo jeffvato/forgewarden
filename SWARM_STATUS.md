@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: FW-COMP-004 integrated compliance lifecycle proof accepted; authorized FW-ID/FW-KEYS/FW-EVID/FW-REC/FW-COMP sequence complete
-- Next task: FW-AID-002 canonical AI workload security telemetry contract.
+- Current focus: FW-AID-002 canonical AI workload security telemetry contract accepted
+- Next task: FW-AID-003 deterministic AI threat classification.
 - Harness role: permanent ForgeWarden Core subsystem and default controller for ForgeWarden's own development; one governed architecture serves both roles under D-023.
 - Worker transport direction: registered local CLIs and explicitly approved API-backed workers; API keys are resolved only through FW-KEYS secret handles inside trusted adapters and never enter model context or lifecycle evidence.
 - Provider authentication direction: deterministic OpenAI, Anthropic, and Google/Gemini profiles with provider-specific official OAuth where available and approved API-key classes otherwise; Gemini CLI is registered as `agy` for read-only roles, FW-ID owns delegated identity, and FW-KEYS owns all credential material.
@@ -34,17 +34,17 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-COMP-004
-- Starting commit: 1cd03c5e535bffd1abc3f11745af321c87450d4c
-- Candidate commit: 602507c85dd075c0444c3a1f26e3d22363c5034d
-- Accepted commit: 602507c85dd075c0444c3a1f26e3d22363c5034d
-- Files changed: integrated mapping/Evidence/assessment lifecycle proof, canonical ownership, functionality status, and honest limitations
-- Deterministic validation: focused 97 passed; full 1495 passed/1 skipped; integrity fresh full 1495 passed/1 skipped, all hard checks and 4 Golden Paths pass with YELLOW only for the pre-existing dependency and Defined FW-AID owner
-- Independent review: exact Claude APPROVE/LOW with no blockers or missing tests (`phase2a-602507c85dd075c0444c3a1f`)
+- Task ID: FW-AID-002
+- Starting commit: 1dd5b0bd5d208fd7ca215ff4a86f4f765a703f9d
+- Candidate commit: 239069eaf02b9df127060f851243348ef899145b
+- Accepted commit: 239069eaf02b9df127060f851243348ef899145b
+- Files changed: canonical AI workload security event, privacy-minimized validator, NormalizedEventStore admission/snapshot path, architecture status, and adversarial tests
+- Deterministic validation: focused 50 passed; full 1517 passed/1 skipped; integrity fresh full 1517 passed/1 skipped, all hard checks and 4 Golden Paths pass with YELLOW only for the pre-existing dependency and Defined FW-AID owner
+- Independent review: exact Claude APPROVE/LOW with no blockers or missing tests (`phase2a-239069eaf02b9df127060f85`)
 - Gemini review: disabled and not required under D-020
-- Unresolved findings: certification, attestation, external reporting, control execution, and continuous-compliance claims remain unauthorized; FW-AID runtime remains Defined
+- Unresolved findings: runtime threat classification, correlation, containment proposals, Mission Control projection, and integrated FW-AID proof remain; all live collection and response authority remains unauthorized
 - Blocker: none
-- Next action: implement FW-AID-002 as a privacy-minimized fixture-only AI workload telemetry contract in the canonical NormalizedEventStore boundary.
+- Next action: implement FW-AID-003 deterministic closed-rule threat classification over canonical fixture telemetry.
 
 - Completion inventory: `docs/completion-audit-2026-09-09.md` (baseline `0afcbdd`).
 - FWQ-0008 implementation and binding hardening exist; VALIDATED retains a historical provenance caveat, not an implementation assignment. FWQ-0009 is recorded accepted and unchanged at source/test level from its reviewed candidate.

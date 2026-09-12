@@ -1024,7 +1024,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-AID-002 — Canonical AI workload security telemetry contract
 - Requirement: FW-AID privacy-minimized normalized telemetry
-- State: REVIEW
+- State: DONE
 - Priority: P0
 - Dependencies: FW-AID-001, FW-ID, FW-KEYS, FW-EVID, FW-HARNESS-014
 - Approval: fixture-only normalized AI security event contracts and deterministic validation are authorized under D-025; live sensors, hooks, transport, containment, and response remain unauthorized.
@@ -1039,6 +1039,27 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no live collection, authentication, credential access, network/process/filesystem hook, containment, quarantine, remediation, recovery execution, deployment, or response authority is added.
 - Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
 - Security considerations: telemetry is untrusted fixture input and descriptive evidence; it cannot grant capability or trigger an action by itself.
+
+- Completion evidence: exact candidate `239069eaf02b9df127060f851243348ef899145b`; focused 50 passed; exact Claude review `phase2a-239069eaf02b9df127060f85` returned APPROVE/LOW with no blockers or missing tests; full 1517 passed/1 skipped; Product Integrity fresh full 1517 passed/1 skipped, all hard checks and 4 Golden Paths passed with YELLOW only for the pre-existing `tzdata` dependency and Defined FW-AID owner.
+
+### FW-AID-003 — Deterministic AI threat classification
+- Requirement: FW-AID closed-rule threat detection
+- State: READY
+- Priority: P0
+- Dependencies: FW-AID-002
+- Approval: deterministic fixture-only classification and Evidence-first findings are authorized under D-025; model self-assessment, live collection, containment, and response remain unauthorized.
+- Description: Classify canonical AI workload telemetry into the ten registered FW-AID threat classes using closed deterministic rules, bounded severity/confidence inputs, and explicit matched-fact references without relying on model judgment.
+- Target path: swarm/ai_agent_defense.py
+- Allowed paths: swarm/ai_agent_defense.py, swarm/normalized_events.py, tests/test_fw_aid.py, docs/fw-aid-architecture.md, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_fw_aid.py tests/test_normalized_events.py
+- Acceptance criteria:
+  - classifier covers all ten registered threat classes from canonical enum/fact combinations and produces immutable tenant/event-bound DETECT_ONLY findings;
+  - severity/confidence are policy-bounded metadata and cannot authorize containment or change the source event;
+  - unknown rules, conflicting/insufficient facts, cross-tenant input, replay, malformed values, and Evidence failure fail closed without admitting a finding;
+  - classification uses closed deterministic rules and never trusts a model's self-reported safety, risk, or authority;
+  - no live sensor, model call, credential, network/process/filesystem hook, containment, quarantine, remediation, recovery execution, deployment, or response authority is added.
+- Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
+- Security considerations: findings are advisory policy inputs and Evidence; deterministic policy remains the sole action authority.
 
 ### FW-REC-002 — Durable recovery checkpoint persistence and reconstruction
 - Requirement: FW-REC persistent recovery metadata
