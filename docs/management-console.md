@@ -82,3 +82,21 @@ These are responsive read-only product views. They provide no callbacks for appr
 The Executive Security Posture route summarizes protection outcomes, the largest current risk, required operator attention, AI control, and recovery readiness in plain language. A deterministic six-step guided presentation navigates the existing DEMO-AI-RANSOM-001 views in a repeatable order. It changes only local view selection; it does not modify provider or Core state.
 
 The demo banner, simulated decision and verification labels, disconnected-backend state, DRY_RUN, disabled deployment, and engaged kill switch remain visible. Guided controls are keyboard buttons with explicit labels, and reduced-motion preferences disable animation and transition behavior.
+
+## Local Core status integration
+
+Mission Control now obtains its safety strip from the existing loopback-only
+`/api/status` Core endpoint while the showcase views continue to use the
+centralized `DEMO-AI-RANSOM-001` provider. The client validates both sources
+independently and labels the combined state `LOCAL CORE CONNECTED · DEMO
+SCENARIO`; demo incident, asset, Evidence, policy, model, MCP, and response data
+remain simulated.
+
+The live status contract is read-only and must report `DRY_RUN`, deployment
+`DISABLED`, kill switch `ENGAGED`, and a read-only workflow. Any missing,
+malformed, or weaker state is discarded and labeled `LOCAL CORE UNAVAILABLE`;
+the separately validated Demo Provider remains available without presenting the
+rejected Core state as live. A Demo Provider failure still rejects the scenario
+instead of presenting incomplete simulated data. This first integration adds no remote API,
+authentication, mutation callback, execution, containment, recovery, or
+deployment authority.

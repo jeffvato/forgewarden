@@ -116,9 +116,9 @@ def run_review_cycle(
         raise ReviewRunnerError("review context must be non-empty text")
     commit = _validate_inputs(repository, candidate_commit, job_id)
     patch = _git(repository, "show", "--format=fuller", "--stat", "--patch", commit)
-    inline_context = context + "\n\nExact candidate patch from Git:\n" + patch
-    patch_file_mode = len(inline_context.encode("utf-8")) > 24_000 or "FULL_SNAPSHOT_READ_ONLY_REVIEW" in context
-    review_context = (context + "\n\nExact candidate patch is available at EXACT_CANDIDATE.patch. Use only the read-only file viewer to inspect that exact patch.") if patch_file_mode else inline_context
+    inline_patch_context = context + "\n\nExact candidate patch from Git:\n" + patch
+    patch_file_mode = len(inline_patch_context.encode("utf-8")) > 24_000 or "FULL_SNAPSHOT_READ_ONLY_REVIEW" in context
+    review_context = (context + "\n\nExact candidate patch is available at EXACT_CANDIDATE.patch. Use only the read-only file viewer to inspect that exact patch.") if patch_file_mode else inline_patch_context
     requested = tuple(dict.fromkeys(reviewers))
     supported = {"CLAUDE", "GEMINI", "OPENROUTER", "NVIDIA", "AZURE", "ANYTHINGLLM"}
     if not requested or any(provider not in supported for provider in requested):
@@ -173,7 +173,12 @@ def run_review_cycle(
 
         def invoke_provider(provider: str, invoke: Callable[..., dict[str, Any]]) -> dict[str, Any]:
             try:
-                result = invoke(snapshots[provider], job_id, commit, review_context)
+                # AnythingLLM is an API-only, tool-free reviewer. It cannot read
+                # the externalized snapshot patch, but its adapter owns a larger
+                # bounded prompt contract and will fail closed if inline content
+                # exceeds that limit. File-capable reviewers retain snapshot mode.
+                provider_context = inline_patch_context if provider == "ANYTHINGLLM" else review_context
+                result = invoke(snapshots[provider], job_id, commit, provider_context)
                 contract_provider = provider.lower() if provider in {"CLAUDE", "GEMINI"} else "claude"
                 validate_contract(result, contract_provider, expected_job_id=job_id, expected_commit=commit)
                 return _review_record(provider, result=result)

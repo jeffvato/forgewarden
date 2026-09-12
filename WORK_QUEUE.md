@@ -1288,6 +1288,25 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 - Completion evidence: exact candidate c662398c169ac3bbc8a94833ec9257a6b5853c30; focused 31 pytest plus Node frontend contract passed; desktop Executive and guided-flow visual inspection passed and the 820x1100 responsive shell remained readable; exact Claude review phase2a-2ef2b5df65deda6a84517f77 APPROVE/LOW with no blockers or missing tests; full 1604 passed/1 skipped; Product Integrity fresh full 1604 passed/1 skipped with all hard checks and 27-test Golden Path passed, YELLOW only for the pre-existing tzdata dependency finding.
 
+### FW-UX-006 — Local Core status provider integration
+- Requirement: Mission Control incremental backend integration
+- State: REVIEW
+- Priority: P0
+- Dependencies: FW-UX-005 and FW-HARNESS-017
+- Approval: Jeff explicitly authorized Mission Control backend integration; this unit consumes an existing local read-only endpoint and adds no new transport or authority.
+- Description: Connect the production Mission Control interface to the existing loopback-only canonical Core safety/workflow status while retaining the centralized demo scenario for backend capabilities that are not yet connected.
+- Target path: console/app.js
+- Allowed paths: console/app.js, tests/test_console_frontend.js, docs/management-console.md, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_console.py tests/test_mission_control.py && node --test tests/test_console_frontend.js
+- Acceptance criteria:
+  - the client fetches and independently validates both the existing Demo Provider and existing `/api/status` Core provider;
+  - the safety strip displays canonical local Core DRY_RUN, disabled-deployment, and engaged-kill-switch facts while scenario content remains explicitly DEMO;
+  - missing, malformed, mutating, deployment-enabled, non-read-only, or kill-switch-cleared Core status fails closed without rendering it;
+  - the operator can distinguish `LOCAL CORE CONNECTED` from the still-simulated scenario in one glance;
+  - no remote API, authentication, mutation callback, model invocation, containment, recovery execution, credential access, or deployment authority is added.
+- Expected validation: focused frontend/server tests, exact AnythingLLM/Qwen read-only review, then full suite/integrity once after approval.
+- Security considerations: canonical and simulated providers remain separate validated inputs; live safety facts cannot weaken the existing DEMO labels or authorize action.
+
 ### FW-REC-002 — Durable recovery checkpoint persistence and reconstruction
 - Requirement: FW-REC persistent recovery metadata
 - State: DONE

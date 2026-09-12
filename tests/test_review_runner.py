@@ -200,6 +200,32 @@ def test_review_cycle_externalizes_large_exact_patch_for_read_only_review(repo_f
     assert "large.txt" in seen["patch"]
 
 
+def test_review_cycle_embeds_large_exact_patch_for_tool_free_anythingllm(repo_fixture: Path):
+    import subprocess
+
+    large = repo_fixture / "large.txt"
+    large.write_text("x" * 30_000, encoding="utf-8")
+    subprocess.run(["git", "-C", str(repo_fixture), "add", "large.txt"], check=True)
+    subprocess.run(["git", "-C", str(repo_fixture), "-c", "user.name=Test", "-c", "user.email=test@example.com", "commit", "-q", "-m", "large"], check=True)
+    sha = subprocess.check_output(["git", "-C", str(repo_fixture), "rev-parse", "HEAD"], text=True).strip()
+    seen = {}
+
+    def approved(snapshot, job_id, commit, context):
+        seen["context"] = context
+        seen["snapshot_patch"] = (snapshot / "EXACT_CANDIDATE.patch").is_file()
+        return {"job_id": job_id, "reviewed_commit": commit, "verdict": "APPROVE", "risk": "LOW", "blocking_findings": [], "non_blocking_notes": [], "tests_missing": [], "reasoning_summary": "approved", "proposed_rules": []}
+
+    result = run_review_cycle(
+        repo_fixture, sha, "phase2a-" + "b" * 24, "review",
+        anythingllm_runner=approved, reviewers=("ANYTHINGLLM",),
+    )
+    assert result["state"] == "APPROVED"
+    assert seen["snapshot_patch"] is True
+    assert "Exact candidate patch from Git:" in seen["context"]
+    assert "large.txt" in seen["context"]
+    assert "available at EXACT_CANDIDATE.patch" not in seen["context"]
+
+
 def test_review_cycle_uses_claude_to_adjudicate_provider_disagreement(repo_fixture: Path):
     sha = repo_fixture.joinpath(".candidate-sha").read_text().strip()
     calls = {"claude": 0}
