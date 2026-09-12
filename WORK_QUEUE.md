@@ -1188,7 +1188,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-AID-010 — Integrated AI intrusion lifecycle proof
 - Requirement: FW-AID integrated lifecycle acceptance
-- State: REVIEW
+- State: DONE
 - Priority: P0
 - Dependencies: FW-AID-009
 - Approval: deterministic fixture-only integration proof and ownership reconciliation are authorized; live collection and response remain unauthorized.
@@ -1203,6 +1203,26 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no live collection, filesystem/process/network/credential access, containment, remediation, recovery execution, deployment, or response authority is added.
 - Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
 - Security considerations: lifecycle remains immutable, fixture-only, DRY_RUN, DETECT/PROPOSE only, and kill-switch engaged.
+- Completion evidence: repaired exact candidate `b83de7c697d02e23f4cb372f961c260fa2a5fbff`; focused 92 passed after reconciling the stale architecture status proof exposed by the first full-suite attempt; exact Claude review `phase2a-b83de7c697d02e23f4cb372f` APPROVE/LOW with no blockers or missing tests; final full 1604 passed/1 skipped; Product Integrity fresh full 1604 passed/1 skipped, all hard checks and 4 Golden Paths passed with YELLOW only for the pre-existing dependency finding.
+
+### FW-UX-002 — Incident detail and unified attack story
+- Requirement: FW-UX Mission Control incident experience
+- State: READY
+- Priority: P0
+- Dependencies: FW-UX-001 and FW-AID-010
+- Approval: reusable read-only UI against explicitly labeled deterministic demo data is authorized; live response and backend activation remain unauthorized.
+- Description: Add a polished incident-detail route and unified attack-story presentation for `DEMO-AI-RANSOM-001`, reusing the canonical demo provider and current dependency-free Mission Control shell.
+- Target path: console/index.html
+- Allowed paths: swarm/mission_control_demo.py, swarm/console.py, console/index.html, console/app.js, console/styles.css, tests/test_console.py, tests/test_console_frontend.js, docs/management-console.md, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_console.py tests/test_mission_control.py && node --test tests/test_console_frontend.js
+- Acceptance criteria:
+  - a navigable incident detail view shows severity, status, affected assets/identities/agent, one coherent attack timeline, detections, simulated response actions, Evidence summary, Action Ticket reference, and recovery state;
+  - every simulated claim remains visibly labeled DEMO/SIMULATED and cryptographic/live-backend state remains truthful;
+  - the view consumes the centralized deterministic provider through validated escaped rendering and does not scatter component-local fake data;
+  - desktop and tablet layouts remain readable and accessible without external assets or a new frontend framework;
+  - no approval, containment, recovery, credential, network, deployment, or response execution authority is added.
+- Expected validation: focused frontend/server tests, visual inspection, exact independent read-only review, then full suite/integrity once.
+- Security considerations: the route is a read-only product view over a fresh demo projection and cannot mutate Core state.
 
 ### FW-REC-002 — Durable recovery checkpoint persistence and reconstruction
 - Requirement: FW-REC persistent recovery metadata

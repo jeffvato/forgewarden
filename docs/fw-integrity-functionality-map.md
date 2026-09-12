@@ -13,10 +13,10 @@ This summary is intentionally conservative:
 | FW-EVID | Proven | `swarm.evidence` | Canonical tenant ledger, durable reconstruction, and tamper denial | Local unsigned DRY_RUN Evidence; no external storage or export |
 | FW-REC | Proven | `swarm.recovery` | Checkpoint, reconstruction, and exact resume admission | Metadata-only DRY_RUN; no recovery execution |
 | FW-COMP | Proven | `swarm.compliance` | Mapping, canonical Evidence admission, and bounded assessment lifecycle | In-memory metadata-only DRY_RUN; no certification, attestation, reporting, or control execution |
-| FW-AID | Defined | `docs/fw-aid-architecture.md` | Not started | Architecture and requirements are explicit; runtime telemetry, detection, correlation, proposals, Mission Control projection, and integrated proof remain |
+| FW-AID | Proven | `swarm.ai_agent_defense`, `swarm.normalized_events`, `swarm.mission_control` | Fixture-only Harness and endpoint attribution through detection, correlation, proposal, Evidence, and Mission Control | Caller-supplied DRY_RUN metadata only; no live sensors, enforcement, containment execution, recovery execution, or deployment |
 | FW-INTEGRITY | Implemented | `swarm.integrity` | Baseline Core path | Dependency lock, clean-build packaging, and broader end-to-end paths remain |
 
-Defined-but-not-yet-concrete ownership includes FW-AID. FW-SOC remains partially implemented.
+FW-AID now has a concrete canonical owner and integrated fixture-only proof. FW-SOC remains partially implemented.
 Normalized events now have the partial canonical implementation
 `swarm.normalized_events.NormalizedEventStore`; see the completion audit. This is not a claim that those requirements are broken;
 they are not yet Proven in this checkout. Every meaningful checkpoint must add
