@@ -13,9 +13,9 @@ $ptr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
 $key = $null
 try {
   $key = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($ptr)
-  $pids = @(Get-CimInstance Win32_Process | Where-Object {
-    $_.Name -eq 'AnythingLLM.exe' -and $_.ExecutablePath -like (Join-Path $localData 'Programs\AnythingLLM\*')
-  } | ForEach-Object ProcessId)
+  $pids = @(Get-Process -Name 'AnythingLLM' -ErrorAction Stop | Where-Object {
+    $_.Path -like (Join-Path $localData 'Programs\AnythingLLM\*')
+  } | ForEach-Object Id)
   $ports = @(Get-NetTCPConnection -State Listen | Where-Object {
     $pids -contains $_.OwningProcess -and $_.LocalAddress -in @('127.0.0.1','::1')
   } | ForEach-Object LocalPort | Sort-Object -Unique)
