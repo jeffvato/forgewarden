@@ -68,3 +68,10 @@ The AI Harness route explains the same incident through the governed execution l
 The AI Intrusion Defense and AI Harness routes consume the same deterministic DEMO-AI-RANSOM-001 provider as Mission Control. The AI Defense workspace explains agent identity, scoped authority, tool and MCP context, anomaly chronology, policy denials, proposal-only containment, related incident, and Evidence references. The Harness workspace explains deterministic risk and model routing, requester and tenant binding, bounded lease, tools, capabilities, resource budgets, validation, independent review, exact demo artifact, and escalation history.
 
 Both routes are read-only product projections. Every value is simulated and visibly labeled; no live model, telemetry, approval, containment, recovery, deployment, network, credential, or response integration is present.
+
+
+## FW-UX-004 governance assurance workspaces
+
+The Evidence Vault, Policy and Action Ticket, Model Broker, and MCP Control routes consume the centralized deterministic demo provider. Evidence displays bounded chronology and visibly simulated hashes and chain status. Policy explains the deterministic denial, scope, lease, blast radius, and required authority. The Action Ticket remains authorized but explicitly not executed, with a simulated unverified signature. Model Broker displays approval, assurance, classification, availability, latency, and cost posture without invoking a provider. MCP Control displays registered demo tools, trust, agent and lease scope, denials, security state, and the engaged kill switch.
+
+These are responsive read-only product views. They provide no callbacks for approval, ticket issuance, policy mutation, model activation, MCP connection, Evidence verification or mutation, containment, recovery, deployment, or response. Production adapters remain disconnected.
