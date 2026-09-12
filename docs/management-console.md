@@ -75,3 +75,10 @@ Both routes are read-only product projections. Every value is simulated and visi
 The Evidence Vault, Policy and Action Ticket, Model Broker, and MCP Control routes consume the centralized deterministic demo provider. Evidence displays bounded chronology and visibly simulated hashes and chain status. Policy explains the deterministic denial, scope, lease, blast radius, and required authority. The Action Ticket remains authorized but explicitly not executed, with a simulated unverified signature. Model Broker displays approval, assurance, classification, availability, latency, and cost posture without invoking a provider. MCP Control displays registered demo tools, trust, agent and lease scope, denials, security state, and the engaged kill switch.
 
 These are responsive read-only product views. They provide no callbacks for approval, ticket issuance, policy mutation, model activation, MCP connection, Evidence verification or mutation, containment, recovery, deployment, or response. Production adapters remain disconnected.
+
+
+## FW-UX-005 executive showcase
+
+The Executive Security Posture route summarizes protection outcomes, the largest current risk, required operator attention, AI control, and recovery readiness in plain language. A deterministic six-step guided presentation navigates the existing DEMO-AI-RANSOM-001 views in a repeatable order. It changes only local view selection; it does not modify provider or Core state.
+
+The demo banner, simulated decision and verification labels, disconnected-backend state, DRY_RUN, disabled deployment, and engaged kill switch remain visible. Guided controls are keyboard buttons with explicit labels, and reduced-motion preferences disable animation and transition behavior.
