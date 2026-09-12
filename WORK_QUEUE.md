@@ -1169,7 +1169,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-AID-009 — Endpoint and MicroSensor AI attribution adapter
 - Requirement: FW-AID endpoint correlation contract
-- State: REVIEW
+- State: DONE
 - Priority: P0
 - Dependencies: FW-AID-008
 - Approval: caller-supplied fixture attribution and deterministic correlation are authorized; live collection and response remain unauthorized.
@@ -1184,6 +1184,25 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no live collection, sensor hook, filesystem/process/network access, containment, remediation, deployment, or response authority is added.
 - Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
 - Security considerations: adapter input is inert caller-supplied metadata and cannot grant authority or execute endpoint actions.
+- Completion evidence: repaired exact candidate `a5257103929b4d90d88a23d14cfdf0d9010e6f03`; focused 102 passed after adding the three bounded tests requested by the first review; exact Claude review `phase2a-a5257103929b4d90d88a23d1` APPROVE/LOW with no blockers or missing tests; full 1602 passed/1 skipped; Product Integrity fresh full 1602 passed/1 skipped, all hard checks and 4 Golden Paths passed with YELLOW only for the pre-existing dependency and partial FW-AID ownership status.
+
+### FW-AID-010 — Integrated AI intrusion lifecycle proof
+- Requirement: FW-AID integrated lifecycle acceptance
+- State: READY
+- Priority: P0
+- Dependencies: FW-AID-009
+- Approval: deterministic fixture-only integration proof and ownership reconciliation are authorized; live collection and response remain unauthorized.
+- Description: Prove one tenant-bound AI intrusion lifecycle across harness monitoring, endpoint attribution, normalization, detection, cross-domain FW-SOC correlation, proposal-only containment, Mission Control, and canonical Evidence chronology.
+- Target path: tests/test_fw_aid_lifecycle.py
+- Allowed paths: tests/test_fw_aid_lifecycle.py, swarm/ai_agent_defense.py, swarm/normalized_events.py, swarm/mission_control.py, docs/fw-aid-architecture.md, docs/architecture-ownership.yaml, ROADMAP.md, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_fw_aid_lifecycle.py tests/test_fw_aid.py tests/test_endpoint_adapter.py
+- Acceptance criteria:
+  - one inert fixture lifecycle has exact tenant, identity, task, lease, Action Ticket, endpoint, incident, and Evidence bindings through every canonical owner;
+  - Evidence chronology, replay denial, malformed/cross-tenant rejection, bounded projections, and failure-without-hidden-advance are proven;
+  - Product Integrity recognizes the implemented canonical FW-AID owner without claiming live sensors or containment execution;
+  - no live collection, filesystem/process/network/credential access, containment, remediation, recovery execution, deployment, or response authority is added.
+- Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
+- Security considerations: lifecycle remains immutable, fixture-only, DRY_RUN, DETECT/PROPOSE only, and kill-switch engaged.
 
 ### FW-REC-002 — Durable recovery checkpoint persistence and reconstruction
 - Requirement: FW-REC persistent recovery metadata
