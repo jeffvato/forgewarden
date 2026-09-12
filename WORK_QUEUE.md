@@ -901,7 +901,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-REC-003 — Deterministic interruption and resume admission
 - Requirement: FW-REC safe resume coordination
-- State: REVIEW
+- State: DONE
 - Priority: P0
 - Dependencies: FW-REC-002
 - Approval: metadata-only resume admission is authorized under D-024; executing resume or rollback remains unauthorized.
@@ -917,6 +917,26 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no task execution, restore, rollback execution, restart, deletion, repair, Git mutation, containment, deployment, credential, network, filesystem, or process authority is added.
 - Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
 - Security considerations: resume admission is deterministic decision evidence consumed later by the trusted controller; it is not permission to perform recovery.
+- Completion evidence: exact candidate `f94d24570bfe87fc1047bf31c761f05e35dfedcb`; focused 38 passed; exact Claude review `phase2a-f94d24570bfe87fc1047bf31` returned APPROVE/LOW with no blockers or missing tests; full 1449 passed/1 skipped; Product Integrity fresh full 1449 passed/1 skipped, invariant/ownership checks and 4 Golden Paths passed with YELLOW only for the pre-existing `tzdata` dependency and Defined FW-COMP/FW-AID owners.
+
+### FW-REC-004 — Integrated recovery checkpoint and resume lifecycle proof
+- Requirement: FW-REC lifecycle acceptance
+- State: READY
+- Priority: P0
+- Dependencies: FW-REC-003 and FW-EVID-006
+- Approval: deterministic local DRY_RUN lifecycle proof is authorized; recovery, rollback, restart, repair, containment, deletion, and deployment execution remain unauthorized.
+- Description: Prove one tenant-bound lifecycle from immutable checkpoint creation through durable reconstruction, exact interruption admission, Evidence-first decision recording, safe retry after Evidence failure, and replay/stale/tamper denial.
+- Target path: tests/test_recovery_lifecycle.py
+- Allowed paths: swarm/recovery.py, tests/test_recovery.py, tests/test_recovery_lifecycle.py, docs/fw-rec-inventory.md, swarm/integrity.py, tests/test_integrity.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_recovery.py tests/test_recovery_lifecycle.py tests/test_integrity.py
+- Acceptance criteria:
+  - one deterministic proof composes the canonical RecoveryCheckpoint, private atomic persistence, restart reconstruction, exact checkpoint digest, ResumeAdmission, and Evidence record;
+  - only exact nonterminal safe state produces RESUME while terminal, exhausted, stale, cross-tenant, tampered, unknown, failed-gate, disengaged-kill-switch, and replay conditions fail closed or require a rollback proposal;
+  - Evidence failure returns no admission, consumes no replay identifier, and permits a bounded retry only from the unchanged exact facts;
+  - Product Integrity reports FW-REC Proven only within its local metadata-only DRY_RUN boundary;
+  - no restore, rollback execution, process restart, deletion, repair, Git mutation, containment, deployment, credential, network, filesystem, or response authority is added.
+- Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
+- Security considerations: the proof validates coordination and denial semantics only; it cannot execute the decision it records.
 
 ### FW-REC-002 — Durable recovery checkpoint persistence and reconstruction
 - Requirement: FW-REC persistent recovery metadata
