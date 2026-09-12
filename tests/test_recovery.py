@@ -69,3 +69,41 @@ def test_unknown_schema_and_malformed_consumed_set_fail_closed(tmp_path):
  with pytest.raises(RecoveryContractError,match='consumed'): load(path,consumed_checkpoint_ids=['x'])
  data=json.loads(path.read_text()); data['extra']=True; path.write_text(json.dumps(data)); os.chmod(path,0o600)
  with pytest.raises(RecoveryContractError,match='envelope'): load(path)
+
+def admission(checkpoint=None, sink=None, **kw):
+ checkpoint=checkpoint or cp(task_status='running',stage='worker',validation_status='NOT_RUN',review_status='NOT_RUN',interruption_class='PROCESS_EXIT')
+ values={'admission_id':'fw-rec-admission/tenant-one/a-1','checkpoint_sha256':recovery_checkpoint_digest(checkpoint),'tenant_id':'tenant-one','current_commit':'b'*40,'evidence_tail_sha256':'d'*64,'kill_switch':'ENGAGED','authority_current':True,'occurred_at':'2026-09-10T16:01:00Z','evidence_sink':sink or (lambda event: None)}
+ values.update(kw); return admit_interruption(checkpoint,**values)
+
+def test_exact_resumable_interruption_emits_evidence_first_admission():
+ events=[]; result=admission(sink=events.append)
+ assert result.decision is ResumeAdmissionDecision.RESUME and not result.authority_granted
+ assert result.budget_remaining==90 and result.retries_remaining==2
+ assert events==[{'event':'FW_REC_RESUME_ADMISSION','admission_id':result.admission_id,'checkpoint_id':result.checkpoint_id,'checkpoint_sha256':result.checkpoint_sha256,'tenant_id':'tenant-one','task_id':'FWQ-0080','decision':'RESUME','reason':'EXACT_CHECKPOINT_RESUMABLE','authority_granted':False}]
+
+@pytest.mark.parametrize('changes,decision',[
+ ({'kill_switch':'CLEARED'},ResumeAdmissionDecision.BLOCK),
+ ({'authority_current':False},ResumeAdmissionDecision.BLOCK),
+ ({'checkpoint':cp(task_status='running',stage='worker',validation_status='NOT_RUN',review_status='NOT_RUN',interruption_class='UNKNOWN')},ResumeAdmissionDecision.ROLLBACK_PROPOSAL),
+ ({'checkpoint':cp(task_status='blocked',stage='validation',validation_status='FAILED',review_status='NOT_RUN',interruption_class='PROCESS_EXIT',safe_resume_decision=ResumeDecision.ROLLBACK_PROPOSAL_REQUIRED)},ResumeAdmissionDecision.ROLLBACK_PROPOSAL),
+ ({'checkpoint':cp(task_status='completed',stage='checkpoint',interruption_class='PROCESS_EXIT',safe_resume_decision=ResumeDecision.BLOCK)},ResumeAdmissionDecision.BLOCK),
+ ({'checkpoint':cp(task_status='running',stage='worker',validation_status='NOT_RUN',review_status='NOT_RUN',interruption_class='PROCESS_EXIT',budget_used=100,safe_resume_decision=ResumeDecision.BLOCK)},ResumeAdmissionDecision.BLOCK),
+])
+def test_admission_classifies_stop_boundaries(changes,decision):
+ checkpoint=changes.pop('checkpoint',None)
+ assert admission(checkpoint,**changes).decision is decision
+
+@pytest.mark.parametrize('changes',[{'tenant_id':'tenant-two'},{'admission_id':'fw-rec-admission/tenant-two/a-1'},{'current_commit':'f'*40},{'checkpoint_sha256':'f'*64},{'evidence_tail_sha256':'f'*64},{'consumed_admission_ids':('fw-rec-admission/tenant-one/a-1',)},{'kill_switch':None},{'authority_current':'yes'},{'occurred_at':'2026-09-10T15:59:59Z'}])
+def test_admission_rejects_stale_cross_tenant_replay_and_malformed_facts(changes):
+ with pytest.raises(RecoveryContractError): admission(**changes)
+
+def test_evidence_failure_returns_no_admission_and_allows_safe_retry():
+ def fail(_event): raise RuntimeError('disk')
+ with pytest.raises(RecoveryContractError,match='Evidence failed'): admission(sink=fail)
+ assert admission().decision is ResumeAdmissionDecision.RESUME
+
+def test_resume_admission_is_immutable_and_authority_free():
+ result=admission()
+ with pytest.raises(Exception): result.decision=ResumeAdmissionDecision.BLOCK
+ with pytest.raises(RecoveryContractError,match='authority forbidden'):
+  replace(result,authority_granted=True)

@@ -23,6 +23,9 @@ class RecoveryContractError(ValueError): pass
 class ResumeDecision(str,Enum):
  RESUME='RESUME'; BLOCK='BLOCK'; ROLLBACK_PROPOSAL_REQUIRED='ROLLBACK_PROPOSAL_REQUIRED'
 
+class ResumeAdmissionDecision(str,Enum):
+ RESUME='RESUME'; BLOCK='BLOCK'; ROLLBACK_PROPOSAL='ROLLBACK_PROPOSAL'
+
 def text(v,n,p):
  if not isinstance(v,str) or v!=v.strip() or not p.fullmatch(v) or SECRET.search(v): raise RecoveryContractError(f'{n} is invalid')
  return v
@@ -55,6 +58,50 @@ class RecoveryCheckpoint:
   if unsafe and self.safe_resume_decision is ResumeDecision.RESUME: raise RecoveryContractError('unsafe resume')
   if self.task_status=='completed' and not (self.stage=='checkpoint' and self.validation_status=='PASSED' and self.review_status=='APPROVE_LOW' and self.safe_resume_decision is ResumeDecision.BLOCK): raise RecoveryContractError('completed state inconsistent')
 
+@dataclass(frozen=True)
+class ResumeAdmission:
+ schema_version:str; admission_id:str; checkpoint_id:str; checkpoint_sha256:str; tenant_id:str; task_id:str; current_commit:str; evidence_tail_sha256:str; interruption_class:str; decision:ResumeAdmissionDecision; reason:str; budget_remaining:int; retries_remaining:int; occurred_at:str; mode:str='DRY_RUN'; deployment:str='DISABLED'; authority_granted:bool=False
+ def __post_init__(self):
+  if self.schema_version!='1': raise RecoveryContractError('admission version invalid')
+  text(self.admission_id,'admission',ID); text(self.checkpoint_id,'checkpoint',ID); text(self.tenant_id,'tenant',ID); text(self.task_id,'task',TASK)
+  if not SHA.fullmatch(self.checkpoint_sha256) or not GIT.fullmatch(self.current_commit) or not SHA.fullmatch(self.evidence_tail_sha256): raise RecoveryContractError('admission binding invalid')
+  if self.interruption_class not in {'PROCESS_EXIT','HOST_RESTART','NETWORK_FAILURE','MODEL_TIMEOUT','API_FAILURE','APPLICATION_RESTART','UNKNOWN'}: raise RecoveryContractError('admission interruption invalid')
+  if not isinstance(self.decision,ResumeAdmissionDecision): raise RecoveryContractError('admission decision invalid')
+  if not isinstance(self.reason,str) or not self.reason or len(self.reason)>256 or SECRET.search(self.reason): raise RecoveryContractError('admission reason invalid')
+  if type(self.budget_remaining) is not int or type(self.retries_remaining) is not int or self.budget_remaining<0 or self.retries_remaining<0: raise RecoveryContractError('admission counter invalid')
+  try: datetime.strptime(self.occurred_at,'%Y-%m-%dT%H:%M:%SZ')
+  except (TypeError,ValueError) as e: raise RecoveryContractError('admission timestamp invalid') from e
+  if self.mode!='DRY_RUN' or self.deployment!='DISABLED' or self.authority_granted: raise RecoveryContractError('admission authority forbidden')
+
+def admit_interruption(checkpoint:RecoveryCheckpoint, *, admission_id:str, checkpoint_sha256:str, tenant_id:str, current_commit:str, evidence_tail_sha256:str, kill_switch:str, authority_current:bool, occurred_at:str, consumed_admission_ids:tuple[str,...]=(), evidence_sink:Any=None)->ResumeAdmission:
+ """Classify resume safety and emit evidence; never execute recovery."""
+ if not isinstance(checkpoint,RecoveryCheckpoint): raise RecoveryContractError('validated checkpoint required')
+ text(admission_id,'admission',ID); text(tenant_id,'tenant',ID)
+ if not admission_id.startswith(f'fw-rec-admission/{tenant_id}/'): raise RecoveryContractError('admission tenant mismatch')
+ if not SHA.fullmatch(checkpoint_sha256) or not GIT.fullmatch(current_commit) or not SHA.fullmatch(evidence_tail_sha256) or type(authority_current) is not bool or not isinstance(kill_switch,str): raise RecoveryContractError('trusted admission binding invalid')
+ if not isinstance(consumed_admission_ids,tuple) or len(consumed_admission_ids)>1024 or len(set(consumed_admission_ids))!=len(consumed_admission_ids): raise RecoveryContractError('consumed admission set invalid')
+ if admission_id in consumed_admission_ids: raise RecoveryContractError('admission replay denied')
+ if checkpoint.tenant_id!=tenant_id or checkpoint.current_commit!=current_commit or checkpoint.evidence_tail_sha256!=evidence_tail_sha256: raise RecoveryContractError('admission binding is stale or cross-tenant')
+ if checkpoint_sha256!=recovery_checkpoint_digest(checkpoint): raise RecoveryContractError('checkpoint digest mismatch')
+ try:
+  if datetime.strptime(occurred_at,'%Y-%m-%dT%H:%M:%SZ') < datetime.strptime(checkpoint.occurred_at,'%Y-%m-%dT%H:%M:%SZ'): raise RecoveryContractError('admission predates checkpoint')
+ except (TypeError,ValueError) as exc: raise RecoveryContractError('admission timestamp invalid') from exc
+ remaining_budget=checkpoint.budget_limit-checkpoint.budget_used; remaining_retries=checkpoint.retry_limit-checkpoint.retry_count
+ terminal=checkpoint.task_status in {'completed','rejected','cancelled'}
+ unsafe_authority=kill_switch!='ENGAGED' or not authority_current or not checkpoint.authority_current
+ failed_gate=checkpoint.validation_status=='FAILED' or checkpoint.review_status=='FINDINGS'
+ if terminal: decision,reason=ResumeAdmissionDecision.BLOCK,'TERMINAL_TASK'
+ elif unsafe_authority: decision,reason=ResumeAdmissionDecision.BLOCK,'AUTHORITY_OR_KILL_SWITCH_UNSAFE'
+ elif remaining_budget<=0 or remaining_retries<=0: decision,reason=ResumeAdmissionDecision.BLOCK,'BUDGET_OR_RETRY_EXHAUSTED'
+ elif checkpoint.interruption_class=='UNKNOWN' or failed_gate or checkpoint.safe_resume_decision is ResumeDecision.ROLLBACK_PROPOSAL_REQUIRED: decision,reason=ResumeAdmissionDecision.ROLLBACK_PROPOSAL,'ROLLBACK_REVIEW_REQUIRED'
+ elif checkpoint.safe_resume_decision is ResumeDecision.RESUME and checkpoint.task_status in {'running','awaiting_validation','awaiting_review','repair_required'}: decision,reason=ResumeAdmissionDecision.RESUME,'EXACT_CHECKPOINT_RESUMABLE'
+ else: decision,reason=ResumeAdmissionDecision.BLOCK,'CHECKPOINT_NOT_RESUMABLE'
+ admission=ResumeAdmission('1',admission_id,checkpoint.checkpoint_id,checkpoint_sha256,tenant_id,checkpoint.task_id,current_commit,evidence_tail_sha256,checkpoint.interruption_class,decision,reason,remaining_budget,remaining_retries,occurred_at)
+ if evidence_sink is None or not callable(evidence_sink): raise RecoveryContractError('Evidence sink required')
+ try: evidence_sink({'event':'FW_REC_RESUME_ADMISSION','admission_id':admission.admission_id,'checkpoint_id':admission.checkpoint_id,'checkpoint_sha256':admission.checkpoint_sha256,'tenant_id':admission.tenant_id,'task_id':admission.task_id,'decision':admission.decision.value,'reason':admission.reason,'authority_granted':False})
+ except Exception as exc: raise RecoveryContractError('resume admission Evidence failed') from exc
+ return admission
+
 def validate_recovery_checkpoint(value:Mapping[str,Any])->RecoveryCheckpoint:
  if not isinstance(value,Mapping) or set(value)!=FIELDS: raise RecoveryContractError('field set invalid')
  p=dict(value)
@@ -68,6 +115,11 @@ def validate_recovery_checkpoint(value:Mapping[str,Any])->RecoveryCheckpoint:
 
 def _canonical(value: Any) -> bytes:
  return json.dumps(value,sort_keys=True,separators=(',',':'),ensure_ascii=True).encode('ascii')
+
+def recovery_checkpoint_digest(checkpoint:RecoveryCheckpoint)->str:
+ if not isinstance(checkpoint,RecoveryCheckpoint): raise RecoveryContractError('validated checkpoint required')
+ record=asdict(checkpoint); record['safe_resume_decision']=checkpoint.safe_resume_decision.value
+ return hashlib.sha256(_canonical({'version':STORE_VERSION,'checkpoint':record})).hexdigest()
 
 def _safe_parent(path: Path) -> None:
  if not path.is_absolute() or not path.parent.is_dir(): raise RecoveryContractError('checkpoint parent is unsafe')
@@ -84,7 +136,7 @@ def write_recovery_checkpoint(path: Path, checkpoint: RecoveryCheckpoint) -> str
  if path.exists() and (path.is_symlink() or not path.is_file()): raise RecoveryContractError('checkpoint target is unsafe')
  record=asdict(checkpoint); record['safe_resume_decision']=checkpoint.safe_resume_decision.value
  payload={'version':STORE_VERSION,'checkpoint':record}
- digest=hashlib.sha256(_canonical(payload)).hexdigest()
+ digest=recovery_checkpoint_digest(checkpoint)
  raw=_canonical({**payload,'sha256':digest})
  if len(raw)>MAX_CHECKPOINT_BYTES: raise RecoveryContractError('checkpoint is oversized')
  temporary=path.parent/f'.{path.name}.{uuid.uuid4().hex}.tmp'

@@ -901,7 +901,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-REC-003 — Deterministic interruption and resume admission
 - Requirement: FW-REC safe resume coordination
-- State: READY
+- State: REVIEW
 - Priority: P0
 - Dependencies: FW-REC-002
 - Approval: metadata-only resume admission is authorized under D-024; executing resume or rollback remains unauthorized.
