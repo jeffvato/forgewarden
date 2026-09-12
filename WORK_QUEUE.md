@@ -1268,7 +1268,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-UX-005 — Executive showcase and guided demonstration
 - Requirement: FW-UX executive product narrative
-- State: READY
+- State: DONE
 - Priority: P0
 - Dependencies: FW-UX-004
 - Approval: polished read-only Demo Mode presentation is authorized; live backend activation, mutation, and production claims remain unauthorized.
@@ -1284,6 +1284,8 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no mutation, approval, response, recovery execution, deployment, credential, network, or external asset authority is added.
 - Expected validation: focused frontend/server tests, desktop and tablet visual inspection, exact independent read-only review, then full suite/integrity once.
 - Security considerations: the guided narrative changes only local read-only view selection and cannot alter canonical state or perform actions.
+
+- Completion evidence: exact candidate c662398c169ac3bbc8a94833ec9257a6b5853c30; focused 31 pytest plus Node frontend contract passed; desktop Executive and guided-flow visual inspection passed and the 820x1100 responsive shell remained readable; exact Claude review phase2a-2ef2b5df65deda6a84517f77 APPROVE/LOW with no blockers or missing tests; full 1604 passed/1 skipped; Product Integrity fresh full 1604 passed/1 skipped with all hard checks and 27-test Golden Path passed, YELLOW only for the pre-existing tzdata dependency finding.
 
 ### FW-REC-002 — Durable recovery checkpoint persistence and reconstruction
 - Requirement: FW-REC persistent recovery metadata
