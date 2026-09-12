@@ -44,7 +44,7 @@ For each bounded work unit:
 5. Run the FW-INTEGRITY Product Integrity Gate and applicable Golden Paths; distinguish not-yet-proven from broken and record any RED/YELLOW findings.
 6. Produce one coherent candidate commit using the approved Git workflow and record its exact hash.
 7. Obtain Claude Code architecture/adversarial read-only review of that exact candidate.
-8. Accept review only after exact job-ID/SHA and schema validation yields APPROVE/LOW with no blocking findings or missing tests. One qualifying Claude Code review satisfies the required reviewer gate; Gemini is not required and must not be invoked unless Jeff explicitly re-enables it. AnythingLLM with `qwen/qwen3.8-27b` is authorized as an independent read-only reviewer under D-021, with truthful provider attribution and the same exact-binding validation; its availability is not a new required gate.
+8. Accept review only after exact job-ID/SHA and schema validation yields APPROVE/LOW with no blocking findings or missing tests. One qualifying AnythingLLM review using `qwen/qwen3.8-27b` satisfies the required reviewer gate under D-026. Claude and Gemini must not be invoked unless Jeff explicitly re-enables them. Preserve truthful provider attribution and exact job-ID/SHA/schema validation.
 9. Codex repairs legitimate findings, strengthens regression tests, reruns validation, and presents a new exact candidate when needed.
 10. Accept a work unit only when acceptance criteria and deterministic validation pass and no unresolved critical/high-confidence finding remains.
 11. Update `WORK_QUEUE.md` and `SWARM_STATUS.md`, then immediately claim the next READY task.

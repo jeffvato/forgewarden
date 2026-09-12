@@ -62,16 +62,16 @@ def run_deterministic_tests(task: TaskSpec, result: WorkerResult, repository: Wo
 class ExactReviewAdapter:
     """Use the existing independent review runner and convert its evidence."""
 
-    def __init__(self, context: str, *, allow_external_review: bool = False, reviewers: tuple[str, ...] = ("CLAUDE",)):
-        if "CLAUDE" not in reviewers or "GEMINI" in reviewers:
-            raise ValueError("autonomous review requires Claude and disables Gemini under D-020")
+    def __init__(self, context: str, *, allow_external_review: bool = False, reviewers: tuple[str, ...] = ("ANYTHINGLLM",)):
+        if reviewers != ("ANYTHINGLLM",):
+            raise ValueError("autonomous review requires AnythingLLM/Qwen under D-026")
         self.context = context
         self.allow_external_review = allow_external_review
         self.reviewers = reviewers
 
     def review(self, task: TaskSpec, commit: str, lease: WorkerLease) -> dict[str, ReviewResult]:
         job_id = "phase2a-" + hashlib.sha256(task.task_id.encode("utf-8")).hexdigest()[:24]
-        result = run_review_cycle(Path(lease.repository), commit, job_id, self.context, allow_external_review=self.allow_external_review, reviewers=self.reviewers, required_reviewers=("CLAUDE",), adjudicate_disagreements=True, sequential_fallback=False)
+        result = run_review_cycle(Path(lease.repository), commit, job_id, self.context, allow_external_review=self.allow_external_review, reviewers=self.reviewers, required_reviewers=("ANYTHINGLLM",), adjudicate_disagreements=True, sequential_fallback=False)
         if result["state"] != "APPROVED":
             unavailable = [item for item in result.get("reviews", ()) if item.get("state") == "UNAVAILABLE"]
             if unavailable:
@@ -108,16 +108,16 @@ class ExactReviewAdapter:
                 self.context,
                 allow_external_review=self.allow_external_review,
                 reviewers=self.reviewers,
-                required_reviewers=("CLAUDE",),
+                required_reviewers=("ANYTHINGLLM",),
                 adjudicate_disagreements=True,
                 sequential_fallback=False,
             )
             if result["state"] == "APPROVED":
                 return "PASSED"
             reviews = tuple(result.get("reviews", ()))
-            claude = next((item for item in reviews if item.get("provider") == "CLAUDE"), None)
-            if claude is None or claude.get("state") == "UNAVAILABLE":
-                detail = claude.get("error", "Claude review record was not returned") if claude else "Claude review record was not returned"
+            required_review = next((item for item in reviews if item.get("provider") == "ANYTHINGLLM"), None)
+            if required_review is None or required_review.get("state") == "UNAVAILABLE":
+                detail = required_review.get("error", "AnythingLLM review record was not returned") if required_review else "AnythingLLM review record was not returned"
                 return "EXTERNAL: " + str(detail)[:1000]
             return "REPAIRABLE: " + _review_failure_detail(result)
         except Exception as exc:

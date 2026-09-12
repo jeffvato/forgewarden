@@ -9,7 +9,7 @@ ForgeWarden Core remains the active implementation mission. The broader security
 - Hermes is the user-facing front door.
 - Codex is the sole application-code writer.
 - Claude provides architecture, requirements, threat-model, and adversarial review.
-- Claude Code is the required exact-commit reviewer. Gemini is not required and is disabled for the active workflow unless Jeff explicitly re-enables it (D-020).
+- AnythingLLM with `qwen/qwen3.8-27b` is the required exact-commit reviewer under D-026. Claude and Gemini are disabled unless Jeff explicitly re-enables them.
 - The trusted Python orchestrator owns deterministic validation, hashes, paths, Git, limits, audit, cleanup, state, deployment controls, and rollback.
 - Jeff / Customer Root retains activation authority and all authority expansion.
 - `DRY_RUN` remains enforced; deployment remains disabled until explicitly authorized.
