@@ -131,7 +131,7 @@ capable than expected.
     AV/EDR, policy, logging, Evidence, monitoring, network restrictions,
     incident history, or kill-switch controls.
 
-Detection rules consume canonical facts. They do not execute generated
+`DeterministicAIThreatClassifier` now applies closed fact allowlists for all ten classes and emits Evidence-first immutable advisory findings. Detection rules consume canonical facts. They do not execute generated
 commands, inspect live hosts, or trust model explanations. Baseline deviation
 is a signal rather than proof of compromise.
 

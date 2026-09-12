@@ -1044,7 +1044,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-AID-003 — Deterministic AI threat classification
 - Requirement: FW-AID closed-rule threat detection
-- State: READY
+- State: REVIEW
 - Priority: P0
 - Dependencies: FW-AID-002
 - Approval: deterministic fixture-only classification and Evidence-first findings are authorized under D-025; model self-assessment, live collection, containment, and response remain unauthorized.

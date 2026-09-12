@@ -2,6 +2,7 @@ import copy
 import pytest
 from swarm.endpoint_fixtures import EndpointFixtureDenied
 from swarm.normalized_events import AI_EVENT_CLASSES, NormalizedEventStore, validate_ai_workload_event
+from swarm.ai_agent_defense import *
 
 def event(**changes):
  value={"schema_version":"1","event_id":"fw-event/tenant-a/aid-1","tenant_id":"tenant-a","event_class":"AID-PRIVILEGE","source":"harness.fixture","classification":"INTERNAL","observed_at_epoch":100,"agent_ref":"fw-id/tenant-a/codex-worker","model_ref":"fw-model/tenant-a/codex","session_ref":"fw-session/tenant-a/session-1","task_ref":"fw-task/tenant-a/task-1","initiating_user_ref":"fw-id/tenant-a/operator","purpose_sha256":"a"*64,"capability_lease_ref":"fw-lease/tenant-a/lease-1","action_ticket_ref":"fw-action/tenant-a/ticket-1","tool_category":"MCP","mcp_server_ref":"registered-mcp","target_resource_ref":"fw-resource/tenant-a/repository","decision":"DENIED","anomaly_indicators":["authority_expansion","repeated_denial"],"evidence_references":["fw-evid/tenant-a/harness-1"],"mode":"DRY_RUN","action":"DETECT_ONLY","authority_granted":False}; value.update(changes); return value
@@ -34,3 +35,46 @@ def test_ai_event_collections_are_unique_sorted_bounded_and_snapshot_is_bounded(
  store=NormalizedEventStore(lambda *_:None); store.admit_ai_security_event(event())
  for limit in (0,129,True):
   with pytest.raises(EndpointFixtureDenied): store.pending_ai_security_events(tenant_id="tenant-a",agent_ref="fw-id/tenant-a/codex-worker",limit=limit)
+
+
+RULE_FACTS={"AID-ESCAPE":"sandbox_escape","AID-EGRESS":"unauthorized_egress","AID-SECRETS":"secret_access","AID-PRIVILEGE":"authority_expansion","AID-LATERAL":"cross_tenant_target","AID-INJECTION":"prompt_injection","AID-MISSION":"mission_deviation","AID-COORDINATION":"unapproved_coordination","AID-EVALUATION":"test_manipulation","AID-TAMPER":"security_control_tamper"}
+
+def test_closed_classifier_covers_all_ten_threat_classes_without_model_authority():
+ evidence=[]; classifier=DeterministicAIThreatClassifier("tenant-a",lambda *args:evidence.append(args))
+ for index,(threat,fact) in enumerate(sorted(RULE_FACTS.items())):
+  source=validate_ai_workload_event(event(event_id=f"fw-event/tenant-a/class-{index}",event_class=threat,anomaly_indicators=[fact]))
+  finding=classifier.classify(source,finding_id=f"fw-finding/tenant-a/finding-{index}")
+  assert finding.threat_class==threat and finding.matched_facts==(fact,) and finding.severity in {"HIGH","CRITICAL"}
+  assert finding.confidence==80 and finding.action=="DETECT_ONLY" and finding.disposition=="ADVISORY" and not finding.authority_granted
+ assert len(classifier.snapshot("tenant-a"))==10 and len(evidence)==10
+
+def test_classifier_requires_matching_canonical_facts_and_does_not_mutate_source():
+ classifier=DeterministicAIThreatClassifier("tenant-a",lambda *_:None)
+ source=validate_ai_workload_event(event(event_class="AID-EGRESS",anomaly_indicators=["authority_expansion"]))
+ before=source
+ with pytest.raises(AIThreatClassificationError,match="insufficient"): classifier.classify(source,finding_id="fw-finding/tenant-a/no-match")
+ assert source==before and classifier.snapshot("tenant-a")==()
+
+def test_classifier_is_tenant_bound_replay_safe_and_evidence_first():
+ calls=[]; classifier=DeterministicAIThreatClassifier("tenant-a",lambda *args:calls.append(args)); source=validate_ai_workload_event(event(anomaly_indicators=["authority_expansion","repeated_denial"]))
+ finding=classifier.classify(source,finding_id="fw-finding/tenant-a/privilege-1")
+ assert finding.confidence==90 and calls[0][0]=="ai_threat_finding_admitted"
+ with pytest.raises(AIThreatClassificationError,match="duplicate"): classifier.classify(source,finding_id=finding.finding_id)
+ with pytest.raises(AIThreatClassificationError,match="tenant"): classifier.snapshot("tenant-b")
+ cross=validate_ai_workload_event(event(tenant_id="tenant-b",event_id="fw-event/tenant-b/e",agent_ref="fw-id/tenant-b/a",model_ref="fw-model/tenant-b/m",session_ref="fw-session/tenant-b/s",task_ref="fw-task/tenant-b/t",initiating_user_ref="fw-id/tenant-b/u",capability_lease_ref="fw-lease/tenant-b/l",action_ticket_ref="fw-action/tenant-b/a",target_resource_ref="fw-resource/tenant-b/r",evidence_references=["fw-evid/tenant-b/e"]))
+ with pytest.raises(AIThreatClassificationError,match="tenant"): classifier.classify(cross,finding_id="fw-finding/tenant-a/cross")
+ assert classifier.snapshot("tenant-a")== (finding,) and len(calls)==1
+
+def test_classifier_evidence_failure_is_retryable_and_reentrancy_denied():
+ source=validate_ai_workload_event(event(anomaly_indicators=["authority_expansion"])); holder={}
+ def reenter(*_): holder["classifier"].classify(source,finding_id="fw-finding/tenant-a/f")
+ classifier=DeterministicAIThreatClassifier("tenant-a",reenter); holder["classifier"]=classifier
+ with pytest.raises(AIThreatClassificationError,match="Evidence failed"): classifier.classify(source,finding_id="fw-finding/tenant-a/f")
+ assert classifier.snapshot("tenant-a")==()
+ retry=DeterministicAIThreatClassifier("tenant-a",lambda *_:None); assert retry.classify(source,finding_id="fw-finding/tenant-a/f").finding_id.endswith("/f")
+
+@pytest.mark.parametrize("changes",[{"schema_version":"2"},{"finding_id":"fw-finding/tenant-b/f"},{"threat_class":"UNKNOWN"},{"severity":"LOW"},{"confidence":101},{"confidence":True},{"matched_facts":()},{"matched_facts":("secret_access",)},{"disposition":"AUTHORIZED"},{"action":"CONTAIN"},{"mode":"LIVE"},{"authority_granted":True}])
+def test_finding_contract_rejects_malformed_policy_and_authority(changes):
+ values=dict(schema_version="1",finding_id="fw-finding/tenant-a/f",tenant_id="tenant-a",source_event_id="fw-event/tenant-a/e",agent_ref="fw-id/tenant-a/a",threat_class="AID-PRIVILEGE",severity="CRITICAL",confidence=80,matched_facts=("authority_expansion",),evidence_references=("fw-evid/tenant-a/e",),observed_at_epoch=1)
+ values.update(changes)
+ with pytest.raises(AIThreatClassificationError): AIThreatFinding(**values)
