@@ -17,7 +17,7 @@ def test_bridge_invocation_is_fixed_bounded_and_exact(monkeypatch):
         return subprocess.CompletedProcess(command,0,json.dumps(approval()).encode(),b"")
     result=AnythingLLMReviewer(AnythingLLMConfig(),runner=runner).run(None,JOB,COMMIT,"exact patch")
     assert result["verdict"]=="APPROVE"
-    assert seen["command"][:6]==["powershell.exe","-NoLogo","-NoProfile","-NonInteractive","-ExecutionPolicy","Bypass"]
+    assert seen["command"][:6]==[r"/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe","-NoLogo","-NoProfile","-NonInteractive","-ExecutionPolicy","Bypass"]
     assert seen["command"][-4:]==["-Workspace","n8n","-SessionId",JOB]
     assert seen["command"][7].startswith("C:\\") and seen["command"][7].endswith("anythingllm-review-bridge.ps1")
     assert b"exact patch" in seen["kwargs"]["input"]

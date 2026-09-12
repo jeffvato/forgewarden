@@ -3,7 +3,8 @@ param(
   [Parameter(Mandatory=$true)][ValidatePattern('^phase2a-[a-z0-9]{24}$')][string]$SessionId
 )
 $ErrorActionPreference = 'Stop'
-$secretPath = Join-Path $env:LOCALAPPDATA 'ForgeWarden\secrets\anythingllm-api-key.dpapi'
+$localData = [Environment]::GetFolderPath('LocalApplicationData')
+$secretPath = Join-Path $localData 'ForgeWarden\secrets\anythingllm-api-key.dpapi'
 if (-not (Test-Path -LiteralPath $secretPath -PathType Leaf)) { throw 'AnythingLLM credential handle is unavailable' }
 $prompt = [Console]::In.ReadToEnd()
 if ([Text.Encoding]::UTF8.GetByteCount($prompt) -gt 48000) { throw 'AnythingLLM prompt exceeds bound' }
@@ -13,7 +14,7 @@ $key = $null
 try {
   $key = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($ptr)
   $pids = @(Get-CimInstance Win32_Process | Where-Object {
-    $_.Name -eq 'AnythingLLM.exe' -and $_.ExecutablePath -like (Join-Path $env:LOCALAPPDATA 'Programs\AnythingLLM\*')
+    $_.Name -eq 'AnythingLLM.exe' -and $_.ExecutablePath -like (Join-Path $localData 'Programs\AnythingLLM\*')
   } | ForEach-Object ProcessId)
   $ports = @(Get-NetTCPConnection -State Listen | Where-Object {
     $pids -contains $_.OwningProcess -and $_.LocalAddress -in @('127.0.0.1','::1')

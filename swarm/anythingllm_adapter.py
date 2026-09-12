@@ -66,7 +66,7 @@ class AnythingLLMReviewer:
         ).encode("utf-8")
         env = {"SystemRoot": os.environ.get("SystemRoot", r"C:\\Windows"), "WINDIR": os.environ.get("WINDIR", r"C:\\Windows")}
         completed = self._runner(
-            ["powershell.exe", "-NoLogo", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
+            [r"/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe", "-NoLogo", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
              "-File", windows_bridge, "-Workspace", self.config.workspace, "-SessionId", job_id],
             input=request, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=self.config.timeout_seconds,
             check=False, env=env,
