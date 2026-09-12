@@ -941,7 +941,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-COMP-001 — Compliance ownership inventory and canonical control mapping contract
 - Requirement: FW-COMP compliance ownership and control mapping
-- State: READY
+- State: REVIEW
 - Priority: P0
 - Dependencies: FW-REC-004 and FW-EVID-006
 - Approval: read-only inventory and deterministic metadata-only mapping are authorized; certification claims, external reporting, control execution, and compliance authority remain unauthorized.
