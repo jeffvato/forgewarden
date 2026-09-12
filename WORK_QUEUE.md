@@ -1149,7 +1149,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-AID-008 — Dedicated adversarial simulation suite
 - Requirement: FW-AID safe adversarial validation
-- State: READY
+- State: REVIEW
 - Priority: P0
 - Dependencies: FW-AID-007
 - Approval: inert fixture simulations across existing FW-AID contracts are authorized; real exploit execution, live sensors, containment, and response remain unauthorized.

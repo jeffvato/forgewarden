@@ -212,7 +212,7 @@ FW-ID, FW-KEYS, FW-EVID, FW-REC, policy, tickets, and kill-switch interfaces.
 
 ## Adversarial validation strategy
 
-FW-AID-008 uses inert fixtures for prompt injection, poisoned documents,
+`tests/test_fw_aid_adversarial.py` now exercises the full privacy-minimized telemetry → deterministic finding → cross-domain FW-SOC story → inert proposal path for each named scenario. FW-AID-008 uses inert fixtures for prompt injection, poisoned documents,
 malicious webpages, credential discovery, secret exfiltration, unauthorized Internet access, lateral movement, container escape, privilege escalation,
 unauthorized MCP, abnormal shell, EDR tampering, log deletion, unapproved
 coordination, test manipulation, policy bypass, and self-expansion.
