@@ -170,7 +170,10 @@ quarantine, evidence snapshot, forensic timeline, rollback/recovery, operator
 notification, and dual-control escalation.
 
 During the current DRY_RUN phase FW-AID outputs only findings and inert
-containment proposals. It cannot revoke, terminate, isolate, quarantine,
+containment proposals. `AIContainmentProposalRegistry` now binds exact accepted
+findings/stories to closed action classes and requires same-tenant policy, lease,
+Action Ticket, approval, Evidence, checkpoint, rollback, short-expiry, and
+blast-radius metadata; it deliberately exposes no executor. It cannot revoke, terminate, isolate, quarantine,
 delete, restore, or alter a control. Later execution requires an exact policy
 decision, active narrow capability, single-use Action Ticket, approval class,
 blast-radius check, canonical Evidence, checkpoint/rollback, and recovery

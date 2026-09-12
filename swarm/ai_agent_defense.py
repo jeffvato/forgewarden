@@ -153,3 +153,44 @@ class AICrossDomainCorrelator:
    raise AIThreatClassificationError("cross-domain Evidence or projection failed") from exc
   finally:
    with self._lock: self._pending.discard(story_id)
+
+
+_PROPOSAL_ACTIONS={"AID-ESCAPE":"ISOLATE_WORKLOAD","AID-EGRESS":"DENY_EGRESS","AID-SECRETS":"REVOKE_LEASE","AID-PRIVILEGE":"FREEZE_SESSION","AID-LATERAL":"ISOLATE_WORKLOAD","AID-INJECTION":"BLOCK_TOOL","AID-MISSION":"FREEZE_SESSION","AID-COORDINATION":"FREEZE_SESSION","AID-EVALUATION":"FREEZE_SESSION","AID-TAMPER":"FREEZE_SESSION"}
+_PROPOSAL_REF=re.compile(r"^fw-(?:proposal|policy|lease|action|approval|checkpoint|rollback|evid|resource)/([a-z][a-z0-9_.-]{0,127})/[a-z][a-z0-9_.:/-]{0,191}$")
+
+@dataclass(frozen=True)
+class AIContainmentProposal:
+ schema_version:str; proposal_id:str; tenant_id:str; finding_id:str; story_id:str; action_class:str; target_ref:str; blast_radius:int; policy_decision_ref:str; capability_lease_ref:str; action_ticket_ref:str; approval_ref:str; checkpoint_ref:str; rollback_ref:str; evidence_references:tuple[str,...]; created_at_epoch:int; lease_expires_at_epoch:int; mode:str="DRY_RUN"; deployment:str="DISABLED"; kill_switch:str="ENGAGED"; disposition:str="PROPOSE_ONLY"; authority_granted:bool=False; response_executed:bool=False
+ def __post_init__(self):
+  for value,name in ((self.proposal_id,"proposal"),(self.target_ref,"target"),(self.policy_decision_ref,"policy"),(self.capability_lease_ref,"lease"),(self.action_ticket_ref,"ticket"),(self.approval_ref,"approval"),(self.checkpoint_ref,"checkpoint"),(self.rollback_ref,"rollback")):
+   match=_PROPOSAL_REF.fullmatch(value) if isinstance(value,str) else None
+   if match is None or match.group(1)!=self.tenant_id: raise AIThreatClassificationError(f"containment {name} binding invalid")
+  if self.schema_version!="1" or self.action_class not in set(_PROPOSAL_ACTIONS.values()) or not isinstance(self.blast_radius,int) or isinstance(self.blast_radius,bool) or not 1<=self.blast_radius<=10: raise AIThreatClassificationError("containment policy bounds invalid")
+  if not isinstance(self.created_at_epoch,int) or not isinstance(self.lease_expires_at_epoch,int) or not self.created_at_epoch<self.lease_expires_at_epoch<=self.created_at_epoch+3600: raise AIThreatClassificationError("containment lease invalid")
+  if not self.evidence_references or tuple(sorted(set(self.evidence_references)))!=self.evidence_references: raise AIThreatClassificationError("containment Evidence invalid")
+  for ref in self.evidence_references:
+   match=_PROPOSAL_REF.fullmatch(ref) if isinstance(ref,str) else None
+   if match is None or match.group(1)!=self.tenant_id or not ref.startswith("fw-evid/"): raise AIThreatClassificationError("containment Evidence binding invalid")
+  if self.mode!="DRY_RUN" or self.deployment!="DISABLED" or self.kill_switch!="ENGAGED" or self.disposition!="PROPOSE_ONLY" or self.authority_granted is not False or self.response_executed is not False: raise AIThreatClassificationError("containment execution or authority forbidden")
+
+class AIContainmentProposalRegistry:
+ """Evidence-first inert proposals; contains deliberately no executor."""
+ def __init__(self,tenant_id:str,evidence_sink:Any):
+  if not isinstance(tenant_id,str) or not tenant_id or not callable(evidence_sink): raise AIThreatClassificationError("containment registry configuration invalid")
+  self.tenant_id=tenant_id; self._sink=evidence_sink; self._records:dict[str,AIContainmentProposal]={}; self._pending:set[str]=set(); self._lock=RLock()
+ def propose(self,finding:AIThreatFinding,story:AIAttackStory,*,proposal_id:str,target_ref:str,blast_radius:int,policy_decision_ref:str,capability_lease_ref:str,action_ticket_ref:str,approval_ref:str,checkpoint_ref:str,rollback_ref:str,evidence_references:tuple[str,...],created_at_epoch:int,lease_expires_at_epoch:int)->AIContainmentProposal:
+  if not isinstance(finding,AIThreatFinding) or not isinstance(story,AIAttackStory) or finding.tenant_id!=self.tenant_id or story.tenant_id!=self.tenant_id or story.finding_id!=finding.finding_id or story.source_event_id!=finding.source_event_id or story.mode!="DRY_ONLY" or story.action!="CORRELATE_ONLY" or story.authority_granted is not False: raise AIThreatClassificationError("containment source binding invalid")
+  proposal=AIContainmentProposal("1",proposal_id,self.tenant_id,finding.finding_id,story.projection.story_id,_PROPOSAL_ACTIONS[finding.threat_class],target_ref,blast_radius,policy_decision_ref,capability_lease_ref,action_ticket_ref,approval_ref,checkpoint_ref,rollback_ref,evidence_references,created_at_epoch,lease_expires_at_epoch)
+  with self._lock:
+   if proposal.proposal_id in self._records or proposal.proposal_id in self._pending: raise AIThreatClassificationError("containment proposal replay or pending")
+   self._pending.add(proposal.proposal_id)
+  try:
+   self._sink("ai_containment_proposal_recorded",{name:getattr(proposal,name) for name in proposal.__dataclass_fields__})
+   with self._lock:self._records[proposal.proposal_id]=proposal
+  except Exception as exc: raise AIThreatClassificationError("containment proposal Evidence failed") from exc
+  finally:
+   with self._lock:self._pending.discard(proposal.proposal_id)
+  return proposal
+ def snapshot(self,tenant_id:str)->tuple[AIContainmentProposal,...]:
+  if tenant_id!=self.tenant_id: raise AIThreatClassificationError("containment tenant mismatch")
+  with self._lock:return tuple(self._records[key] for key in sorted(self._records))

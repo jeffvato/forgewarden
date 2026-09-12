@@ -144,3 +144,34 @@ def test_cross_domain_correlation_revalidates_source_and_fails_closed_on_evidenc
  correlator=AICrossDomainCorrelator("tenant-a",lambda *_:(_ for _ in ()).throw(OSError("offline")))
  with pytest.raises(AIThreatClassificationError,match="Evidence"): correlator.correlate(finding,source,facts,story_id="story",ai_incident_id="a",domain_incident_id="b")
  with pytest.raises(AIThreatClassificationError,match="source binding"): AICrossDomainCorrelator("tenant-a",lambda *_:None).correlate(replace(finding,agent_ref="fw-id/tenant-a/other"),source,facts,story_id="story",ai_incident_id="a",domain_incident_id="b")
+
+
+def correlated_story():
+ source,finding=classified_source(); facts=(cross_fact("ENDPOINT",1),cross_fact("IDENTITY",2),cross_fact("NETWORK",3)); story=AICrossDomainCorrelator("tenant-a",lambda *_:None).correlate(finding,source,facts,story_id="story-1",ai_incident_id="a",domain_incident_id="b"); return finding,story
+
+def proposal_args(**changes):
+ value=dict(proposal_id="fw-proposal/tenant-a/p-1",target_ref="fw-resource/tenant-a/agent",blast_radius=1,policy_decision_ref="fw-policy/tenant-a/d-1",capability_lease_ref="fw-lease/tenant-a/l-1",action_ticket_ref="fw-action/tenant-a/t-1",approval_ref="fw-approval/tenant-a/a-1",checkpoint_ref="fw-checkpoint/tenant-a/c-1",rollback_ref="fw-rollback/tenant-a/r-1",evidence_references=("fw-evid/tenant-a/story-1",),created_at_epoch=200,lease_expires_at_epoch=500); value.update(changes); return value
+
+def test_containment_proposal_is_closed_inert_policy_bound_and_evidence_first():
+ finding,story=correlated_story(); calls=[]; registry=AIContainmentProposalRegistry("tenant-a",lambda *args:calls.append(args)); result=registry.propose(finding,story,**proposal_args())
+ assert result.action_class=="REVOKE_LEASE" and result.disposition=="PROPOSE_ONLY" and result.mode=="DRY_RUN" and result.deployment=="DISABLED" and result.kill_switch=="ENGAGED"
+ assert not result.authority_granted and not result.response_executed and calls[0][0]=="ai_containment_proposal_recorded" and registry.snapshot("tenant-a")== (result,)
+ with pytest.raises(AIThreatClassificationError,match="replay"): registry.propose(finding,story,**proposal_args())
+
+@pytest.mark.parametrize("changes",[{"proposal_id":"fw-proposal/tenant-b/p"},{"target_ref":"fw-resource/tenant-b/r"},{"blast_radius":0},{"blast_radius":11},{"policy_decision_ref":"missing"},{"capability_lease_ref":"fw-lease/tenant-b/l"},{"action_ticket_ref":"fw-action/tenant-b/t"},{"approval_ref":"fw-approval/tenant-b/a"},{"checkpoint_ref":"fw-checkpoint/tenant-b/c"},{"rollback_ref":"fw-rollback/tenant-b/r"},{"evidence_references":()},{"evidence_references":("fw-evid/tenant-b/e",)},{"lease_expires_at_epoch":200},{"lease_expires_at_epoch":4001}])
+def test_containment_proposal_rejects_missing_cross_tenant_and_unbounded_authority_references(changes):
+ finding,story=correlated_story(); registry=AIContainmentProposalRegistry("tenant-a",lambda *_:None)
+ with pytest.raises(AIThreatClassificationError): registry.propose(finding,story,**proposal_args(**changes))
+
+def test_containment_contract_rejects_execution_release_kill_switch_and_authority_changes():
+ finding,story=correlated_story(); base=AIContainmentProposalRegistry("tenant-a",lambda *_:None).propose(finding,story,**proposal_args())
+ for changes in ({"action_class":"RELEASE_CONTAINMENT"},{"mode":"LIVE"},{"deployment":"ENABLED"},{"kill_switch":"CLEARED"},{"disposition":"EXECUTE"},{"authority_granted":True},{"response_executed":True}):
+  with pytest.raises(AIThreatClassificationError): replace(base,**changes)
+
+def test_containment_evidence_failure_and_reentrancy_leave_retryable_empty_state():
+ finding,story=correlated_story(); holder={}
+ def reenter(*_): holder["registry"].propose(finding,story,**proposal_args())
+ registry=AIContainmentProposalRegistry("tenant-a",reenter); holder["registry"]=registry
+ with pytest.raises(AIThreatClassificationError,match="Evidence failed"): registry.propose(finding,story,**proposal_args())
+ assert registry.snapshot("tenant-a")==()
+ retry=AIContainmentProposalRegistry("tenant-a",lambda *_:None); assert retry.propose(finding,story,**proposal_args()).proposal_id.endswith("p-1")

@@ -1107,7 +1107,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-AID-006 — Deterministic containment proposal and policy contract
 - Requirement: FW-AID inert containment policy input
-- State: READY
+- State: REVIEW
 - Priority: P0
 - Dependencies: FW-AID-005, FW-ROOT/Z3, Action Tickets, FW-REC
 - Approval: deterministic PROPOSE_ONLY containment metadata and policy-input validation are authorized; containment execution, revocation, isolation, quarantine, and response remain unauthorized.
