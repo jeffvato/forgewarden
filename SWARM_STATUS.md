@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: FW-AID-010 integrated AI intrusion lifecycle accepted
-- Next task: FW-UX-002 Incident detail and unified attack story.
+- Current focus: FW-UX-002 Mission Control incident detail accepted
+- Next task: FW-UX-003 AI Defense and Harness assurance workspaces.
 - Harness role: permanent ForgeWarden Core subsystem and default controller for ForgeWarden's own development; one governed architecture serves both roles under D-023.
 - Worker transport direction: registered local CLIs and explicitly approved API-backed workers; API keys are resolved only through FW-KEYS secret handles inside trusted adapters and never enter model context or lifecycle evidence.
 - Provider authentication direction: deterministic OpenAI, Anthropic, and Google/Gemini profiles with provider-specific official OAuth where available and approved API-key classes otherwise; Gemini CLI is registered as `agy` for read-only roles, FW-ID owns delegated identity, and FW-KEYS owns all credential material.
@@ -34,17 +34,17 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-AID-010
-- Starting commit: 00b808a7dd8be84ad5ebec4988d1360f587ac1a7
-- Candidate commit: b83de7c697d02e23f4cb372f961c260fa2a5fbff
-- Accepted commit: b83de7c697d02e23f4cb372f961c260fa2a5fbff
-- Files changed: integrated FW-AID lifecycle proof, cross-domain affected-reference deduplication, canonical ownership/functionality status, architecture status tests, and documentation
-- Deterministic validation: focused 92 passed; final full 1604 passed/1 skipped; integrity fresh full 1604 passed/1 skipped, all hard checks and 4 Golden Paths pass with YELLOW only for the pre-existing dependency finding
-- Independent review: repaired exact Claude APPROVE/LOW with no blockers or missing tests (`phase2a-b83de7c697d02e23f4cb372f`)
+- Task ID: FW-UX-002
+- Starting commit: cd55eeb782238d5a59cb65f5cf4b72f42d0c36a5
+- Candidate commit: de39e59393ef014a56413958bf4ce8dadbb68e68
+- Accepted commit: de39e59393ef014a56413958bf4ce8dadbb68e68
+- Files changed: centralized incident demo contract, polished incident detail/attack story, responsive styling, escaped rendering tests, and documentation
+- Deterministic validation: focused 31 pytest plus Node frontend test passed; desktop and tablet visual checks passed; full 1604 passed/1 skipped; integrity fresh full 1604 passed/1 skipped, all hard checks and 4 Golden Paths pass with YELLOW only for the pre-existing dependency finding
+- Independent review: exact Claude APPROVE/LOW with no blockers or missing tests (`phase2a-de39e59393ef014a56413958`)
 - Gemini review: disabled and not required under D-020
-- Unresolved findings: live sensors, enforcement, containment/recovery execution, and deployment remain unimplemented and unauthorized
+- Unresolved findings: provider remains deterministic DEMO data and no production backend or response authority exists
 - Blocker: none
-- Next action: implement FW-UX-002 incident detail and unified attack story over the existing deterministic demo provider.
+- Next action: implement FW-UX-003 AI Defense and Harness assurance workspaces over the same provider.
 
 - Completion inventory: `docs/completion-audit-2026-09-09.md` (baseline `0afcbdd`).
 - FWQ-0008 implementation and binding hardening exist; VALIDATED retains a historical provenance caveat, not an implementation assignment. FWQ-0009 is recorded accepted and unchanged at source/test level from its reviewed candidate.

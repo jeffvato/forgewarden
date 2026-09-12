@@ -1207,7 +1207,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-UX-002 — Incident detail and unified attack story
 - Requirement: FW-UX Mission Control incident experience
-- State: REVIEW
+- State: DONE
 - Priority: P0
 - Dependencies: FW-UX-001 and FW-AID-010
 - Approval: reusable read-only UI against explicitly labeled deterministic demo data is authorized; live response and backend activation remain unauthorized.
@@ -1223,6 +1223,25 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no approval, containment, recovery, credential, network, deployment, or response execution authority is added.
 - Expected validation: focused frontend/server tests, visual inspection, exact independent read-only review, then full suite/integrity once.
 - Security considerations: the route is a read-only product view over a fresh demo projection and cannot mutate Core state.
+- Completion evidence: exact candidate `de39e59393ef014a56413958bf4ce8dadbb68e68`; focused 31 pytest passed plus Node frontend contract test; desktop and 820x1100 tablet visual inspection passed; exact Claude review `phase2a-de39e59393ef014a56413958` APPROVE/LOW with no blockers or missing tests; full 1604 passed/1 skipped; Product Integrity fresh full 1604 passed/1 skipped, all hard checks and 4 Golden Paths passed with YELLOW only for the pre-existing dependency finding.
+
+### FW-UX-003 — AI Defense and Harness assurance workspaces
+- Requirement: FW-UX differentiator workspaces
+- State: READY
+- Priority: P0
+- Dependencies: FW-UX-002 and FW-AID-010
+- Approval: reusable read-only UI against labeled deterministic demo data is authorized; model invocation, live monitoring, and response remain unauthorized.
+- Description: Expand the existing AI Intrusion Defense and FW-HARNESS routes into polished operator workspaces showing agent risk chronology, denied capabilities, scoped lease/tool context, deterministic routing rationale, budgets, validation, reviewer state, and escalation history.
+- Target path: console/index.html
+- Allowed paths: swarm/mission_control_demo.py, console/index.html, console/app.js, console/styles.css, tests/test_console.py, tests/test_console_frontend.js, docs/management-console.md, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_console.py tests/test_mission_control.py && node --test tests/test_console_frontend.js
+- Acceptance criteria:
+  - AI Defense shows one coherent agent event timeline, anomaly/risk/denial state, current scoped authority, MCP/tool context, containment proposal, related incident, and Evidence references;
+  - Harness shows requesting identity, tier/routing rationale, phases, model, lease/capabilities, tools, budgets, validation, reviewer and escalation state;
+  - every simulated value is sourced from the centralized provider, validated, escaped, and visibly labeled;
+  - responsive and accessible views add no control callbacks or authority.
+- Expected validation: focused frontend/server tests, visual inspection, exact independent read-only review, then full suite/integrity once.
+- Security considerations: views explain deterministic authority but remain read-only DEMO projections.
 
 ### FW-REC-002 — Durable recovery checkpoint persistence and reconstruction
 - Requirement: FW-REC persistent recovery metadata
