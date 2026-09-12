@@ -1065,7 +1065,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-AID-004 — Governed harness monitoring adapter
 - Requirement: FW-AID protection for ForgeWarden's AI development harness
-- State: REVIEW
+- State: DONE
 - Priority: P0
 - Dependencies: FW-AID-003 and FW-HARNESS-014
 - Approval: fixture-only conversion of existing harness lifecycle facts into canonical FW-AID telemetry is authorized; live hooks, interception, containment, and response remain unauthorized.
@@ -1081,6 +1081,27 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no live hook, model call, credential, filesystem/process/network access, containment, remediation, recovery execution, deployment, or response authority is added.
 - Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
 - Security considerations: the harness supplies untrusted observations; the separately owned deterministic FW-AID adapter and event store validate them.
+
+- Completion evidence: exact candidate `5ede6beece0707973b4f018a92ebd3553bee7609`; focused 94 passed after one bounded import/test correction; exact Claude review `phase2a-5ede6beece0707973b4f018a` returned APPROVE/LOW with no blockers or missing tests; full 1536 passed/1 skipped; Product Integrity fresh full 1536 passed/1 skipped, all hard checks and 4 Golden Paths passed with YELLOW only for the pre-existing `tzdata` dependency and partial FW-AID ownership status.
+
+### FW-AID-005 — Cross-domain AI intrusion correlation and attack story
+- Requirement: FW-AID canonical cross-domain correlation
+- State: READY
+- Priority: P0
+- Dependencies: FW-AID-004, FW-SOC-03, FW-AV, FW-ENDPOINT, FW-ID, FW-MCP
+- Approval: deterministic fixture-only correlation and inert attack-story projection are authorized; live collection, containment, and response remain unauthorized.
+- Description: Correlate canonical FW-AID findings with existing endpoint, AV, identity, browser/email, MCP, and network fact references into one tenant-bound immutable FW-SOC attack story without duplicating event or incident ownership.
+- Target path: swarm/ai_agent_defense.py
+- Allowed paths: swarm/ai_agent_defense.py, swarm/soc.py, swarm/normalized_events.py, tests/test_fw_aid.py, tests/test_soc.py, docs/fw-aid-architecture.md, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_fw_aid.py tests/test_soc.py tests/test_normalized_events.py
+- Acceptance criteria:
+  - correlation binds one tenant, AI finding/event, agent/task/model, and bounded AV/endpoint/identity/browser-email/MCP/network references in deterministic chronological order;
+  - defined high-confidence combinations produce an inert severity/risk story while baseline deviation alone remains insufficient;
+  - missing domains, duplicate/replayed facts, cross-tenant references, inconsistent chronology, malformed values, and Evidence failure fail closed without incident admission;
+  - existing NormalizedEventStore and FW-SOC projection remain canonical owners; no parallel event, risk, or case store is created;
+  - no live sensor, model call, credential, network/process/filesystem hook, containment, quarantine, remediation, recovery execution, deployment, or response authority is added.
+- Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
+- Security considerations: the attack story is an Evidence-backed correlation result and advisory policy input, never an authorization to act.
 
 ### FW-REC-002 — Durable recovery checkpoint persistence and reconstruction
 - Requirement: FW-REC persistent recovery metadata
