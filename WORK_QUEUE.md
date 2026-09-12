@@ -921,7 +921,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-REC-004 — Integrated recovery checkpoint and resume lifecycle proof
 - Requirement: FW-REC lifecycle acceptance
-- State: READY
+- State: REVIEW
 - Priority: P0
 - Dependencies: FW-REC-003 and FW-EVID-006
 - Approval: deterministic local DRY_RUN lifecycle proof is authorized; recovery, rollback, restart, repair, containment, deletion, and deployment execution remain unauthorized.
