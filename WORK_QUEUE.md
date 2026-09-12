@@ -1107,7 +1107,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-AID-006 — Deterministic containment proposal and policy contract
 - Requirement: FW-AID inert containment policy input
-- State: REVIEW
+- State: DONE
 - Priority: P0
 - Dependencies: FW-AID-005, FW-ROOT/Z3, Action Tickets, FW-REC
 - Approval: deterministic PROPOSE_ONLY containment metadata and policy-input validation are authorized; containment execution, revocation, isolation, quarantine, and response remain unauthorized.
@@ -1123,6 +1123,27 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no credential, live network/process/filesystem control, containment, quarantine, remediation, recovery execution, deployment, or response authority is added.
 - Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
 - Security considerations: the proposal is advisory metadata; canonical deterministic policy and authorized executors remain the only action boundary.
+
+- Completion evidence: exact candidate `63ca1c903590a212c750ea7bb3261e0e0bf10473`; focused 137 passed; exact Claude review `phase2a-63ca1c903590a212c750ea7b` returned APPROVE/LOW with no blockers or missing tests; full 1556 passed/1 skipped; Product Integrity fresh full 1556 passed/1 skipped, all hard checks and 4 Golden Paths passed with YELLOW only for the pre-existing `tzdata` dependency and partial FW-AID ownership status.
+
+### FW-AID-007 — Mission Control AI Security projection
+- Requirement: FW-AID operator-visible read-only state
+- State: READY
+- Priority: P0
+- Dependencies: FW-AID-006 and FW-UX-001
+- Approval: sanitized read-only Mission Control projections and clearly labeled demo fixtures are authorized; control mutation, live telemetry, containment, and response remain unauthorized.
+- Description: Project canonical FW-AID agent telemetry, findings, attack stories, denied actions, and containment proposals into a bounded tenant-filtered AI Security view that clearly distinguishes demo/fixture data and exposes no secrets or control callbacks.
+- Target path: swarm/mission_control.py
+- Allowed paths: swarm/mission_control.py, swarm/mission_control_demo.py, tests/test_mission_control.py, tests/test_fw_aid.py, docs/fw-aid-architecture.md, docs/management-console.md, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_mission_control.py tests/test_fw_aid.py
+- Acceptance criteria:
+  - projection shows agent/model/task, current scoped authority references, risk/threat, anomalies, denials, MCP/tool category, related incident/story/Evidence, containment proposal state, and kill-switch state;
+  - tenant filtering, bounded collections, deterministic ordering, sensitive-field exclusion, and DEMO/SIMULATED labels fail closed on malformed input;
+  - view is immutable/read-only and cannot approve, revoke, isolate, execute, clear kill switch, change policy, or mutate source state;
+  - existing Mission Control and canonical FW-AID/FW-SOC owners are reused without a parallel operational store;
+  - no live sensor, credential, network/process/filesystem access, containment, remediation, recovery execution, deployment, or response authority is added.
+- Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
+- Security considerations: operator visibility consumes sanitized canonical facts and does not become an action surface.
 
 ### FW-REC-002 — Durable recovery checkpoint persistence and reconstruction
 - Requirement: FW-REC persistent recovery metadata
