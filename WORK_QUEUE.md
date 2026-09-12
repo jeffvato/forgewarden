@@ -1194,7 +1194,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 - Approval: deterministic fixture-only integration proof and ownership reconciliation are authorized; live collection and response remain unauthorized.
 - Description: Prove one tenant-bound AI intrusion lifecycle across harness monitoring, endpoint attribution, normalization, detection, cross-domain FW-SOC correlation, proposal-only containment, Mission Control, and canonical Evidence chronology.
 - Target path: tests/test_fw_aid_lifecycle.py
-- Allowed paths: tests/test_fw_aid_lifecycle.py, swarm/ai_agent_defense.py, swarm/normalized_events.py, swarm/mission_control.py, docs/fw-aid-architecture.md, docs/architecture-ownership.yaml, ROADMAP.md, WORK_QUEUE.md, SWARM_STATUS.md
+- Allowed paths: tests/test_fw_aid_lifecycle.py, tests/test_fw_aid_architecture.py, swarm/ai_agent_defense.py, swarm/normalized_events.py, swarm/mission_control.py, docs/fw-aid-architecture.md, docs/architecture-ownership.yaml, ROADMAP.md, WORK_QUEUE.md, SWARM_STATUS.md
 - Test command: python3 -m pytest -q tests/test_fw_aid_lifecycle.py tests/test_fw_aid.py tests/test_endpoint_adapter.py
 - Acceptance criteria:
   - one inert fixture lifecycle has exact tenant, identity, task, lease, Action Ticket, endpoint, incident, and Evidence bindings through every canonical owner;

@@ -59,16 +59,15 @@ def test_aid_is_visible_in_endpoint_harness_mission_control_and_security_docs():
         assert marker in text(ROOT / path)
 
 
-def test_integrity_registry_reports_defined_ai_agent_defense_honestly():
-    assert CANONICAL_OWNERSHIP["ai_agent_defense"] == {
-        "owner": "FW-AID",
-        "implementation": "architecture and requirements only",
-        "status": "DEFINED",
-    }
+def test_integrity_registry_reports_implemented_ai_agent_defense_honestly():
+    record = CANONICAL_OWNERSHIP["ai_agent_defense"]
+    assert record["owner"] == "FW-AID"
+    assert record["implementation"].startswith("swarm.ai_agent_defense")
+    assert record["status"] == "IMPLEMENTED"
     item = next(item for item in FUNCTIONALITY_MAP if item["requirement_id"] == "FW-AID")
-    assert item["state"] == "Defined"
-    assert item["unit_tests"] == "NOT_STARTED"
-    assert item["integration_tests"] == "NOT_STARTED"
+    assert item["state"] == "Proven"
+    assert item["unit_tests"] == "PASS"
+    assert item["integration_tests"] == "PASS"
 
 
 def test_telemetry_and_adversarial_scope_are_explicit_and_privacy_minimized():
