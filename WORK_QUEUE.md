@@ -1247,7 +1247,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-UX-004 — Governance assurance workspaces
 - Requirement: FW-UX governance differentiator workspaces
-- State: READY
+- State: DONE
 - Priority: P0
 - Dependencies: FW-UX-003, FW-EVID-006, FW-HARNESS-016
 - Approval: reusable read-only UI against labeled deterministic demo data is authorized; approvals, policy mutation, model activation, MCP mutation, and response remain unauthorized.
@@ -1263,6 +1263,27 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - all values come from the centralized deterministic provider, are validated and escaped, and remain visibly DEMO/SIMULATED; responsive and accessible presentation remains intact.
 - Expected validation: focused frontend/server tests, visual inspection, exact independent read-only review, then full suite/integrity once.
 - Security considerations: read-only demo projections cannot approve, connect, invoke, mutate policy, activate models, issue tickets, verify cryptography, or change Evidence.
+
+- Completion evidence: exact candidate 63b012bbde64d932a0216cf4dbb9483423881671; focused 31 pytest plus Node frontend contract passed; desktop visual inspection passed for Evidence, Policy and Action Ticket, Model Broker, and MCP Control; exact Claude review phase2a-3d0d3ea71394454b46958d86 APPROVE/LOW with no blockers or missing tests; full 1604 passed/1 skipped; Product Integrity fresh full 1604 passed/1 skipped with all hard checks and 27-test Golden Path passed, YELLOW only for the pre-existing tzdata dependency finding.
+
+### FW-UX-005 — Executive showcase and guided demonstration
+- Requirement: FW-UX executive product narrative
+- State: READY
+- Priority: P0
+- Dependencies: FW-UX-004
+- Approval: polished read-only Demo Mode presentation is authorized; live backend activation, mutation, and production claims remain unauthorized.
+- Description: Turn the existing Executive route into a customer-ready security posture view and add one deterministic guided demonstration path linking Mission Control, incident story, AI control, containment evidence, and recovery readiness.
+- Target path: console/index.html
+- Allowed paths: swarm/mission_control_demo.py, console/index.html, console/app.js, console/styles.css, tests/test_console.py, tests/test_console_frontend.js, docs/management-console.md, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_console.py tests/test_mission_control.py && node --test tests/test_console_frontend.js
+- Acceptance criteria:
+  - Executive view answers current protection, stopped activity, required attention, largest risk, AI control, and recovery readiness in plain language;
+  - a deterministic guided demo path exposes the approved DEMO-AI-RANSOM-001 narrative in presentation order without changing provider state;
+  - screenshots remain polished on desktop and tablet, navigation remains keyboard-accessible, and motion respects reduced-motion preferences;
+  - all claims remain centralized, validated, escaped, and visibly DEMO/SIMULATED with production backend disconnected;
+  - no mutation, approval, response, recovery execution, deployment, credential, network, or external asset authority is added.
+- Expected validation: focused frontend/server tests, desktop and tablet visual inspection, exact independent read-only review, then full suite/integrity once.
+- Security considerations: the guided narrative changes only local read-only view selection and cannot alter canonical state or perform actions.
 
 ### FW-REC-002 — Durable recovery checkpoint persistence and reconstruction
 - Requirement: FW-REC persistent recovery metadata
