@@ -61,3 +61,19 @@ def test_ai_endpoint_attribution_rejects_extra_fields_raw_content_and_invalid_sn
     value=attribution(); value["prompt"]="ignore policy"
     with pytest.raises(EndpointFixtureDenied,match="AI_ENDPOINT_FIELDS_INVALID"): validate_ai_endpoint_attribution(value)
     with pytest.raises(EndpointFixtureDenied,match="AI_ENDPOINT_SNAPSHOT_LIMIT_INVALID"): admitted_store().pending_ai_endpoint_attributions(tenant_id="tenant-a",device_id="device-a",limit=0)
+
+def test_ai_endpoint_attribution_enforces_evidence_and_snapshot_bounds():
+    too_many=attribution(evidence_references=[f"fw-evid/tenant-a/e-{i:02d}" for i in range(33)])
+    with pytest.raises(EndpointFixtureDenied,match="AI_ENDPOINT_EVIDENCE_INVALID"): validate_ai_endpoint_attribution(too_many)
+    store=admitted_store()
+    with pytest.raises(EndpointFixtureDenied,match="AI_ENDPOINT_SNAPSHOT_LIMIT_INVALID"): store.pending_ai_endpoint_attributions(tenant_id="tenant-a",device_id="device-a",limit=129)
+
+
+def test_ai_endpoint_attribution_queue_is_bounded_per_device(monkeypatch):
+    import swarm.normalized_events as normalized_events
+    monkeypatch.setattr(normalized_events, "MAX_AI_ATTRIBUTIONS_PER_DEVICE", 1)
+    store=NormalizedEventStore(lambda *_:None)
+    store.admit_batch([endpoint_fixture("event-1"),endpoint_fixture("event-2")],tenant_id="tenant-a",device_id="device-a",source="LINUX_SENSOR",now_epoch=150)
+    store.admit_ai_endpoint_attribution(attribution(endpoint_event_id="event-1"))
+    with pytest.raises(EndpointFixtureDenied,match="AI_ENDPOINT_QUEUE_FULL"):
+        store.admit_ai_endpoint_attribution(attribution(endpoint_event_id="event-2"))
