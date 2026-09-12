@@ -962,7 +962,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-COMP-002 — Canonical compliance mapping Evidence adapter
 - Requirement: FW-COMP lifecycle Evidence integration
-- State: READY
+- State: REVIEW
 - Priority: P0
 - Dependencies: FW-COMP-001 and FW-EVID-006
 - Approval: deterministic metadata-only Evidence admission is authorized; certification, external reporting, control execution, and compliance authority remain unauthorized.

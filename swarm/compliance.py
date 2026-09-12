@@ -2,9 +2,13 @@
 from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
+import hashlib
+import json
 import re
 from threading import RLock
 from typing import Any
+
+from .evidence import EvidenceContractError, EvidenceLedger, EvidenceRecord, validate_evidence_envelope
 
 class ComplianceContractError(ValueError): pass
 
@@ -57,3 +61,30 @@ class ControlMappingRegistry:
  def snapshot(self,tenant_id:str)->tuple[ControlMapping,...]:
   if tenant_id!=self.tenant_id: raise ComplianceContractError("mapping tenant mismatch")
   with self._lock: return tuple(self._records[key] for key in sorted(self._records))
+ def resolve_exact(self,mapping:ControlMapping)->ControlMapping:
+  if not isinstance(mapping,ControlMapping) or mapping.tenant_id!=self.tenant_id: raise ComplianceContractError("mapping tenant mismatch")
+  with self._lock:
+   registered=self._records.get(mapping.mapping_id)
+   if registered is None or registered != mapping: raise ComplianceContractError("mapping missing, stale, or substituted")
+   return registered
+
+def control_mapping_sha256(mapping:ControlMapping)->str:
+ """Digest every canonical mapping field without retaining its payload."""
+ if not isinstance(mapping,ControlMapping): raise ComplianceContractError("validated mapping required")
+ body={name:getattr(mapping,name) for name in mapping.__dataclass_fields__}
+ encoded=json.dumps(body,sort_keys=True,separators=(",",":"),ensure_ascii=True).encode("ascii")
+ return hashlib.sha256(encoded).hexdigest()
+
+class ComplianceEvidenceAdapter:
+ """Admit an exact registered mapping to the canonical FW-EVID ledger."""
+ def __init__(self,registry:ControlMappingRegistry,ledger:EvidenceLedger):
+  if not isinstance(registry,ControlMappingRegistry) or not isinstance(ledger,EvidenceLedger) or registry.tenant_id!=ledger.tenant_id: raise ComplianceContractError("matching canonical registry and Evidence ledger required")
+  self.registry=registry; self.ledger=ledger
+ def admit(self,mapping:ControlMapping,*,evidence_id:str,actor_ref:str,subject_ref:str,correlation_id:str|None=None,classification:str="INTERNAL")->EvidenceRecord:
+  exact=self.registry.resolve_exact(mapping)
+  records=self.ledger.tenant_snapshot(exact.tenant_id)
+  value={"schema_version":"1","evidence_id":evidence_id,"tenant_id":exact.tenant_id,"event_type":"compliance.mapping_admitted","actor_ref":actor_ref,"actor_tenant_id":exact.tenant_id,"subject_ref":subject_ref,"subject_tenant_id":exact.tenant_id,"occurred_at":exact.occurred_at,"classification":classification,"payload_schema_id":"fw-schema/compliance/control-mapping-v1","payload_sha256":control_mapping_sha256(exact),"previous_record_sha256":records[-1].record_sha256 if records else None,"correlation_id":correlation_id,"evidence_references":exact.evidence_references,"mode":"DRY_RUN","deployment":"DISABLED","authority_granted":False}
+  try: envelope=validate_evidence_envelope(value)
+  except EvidenceContractError as exc: raise ComplianceContractError("compliance Evidence envelope invalid") from exc
+  try: return self.ledger.append(envelope)
+  except EvidenceContractError as exc: raise ComplianceContractError("compliance Evidence admission failed") from exc

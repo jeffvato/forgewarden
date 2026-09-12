@@ -1,6 +1,7 @@
 from dataclasses import replace
 import pytest
 from swarm.compliance import *
+from swarm.evidence import EvidenceLedger
 
 def mapping(**kw):
  values=dict(schema_version="1",mapping_id="fw-comp/tenant-one/map-1",tenant_id="tenant-one",control_id="FW-CTRL-0001",requirement_ids=("FW-EVID-006","FW-REC-004"),owner="fw-evid",implementation_status="TESTED",evidence_references=("fw-evid/tenant-one/proof-1",),validation_state="SECURITY_REVIEWED",framework_references=("CIS-CONTROLS-8:8.2","NIST-CSF-2.0:GV.OV-01"),occurred_at="2026-09-11T02:00:00Z")
@@ -38,3 +39,45 @@ def test_cross_tenant_registration_fails_before_evidence():
  events=[]; registry=ControlMappingRegistry("tenant-one",events.append)
  with pytest.raises(ComplianceContractError,match="tenant"): registry.register(mapping(tenant_id="tenant-two",mapping_id="fw-comp/tenant-two/map-1",evidence_references=("fw-evid/tenant-two/proof",)))
  assert events==[]
+
+
+def registered_adapter(*,sink=None):
+ events=[]; registry=ControlMappingRegistry("tenant-one",events.append); item=registry.register(mapping()); writes=[]
+ ledger=EvidenceLedger("tenant-one",sink or (lambda envelope,digest:writes.append((envelope,digest))))
+ return item,registry,ledger,ComplianceEvidenceAdapter(registry,ledger),writes
+
+def test_adapter_admits_exact_mapping_to_canonical_evidence():
+ item,_,ledger,adapter,writes=registered_adapter()
+ record=adapter.admit(item,evidence_id="fw-evid/tenant-one/compliance-map-1",actor_ref="fw-id/compliance-controller",subject_ref="fw-resource/compliance-map-1",correlation_id="fw-corr/tenant-one/compliance-map-1")
+ assert record.envelope.payload_sha256==control_mapping_sha256(item)
+ assert record.envelope.evidence_references==item.evidence_references
+ assert record.envelope.payload_schema_id=="fw-schema/compliance/control-mapping-v1"
+ assert record.envelope.event_type=="compliance.mapping_admitted"
+ assert record.envelope.authority_granted is False and writes==[(record.envelope,record.record_sha256)]
+ assert ledger.tenant_snapshot("tenant-one")== (record,)
+
+def test_adapter_rejects_missing_stale_substituted_and_cross_tenant_mapping_before_evidence():
+ item,registry,_,adapter,writes=registered_adapter()
+ invalid=(replace(item,owner="other-owner"),mapping(mapping_id="fw-comp/tenant-one/missing"),mapping(tenant_id="tenant-two",mapping_id="fw-comp/tenant-two/map-1",evidence_references=("fw-evid/tenant-two/proof",)))
+ for candidate in invalid:
+  with pytest.raises(ComplianceContractError): adapter.admit(candidate,evidence_id="fw-evid/tenant-one/rejected",actor_ref="fw-id/controller",subject_ref="fw-resource/map")
+ assert writes==[] and registry.snapshot("tenant-one")== (item,)
+
+def test_adapter_replay_duplicate_and_stale_chain_fail_without_advancing():
+ item,_,ledger,adapter,_=registered_adapter()
+ first=adapter.admit(item,evidence_id="fw-evid/tenant-one/compliance-1",actor_ref="fw-id/controller",subject_ref="fw-resource/map")
+ with pytest.raises(ComplianceContractError,match="admission failed"): adapter.admit(item,evidence_id="fw-evid/tenant-one/compliance-1",actor_ref="fw-id/controller",subject_ref="fw-resource/map")
+ assert ledger.tenant_snapshot("tenant-one")== (first,)
+
+def test_adapter_durability_failure_leaves_ledger_unadvanced_and_retryable():
+ item,registry,ledger,adapter,_=registered_adapter(sink=lambda *_:(_ for _ in ()).throw(OSError("offline")))
+ with pytest.raises(ComplianceContractError,match="admission failed"): adapter.admit(item,evidence_id="fw-evid/tenant-one/compliance-1",actor_ref="fw-id/controller",subject_ref="fw-resource/map")
+ assert ledger.tenant_snapshot("tenant-one")==() and registry.snapshot("tenant-one")== (item,)
+ retry_writes=[]; retry=ComplianceEvidenceAdapter(registry,EvidenceLedger("tenant-one",lambda e,d:retry_writes.append((e,d))))
+ assert retry.admit(item,evidence_id="fw-evid/tenant-one/compliance-1",actor_ref="fw-id/controller",subject_ref="fw-resource/map").record_sha256
+
+def test_adapter_rejects_invalid_envelope_and_mismatched_owners():
+ item,registry,_,adapter,writes=registered_adapter()
+ with pytest.raises(ComplianceContractError,match="envelope invalid"): adapter.admit(item,evidence_id="fw-evid/tenant-two/wrong",actor_ref="fw-id/controller",subject_ref="fw-resource/map")
+ with pytest.raises(ComplianceContractError,match="matching canonical"): ComplianceEvidenceAdapter(registry,EvidenceLedger("tenant-two",lambda *_:None))
+ assert writes==[]

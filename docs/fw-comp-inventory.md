@@ -20,3 +20,14 @@ approvals, tests, implementation status, certification, or control execution.
 metadata. Supported initial reference namespaces are NIST CSF 2.0, NIST 800-53,
 and CIS Controls v8. `MAPPING_ONLY` is the sole claim status. A mapping cannot
 certify a tenant, execute a control, change policy, or grant authority.
+
+## Canonical Evidence admission
+
+`ComplianceEvidenceAdapter` resolves an exact create-once mapping from the
+canonical registry, hashes every mapping field, and admits only that digest and
+the mapping's bounded existing Evidence references to the canonical tenant
+`EvidenceLedger`. The ledger remains the sole durability, replay, and chain
+authority. Missing, substituted, cross-tenant, duplicate, stale-chain, invalid,
+and durability-failed admission fails closed without advancing mapping or
+Evidence state. Admission records that the mapping exists; it does not certify
+the control or authorize an operation.
