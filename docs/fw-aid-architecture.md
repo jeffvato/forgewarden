@@ -71,8 +71,9 @@ them; no placeholder successor loop is created.
 
 ## Canonical AI telemetry contract
 
-FW-AID-002 will extend the canonical event schema using references and
-classifications rather than raw content. The minimum logical fields are:
+FW-AID-002 extends the canonical event schema using references and
+classifications rather than raw content. `AIWorkloadSecurityEvent` and the
+`NormalizedEventStore` AI admission path implement this fixture-only boundary. The minimum logical fields are:
 
 - event ID, schema version, tenant, timestamp, source, data classification;
 - agent identity, model registry identity/provider/version, session identity,

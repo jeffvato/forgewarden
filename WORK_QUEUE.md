@@ -1024,7 +1024,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-AID-002 — Canonical AI workload security telemetry contract
 - Requirement: FW-AID privacy-minimized normalized telemetry
-- State: READY
+- State: REVIEW
 - Priority: P0
 - Dependencies: FW-AID-001, FW-ID, FW-KEYS, FW-EVID, FW-HARNESS-014
 - Approval: fixture-only normalized AI security event contracts and deterministic validation are authorized under D-025; live sensors, hooks, transport, containment, and response remain unauthorized.
