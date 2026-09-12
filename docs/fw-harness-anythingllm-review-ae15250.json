@@ -1,0 +1,29 @@
+{
+  "adjudication": null,
+  "candidate_commit": "ae15250432fc8e5368f8e23993602c0ce37e7873",
+  "deployment": "DISABLED",
+  "job_id": "phase2a-ae15250432fc8e5368f8e240",
+  "kill_switch": "ENGAGED",
+  "mutation_allowed": false,
+  "reviews": [
+    {
+      "provider": "ANYTHINGLLM",
+      "result": {
+        "blocking_findings": [],
+        "job_id": "phase2a-ae15250432fc8e5368f8e240",
+        "non_blocking_notes": [
+          "The boundary self-test uses hardcoded paths for WSL interop (e.g., /mnt/c/...), which may require adjustment if the test environment configuration changes, though the test correctly skips if the path is missing.",
+          "The PowerShell script logic for extracting firewall bindings is consistent with the previous logic but refactored into a testable function, improving maintainability."
+        ],
+        "proposed_rules": [],
+        "reasoning_summary": "The commit successfully addresses the previous review requirements. It introduces a shared PowerShell predicate `Test-AnythingLLMFirewallBoundary` that is used in the runtime validation logic. A new `-BoundarySelfTest` switch allows the script to execute specific boundary cases (valid, missing, disabled, wrong-executable) and fail if the predicate does not behave as expected. The Python test suite includes a new test that invokes the PowerShell script with this switch in a minimal environment, verifying that the boundary checks execute and pass. Additionally, the script now explicitly checks for the availability of the built-in DPAPI module at the fixed path and throws an error if it is unavailable, satisfying the fail-closed requirement. Secrets remain out of the output, and no deployment or authority is added. The changes are low risk and fully covered by the new tests.",
+        "reviewed_commit": "ae15250432fc8e5368f8e23993602c0ce37e7873",
+        "risk": "LOW",
+        "tests_missing": [],
+        "verdict": "APPROVE"
+      },
+      "state": "APPROVED"
+    }
+  ],
+  "state": "APPROVED"
+}

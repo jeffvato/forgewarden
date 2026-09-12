@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: FW-HARNESS-007 Azure Foundry API-key activation path accepted; live inference remains off pending operator-only secret injection.
-- Next task: bind the Azure API key only in the trusted local reviewer process, then run one bounded exact-commit Azure review with fresh credit evidence.
+- Current focus: AnythingLLM/Qwen exact-review bridge accepted with DPAPI secret isolation, executable-bound firewall attestation, bounded loopback discovery, and fail-closed behavioral proof.
+- Next task: no substantive READY item remains in the authorized queue; await a new bounded requirement while the heartbeat prevents replay. Azure live review remains separately disabled.
 - Harness role: permanent ForgeWarden Core subsystem and default controller for ForgeWarden's own development; one governed architecture serves both roles under D-023.
 - Worker transport direction: registered local CLIs and explicitly approved API-backed workers; API keys are resolved only through FW-KEYS secret handles inside trusted adapters and never enter model context or lifecycle evidence.
 - Provider authentication direction: deterministic OpenAI, Anthropic, and Google/Gemini profiles with provider-specific official OAuth where available and approved API-key classes otherwise; Gemini CLI is registered as `agy` for read-only roles, FW-ID owns delegated identity, and FW-KEYS owns all credential material.
@@ -16,9 +16,9 @@
 - Kill-switch policy: remains engaged where configured
 - Confirmed product response policy: warn for every finding; quarantine only high-confidence trusted-content detections behind deterministic policy; clean/repair only as ticketed, approved, recoverable Core remediation.
 - Codex role: sole application-code writer
-- Claude role: architecture/requirements/adversarial reviewer
+- Claude role: disabled for the active workflow unless Jeff explicitly re-enables it (D-026).
 - Gemini role: disabled for the active workflow; no longer a required reviewer (D-020).
-- AnythingLLM/Qwen role: authorized independent read-only reviewer using user-specified `qwen/qwen3.8-27b` (D-021); Windows local API and exact workspace slug `n8n` are verified. Groq input-token rate limits require fresh bounded review threads.
+- AnythingLLM/Qwen role: required independent read-only reviewer using user-specified `qwen/qwen3.8-27b` (D-026); Windows local API, workspace `n8n`, DPAPI credential boundary, and executable-bound firewall protection are verified. Groq limits require one fresh bounded review at a time.
 
 ## Resume protocol
 
@@ -29,7 +29,7 @@ On every restart or continuation:
 3. Reconcile this status file with actual repository evidence.
 4. If a task was interrupted, resume from the last provably valid checkpoint rather than restarting the project.
 5. Otherwise claim the highest-priority READY task whose dependencies are complete.
-6. Run the Codex → deterministic validation → independent exact-commit review → Codex repair/revalidation cycle. Prefer Claude Code and use the authorized AnythingLLM/Qwen fallback when Claude is unavailable. Require validated APPROVE/LOW with no blocking findings or missing tests; do not invoke Gemini.
+6. Run the Codex → deterministic validation → independent exact-commit review → Codex repair/revalidation cycle using required AnythingLLM/Qwen under D-026. Require validated APPROVE/LOW with no blocking findings or missing tests; do not invoke Claude or Gemini unless Jeff explicitly re-enables them.
 7. After acceptance, checkpoint and immediately continue to the next READY task.
 
 ## Work-unit checkpoint
@@ -46,6 +46,7 @@ On every restart or continuation:
 
 ## Execution log
 
+- 2026-09-12: The required AnythingLLM/Qwen exact-review path is accepted at candidate `ae15250432fc8e5368f8e23993602c0ce37e7873`. The Windows bridge keeps the developer API key in current-user DPAPI storage, discovers only the exact installed AnythingLLM process, accepts a wildcard listener only with the enabled inbound-block firewall rule bound to that executable, and uses one bounded workspace request. Executed boundary cases deny missing, disabled, and wrong-executable rules. Focused 97 passed; exact Qwen job `phase2a-ae15250432fc8e5368f8e240` returned APPROVE/LOW with no blockers or missing tests; full 1614 passed/1 skipped; Product Integrity fresh full also passed 1614/1 with all hard checks and Golden Path, YELLOW only for pre-existing `tzdata`. Evidence: `docs/fw-harness-anythingllm-review-ae15250.json`. DRY_RUN, disabled deployment, and engaged kill switch remain unchanged. No substantive READY queue item remains.
 - 2026-09-12: FW-UX-005 accepted at c662398c169ac3bbc8a94833ec9257a6b5853c30. The Executive view now answers protection, stopped activity, attention, largest risk, AI control, and recovery readiness in plain language, with a deterministic six-step guided DEMO-AI-RANSOM-001 presentation path. Navigation remains view-only, keyboard accessible, reduced-motion aware, and visibly demo-bound. Focused 31 pytest plus Node contract passed; desktop and responsive visual inspection passed; exact Claude APPROVE/LOW with no blockers/missing tests; full and Product Integrity fresh full each passed 1604/1 with all hard checks and 27-test Golden Path, YELLOW only for pre-existing tzdata. The authorized Core-family and initial showcase sequences have no remaining READY item.
 - 2026-09-12: FW-UX-004 accepted at 63b012bbde64d932a0216cf4dbb9483423881671. Mission Control now has polished read-only Evidence Vault, deterministic Policy and Action Ticket, Model Broker, and MCP Control workspaces over the centralized demo provider. All hashes, signatures, actions, connections, and provider state remain visibly simulated or non-executed. Focused 31 pytest plus Node contract passed; desktop visual inspection passed; exact Claude APPROVE/LOW with no blockers/missing tests; full and Product Integrity fresh full each passed 1604/1 with all hard checks and 27-test Golden Path, YELLOW only for pre-existing tzdata. FW-UX-005 is next.
 - 2026-09-12: FW-UX-003 accepted at 038de2b019b2c5a07c33f35d1ca1e4d41dfa1f53. Mission Control now has polished, read-only AI Intrusion Defense and Harness assurance workspaces over the centralized deterministic demo provider, with agent chronology, policy denials, scoped authority, routing rationale, budgets, validation, exact artifact, reviewer, and escalation state. All control, Evidence, containment, and review claims remain visibly simulated/proposal-only. Focused 31 pytest plus Node contract passed; desktop visual inspection passed; exact Claude APPROVE/LOW with no blockers/missing tests; full and Product Integrity fresh full each passed 1604/1 with all hard checks and Golden Path, YELLOW only for pre-existing tzdata. FW-UX-004 is next.
