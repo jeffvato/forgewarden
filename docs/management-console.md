@@ -54,3 +54,17 @@ revocation, isolation, execution, policy, or kill-switch callback.
 ## Incident detail and unified attack story
 
 The deterministic demo provider supplies one reusable incident contract containing affected entities, detections, cross-domain chronology, simulated response actions, recovery posture, Action Ticket reference, and Evidence preview. The incident route renders that contract as a coherent investigation view and repeats the DEMO/SIMULATED and not-cryptographically-verified boundaries. It remains read-only and backend-disconnected.
+
+
+### FW-UX-003 assurance workspaces
+
+The Demo Mode AI Intrusion Defense route presents a single protected agent, deterministic risk score, scoped identity/task/session/lease bindings, approved tools, MCP denial, policy-only containment proposal, related incident, Evidence references, and a chronological allowed-to-denied attack narrative. All values come from the centralized `DEMO-AI-RANSOM-001` provider and remain explicitly simulated.
+
+The AI Harness route explains the same incident through the governed execution lifecycle: requesting FW-ID and tenant, deterministic T3 routing rationale, Approved Model Registry result, narrow lease and tools, calls/token/time/diff budgets, validation, independent read-only review, exact demo artifact, and policy-controlled escalation. These views expose no mutation callback. They do not invoke a model, monitor a live agent, execute containment, verify cryptography, or connect to a production backend.
+
+
+## FW-UX-003 assurance workspaces
+
+The AI Intrusion Defense and AI Harness routes consume the same deterministic DEMO-AI-RANSOM-001 provider as Mission Control. The AI Defense workspace explains agent identity, scoped authority, tool and MCP context, anomaly chronology, policy denials, proposal-only containment, related incident, and Evidence references. The Harness workspace explains deterministic risk and model routing, requester and tenant binding, bounded lease, tools, capabilities, resource budgets, validation, independent review, exact demo artifact, and escalation history.
+
+Both routes are read-only product projections. Every value is simulated and visibly labeled; no live model, telemetry, approval, containment, recovery, deployment, network, credential, or response integration is present.

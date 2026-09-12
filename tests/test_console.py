@@ -31,6 +31,12 @@ class ConsoleTests(unittest.TestCase):
         self.assertIn("SIMULATED", first["evidence"]["chain_status"])
         self.assertEqual(len(first["incident"]["detections"]), 3)
         self.assertEqual(first["incident"]["recovery"]["execution"], "NOT EXECUTED")
+        self.assertEqual(first["ai_security"]["agent"]["authority"], "BOUNDED / REVOKED")
+        self.assertEqual(first["ai_security"]["agent"]["proposal"], "REVOKE_LEASE / PROPOSE_ONLY")
+        self.assertEqual(len(first["ai_security"]["timeline"]), 6)
+        self.assertEqual(first["harness"]["risk_tier"], "T3")
+        self.assertEqual(first["harness"]["budget"]["calls"], "2 / 3")
+        self.assertIn("Independent", first["harness"]["reviewer"])
         self.assertTrue(all("T" in item for item in first["incident"]["mitre"]))
         first["assets"][0]["value"] = 0
         self.assertEqual(second["assets"][0]["value"], 1204)
