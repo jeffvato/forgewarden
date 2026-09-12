@@ -1,0 +1,31 @@
+{
+  "adjudication": null,
+  "candidate_commit": "976203f9366c75d2864837cfbdbde1a38cbd4656",
+  "deployment": "DISABLED",
+  "job_id": "phase2a-976203f9366c75d2864837cf",
+  "kill_switch": "ENGAGED",
+  "mutation_allowed": false,
+  "reviews": [
+    {
+      "provider": "ANYTHINGLLM",
+      "result": {
+        "blocking_findings": [],
+        "job_id": "phase2a-976203f9366c75d2864837cf",
+        "non_blocking_notes": [
+          "The rendering logic correctly prioritizes Core safety status over Demo safety status when Core is valid, ensuring the 'safety strip' reflects live constraints while retaining Demo scenario data.",
+          "Graceful degradation is implemented correctly: if /api/status fails or validation fails, coreResult becomes null, and the UI labels the state 'LOCAL CORE UNAVAILABLE' while continuing to render the validated Demo scenario.",
+          "The review runner modification ensures AnythingLLM receives the inline patch even if it exceeds the 24KB threshold that would normally trigger file-mode for other providers, which is necessary because AnythingLLM is API-only and cannot use the file viewer. This logic is sound and tested.",
+          "The validation for Core status is strict, requiring DRY_RUN, DISABLED deployment, and ENGAGED kill switch for both safety and workflow objects, which aligns with the security requirements."
+        ],
+        "proposed_rules": [],
+        "reasoning_summary": "The patch correctly integrates the local Core status into the Mission Control frontend while maintaining strict separation from the Demo scenario data. The frontend client now fetches both /api/mission-control and /api/status in parallel. It independently validates the Core status against a strict safety contract (DRY_RUN, deployment DISABLED, kill switch ENGAGED, read-only workflow). If the Core status is missing, malformed, or unsafe, it is discarded (set to null), and the UI displays 'LOCAL CORE UNAVAILABLE' while still rendering the valid Demo scenario. If the Demo scenario fails validation, the entire snapshot is rejected. The rendering logic correctly uses the Core safety fields if available, falling back to Demo fields otherwise. The review runner is updated to force inline patch context for AnythingLLM, preventing it from falling back to a file-based mode it cannot access. Tests are comprehensive, covering validation failures for both providers, graceful degradation, and the specific review runner behavior for AnythingLLM. All 44 Python tests and the Node frontend contract passed. No security boundaries are violated, and no new authority or mutation capabilities are introduced.",
+        "reviewed_commit": "976203f9366c75d2864837cfbdbde1a38cbd4656",
+        "risk": "LOW",
+        "tests_missing": [],
+        "verdict": "APPROVE"
+      },
+      "state": "APPROVED"
+    }
+  ],
+  "state": "APPROVED"
+}

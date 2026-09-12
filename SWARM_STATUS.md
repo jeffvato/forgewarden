@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: AnythingLLM/Qwen exact-review bridge accepted with DPAPI secret isolation, executable-bound firewall attestation, bounded loopback discovery, and fail-closed behavioral proof.
-- Next task: no substantive READY item remains in the authorized queue; await a new bounded requirement while the heartbeat prevents replay. Azure live review remains separately disabled.
+- Current focus: FW-UX-006 accepted; Mission Control now consumes canonical local Core safety/workflow status while retaining explicitly separate Demo scenario data.
+- Next task: FW-UX-007 canonical Harness activity provider.
 - Harness role: permanent ForgeWarden Core subsystem and default controller for ForgeWarden's own development; one governed architecture serves both roles under D-023.
 - Worker transport direction: registered local CLIs and explicitly approved API-backed workers; API keys are resolved only through FW-KEYS secret handles inside trusted adapters and never enter model context or lifecycle evidence.
 - Provider authentication direction: deterministic OpenAI, Anthropic, and Google/Gemini profiles with provider-specific official OAuth where available and approved API-key classes otherwise; Gemini CLI is registered as `agy` for read-only roles, FW-ID owns delegated identity, and FW-KEYS owns all credential material.
@@ -34,18 +34,18 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-HARNESS-007 Azure API-key activation extension
-- Starting commit: 95e2ccf051d4f4c81ce3dc570ffe7f24e8d220af
-- Candidate commit: 3878830bba4259dad5e8415a5b88110961dc67dc
-- Files changed: Azure credential resolver, trusted reviewer selection, focused regression test, and activation documentation
-- Deterministic validation: focused 23 passed; full 1605 passed/1 skipped; integrity hard checks and 4 Golden Paths pass
-- Independent review: exact Claude APPROVE/LOW with no blockers or missing tests (phase2a-1234567890abcdefghijklmn)
-- Integrity finding: YELLOW only for the pre-existing missing tzdata dependency
-- Azure credit evidence: operator verified USD 941 remaining through 2026-10-31 with spending protection enabled
-- Safety state: DRY_RUN; deployment disabled; kill switch engaged; no Azure inference call made
+- Task ID: FW-UX-006 Local Core status provider integration
+- Starting commit: 7420b646d918f55000ea242210ab85d6160f54eb
+- Candidate commit: 976203f9366c75d2864837cfbdbde1a38cbd4656
+- Files changed: Mission Control dual-source client, exact-patch reviewer delivery, frontend/reviewer regressions, queue and console documentation
+- Deterministic validation: focused 44 Python tests plus Node contract passed; full 1615 passed/1 skipped; Product Integrity fresh full 1615 passed/1 skipped with all hard checks and Golden Path passing
+- Independent review: exact AnythingLLM/Qwen APPROVE/LOW with no blockers or missing tests (`phase2a-976203f9366c75d2864837cf`)
+- Integrity finding: YELLOW only for the pre-existing missing `tzdata` dependency
+- Safety state: canonical local status remains DRY_RUN, deployment disabled, kill switch engaged, and read-only; scenario data remains DEMO
 
 ## Execution log
 
+- 2026-09-12: FW-UX-006 accepted at `976203f9366c75d2864837cfbdbde1a38cbd4656`. Mission Control independently validates the existing loopback Core status and centralized Demo Provider, displays canonical safety state when valid, and clearly labels unavailable Core state while retaining the simulated scenario. The exact-review runner now supplies bounded inline patches to API-only AnythingLLM and preserves snapshot mode for file-capable reviewers. Focused 44 Python tests plus Node contract passed; exact Qwen APPROVE/LOW with no blockers/missing tests; full and Product Integrity fresh full each passed 1615/1 with all hard checks and Golden Path passing, YELLOW only for pre-existing `tzdata`. FW-UX-007 is next.
 - 2026-09-12: The required AnythingLLM/Qwen exact-review path is accepted at candidate `ae15250432fc8e5368f8e23993602c0ce37e7873`. The Windows bridge keeps the developer API key in current-user DPAPI storage, discovers only the exact installed AnythingLLM process, accepts a wildcard listener only with the enabled inbound-block firewall rule bound to that executable, and uses one bounded workspace request. Executed boundary cases deny missing, disabled, and wrong-executable rules. Focused 97 passed; exact Qwen job `phase2a-ae15250432fc8e5368f8e240` returned APPROVE/LOW with no blockers or missing tests; full 1614 passed/1 skipped; Product Integrity fresh full also passed 1614/1 with all hard checks and Golden Path, YELLOW only for pre-existing `tzdata`. Evidence: `docs/fw-harness-anythingllm-review-ae15250.json`. DRY_RUN, disabled deployment, and engaged kill switch remain unchanged. No substantive READY queue item remains.
 - 2026-09-12: FW-UX-005 accepted at c662398c169ac3bbc8a94833ec9257a6b5853c30. The Executive view now answers protection, stopped activity, attention, largest risk, AI control, and recovery readiness in plain language, with a deterministic six-step guided DEMO-AI-RANSOM-001 presentation path. Navigation remains view-only, keyboard accessible, reduced-motion aware, and visibly demo-bound. Focused 31 pytest plus Node contract passed; desktop and responsive visual inspection passed; exact Claude APPROVE/LOW with no blockers/missing tests; full and Product Integrity fresh full each passed 1604/1 with all hard checks and 27-test Golden Path, YELLOW only for pre-existing tzdata. The authorized Core-family and initial showcase sequences have no remaining READY item.
 - 2026-09-12: FW-UX-004 accepted at 63b012bbde64d932a0216cf4dbb9483423881671. Mission Control now has polished read-only Evidence Vault, deterministic Policy and Action Ticket, Model Broker, and MCP Control workspaces over the centralized demo provider. All hashes, signatures, actions, connections, and provider state remain visibly simulated or non-executed. Focused 31 pytest plus Node contract passed; desktop visual inspection passed; exact Claude APPROVE/LOW with no blockers/missing tests; full and Product Integrity fresh full each passed 1604/1 with all hard checks and 27-test Golden Path, YELLOW only for pre-existing tzdata. FW-UX-005 is next.

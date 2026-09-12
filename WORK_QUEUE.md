@@ -1290,7 +1290,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-UX-006 — Local Core status provider integration
 - Requirement: Mission Control incremental backend integration
-- State: REVIEW
+- State: DONE
 - Priority: P0
 - Dependencies: FW-UX-005 and FW-HARNESS-017
 - Approval: Jeff explicitly authorized Mission Control backend integration; this unit consumes an existing local read-only endpoint and adds no new transport or authority.
@@ -1306,6 +1306,27 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no remote API, authentication, mutation callback, model invocation, containment, recovery execution, credential access, or deployment authority is added.
 - Expected validation: focused frontend/server tests, exact AnythingLLM/Qwen read-only review, then full suite/integrity once after approval.
 - Security considerations: canonical and simulated providers remain separate validated inputs; live safety facts cannot weaken the existing DEMO labels or authorize action.
+
+- Completion evidence: repaired exact candidate `976203f9366c75d2864837cfbdbde1a38cbd4656`; focused 44 Python tests plus Node frontend contract passed; exact AnythingLLM/Qwen job `phase2a-976203f9366c75d2864837cf` returned APPROVE/LOW with no blockers or missing tests; full 1615 passed/1 skipped; Product Integrity fresh full 1615 passed/1 skipped with all hard checks and Golden Path passing, YELLOW only for pre-existing `tzdata`. Evidence: `docs/fw-ux-006-qwen-review.json`.
+
+### FW-UX-007 — Canonical Harness activity provider
+- Requirement: Mission Control incremental backend integration
+- State: READY
+- Priority: P0
+- Dependencies: FW-UX-006 and FW-HARNESS-017
+- Approval: Jeff authorized Mission Control backend integration; this unit may expose existing sanitized local read-only Harness activity only.
+- Description: Add one bounded canonical provider that translates existing validated Harness task, queue, validation, review, commit, and budget facts into the existing Mission Control read-only projection and exposes honest unavailable/empty states without replacing the Demo Provider.
+- Target path: swarm/console.py
+- Allowed paths: swarm/console.py, swarm/mission_control.py, console/app.js, console/index.html, tests/test_console.py, tests/test_mission_control.py, tests/test_console_frontend.js, docs/management-console.md, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_console.py tests/test_mission_control.py tests/test_harness_controller.py && node --test tests/test_console_frontend.js
+- Acceptance criteria:
+  - the provider consumes existing canonical Harness projections or validated persisted facts rather than inventing a second task schema;
+  - output is bounded, tenant-scoped, secret-filtered, read-only, and explicitly labeled CANONICAL, UNAVAILABLE, or EMPTY;
+  - exact current task, phase, queue, dependency, validation, reviewer, budget, retry, commit, next-task, deployment, and kill-switch state are preserved when available;
+  - missing, corrupt, stale, cross-tenant, secret-bearing, or unsafe state fails closed without contaminating the Demo Provider;
+  - no task mutation, scheduling, Git, review, model invocation, credential, network, approval, response, recovery execution, or deployment authority is added.
+- Expected validation: focused provider/frontend tests, exact AnythingLLM/Qwen review, then full suite/integrity once after approval.
+- Security considerations: Mission Control consumes sanitized canonical Harness state as untrusted read-only input and receives no controller callbacks.
 
 ### FW-REC-002 — Durable recovery checkpoint persistence and reconstruction
 - Requirement: FW-REC persistent recovery metadata
