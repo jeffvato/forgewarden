@@ -1003,7 +1003,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-COMP-004 — Integrated compliance mapping and assessment lifecycle proof
 - Requirement: FW-COMP integrated lifecycle proof
-- State: REVIEW
+- State: DONE
 - Priority: P0
 - Dependencies: FW-COMP-003
 - Approval: deterministic metadata-only lifecycle composition and honest integrity status are authorized; certification, external reporting, control execution, and compliance authority remain unauthorized.
@@ -1019,6 +1019,26 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no certification, external submission, credential, network, deployment, remediation, recovery, containment, filesystem/process, or response authority is added.
 - Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
 - Security considerations: lifecycle proof establishes deterministic metadata integrity only; it is not a compliance certification or control effectiveness attestation.
+
+- Completion evidence: exact candidate `602507c85dd075c0444c3a1f26e3d22363c5034d`; focused 97 passed; exact Claude review `phase2a-602507c85dd075c0444c3a1f` returned APPROVE/LOW with no blockers or missing tests; full 1495 passed/1 skipped; Product Integrity fresh full 1495 passed/1 skipped, all hard checks and 4 Golden Paths passed with YELLOW only for the pre-existing `tzdata` dependency and Defined FW-AID owner. Product Integrity now reports FW-COMP Proven within its explicit local metadata-only DRY_RUN boundary.
+
+### FW-AID-002 — Canonical AI workload security telemetry contract
+- Requirement: FW-AID privacy-minimized normalized telemetry
+- State: READY
+- Priority: P0
+- Dependencies: FW-AID-001, FW-ID, FW-KEYS, FW-EVID, FW-HARNESS-014
+- Approval: fixture-only normalized AI security event contracts and deterministic validation are authorized under D-025; live sensors, hooks, transport, containment, and response remain unauthorized.
+- Description: Extend the canonical normalized-event boundary with a bounded tenant/agent/model/task/capability/tool/MCP/resource/policy telemetry contract for AI workloads, retaining identifiers, hashes, classifications, and denials while excluding prompts, secrets, raw content, credentials, and unrestricted command data.
+- Target path: swarm/normalized_events.py
+- Allowed paths: swarm/normalized_events.py, tests/test_normalized_events.py, tests/test_fw_aid.py, docs/fw-aid-architecture.md, docs/fw-endpoint-sensor-contract.md, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_normalized_events.py tests/test_fw_aid.py
+- Acceptance criteria:
+  - canonical event binds tenant, agent/model/session/task identities, declared purpose hash, capability lease and Action Ticket references, tool/MCP/resource category, decision, anomaly indicators, event time, and bounded Evidence references;
+  - unknown fields, raw prompts/content/commands, secret-bearing values, cross-tenant references, unapproved event classes, malformed hashes, oversized collections, duplicates, and replay fail closed;
+  - the existing NormalizedEventStore remains the sole normalized-event owner and admits AI workload events without adding a parallel telemetry store;
+  - no live collection, authentication, credential access, network/process/filesystem hook, containment, quarantine, remediation, recovery execution, deployment, or response authority is added.
+- Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
+- Security considerations: telemetry is untrusted fixture input and descriptive evidence; it cannot grant capability or trigger an action by itself.
 
 ### FW-REC-002 — Durable recovery checkpoint persistence and reconstruction
 - Requirement: FW-REC persistent recovery metadata
