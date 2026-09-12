@@ -52,6 +52,10 @@ class AnythingLLMReviewer:
         bridge = Path(__file__).resolve().parents[1] / "scripts" / "anythingllm-review-bridge.ps1"
         if not bridge.is_file() or bridge.is_symlink():
             raise AnythingLLMError("AnythingLLM trusted bridge is unavailable")
+        parts = bridge.resolve().parts
+        if len(parts) < 4 or parts[:3] != ("/", "mnt", "c"):
+            raise AnythingLLMError("AnythingLLM bridge must reside on the trusted Windows volume")
+        windows_bridge = "C:\\" + "\\".join(parts[3:])
         request = (
             f"You are an independent read-only code reviewer using configured model {self.config.model}. "
             f"Review only Phase 2A job {job_id} and exact commit {commit}. "
@@ -63,7 +67,7 @@ class AnythingLLMReviewer:
         env = {"SystemRoot": os.environ.get("SystemRoot", r"C:\\Windows"), "WINDIR": os.environ.get("WINDIR", r"C:\\Windows")}
         completed = self._runner(
             ["powershell.exe", "-NoLogo", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
-             "-File", str(bridge), "-Workspace", self.config.workspace, "-SessionId", job_id],
+             "-File", windows_bridge, "-Workspace", self.config.workspace, "-SessionId", job_id],
             input=request, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=self.config.timeout_seconds,
             check=False, env=env,
         )
