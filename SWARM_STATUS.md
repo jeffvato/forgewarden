@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: FW-UX-001 Mission Control showcase foundation accepted
-- Next task: encode the project-wide machine-readable invariants and architecture-drift checks through existing FW-ROOT/FW-INTEGRITY owners; FW-REC-003 remains queued behind that bounded Core control milestone.
+- Current focus: FW-INTEGRITY-001 machine-readable Core invariants and ownership drift gate accepted
+- Next task: FW-REC-003 deterministic interruption and resume admission.
 - Harness role: permanent ForgeWarden Core subsystem and default controller for ForgeWarden's own development; one governed architecture serves both roles under D-023.
 - Worker transport direction: registered local CLIs and explicitly approved API-backed workers; API keys are resolved only through FW-KEYS secret handles inside trusted adapters and never enter model context or lifecycle evidence.
 - Provider authentication direction: deterministic OpenAI, Anthropic, and Google/Gemini profiles with provider-specific official OAuth where available and approved API-key classes otherwise; Gemini CLI is registered as `agy` for read-only roles, FW-ID owns delegated identity, and FW-KEYS owns all credential material.
@@ -34,17 +34,17 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-UX-001
-- Starting commit: 6829e3bc38acdb16d15996916a8f201b093b707f
-- Candidate commit: d68b457590986e29d3403d935480a0c4ae8559ad
-- Accepted commit: d68b457590986e29d3403d935480a0c4ae8559ad
-- Files changed: deterministic demo provider, read-only Mission Control endpoint, dependency-free showcase shell/views, provider validation, and Python/JavaScript boundary tests
-- Deterministic validation: focused 26 passed; desktop visual inspection passed; full 1423 passed/1 skipped; integrity fresh full 1423 passed/1 skipped, hard checks and 4 Golden Paths pass with YELLOW only for the pre-existing dependency and Defined FW-COMP/FW-AID owners
-- Independent review: exact Claude APPROVE/LOW with no blockers or missing tests (`phase2a-68b457590986e29d3403d935`)
+- Task ID: FW-INTEGRITY-001
+- Starting commit: 678a8d4ef721edcc1c18dd64df704d69757e644a
+- Candidate commit: ace85ab00d187b4836826ad6a3ce8c532b209a6d
+- Accepted commit: ace85ab00d187b4836826ad6a3ce8c532b209a6d
+- Files changed: immutable Core invariant manifest, canonical ownership drift validation, Product Integrity integration, and malformed/duplicate boundary tests
+- Deterministic validation: focused 36 passed; full 1431 passed/1 skipped; integrity fresh full 1431 passed/1 skipped, invariant and ownership checks plus 4 Golden Paths pass with YELLOW only for the pre-existing dependency and Defined FW-COMP/FW-AID owners
+- Independent review: exact Claude APPROVE/LOW with no blockers or missing tests (`phase2a-ace85ab00d187b4836826ad6`)
 - Gemini review: disabled and not required under D-020
-- Unresolved findings: machine-readable invariant manifest and architecture-drift checks remain the next bounded Core control; demo containment and cryptographic verification remain explicitly non-operational
+- Unresolved findings: broader import/path architecture drift scanning remains incremental; demo containment and cryptographic verification remain explicitly non-operational
 - Blocker: none
-- Next action: implement the canonical invariant manifest and deterministic architecture-drift validation without creating another policy language.
+- Next action: implement FW-REC-003 deterministic interruption and resume admission without recovery execution authority.
 
 - Completion inventory: `docs/completion-audit-2026-09-09.md` (baseline `0afcbdd`).
 - FWQ-0008 implementation and binding hardening exist; VALIDATED retains a historical provenance caveat, not an implementation assignment. FWQ-0009 is recorded accepted and unchanged at source/test level from its reviewed candidate.

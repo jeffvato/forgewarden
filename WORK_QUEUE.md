@@ -861,7 +861,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-INTEGRITY-001 — Machine-readable Core invariants and ownership drift gate
 - Requirement: FW-INTEGRITY invariant enforcement and architecture drift prevention
-- State: IMPLEMENTING
+- State: DONE
 - Priority: P0
 - Dependencies: FW-HARNESS-017 and FW-UX-001
 - Approval: deterministic metadata and validation inside existing FW-ROOT/FW-INTEGRITY owners are authorized; no new policy language or authority is added.
@@ -877,6 +877,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no model, tool, Git, credential, network, deployment, containment, recovery, or response authority is added.
 - Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
 - Security considerations: this milestone makes existing rules machine-consumable; domain controls remain the enforcement owners.
+- Completion evidence: exact candidate `ace85ab00d187b4836826ad6a3ce8c532b209a6d`; focused 36 passed after adding every malformed invariant/ownership boundary requested by the prior review; exact Claude review `phase2a-ace85ab00d187b4836826ad6` returned APPROVE/LOW with no blockers or missing tests; full 1431 passed/1 skipped; Product Integrity fresh full 1431 passed/1 skipped, invariant and canonical-ownership checks plus 4 Golden Paths passed, with YELLOW only for the pre-existing `tzdata` dependency and Defined FW-COMP/FW-AID owners.
 
 ### FW-UX-001 — Mission Control showcase foundation
 - Requirement: FW-UX Mission Control and honest Demo Mode
