@@ -1,0 +1,30 @@
+{
+  "state": "APPROVED",
+  "candidate_commit": "3878830bba4259dad5e8415a5b88110961dc67dc",
+  "job_id": "phase2a-1234567890abcdefghijklmn",
+  "mutation_allowed": false,
+  "deployment": "DISABLED",
+  "kill_switch": "ENGAGED",
+  "reviews": [
+    {
+      "provider": "CLAUDE",
+      "state": "APPROVED",
+      "result": {
+        "job_id": "phase2a-1234567890abcdefghijklmn",
+        "reviewed_commit": "3878830bba4259dad5e8415a5b88110961dc67dc",
+        "verdict": "APPROVE",
+        "risk": "LOW",
+        "blocking_findings": [],
+        "non_blocking_notes": [
+          "API key validation is conservative and does not disclose secret material in errors.",
+          "Entra remains the default; API-key mode requires explicit operator configuration.",
+          "Credit guard and exact-commit validation remain intact."
+        ],
+        "tests_missing": [],
+        "reasoning_summary": "Opt-in environment-only API-key resolution preserves the existing read-only, fail-closed Azure reviewer boundary.",
+        "proposed_rules": []
+      }
+    }
+  ],
+  "adjudication": null
+}

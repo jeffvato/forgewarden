@@ -101,6 +101,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 - Security considerations: no live call occurs until interactive Entra login, exact deployment discovery, and credit protection verification complete.
 - Blocking reason: the cached Azure CLI identity is present, but Entra security defaults require an interactive management-scope login before resource/deployment and credit-protection evidence can be inspected without keys.
 - Completion evidence: exact candidate `05843269712abd1952a90c1f1aac96c2b3209eaf`; focused 29 passed; Claude APPROVE/LOW with no blockers/missing tests; combined full 968 passed/1 skipped and integrity hard checks/4 Golden Paths pass with unchanged YELLOW findings. Live Azure activation remains safely disabled pending interactive Entra login and credit/deployment verification. Evidence: `docs/fw-harness-007-claude-review.json`, `docs/fw-harness-004-007-integrity.json`.
+- API-key activation extension: exact candidate `3878830bba4259dad5e8415a5b88110961dc67dc`; explicit environment-only API-key selection added while Entra remains default. Focused 23 passed; Claude exact APPROVE/LOW; full 1605 passed/1 skipped; integrity hard checks and 4 Golden Paths pass with only the pre-existing `tzdata` YELLOW. Operator verified USD 941 startup credits through 2026-10-31 and spending protection. No live inference call occurred. Evidence: `docs/fw-harness-007-api-key-claude-review.json`.
 
 ### FWQ-0078 — Integrated governed harness lifecycle proof
 - Requirement: FW-HARNESS-013 initial permanent harness integration

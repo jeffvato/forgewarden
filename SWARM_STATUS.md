@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: FW-UX-005 executive showcase and guided demonstration accepted
-- Next task: none eligible; the explicitly authorized Core-family and initial Mission Control showcase sequences are complete.
+- Current focus: FW-HARNESS-007 Azure Foundry API-key activation path accepted; live inference remains off pending operator-only secret injection.
+- Next task: bind the Azure API key only in the trusted local reviewer process, then run one bounded exact-commit Azure review with fresh credit evidence.
 - Harness role: permanent ForgeWarden Core subsystem and default controller for ForgeWarden's own development; one governed architecture serves both roles under D-023.
 - Worker transport direction: registered local CLIs and explicitly approved API-backed workers; API keys are resolved only through FW-KEYS secret handles inside trusted adapters and never enter model context or lifecycle evidence.
 - Provider authentication direction: deterministic OpenAI, Anthropic, and Google/Gemini profiles with provider-specific official OAuth where available and approved API-key classes otherwise; Gemini CLI is registered as `agy` for read-only roles, FW-ID owns delegated identity, and FW-KEYS owns all credential material.
@@ -34,24 +34,15 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-UX-002
-- Starting commit: cd55eeb782238d5a59cb65f5cf4b72f42d0c36a5
-- Candidate commit: de39e59393ef014a56413958bf4ce8dadbb68e68
-- Accepted commit: de39e59393ef014a56413958bf4ce8dadbb68e68
-- Files changed: centralized incident demo contract, polished incident detail/attack story, responsive styling, escaped rendering tests, and documentation
-- Deterministic validation: focused 31 pytest plus Node frontend test passed; desktop and tablet visual checks passed; full 1604 passed/1 skipped; integrity fresh full 1604 passed/1 skipped, all hard checks and 4 Golden Paths pass with YELLOW only for the pre-existing dependency finding
-- Independent review: exact Claude APPROVE/LOW with no blockers or missing tests (`phase2a-de39e59393ef014a56413958`)
-- Gemini review: disabled and not required under D-020
-- Unresolved findings: provider remains deterministic DEMO data and no production backend or response authority exists
-- Blocker: none
-- Next action: implement FW-UX-003 AI Defense and Harness assurance workspaces over the same provider.
-
-- Completion inventory: `docs/completion-audit-2026-09-09.md` (baseline `0afcbdd`).
-- FWQ-0008 implementation and binding hardening exist; VALIDATED retains a historical provenance caveat, not an implementation assignment. FWQ-0009 is recorded accepted and unchanged at source/test level from its reviewed candidate.
-- FWQ-0012–0016 stale READY labels are reconciled DONE; FWQ-0017/0018 and retired successor placeholders must not be repeated.
-- ASOC-01/02, offline signed/ClamAV/YARA controls, Windows/Linux fixtures through recovery replay, Android batches, and dry-run quarantine/recovery milestones already exist with recorded proof.
-- Completed follow-up work: FWQ-0063 enforces D-020; FWQ-0064 fixes snapshot lifetime. Both have preserved exact Claude review and full validation.
-- Latest broad Core closure: FWQ-0064, 833 passed/1 skipped, all hard checks/Golden Path passing, YELLOW pre-existing findings.
+- Task ID: FW-HARNESS-007 Azure API-key activation extension
+- Starting commit: 95e2ccf051d4f4c81ce3dc570ffe7f24e8d220af
+- Candidate commit: 3878830bba4259dad5e8415a5b88110961dc67dc
+- Files changed: Azure credential resolver, trusted reviewer selection, focused regression test, and activation documentation
+- Deterministic validation: focused 23 passed; full 1605 passed/1 skipped; integrity hard checks and 4 Golden Paths pass
+- Independent review: exact Claude APPROVE/LOW with no blockers or missing tests (phase2a-1234567890abcdefghijklmn)
+- Integrity finding: YELLOW only for the pre-existing missing tzdata dependency
+- Azure credit evidence: operator verified USD 941 remaining through 2026-10-31 with spending protection enabled
+- Safety state: DRY_RUN; deployment disabled; kill switch engaged; no Azure inference call made
 
 ## Execution log
 
