@@ -40,10 +40,29 @@ def test_windows_bridge_requires_exact_firewall_protection_for_wildcard_listener
     bridge = (Path(__file__).parents[1] / "scripts" / "anythingllm-review-bridge.ps1").read_text()
     assert "ForgeWarden - Block AnythingLLM network access" in bridge
     assert "Get-NetFirewallApplicationFilter" in bridge
-    assert "$_.Program -ieq $program" in bridge
+    assert "Test-AnythingLLMFirewallBoundary $bindings $program" in bridge
     assert "$firewallProtected -and $_.LocalAddress -in @('0.0.0.0','::')" in bridge
 
 def test_windows_bridge_imports_builtin_dpapi_module_by_fixed_path():
     bridge = (Path(__file__).parents[1] / "scripts" / "anythingllm-review-bridge.ps1").read_text()
     assert "Join-Path $PSHOME 'Modules\\Microsoft.PowerShell.Security" in bridge
+    assert "built-in DPAPI module is unavailable" in bridge
     assert "Import-Module -Name $securityModule -ErrorAction Stop" in bridge
+
+def test_windows_bridge_firewall_boundary_cases_execute_fail_closed():
+    powershell = Path("/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe")
+    if not powershell.is_file():
+        pytest.skip("Windows PowerShell interop is unavailable")
+    bridge = Path(__file__).parents[1] / "scripts" / "anythingllm-review-bridge.ps1"
+    completed = subprocess.run(
+        [str(powershell), "-NoLogo", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
+         "-File", str(bridge).replace("/mnt/c/", "C:/"), "-Workspace", "n8n", "-SessionId", JOB,
+         "-BoundarySelfTest"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        env={"SystemRoot": r"C:\Windows", "WINDIR": r"C:\Windows"},
+        text=True,
+        check=False,
+    )
+    assert completed.returncode == 0, completed.stderr
+    assert completed.stdout == "BOUNDARY_SELF_TEST_OK"
