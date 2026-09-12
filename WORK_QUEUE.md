@@ -983,7 +983,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-COMP-003 — Evidence-backed control assessment observation contract
 - Requirement: FW-COMP deterministic assessment observations
-- State: REVIEW
+- State: DONE
 - Priority: P0
 - Dependencies: FW-COMP-002
 - Approval: bounded metadata-only assessment observations are authorized; certification, attestation, external reporting, control execution, and compliance authority remain unauthorized.
@@ -998,6 +998,27 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no certification, external submission, credential, network, deployment, remediation, recovery, containment, filesystem/process, or response authority is added.
 - Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
 - Security considerations: an observation records bounded facts at a point in time and never proves continuous compliance or authorizes an action.
+
+- Completion evidence: exact candidate `b7f7b785f2de6b1a27fbceb1f2bc952728cc4bef`; focused proof passed 86 tests after one bounded test correction; exact Claude review `phase2a-b7f7b785f2de6b1a27fbceb1` returned APPROVE/LOW with no blockers or missing tests; full 1494 passed/1 skipped; Product Integrity fresh full 1494 passed/1 skipped, invariant/ownership checks and 4 Golden Paths passed with YELLOW only for the pre-existing `tzdata` dependency and Defined FW-COMP/FW-AID ownership metadata.
+
+### FW-COMP-004 — Integrated compliance mapping and assessment lifecycle proof
+- Requirement: FW-COMP integrated lifecycle proof
+- State: READY
+- Priority: P0
+- Dependencies: FW-COMP-003
+- Approval: deterministic metadata-only lifecycle composition and honest integrity status are authorized; certification, external reporting, control execution, and compliance authority remain unauthorized.
+- Description: Prove one deterministic tenant lifecycle from canonical control mapping through FW-EVID admission and bounded assessment observation, including replay, substitution, expiry, cross-tenant, and durability failure, then report FW-COMP honestly in Product Integrity.
+- Target path: tests/test_compliance.py
+- Allowed paths: swarm/compliance.py, swarm/integrity.py, tests/test_compliance.py, tests/test_integrity.py, docs/fw-comp-inventory.md, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_compliance.py tests/test_integrity.py tests/test_evidence.py
+- Acceptance criteria:
+  - one integrated proof composes the canonical mapping registry, canonical FW-EVID ledger adapter, and assessment registry without alternate owners;
+  - mapping, Evidence record, and observation retain exact tenant/control/digest/reference bindings through the lifecycle;
+  - replay, stale/substituted mapping, cross-tenant input, expiry, and durability failure fail closed without advancing protected state;
+  - Product Integrity reports FW-COMP Proven only within the explicit local metadata-only DRY_RUN boundary;
+  - no certification, external submission, credential, network, deployment, remediation, recovery, containment, filesystem/process, or response authority is added.
+- Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
+- Security considerations: lifecycle proof establishes deterministic metadata integrity only; it is not a compliance certification or control effectiveness attestation.
 
 ### FW-REC-002 — Durable recovery checkpoint persistence and reconstruction
 - Requirement: FW-REC persistent recovery metadata
