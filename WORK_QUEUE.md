@@ -1044,7 +1044,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-AID-003 — Deterministic AI threat classification
 - Requirement: FW-AID closed-rule threat detection
-- State: REVIEW
+- State: DONE
 - Priority: P0
 - Dependencies: FW-AID-002
 - Approval: deterministic fixture-only classification and Evidence-first findings are authorized under D-025; model self-assessment, live collection, containment, and response remain unauthorized.
@@ -1060,6 +1060,27 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no live sensor, model call, credential, network/process/filesystem hook, containment, quarantine, remediation, recovery execution, deployment, or response authority is added.
 - Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
 - Security considerations: findings are advisory policy inputs and Evidence; deterministic policy remains the sole action authority.
+
+- Completion evidence: exact candidate `e62de434510351338ecadf00f46357865e4bdbb7`; focused 66 passed; exact Claude review `phase2a-e62de434510351338ecadf00` returned APPROVE/LOW with no blockers or missing tests; full 1533 passed/1 skipped; Product Integrity fresh full 1533 passed/1 skipped, all hard checks and 4 Golden Paths passed with YELLOW only for the pre-existing `tzdata` dependency and partial FW-AID ownership status.
+
+### FW-AID-004 — Governed harness monitoring adapter
+- Requirement: FW-AID protection for ForgeWarden's AI development harness
+- State: READY
+- Priority: P0
+- Dependencies: FW-AID-003 and FW-HARNESS-014
+- Approval: fixture-only conversion of existing harness lifecycle facts into canonical FW-AID telemetry is authorized; live hooks, interception, containment, and response remain unauthorized.
+- Description: Deterministically translate existing sanitized harness lifecycle records for worker/reviewer identity, model, task, context hash, leases/tickets, tools, path/Git scope, denials, budgets, coordination, and manipulation indicators into canonical AI workload security events without letting the harness control its monitor.
+- Target path: swarm/ai_agent_defense.py
+- Allowed paths: swarm/ai_agent_defense.py, swarm/harness_evidence.py, swarm/normalized_events.py, tests/test_fw_aid.py, tests/test_harness_evidence.py, docs/fw-aid-architecture.md, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_fw_aid.py tests/test_harness_evidence.py tests/test_normalized_events.py
+- Acceptance criteria:
+  - adapter consumes already-validated sanitized harness facts and emits exact tenant/agent/model/session/task/context/capability/tool/path/Git/denial/budget/reviewer indicators through the canonical NormalizedEventStore;
+  - suspicious permission expansion, secret access, unexpected MCP/tool/model/path/Git activity, coordination, reviewer manipulation, Evidence tampering, and test manipulation map to closed FW-AID indicators without model judgment;
+  - missing bindings, raw output/prompt/command data, cross-tenant facts, unknown fields, replay, malformed hashes, and Evidence failure fail closed;
+  - adapter cannot mutate harness tasks, leases, Git, policy, review, Evidence history, monitoring state, or kill-switch state;
+  - no live hook, model call, credential, filesystem/process/network access, containment, remediation, recovery execution, deployment, or response authority is added.
+- Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
+- Security considerations: the harness supplies untrusted observations; the separately owned deterministic FW-AID adapter and event store validate them.
 
 ### FW-REC-002 — Durable recovery checkpoint persistence and reconstruction
 - Requirement: FW-REC persistent recovery metadata
