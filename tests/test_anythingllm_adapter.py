@@ -35,3 +35,15 @@ def test_failure_output_and_binding_fail_closed(result):
 def test_configuration_and_prompt_bounds():
     with pytest.raises(AnythingLLMError): AnythingLLMConfig(workspace="../escape")
     with pytest.raises(AnythingLLMError): AnythingLLMReviewer(AnythingLLMConfig()).run(None,JOB,COMMIT,"x"*48001)
+
+def test_windows_bridge_requires_exact_firewall_protection_for_wildcard_listener():
+    bridge = (Path(__file__).parents[1] / "scripts" / "anythingllm-review-bridge.ps1").read_text()
+    assert "ForgeWarden - Block AnythingLLM network access" in bridge
+    assert "Get-NetFirewallApplicationFilter" in bridge
+    assert "$_.Program -ieq $program" in bridge
+    assert "$firewallProtected -and $_.LocalAddress -in @('0.0.0.0','::')" in bridge
+
+def test_windows_bridge_imports_builtin_dpapi_module_by_fixed_path():
+    bridge = (Path(__file__).parents[1] / "scripts" / "anythingllm-review-bridge.ps1").read_text()
+    assert "Join-Path $PSHOME 'Modules\\Microsoft.PowerShell.Security" in bridge
+    assert "Import-Module -Name $securityModule -ErrorAction Stop" in bridge
