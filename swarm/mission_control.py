@@ -8,6 +8,8 @@ from typing import Mapping
 from .harness_context import BudgetAdmission, BudgetUsage
 from .harness_task import HarnessTask, TaskStatus
 from .harness_worker import WorkerRegistration
+from .normalized_events import AIWorkloadSecurityEvent
+from .ai_agent_defense import AIAttackStory, AIContainmentProposal, AIThreatFinding
 
 
 _TENANT = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$")
@@ -108,3 +110,32 @@ def project_mission_control(
         budget.task_usage if budget else None, recent_decisions, current_commit, next_task,
         kill_switch,
     )
+
+
+@dataclass(frozen=True)
+class AIAgentSecurityView:
+    event_id:str; agent_ref:str; model_ref:str; task_ref:str; session_ref:str; lease_ref:str; action_ticket_ref:str; threat_class:str; severity:str; confidence:int; anomalies:tuple[str,...]; decision:str; tool_category:str; mcp_server_ref:str; story_id:str; incident_ids:tuple[str,...]; evidence_references:tuple[str,...]; containment_proposal_id:str|None; containment_action:str|None; containment_state:str
+
+@dataclass(frozen=True)
+class AISecurityMissionView:
+    schema_version:int; tenant_id:str; data_mode:str; data_label:str; agents:tuple[AIAgentSecurityView,...]; kill_switch:str="ENGAGED"; deployment:str="DISABLED"; mutation_allowed:bool=False
+
+def project_ai_security(*,tenant_id:str,events:tuple[AIWorkloadSecurityEvent,...],findings:tuple[AIThreatFinding,...],stories:tuple[AIAttackStory,...],proposals:tuple[AIContainmentProposal,...]=(),data_mode:str="CANONICAL",kill_switch:str="ENGAGED")->AISecurityMissionView:
+    """Project sanitized canonical facts without exposing any control callback."""
+    if not _TENANT.fullmatch(tenant_id) or not 1<=len(events)<=128 or not all(isinstance(item,AIWorkloadSecurityEvent) and item.tenant_id==tenant_id for item in events): raise MissionControlError("AI Security events malformed or cross-tenant")
+    if data_mode not in {"CANONICAL","DEMO"} or kill_switch!="ENGAGED": raise MissionControlError("AI Security mode or kill switch invalid")
+    finding_by_event={item.source_event_id:item for item in findings if isinstance(item,AIThreatFinding) and item.tenant_id==tenant_id}
+    story_by_event={item.source_event_id:item for item in stories if isinstance(item,AIAttackStory) and item.tenant_id==tenant_id}
+    proposal_by_story={item.story_id:item for item in proposals if isinstance(item,AIContainmentProposal) and item.tenant_id==tenant_id}
+    if len(finding_by_event)!=len(findings) or len(story_by_event)!=len(stories) or len(proposal_by_story)!=len(proposals): raise MissionControlError("AI Security facts duplicate, malformed, or cross-tenant")
+    rows=[]
+    for event in sorted(events,key=lambda item:(item.observed_at_epoch,item.event_id)):
+        finding=finding_by_event.get(event.event_id); story=story_by_event.get(event.event_id)
+        if finding is None or story is None or finding.finding_id!=story.finding_id or finding.agent_ref!=event.agent_ref or story.model_ref!=event.model_ref or story.task_ref!=event.task_ref: raise MissionControlError("AI Security fact binding incomplete")
+        proposal=proposal_by_story.get(story.projection.story_id)
+        evidence=tuple(sorted(set(event.evidence_references)|set(finding.evidence_references)|({} if proposal is None else set(proposal.evidence_references))))
+        visible=(event.agent_ref,event.model_ref,event.task_ref,event.session_ref,event.capability_lease_ref,event.action_ticket_ref,event.mcp_server_ref,story.projection.story_id,*evidence,*event.anomaly_indicators)
+        if any(_SECRET.search(value) or len(value.encode())>1000 for value in visible): raise MissionControlError("AI Security projection secret-bearing or excessive")
+        rows.append(AIAgentSecurityView(event.event_id,event.agent_ref,event.model_ref,event.task_ref,event.session_ref,event.capability_lease_ref,event.action_ticket_ref,finding.threat_class,finding.severity,finding.confidence,event.anomaly_indicators,event.decision,event.tool_category,event.mcp_server_ref,story.projection.story_id,story.projection.incident_ids,evidence,proposal.proposal_id if proposal else None,proposal.action_class if proposal else None,"PROPOSE_ONLY" if proposal else "NONE"))
+    if set(finding_by_event)!=set(item.event_id for item in events) or set(story_by_event)!=set(item.event_id for item in events) or any(key not in {item.projection.story_id for item in stories} for key in proposal_by_story): raise MissionControlError("AI Security orphan fact")
+    return AISecurityMissionView(1,tenant_id,data_mode,"DEMO / SIMULATED DATA" if data_mode=="DEMO" else "CANONICAL READ-ONLY DATA",tuple(rows),kill_switch)

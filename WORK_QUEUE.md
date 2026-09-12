@@ -1128,7 +1128,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-AID-007 — Mission Control AI Security projection
 - Requirement: FW-AID operator-visible read-only state
-- State: READY
+- State: REVIEW
 - Priority: P0
 - Dependencies: FW-AID-006 and FW-UX-001
 - Approval: sanitized read-only Mission Control projections and clearly labeled demo fixtures are authorized; control mutation, live telemetry, containment, and response remain unauthorized.

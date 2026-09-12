@@ -40,3 +40,12 @@ The view consumes canonical FW-ID, FW-KEYS, FW-HARNESS, MCP Gateway,
 NormalizedEventStore, FW-SOC, FW-EVID, FW-REC, and policy state. It neither
 owns that state nor executes response. Prompt text, retrieved content,
 credentials, tokens, and sensitive command arguments are excluded by default.
+
+
+## AI Security read-only projection
+
+Mission Control consumes `project_ai_security` for sanitized tenant-bound agent,
+model, task, scoped authority-reference, anomaly, denial, threat, FW-SOC story,
+Evidence, containment-proposal, and kill-switch visibility. Canonical and demo
+views carry explicit labels. The projection is immutable and exposes no approval,
+revocation, isolation, execution, policy, or kill-switch callback.

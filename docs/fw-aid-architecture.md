@@ -191,7 +191,7 @@ denials, policy decisions, containment proposals/actions, approvals, recovery,
 timestamps, affected resources, and related canonical event/incident IDs.
 Evidence is append-only and privacy-minimized; agent output cannot edit it.
 
-Mission Control's **AI Security / Agent Defense** view must show running agents,
+`project_ai_security` now provides a bounded immutable tenant-filtered projection with exact CANONICAL or DEMO/SIMULATED labels and no action callbacks. Mission Control's **AI Security / Agent Defense** view must show running agents,
 provider/model, task/purpose, current authority, tools/MCP connections, risk,
 anomalies, denied actions, egress and secret-access attempts, containment
 status/proposals, related endpoint/identity alerts, attack story, Evidence

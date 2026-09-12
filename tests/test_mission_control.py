@@ -5,7 +5,9 @@ import pytest
 from swarm.harness_context import BudgetAdmission, BudgetUsage
 from swarm.harness_task import HarnessTask, TaskStatus
 from swarm.harness_worker import WorkerRegistration, WorkerRole, WorkerTransport
-from swarm.mission_control import MissionControlError, project_mission_control
+from swarm.mission_control import MissionControlError, project_ai_security, project_mission_control
+from tests.test_fw_aid import classified_source, cross_fact, proposal_args
+from swarm.ai_agent_defense import AICrossDomainCorrelator, AIContainmentProposalRegistry
 
 
 def task(task_id="FWQ-0001", status=TaskStatus.READY, **changes):
@@ -104,3 +106,36 @@ def test_projection_rejects_dependency_outside_canonical_queue():
 def test_idle_projection_has_no_worker_or_budget():
     view = project(current_task=None, worker=None, budget=None, next_task="FWQ-0001", current_commit=None)
     assert view.current_task is None and view.active_worker is None and view.budget_used is None
+
+
+def ai_bundle():
+ event,finding=classified_source(); facts=(cross_fact("ENDPOINT",1),cross_fact("IDENTITY",2),cross_fact("NETWORK",3)); story=AICrossDomainCorrelator("tenant-a",lambda *_:None).correlate(finding,event,facts,story_id="story-1",ai_incident_id="incident-ai",domain_incident_id="incident-domain"); proposal=AIContainmentProposalRegistry("tenant-a",lambda *_:None).propose(finding,story,**proposal_args()); return event,finding,story,proposal
+
+def test_ai_security_projection_is_sanitized_tenant_bound_and_read_only():
+ event,finding,story,proposal=ai_bundle(); view=project_ai_security(tenant_id="tenant-a",events=(event,),findings=(finding,),stories=(story,),proposals=(proposal,),data_mode="CANONICAL")
+ row=view.agents[0]; assert row.agent_ref==event.agent_ref and row.model_ref==event.model_ref and row.task_ref==event.task_ref
+ assert row.threat_class==finding.threat_class and row.story_id=="story-1" and row.incident_ids==("incident-ai","incident-domain")
+ assert row.containment_action=="REVOKE_LEASE" and row.containment_state=="PROPOSE_ONLY"
+ assert view.data_label=="CANONICAL READ-ONLY DATA" and view.kill_switch=="ENGAGED" and view.deployment=="DISABLED" and not view.mutation_allowed
+ assert not hasattr(view,"execute") and not hasattr(view,"approve")
+
+def test_ai_security_demo_label_is_explicit_and_ordering_deterministic():
+ event,finding,story,proposal=ai_bundle(); view=project_ai_security(tenant_id="tenant-a",events=(event,),findings=(finding,),stories=(story,),proposals=(proposal,),data_mode="DEMO")
+ assert view.data_label=="DEMO / SIMULATED DATA"
+
+def test_ai_security_projection_rejects_cross_tenant_orphan_duplicate_secret_and_kill_switch():
+ from dataclasses import replace
+ event,finding,story,proposal=ai_bundle()
+ bad=(dict(tenant_id="tenant-b"),dict(findings=()),dict(findings=(finding,finding)),dict(stories=()),dict(kill_switch="CLEARED"))
+ base=dict(tenant_id="tenant-a",events=(event,),findings=(finding,),stories=(story,),proposals=(proposal,))
+ for change in bad:
+  args=base|change
+  with pytest.raises(MissionControlError): project_ai_security(**args)
+ forged=object.__new__(type(event))
+ for name in event.__dataclass_fields__: object.__setattr__(forged,name,getattr(event,name))
+ object.__setattr__(forged,"mcp_server_ref","api_key=secret-value")
+ with pytest.raises(MissionControlError): project_ai_security(tenant_id="tenant-a",events=(forged,),findings=(finding,),stories=(story,),proposals=(proposal,))
+
+def test_ai_security_projection_does_not_mutate_sources_and_bounds_events():
+ event,finding,story,proposal=ai_bundle(); before=(repr(event),repr(finding),repr(story),repr(proposal)); project_ai_security(tenant_id="tenant-a",events=(event,),findings=(finding,),stories=(story,),proposals=(proposal,)); assert before==(repr(event),repr(finding),repr(story),repr(proposal))
+ with pytest.raises(MissionControlError): project_ai_security(tenant_id="tenant-a",events=(),findings=(),stories=())
