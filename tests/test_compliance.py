@@ -81,3 +81,49 @@ def test_adapter_rejects_invalid_envelope_and_mismatched_owners():
  with pytest.raises(ComplianceContractError,match="envelope invalid"): adapter.admit(item,evidence_id="fw-evid/tenant-two/wrong",actor_ref="fw-id/controller",subject_ref="fw-resource/map")
  with pytest.raises(ComplianceContractError,match="matching canonical"): ComplianceEvidenceAdapter(registry,EvidenceLedger("tenant-two",lambda *_:None))
  assert writes==[]
+
+
+def observation(item=None,**kw):
+ item=item or mapping(); values=dict(schema_version="1",assessment_id="fw-comp-assessment/tenant-one/assessment-1",tenant_id="tenant-one",mapping_id=item.mapping_id,mapping_sha256=control_mapping_sha256(item),control_id=item.control_id,assessor_ref="fw-id/compliance-reviewer",observation_type="TEST_RESULT",outcome="OBSERVED",evidence_references=("fw-evid/tenant-one/test-proof",),fact_references=("fw-policy/control-evaluation","fw-test/compliance-proof"),observed_at="2026-09-11T02:00:00Z",expires_at="2026-10-11T02:00:00Z")
+ values.update(kw); return ControlAssessmentObservation(**values)
+
+def assessment_registry(sink=None):
+ mapping_events=[]; mappings=ControlMappingRegistry("tenant-one",mapping_events.append); item=mappings.register(mapping()); events=[]
+ return item,mappings,ControlAssessmentRegistry("tenant-one",mappings,sink or events.append),events
+
+def test_assessment_records_exact_mapping_and_bounded_facts_evidence_first():
+ item,_,registry,events=assessment_registry(); value=observation(item)
+ assert registry.register(value,item,as_of="2026-09-12T00:00:00Z")==value
+ assert registry.snapshot("tenant-one")== (value,) and events[0]["mapping_sha256"]==control_mapping_sha256(item)
+ assert events[0]["claim_status"]=="OBSERVATION_ONLY" and events[0]["authority_granted"] is False
+ with pytest.raises(ComplianceContractError,match="duplicate"): registry.register(value,item,as_of="2026-09-12T00:00:00Z")
+
+@pytest.mark.parametrize("changes",[{"assessment_id":"fw-comp-assessment/tenant-two/a"},{"mapping_sha256":"0"},{"control_id":"CONTROL-9999"},{"assessor_ref":"admin"},{"observation_type":"CERTIFICATION"},{"outcome":"COMPLIANT"},{"evidence_references":()},{"evidence_references":("fw-evid/tenant-two/proof",)},{"fact_references":()},{"fact_references":("external/report",)},{"observed_at":"tomorrow"},{"expires_at":"2026-09-11T02:00:00Z"},{"claim_status":"CERTIFIED"},{"authority_granted":True}])
+def test_assessment_rejects_invalid_bindings_claims_and_secret_free_facts(changes):
+ with pytest.raises(ComplianceContractError): observation(**changes)
+
+def test_assessment_rejects_stale_mapping_cross_tenant_and_expiry_before_evidence():
+ item,_,registry,events=assessment_registry(); value=observation(item)
+ for changed_mapping in (replace(item,owner="other"),mapping(mapping_id="fw-comp/tenant-one/missing")):
+  with pytest.raises(ComplianceContractError): registry.register(value,changed_mapping,as_of="2026-09-12T00:00:00Z")
+ with pytest.raises(ComplianceContractError,match="mapping binding"): registry.register(replace(value,mapping_sha256="0"*64),item,as_of="2026-09-12T00:00:00Z")
+ with pytest.raises(ComplianceContractError,match="mapping binding"): registry.register(replace(value,control_id="FW-CTRL-9999"),item,as_of="2026-09-12T00:00:00Z")
+ with pytest.raises(ComplianceContractError,match="expired"): registry.register(value,item,as_of=value.expires_at)
+ cross=mapping(tenant_id="tenant-two",mapping_id="fw-comp/tenant-two/map-1",evidence_references=("fw-evid/tenant-two/proof",))
+ with pytest.raises(ComplianceContractError): registry.register(observation(cross,tenant_id="tenant-two",assessment_id="fw-comp-assessment/tenant-two/a",evidence_references=("fw-evid/tenant-two/proof",)),cross,as_of="2026-09-12T00:00:00Z")
+ assert events==[] and registry.snapshot("tenant-one")==()
+
+def test_assessment_evidence_failure_is_retryable_and_reentrancy_denied():
+ item,mappings,_,_=assessment_registry(); value=observation(item); holder={}
+ def reenter(_): holder["registry"].register(value,item,as_of="2026-09-12T00:00:00Z")
+ registry=ControlAssessmentRegistry("tenant-one",mappings,reenter); holder["registry"]=registry
+ with pytest.raises(ComplianceContractError,match="Evidence failed"): registry.register(value,item,as_of="2026-09-12T00:00:00Z")
+ assert registry.snapshot("tenant-one")==()
+ events=[]; retry=ControlAssessmentRegistry("tenant-one",mappings,events.append); assert retry.register(value,item,as_of="2026-09-12T00:00:00Z")==value
+
+def test_assessment_registry_requires_same_tenant_and_valid_current_time():
+ item,mappings,registry,events=assessment_registry()
+ with pytest.raises(ComplianceContractError,match="matching mapping"): ControlAssessmentRegistry("tenant-two",mappings,events.append)
+ with pytest.raises(ComplianceContractError,match="current time"): registry.register(observation(item),item,as_of="now")
+ with pytest.raises(ComplianceContractError,match="tenant"): registry.snapshot("tenant-two")
+ assert events==[]

@@ -983,7 +983,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-COMP-003 — Evidence-backed control assessment observation contract
 - Requirement: FW-COMP deterministic assessment observations
-- State: READY
+- State: REVIEW
 - Priority: P0
 - Dependencies: FW-COMP-002
 - Approval: bounded metadata-only assessment observations are authorized; certification, attestation, external reporting, control execution, and compliance authority remain unauthorized.

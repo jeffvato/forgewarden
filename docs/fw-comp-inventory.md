@@ -31,3 +31,13 @@ authority. Missing, substituted, cross-tenant, duplicate, stale-chain, invalid,
 and durability-failed admission fails closed without advancing mapping or
 Evidence state. Admission records that the mapping exists; it does not certify
 the control or authorize an operation.
+
+## Assessment observations
+
+`ControlAssessmentObservation` records a bounded point-in-time result against an
+exact registered mapping digest. Observations require same-tenant canonical
+Evidence plus policy/test fact references, an FW-ID assessor, and finite expiry.
+The create-once Evidence-first registry rejects substitution, replay, expiration,
+cross-tenant facts, and durability failure. Outcomes remain `OBSERVATION_ONLY`;
+they cannot change mapping status, policy, tests, Evidence, or authority and do
+not represent certification or continuous compliance.
