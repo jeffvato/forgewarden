@@ -67,6 +67,8 @@ The AI Harness route explains the same incident through the governed execution l
 
 The AI Intrusion Defense and AI Harness routes consume the same deterministic DEMO-AI-RANSOM-001 provider as Mission Control. The AI Defense workspace explains agent identity, scoped authority, tool and MCP context, anomaly chronology, policy denials, proposal-only containment, related incident, and Evidence references. The Harness workspace explains deterministic risk and model routing, requester and tenant binding, bounded lease, tools, capabilities, resource budgets, validation, independent review, exact demo artifact, and escalation history.
 
+Mission Control also accepts an independent `/api/incident-activity` provider for existing canonical FW-SOC dry-run lifecycle projections. The provider revalidates tenant, chronology, incident/story/playbook bindings, safety state, reference bounds, dependency order, and secret-bearing text before returning `CANONICAL`, `EMPTY`, or `UNAVAILABLE`. Canonical incident data can replace the simulated incident panel without changing the centralized Demo Provider. Response steps remain visibly `PROPOSE ONLY`; the endpoint exposes no case mutation, response, recovery, approval, or deployment callback.
+
 Both routes are read-only product projections. Every value is simulated and visibly labeled; no live model, telemetry, approval, containment, recovery, deployment, network, credential, or response integration is present.
 
 
