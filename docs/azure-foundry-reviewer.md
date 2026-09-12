@@ -29,6 +29,7 @@ The adapter reads the following only at runtime. Do not commit these values:
 
 - `FORGEWARDEN_AZURE_FOUNDRY_ENDPOINT`: approved `https://*.openai.azure.com` or `https://*.services.ai.azure.com` endpoint, optionally ending in `/openai/v1`.
 - `FORGEWARDEN_AZURE_FOUNDRY_DEPLOYMENT`: exact deployed model name.
+- `FORGEWARDEN_AZURE_FOUNDRY_AUTH_METHOD`: `entra` (default) or `api_key`.
 - `FORGEWARDEN_AZURE_CREDIT_REMAINING_MICROUSD`: recently verified remaining credit.
 - `FORGEWARDEN_AZURE_CREDIT_EXPIRES_EPOCH`: credit expiry time.
 - `FORGEWARDEN_AZURE_CREDIT_VERIFIED_EPOCH`: time the balance and protection were verified.
@@ -37,7 +38,7 @@ The adapter reads the following only at runtime. Do not commit these values:
 - `FORGEWARDEN_AZURE_MAX_CALL_MICROUSD`: worst-case reserved cost for one review.
 - Optional `FORGEWARDEN_AZURE_CREDIT_RESERVE_MICROUSD`, `FORGEWARDEN_AZURE_DAILY_REVIEW_LIMIT`, and `FORGEWARDEN_AZURE_CREDIT_LEDGER`.
 
-Microsoft's current recommended stateless integration is the OpenAI v1-compatible route. The adapter uses `POST {endpoint}/openai/v1/chat/completions`, temperature zero, bounded completion tokens, and strict JSON-schema output. It authenticates through a transient Entra token requested from the already authenticated Azure CLI for `https://cognitiveservices.azure.com/.default`. The token is held only for the request header and is never persisted or logged.
+Microsoft's current recommended stateless integration is the OpenAI v1-compatible route. The adapter uses `POST {endpoint}/openai/v1/chat/completions`, temperature zero, bounded completion tokens, and strict JSON-schema output. It normally authenticates through a transient Entra token requested from the already authenticated Azure CLI for `https://cognitiveservices.azure.com/.default`. When the operator explicitly selects `api_key`, the trusted launch process must supply `FORGEWARDEN_AZURE_FOUNDRY_API_KEY`; the key is read only for the request header and must never be committed, logged, added to task state, or included in Evidence.
 
 References:
 

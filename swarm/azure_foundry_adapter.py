@@ -185,6 +185,14 @@ def azure_cli_token(*, runner: Callable[..., subprocess.CompletedProcess[str]] =
     return token
 
 
+def azure_api_key() -> str:
+    """Resolve an API key from the trusted process environment without logging it."""
+    key = os.environ.get("FORGEWARDEN_AZURE_FOUNDRY_API_KEY", "").strip()
+    if not key or any(char.isspace() for char in key) or len(key) > 16_384:
+        raise AzureFoundryError("Azure Foundry API key is unavailable or malformed")
+    return key
+
+
 class AzureFoundryReviewer:
     """Submit bounded text only; the provider receives no repository or tool access."""
 

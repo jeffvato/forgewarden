@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from swarm.azure_foundry_adapter import AzureCreditEvidence, AzureCreditGuard, AzureFoundryConfig, AzureFoundryError, AzureFoundryReviewer, azure_cli_token
+from swarm.azure_foundry_adapter import AzureCreditEvidence, AzureCreditGuard, AzureFoundryConfig, AzureFoundryError, AzureFoundryReviewer, azure_api_key, azure_cli_token
 
 JOB = "phase2a-" + "a" * 24
 COMMIT = "b" * 40
@@ -99,3 +99,11 @@ def test_azure_cli_token_uses_cognitive_scope_and_redacts_failures():
     class Failed: returncode = 1; stdout = ""; stderr = "Bearer sk-abcdefghijk"
     with pytest.raises(AzureFoundryError) as error: azure_cli_token(runner=lambda *_args, **_kwargs: Failed())
     assert "sk-abcdefghijk" not in str(error.value)
+
+
+def test_api_key_resolver_reads_only_trusted_environment(monkeypatch):
+    monkeypatch.setenv("FORGEWARDEN_AZURE_FOUNDRY_API_KEY", "opaque-api-key")
+    assert azure_api_key() == "opaque-api-key"
+    monkeypatch.delenv("FORGEWARDEN_AZURE_FOUNDRY_API_KEY")
+    with pytest.raises(AzureFoundryError, match="unavailable"):
+        azure_api_key()

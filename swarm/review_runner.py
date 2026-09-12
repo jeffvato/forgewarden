@@ -16,7 +16,7 @@ from . import claude_verifier
 from .adapters import GeminiAdapter, ResourceLimits
 from .core import SwarmError, read_restricted_bytes, redact, validate_contract, validate_snapshot_symlinks
 from .verification_adapters import nvidia_adapter, openrouter_adapter
-from .azure_foundry_adapter import AzureFoundryConfig, AzureFoundryReviewer, azure_cli_token, default_azure_credit_guard
+from .azure_foundry_adapter import AzureFoundryConfig, AzureFoundryReviewer, azure_api_key, azure_cli_token, default_azure_credit_guard
 
 _FULL_SHA = re.compile(r"^[0-9a-fA-F]{40,64}$")
 _JOB_ID = re.compile(r"^phase2a-[a-z0-9]{24}$")
@@ -149,6 +149,7 @@ def run_review_cycle(
         if "AZURE" in requested and azure is None:
             endpoint = os.environ.get("FORGEWARDEN_AZURE_FOUNDRY_ENDPOINT", "")
             deployment = os.environ.get("FORGEWARDEN_AZURE_FOUNDRY_DEPLOYMENT", "")
+            auth_method = os.environ.get("FORGEWARDEN_AZURE_FOUNDRY_AUTH_METHOD", "entra")
             if not endpoint or not deployment:
                 def azure_unavailable(*_args: object, **_kwargs: object) -> dict[str, Any]:
                     raise ReviewRunnerError("Azure Foundry endpoint and deployment are not configured")
@@ -156,7 +157,8 @@ def run_review_cycle(
             else:
                 try:
                     credit_guard = default_azure_credit_guard()
-                    azure = AzureFoundryReviewer(AzureFoundryConfig(endpoint, deployment), azure_cli_token, credit_guard).run
+                    resolver = azure_api_key if auth_method == "api_key" else azure_cli_token
+                    azure = AzureFoundryReviewer(AzureFoundryConfig(endpoint, deployment, auth_method=auth_method), resolver, credit_guard).run
                 except Exception as exc:
                     detail = redact(str(exc))[:500]
                     def azure_cost_unavailable(*_args: object, **_kwargs: object) -> dict[str, Any]:
