@@ -941,7 +941,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-COMP-001 — Compliance ownership inventory and canonical control mapping contract
 - Requirement: FW-COMP compliance ownership and control mapping
-- State: REVIEW
+- State: DONE
 - Priority: P0
 - Dependencies: FW-REC-004 and FW-EVID-006
 - Approval: read-only inventory and deterministic metadata-only mapping are authorized; certification claims, external reporting, control execution, and compliance authority remain unauthorized.
@@ -957,6 +957,27 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no compliance certification, external submission, credential, network, deployment, remediation, recovery, containment, filesystem/process, or response authority is added.
 - Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
 - Security considerations: a control mapping is descriptive evidence metadata and never proves certification or authorizes an action by itself.
+
+- Completion evidence: exact repaired candidate c7be16605726f1bcb289fbb06258018715b6128; focused 29 passed after adding all identifier-format boundaries named by the first review; exact Claude review phase2a-c7be16605726f1bcb289fbb0 returned APPROVE/LOW with no blockers or missing tests; full 1471 passed/1 skipped; Product Integrity fresh full 1471 passed/1 skipped, invariant/ownership checks and 4 Golden Paths passed with YELLOW only for the pre-existing 	zdata dependency and Defined FW-AID owner.
+
+### FW-COMP-002 — Canonical compliance mapping Evidence adapter
+- Requirement: FW-COMP lifecycle Evidence integration
+- State: READY
+- Priority: P0
+- Dependencies: FW-COMP-001 and FW-EVID-006
+- Approval: deterministic metadata-only Evidence admission is authorized; certification, external reporting, control execution, and compliance authority remain unauthorized.
+- Description: Bind an accepted canonical ControlMapping to the existing tenant Evidence ledger using a bounded lifecycle payload and exact mapping digest, without duplicating Evidence storage or treating mappings as proof of certification.
+- Target path: swarm/compliance.py
+- Allowed paths: swarm/compliance.py, tests/test_compliance.py, docs/fw-comp-inventory.md, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_compliance.py tests/test_evidence.py
+- Acceptance criteria:
+  - adapter revalidates the exact registered mapping and tenant before producing canonical FW-EVID input;
+  - Evidence binds the mapping digest, internal control, requirement set, owner, validation state, claim status, and bounded framework references without raw narrative or secrets;
+  - missing, stale, substituted, duplicate, replayed, cross-tenant, or durability-failed mappings deny admission without advancing state;
+  - the existing FW-EVID ledger remains the sole Evidence owner;
+  - no certification, external submission, credential, network, deployment, remediation, recovery, containment, filesystem/process, or response authority is added.
+- Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
+- Security considerations: Evidence records that a mapping was admitted; it does not certify the mapped control or authorize execution.
 
 ### FW-REC-002 — Durable recovery checkpoint persistence and reconstruction
 - Requirement: FW-REC persistent recovery metadata
