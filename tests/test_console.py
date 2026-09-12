@@ -29,6 +29,9 @@ class ConsoleTests(unittest.TestCase):
         self.assertFalse(first["safety"]["mutation_allowed"])
         self.assertEqual(first["safety"]["deployment"], "DISABLED")
         self.assertIn("SIMULATED", first["evidence"]["chain_status"])
+        self.assertEqual(len(first["incident"]["detections"]), 3)
+        self.assertEqual(first["incident"]["recovery"]["execution"], "NOT EXECUTED")
+        self.assertTrue(all("T" in item for item in first["incident"]["mitre"]))
         first["assets"][0]["value"] = 0
         self.assertEqual(second["assets"][0]["value"], 1204)
 
@@ -46,6 +49,9 @@ class ConsoleTests(unittest.TestCase):
         self.assertIn("SIMULATED DATA · BACKEND NOT CONNECTED", html)
         self.assertIn("AI Intrusion Defense", html)
         self.assertIn("Evidence Vault", html)
+        self.assertIn("UNIFIED ATTACK STORY", html)
+        self.assertIn("RESPONSE & RECOVERY", html)
+        self.assertIn("DEMO / NOT VERIFIED", html)
     def test_profiles_are_complete_and_global_guards_are_inherited(self):
         profiles = load_profiles(); self.assertEqual({p["id"] for p in profiles},{"codex-writer","gemini-reviewer","claude-verifier","claude-auditor","fable-analyst"})
         for profile in profiles: self.assertTrue({"production","deployment","credentials","databases","remote_hosts"}.issubset(profile["forbidden_actions"]))

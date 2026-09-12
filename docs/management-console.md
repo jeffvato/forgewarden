@@ -49,3 +49,8 @@ model, task, scoped authority-reference, anomaly, denial, threat, FW-SOC story,
 Evidence, containment-proposal, and kill-switch visibility. Canonical and demo
 views carry explicit labels. The projection is immutable and exposes no approval,
 revocation, isolation, execution, policy, or kill-switch callback.
+
+
+## Incident detail and unified attack story
+
+The deterministic demo provider supplies one reusable incident contract containing affected entities, detections, cross-domain chronology, simulated response actions, recovery posture, Action Ticket reference, and Evidence preview. The incident route renders that contract as a coherent investigation view and repeats the DEMO/SIMULATED and not-cryptographically-verified boundaries. It remains read-only and backend-disconnected.

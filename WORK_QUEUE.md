@@ -1207,7 +1207,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-UX-002 — Incident detail and unified attack story
 - Requirement: FW-UX Mission Control incident experience
-- State: READY
+- State: REVIEW
 - Priority: P0
 - Dependencies: FW-UX-001 and FW-AID-010
 - Approval: reusable read-only UI against explicitly labeled deterministic demo data is authorized; live response and backend activation remain unauthorized.
