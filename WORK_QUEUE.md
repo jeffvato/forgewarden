@@ -921,7 +921,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-REC-004 — Integrated recovery checkpoint and resume lifecycle proof
 - Requirement: FW-REC lifecycle acceptance
-- State: REVIEW
+- State: DONE
 - Priority: P0
 - Dependencies: FW-REC-003 and FW-EVID-006
 - Approval: deterministic local DRY_RUN lifecycle proof is authorized; recovery, rollback, restart, repair, containment, deletion, and deployment execution remain unauthorized.
@@ -937,6 +937,26 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no restore, rollback execution, process restart, deletion, repair, Git mutation, containment, deployment, credential, network, filesystem, or response authority is added.
 - Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
 - Security considerations: the proof validates coordination and denial semantics only; it cannot execute the decision it records.
+- Completion evidence: exact candidate `037873cfc7b69a8cc2e3c5b7226369af79d85dda`; focused 51 passed; exact Claude review `phase2a-37873cfc7b69a8cc2e3c5b72` returned APPROVE/LOW with no blockers or missing tests; full 1452 passed/1 skipped; Product Integrity fresh full 1452 passed/1 skipped, invariant/ownership checks and 4 Golden Paths passed with YELLOW only for the pre-existing `tzdata` dependency and Defined FW-COMP/FW-AID owners. Product Integrity now reports FW-REC Proven within its local metadata-only DRY_RUN boundary.
+
+### FW-COMP-001 — Compliance ownership inventory and canonical control mapping contract
+- Requirement: FW-COMP compliance ownership and control mapping
+- State: READY
+- Priority: P0
+- Dependencies: FW-REC-004 and FW-EVID-006
+- Approval: read-only inventory and deterministic metadata-only mapping are authorized; certification claims, external reporting, control execution, and compliance authority remain unauthorized.
+- Description: Inventory existing control, requirement, Evidence, policy, tenant, and implementation-status references and establish one canonical tenant-bound mapping contract that references existing owners without claiming compliance from documentation or demo state.
+- Target path: docs/fw-comp-inventory.md
+- Allowed paths: docs/fw-comp-inventory.md, swarm/compliance.py, swarm/integrity.py, tests/test_compliance.py, tests/test_integrity.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_compliance.py tests/test_integrity.py
+- Acceptance criteria:
+  - inventory names canonical owners for requirements, controls, implementation status, policy decisions, Evidence, tenants, approvals, tests, and external-framework references;
+  - immutable mapping metadata binds tenant, internal control ID, requirement IDs, owner, implementation status, evidence references, validation state, framework/control references, timestamp, and explicit claim status;
+  - unknown fields, duplicate mappings, cross-tenant references, invalid status, missing Evidence, unsupported frameworks, secret-bearing text, and any claimed certification or enforcement authority fail closed;
+  - mapping consumes existing FW-EVID and policy/status owners rather than creating a competing audit, policy, requirement, or certification system;
+  - no compliance certification, external submission, credential, network, deployment, remediation, recovery, containment, filesystem/process, or response authority is added.
+- Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
+- Security considerations: a control mapping is descriptive evidence metadata and never proves certification or authorizes an action by itself.
 
 ### FW-REC-002 — Durable recovery checkpoint persistence and reconstruction
 - Requirement: FW-REC persistent recovery metadata

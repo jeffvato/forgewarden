@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: FW-REC-003 deterministic interruption and resume admission accepted
-- Next task: FW-REC-004 integrated recovery checkpoint and resume lifecycle proof.
+- Current focus: FW-REC-004 integrated recovery checkpoint and resume lifecycle proof accepted
+- Next task: FW-COMP-001 compliance ownership inventory and canonical control mapping contract.
 - Harness role: permanent ForgeWarden Core subsystem and default controller for ForgeWarden's own development; one governed architecture serves both roles under D-023.
 - Worker transport direction: registered local CLIs and explicitly approved API-backed workers; API keys are resolved only through FW-KEYS secret handles inside trusted adapters and never enter model context or lifecycle evidence.
 - Provider authentication direction: deterministic OpenAI, Anthropic, and Google/Gemini profiles with provider-specific official OAuth where available and approved API-key classes otherwise; Gemini CLI is registered as `agy` for read-only roles, FW-ID owns delegated identity, and FW-KEYS owns all credential material.
@@ -34,17 +34,17 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-REC-003
-- Starting commit: a0d47b4ef721edcc1c18dd64df704d69757e644a
-- Candidate commit: f94d24570bfe87fc1047bf31c761f05e35dfedcb
-- Accepted commit: f94d24570bfe87fc1047bf31c761f05e35dfedcb
-- Files changed: immutable authority-free resume admission, exact checkpoint digest binding, deterministic resume/block/rollback-proposal classification, Evidence-first decision record, and boundary tests
-- Deterministic validation: focused 38 passed; full 1449 passed/1 skipped; integrity fresh full 1449 passed/1 skipped, invariant/ownership checks and 4 Golden Paths pass with YELLOW only for the pre-existing dependency and Defined FW-COMP/FW-AID owners
-- Independent review: exact Claude APPROVE/LOW with no blockers or missing tests (`phase2a-f94d24570bfe87fc1047bf31`)
+- Task ID: FW-REC-004
+- Starting commit: a8cf79e20c56d9c7f4c7681a6e469a8189e30d35
+- Candidate commit: 037873cfc7b69a8cc2e3c5b7226369af79d85dda
+- Accepted commit: 037873cfc7b69a8cc2e3c5b7226369af79d85dda
+- Files changed: integrated checkpoint/persistence/restart/admission/canonical-Evidence lifecycle proof, FW-REC inventory, and honest Product Integrity status
+- Deterministic validation: focused 51 passed; full 1452 passed/1 skipped; integrity fresh full 1452 passed/1 skipped, invariant/ownership checks and 4 Golden Paths pass with YELLOW only for the pre-existing dependency and Defined FW-COMP/FW-AID owners
+- Independent review: exact Claude APPROVE/LOW with no blockers or missing tests (`phase2a-37873cfc7b69a8cc2e3c5b72`)
 - Gemini review: disabled and not required under D-020
 - Unresolved findings: broader import/path architecture drift scanning remains incremental; demo containment and cryptographic verification remain explicitly non-operational
 - Blocker: none
-- Next action: execute FW-REC-004 integrated metadata-only recovery lifecycle proof.
+- Next action: inventory existing compliance/control references and implement FW-COMP-001 without claiming certification or authority.
 
 - Completion inventory: `docs/completion-audit-2026-09-09.md` (baseline `0afcbdd`).
 - FWQ-0008 implementation and binding hardening exist; VALIDATED retains a historical provenance caveat, not an implementation assignment. FWQ-0009 is recorded accepted and unchanged at source/test level from its reviewed candidate.
