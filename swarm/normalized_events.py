@@ -20,11 +20,13 @@ MAX_QUEUED_EVENTS_PER_DEVICE = 1024
 MAX_EVENT_BATCH = 128
 MAX_CORRELATION_GROUPS = 64
 MAX_AI_EVENTS_PER_AGENT = 1024
+MAX_AI_ATTRIBUTIONS_PER_DEVICE = 1024
 AI_EVENT_CLASSES = frozenset({"AID-ESCAPE","AID-EGRESS","AID-SECRETS","AID-PRIVILEGE","AID-LATERAL","AID-INJECTION","AID-MISSION","AID-COORDINATION","AID-EVALUATION","AID-TAMPER"})
 AI_DECISIONS = frozenset({"ALLOWED","DENIED","OBSERVED"})
 AI_TOOL_CATEGORIES = frozenset({"NONE","FILESYSTEM","PROCESS","SHELL","NETWORK","BROWSER","EMAIL","MCP","CLOUD","CONTAINER","KUBERNETES","IDENTITY","CREDENTIAL"})
 AI_CLASSIFICATIONS = frozenset({"PUBLIC","INTERNAL","CONFIDENTIAL","RESTRICTED"})
 _AI_ID=re.compile(r"^[a-z][a-z0-9_.:/-]{0,191}$"); _AI_SHA=re.compile(r"^[0-9a-f]{64}$"); _AI_TENANT=re.compile(r"^[a-z][a-z0-9_.-]{0,127}$"); _AI_SECRET=re.compile(r"(?i)(bearer\s+\S+|sk-[a-z0-9_-]{8,}|AIza[a-z0-9_-]{8,}|(?:api[_-]?key|client[_-]?secret|password|access[_-]?token)\s*[:=])")
+AI_ENDPOINT_ATTRIBUTION_FIELDS=frozenset({"schema_version","tenant_id","device_id","endpoint_event_id","agent_ref","session_ref","task_ref","capability_lease_ref","action_ticket_ref","observed_at_epoch","evidence_references","mode","action","authority_granted"})
 AI_EVENT_FIELDS=frozenset({"schema_version","event_id","tenant_id","event_class","source","classification","observed_at_epoch","agent_ref","model_ref","session_ref","task_ref","initiating_user_ref","purpose_sha256","capability_lease_ref","action_ticket_ref","tool_category","mcp_server_ref","target_resource_ref","decision","anomaly_indicators","evidence_references","mode","action","authority_granted"})
 
 def _ai_text(value:Any,name:str)->str:
@@ -63,6 +65,32 @@ def validate_ai_workload_event(value:Mapping[str,Any])->AIWorkloadSecurityEvent:
 
 
 @dataclass(frozen=True)
+class AIEndpointAttribution:
+    """Opaque AI identity bindings for one already-admitted endpoint fixture."""
+    schema_version: str; tenant_id: str; device_id: str; endpoint_event_id: str
+    agent_ref: str; session_ref: str; task_ref: str; capability_lease_ref: str; action_ticket_ref: str
+    observed_at_epoch: int; evidence_references: tuple[str, ...]
+    mode: str = "DRY_RUN"; action: str = "CORRELATE_ONLY"; authority_granted: bool = False
+
+    def __post_init__(self) -> None:
+        tenant = _ai_text(self.tenant_id, "tenant")
+        if not _AI_TENANT.fullmatch(tenant) or self.schema_version != "1": raise EndpointFixtureDenied("AI_ENDPOINT_SCHEMA_OR_TENANT_INVALID")
+        _ai_text(self.device_id, "device_id"); _ai_text(self.endpoint_event_id, "endpoint_event_id")
+        _tenant_ref(self.agent_ref,"fw-id",tenant,"agent_ref"); _tenant_ref(self.session_ref,"fw-session",tenant,"session_ref"); _tenant_ref(self.task_ref,"fw-task",tenant,"task_ref"); _tenant_ref(self.capability_lease_ref,"fw-lease",tenant,"capability_lease_ref"); _tenant_ref(self.action_ticket_ref,"fw-action",tenant,"action_ticket_ref")
+        if not isinstance(self.observed_at_epoch,int) or isinstance(self.observed_at_epoch,bool) or self.observed_at_epoch < 0: raise EndpointFixtureDenied("AI_ENDPOINT_TIME_INVALID")
+        if not isinstance(self.evidence_references,tuple) or len(self.evidence_references)>32 or tuple(sorted(set(self.evidence_references))) != self.evidence_references: raise EndpointFixtureDenied("AI_ENDPOINT_EVIDENCE_INVALID")
+        for reference in self.evidence_references: _tenant_ref(reference,"fw-evid",tenant,"evidence_reference")
+        if self.mode!="DRY_RUN" or self.action!="CORRELATE_ONLY" or self.authority_granted is not False: raise EndpointFixtureDenied("AI_ENDPOINT_AUTHORITY_FORBIDDEN")
+
+
+def validate_ai_endpoint_attribution(value: Mapping[str,Any]) -> AIEndpointAttribution:
+    if not isinstance(value,Mapping) or set(value)!=AI_ENDPOINT_ATTRIBUTION_FIELDS: raise EndpointFixtureDenied("AI_ENDPOINT_FIELDS_INVALID")
+    converted=dict(value)
+    if isinstance(converted["evidence_references"],list): converted["evidence_references"]=tuple(converted["evidence_references"])
+    return AIEndpointAttribution(**converted)
+
+
+@dataclass(frozen=True)
 class CorrelatedEventGroup:
     tenant_id: str
     device_id: str
@@ -86,6 +114,8 @@ class NormalizedEventStore:
         self._queues: dict[tuple[str, str], deque[EndpointObservation]] = {}
         self._ai_queues: dict[tuple[str, str], deque[AIWorkloadSecurityEvent]] = {}
         self._ai_seen: set[tuple[str, str, str]] = set()
+        self._ai_endpoint_attributions: dict[tuple[str, str], deque[AIEndpointAttribution]] = {}
+        self._ai_endpoint_seen: set[tuple[str, str, str]] = set()
 
     @property
     def max_queued_events_per_device(self) -> int:
@@ -107,6 +137,27 @@ class NormalizedEventStore:
         if not isinstance(limit,int) or isinstance(limit,bool) or not 1<=limit<=128: raise EndpointFixtureDenied("AI_EVENT_SNAPSHOT_LIMIT_INVALID")
         _tenant_ref(agent_ref,"fw-id",_ai_text(tenant_id,"tenant"),"agent_ref")
         with self._lock: return tuple(list(self._ai_queues.get((tenant_id,agent_ref),()))[:limit])
+
+
+    def admit_ai_endpoint_attribution(self, value: Mapping[str,Any]) -> AIEndpointAttribution:
+        """Bind opaque AI references to an existing endpoint fixture without executing anything."""
+        attribution=validate_ai_endpoint_attribution(value); device_key=(attribution.tenant_id,attribution.device_id); replay_key=(*device_key,attribution.endpoint_event_id)
+        with self._lock:
+            matching=tuple(item for item in self._queues.get(device_key,()) if item.event_id==attribution.endpoint_event_id)
+            if len(matching)!=1: raise EndpointFixtureDenied("AI_ENDPOINT_EVENT_NOT_PENDING")
+            if matching[0].observed_at_epoch!=attribution.observed_at_epoch: raise EndpointFixtureDenied("AI_ENDPOINT_CHRONOLOGY_MISMATCH")
+            queue=self._ai_endpoint_attributions.get(device_key,deque())
+            if replay_key in self._ai_endpoint_seen: raise EndpointFixtureDenied("AI_ENDPOINT_REPLAY")
+            if len(queue)>=MAX_AI_ATTRIBUTIONS_PER_DEVICE: raise EndpointFixtureDenied("AI_ENDPOINT_QUEUE_FULL")
+            try:
+                self._audit("ai_endpoint_attribution_admitted",{field:getattr(attribution,field) for field in AI_ENDPOINT_ATTRIBUTION_FIELDS if field!="authority_granted"}|{"authority_granted":False})
+            except Exception as exc: raise EndpointFixtureDenied("EVIDENCE_WRITE_FAILED") from exc
+            self._ai_endpoint_seen.add(replay_key); self._ai_endpoint_attributions.setdefault(device_key,queue).append(attribution); return attribution
+
+    def pending_ai_endpoint_attributions(self, *, tenant_id:str, device_id:str, limit:int=128) -> tuple[AIEndpointAttribution,...]:
+        if not isinstance(limit,int) or isinstance(limit,bool) or not 1<=limit<=128: raise EndpointFixtureDenied("AI_ENDPOINT_SNAPSHOT_LIMIT_INVALID")
+        key=(_ai_text(tenant_id,"tenant"),_ai_text(device_id,"device_id"))
+        with self._lock: return tuple(list(self._ai_endpoint_attributions.get(key,()))[:limit])
 
     def admit_fixture(
         self,

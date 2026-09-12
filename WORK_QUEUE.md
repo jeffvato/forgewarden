@@ -1169,7 +1169,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-AID-009 — Endpoint and MicroSensor AI attribution adapter
 - Requirement: FW-AID endpoint correlation contract
-- State: READY
+- State: REVIEW
 - Priority: P0
 - Dependencies: FW-AID-008
 - Approval: caller-supplied fixture attribution and deterministic correlation are authorized; live collection and response remain unauthorized.
