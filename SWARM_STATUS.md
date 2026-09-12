@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: FW-AID-006 deterministic inert containment proposal and policy contract accepted
-- Next task: FW-AID-007 Mission Control AI Security projection.
+- Current focus: FW-AID-007 Mission Control AI Security projection accepted
+- Next task: FW-AID-008 dedicated adversarial simulation suite.
 - Harness role: permanent ForgeWarden Core subsystem and default controller for ForgeWarden's own development; one governed architecture serves both roles under D-023.
 - Worker transport direction: registered local CLIs and explicitly approved API-backed workers; API keys are resolved only through FW-KEYS secret handles inside trusted adapters and never enter model context or lifecycle evidence.
 - Provider authentication direction: deterministic OpenAI, Anthropic, and Google/Gemini profiles with provider-specific official OAuth where available and approved API-key classes otherwise; Gemini CLI is registered as `agy` for read-only roles, FW-ID owns delegated identity, and FW-KEYS owns all credential material.
@@ -34,17 +34,17 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-AID-006
-- Starting commit: f0d56f1edeed0867b2ff8fdc102efacb296e0275
-- Candidate commit: 63ca1c903590a212c750ea7bb3261e0e0bf10473
-- Accepted commit: 63ca1c903590a212c750ea7bb3261e0e0bf10473
-- Files changed: immutable containment proposal contract, closed threat/action mapping, tenant-bound authority/recovery references, bounded lease/blast radius, Evidence-first replay safety, architecture status, and adversarial tests
-- Deterministic validation: focused 137 passed; full 1556 passed/1 skipped; integrity fresh full 1556 passed/1 skipped, all hard checks and 4 Golden Paths pass with YELLOW only for the pre-existing dependency and partial FW-AID ownership status
-- Independent review: exact Claude APPROVE/LOW with no blockers or missing tests (`phase2a-63ca1c903590a212c750ea7b`)
+- Task ID: FW-AID-007
+- Starting commit: 246ee2fdd617f4beca2c1ec4730b590410475473
+- Candidate commit: 731bb5bf65a309b5b70ca4336896879baad13b43
+- Accepted commit: 731bb5bf65a309b5b70ca4336896879baad13b43
+- Files changed: immutable tenant-bound AI Security Mission Control projection, explicit canonical/demo labels, optional proposal handling, documentation, and fail-closed tests
+- Deterministic validation: focused 82 passed after fixing the prior review's legitimate optional-proposal defect; full 1561 passed/1 skipped; integrity fresh full 1561 passed/1 skipped, all hard checks and 4 Golden Paths pass with YELLOW only for the pre-existing dependency and partial FW-AID ownership status
+- Independent review: repaired exact Claude APPROVE/LOW with no blockers or missing tests (`phase2a-731bb5bf65a309b5b70ca433`)
 - Gemini review: disabled and not required under D-020
-- Unresolved findings: Mission Control projection, dedicated adversarial suite, endpoint adapter, and integrated proof remain; no containment executor exists or is authorized
+- Unresolved findings: dedicated adversarial suite, endpoint adapter, and integrated proof remain; UI is read-only and no containment executor exists
 - Blocker: none
-- Next action: implement FW-AID-007 as a sanitized read-only tenant-bound Mission Control AI Security projection.
+- Next action: implement FW-AID-008 as a safe inert adversarial suite across canonical FW-AID boundaries.
 
 - Completion inventory: `docs/completion-audit-2026-09-09.md` (baseline `0afcbdd`).
 - FWQ-0008 implementation and binding hardening exist; VALIDATED retains a historical provenance caveat, not an implementation assignment. FWQ-0009 is recorded accepted and unchanged at source/test level from its reviewed candidate.

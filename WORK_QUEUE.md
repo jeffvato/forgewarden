@@ -1128,7 +1128,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-AID-007 — Mission Control AI Security projection
 - Requirement: FW-AID operator-visible read-only state
-- State: REVIEW
+- State: DONE
 - Priority: P0
 - Dependencies: FW-AID-006 and FW-UX-001
 - Approval: sanitized read-only Mission Control projections and clearly labeled demo fixtures are authorized; control mutation, live telemetry, containment, and response remain unauthorized.
@@ -1144,6 +1144,27 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no live sensor, credential, network/process/filesystem access, containment, remediation, recovery execution, deployment, or response authority is added.
 - Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
 - Security considerations: operator visibility consumes sanitized canonical facts and does not become an action surface.
+
+- Completion evidence: repaired exact candidate `731bb5bf65a309b5b70ca4336896879baad13b43`; focused 82 passed after fixing the prior review's legitimate optional-proposal set-union defect; exact Claude review `phase2a-731bb5bf65a309b5b70ca433` returned APPROVE/LOW with no blockers or missing tests; full 1561 passed/1 skipped; Product Integrity fresh full 1561 passed/1 skipped, all hard checks and 4 Golden Paths passed with YELLOW only for the pre-existing `tzdata` dependency and partial FW-AID ownership status.
+
+### FW-AID-008 — Dedicated adversarial simulation suite
+- Requirement: FW-AID safe adversarial validation
+- State: READY
+- Priority: P0
+- Dependencies: FW-AID-007
+- Approval: inert fixture simulations across existing FW-AID contracts are authorized; real exploit execution, live sensors, containment, and response remain unauthorized.
+- Description: Add a dedicated deterministic adversarial suite covering prompt injection, poisoned retrieval, credential discovery/exfiltration, egress, lateral movement, sandbox escape, privilege expansion, unauthorized MCP/shell, EDR/Evidence/log tampering, unapproved coordination, test/reviewer manipulation, policy bypass, self-authority, and kill-switch clearing through the canonical telemetry/detection/correlation/proposal boundaries.
+- Target path: tests/test_fw_aid_adversarial.py
+- Allowed paths: tests/test_fw_aid_adversarial.py, tests/fixtures/fw_aid/, swarm/ai_agent_defense.py, swarm/normalized_events.py, docs/fw-aid-architecture.md, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_fw_aid_adversarial.py tests/test_fw_aid.py
+- Acceptance criteria:
+  - safe deterministic fixtures cover every required attack class and verify normalization, detection, Evidence ordering, tenant isolation, replay denial, bounded resources, and inert proposal output;
+  - attempts to self-authorize, weaken policy/tests/review, access secrets, escape scope, cross tenants, disable monitoring/Evidence, clear kill switch, activate deployment, or execute containment fail closed;
+  - simulations use references/hashes and never execute commands, access credentials, contact networks, mutate hosts, or perform containment;
+  - failures identify the exact denied invariant and do not game or weaken existing tests;
+  - no live sensor, exploit, credential, network/process/filesystem access, containment, remediation, recovery execution, deployment, or response authority is added.
+- Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
+- Security considerations: adversarial inputs are inert metadata fixtures and cannot become executable instructions or authority.
 
 ### FW-REC-002 — Durable recovery checkpoint persistence and reconstruction
 - Requirement: FW-REC persistent recovery metadata
