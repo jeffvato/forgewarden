@@ -26,6 +26,7 @@ const emptyHarness={schema_version:1,data_mode:'EMPTY',data_label:'NO CANONICAL 
 assert.equal(validateHarnessActivity(emptyHarness),emptyHarness);
 assert.throws(()=>validateHarnessActivity({...emptyHarness,safety:{...emptyHarness.safety,mutation_allowed:true}}));
 assert.throws(()=>validateHarnessActivity({...emptyHarness,data_mode:'CANONICAL'}));
+assert.throws(()=>validateHarnessActivity({...emptyHarness,data_mode:'UNAVAILABLE',view:{}}));
 
 assert.equal(escapeHtml('<script>"x" & y</script>'),'&lt;script&gt;&quot;x&quot; &amp; y&lt;/script&gt;');
 renderStory('attack-story',[],false); assert.equal(elements['attack-story'].innerHTML,'');

@@ -127,6 +127,15 @@ def test_harness_activity_revalidates_forged_or_secret_bearing_views():
         serialize_harness_activity(replace(project(), task_queue=(bad_task, project().task_queue[1])))
 
 
+def test_harness_activity_rejects_invalid_commit_and_unbounded_queue():
+    with pytest.raises(MissionControlError, match="commit"):
+        serialize_harness_activity(replace(project(), current_commit="mutable-head"))
+    row = project().task_queue[0]
+    oversized = tuple(replace(row, task_id=f"FWQ-{index:04d}", dependencies=()) for index in range(1025))
+    with pytest.raises(MissionControlError, match="excessive"):
+        serialize_harness_activity(replace(project(), task_queue=oversized))
+
+
 def ai_bundle():
  event,finding=classified_source(); facts=(cross_fact("ENDPOINT",1),cross_fact("IDENTITY",2),cross_fact("NETWORK",3)); story=AICrossDomainCorrelator("tenant-a",lambda *_:None).correlate(finding,event,facts,story_id="story-1",ai_incident_id="incident-ai",domain_incident_id="incident-domain"); proposal=AIContainmentProposalRegistry("tenant-a",lambda *_:None).propose(finding,story,**proposal_args()); return event,finding,story,proposal
 
