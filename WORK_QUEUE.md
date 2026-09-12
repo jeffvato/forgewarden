@@ -1003,7 +1003,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-COMP-004 — Integrated compliance mapping and assessment lifecycle proof
 - Requirement: FW-COMP integrated lifecycle proof
-- State: READY
+- State: REVIEW
 - Priority: P0
 - Dependencies: FW-COMP-003
 - Approval: deterministic metadata-only lifecycle composition and honest integrity status are authorized; certification, external reporting, control execution, and compliance authority remain unauthorized.

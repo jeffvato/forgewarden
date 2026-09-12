@@ -127,3 +127,21 @@ def test_assessment_registry_requires_same_tenant_and_valid_current_time():
  with pytest.raises(ComplianceContractError,match="current time"): registry.register(observation(item),item,as_of="now")
  with pytest.raises(ComplianceContractError,match="tenant"): registry.snapshot("tenant-two")
  assert events==[]
+
+
+def test_integrated_compliance_mapping_evidence_assessment_lifecycle():
+ mapping_events=[]; mappings=ControlMappingRegistry("tenant-one",mapping_events.append); item=mappings.register(mapping())
+ durable=[]; ledger=EvidenceLedger("tenant-one",lambda envelope,digest:durable.append((envelope,digest)))
+ adapter=ComplianceEvidenceAdapter(mappings,ledger)
+ evidence=adapter.admit(item,evidence_id="fw-evid/tenant-one/comp-lifecycle",actor_ref="fw-id/compliance-controller",subject_ref="fw-resource/control-map",correlation_id="fw-corr/tenant-one/comp-lifecycle")
+ assessment_events=[]; assessments=ControlAssessmentRegistry("tenant-one",mappings,assessment_events.append)
+ value=observation(item,evidence_references=(evidence.envelope.evidence_id,),fact_references=("fw-policy/control-evaluation","fw-test/compliance-lifecycle"))
+ recorded=assessments.register(value,item,as_of="2026-09-12T00:00:00Z")
+ assert evidence.envelope.payload_sha256==recorded.mapping_sha256==control_mapping_sha256(item)
+ assert evidence.envelope.tenant_id==recorded.tenant_id==item.tenant_id
+ assert recorded.control_id==item.control_id and recorded.evidence_references==(evidence.envelope.evidence_id,)
+ assert mappings.snapshot("tenant-one")== (item,) and ledger.tenant_snapshot("tenant-one")== (evidence,) and assessments.snapshot("tenant-one")== (recorded,)
+ assert durable==[(evidence.envelope,evidence.record_sha256)] and len(mapping_events)==len(assessment_events)==1
+ for operation in (lambda: adapter.admit(item,evidence_id=evidence.envelope.evidence_id,actor_ref="fw-id/compliance-controller",subject_ref="fw-resource/control-map"),lambda: assessments.register(recorded,item,as_of="2026-09-12T00:00:00Z"),lambda: assessments.register(replace(recorded,assessment_id="fw-comp-assessment/tenant-one/stale",mapping_sha256="0"*64),item,as_of="2026-09-12T00:00:00Z"),lambda: assessments.register(replace(recorded,assessment_id="fw-comp-assessment/tenant-one/expired"),item,as_of=recorded.expires_at)):
+  with pytest.raises(ComplianceContractError): operation()
+ assert mappings.snapshot("tenant-one")== (item,) and ledger.tenant_snapshot("tenant-one")== (evidence,) and assessments.snapshot("tenant-one")== (recorded,)

@@ -45,6 +45,7 @@ def test_functionality_map_distinguishes_proven_from_not_yet_proven():
     assert states["FW-KEYS"] == "Proven"
     assert states["FW-EVID"] == "Proven"
     assert states["FW-REC"] == "Proven"
+    assert states["FW-COMP"] == "Proven"
     assert states["FW-INTEGRITY"] == "Implemented"
 
 
@@ -62,6 +63,8 @@ def test_canonical_ownership_exposes_missing_roadmap_primitives_honestly():
     assert CANONICAL_OWNERSHIP["normalized_events"]["status"] == "IMPLEMENTED_PARTIAL"
     assert CANONICAL_OWNERSHIP["soc_incidents"]["implementation"] == "swarm.soc.SOCIncidentProjection"
     assert CANONICAL_OWNERSHIP["soc_incidents"]["status"] == "IMPLEMENTED_PARTIAL"
+    assert CANONICAL_OWNERSHIP["compliance"]["implementation"].startswith("swarm.compliance ControlMapping")
+    assert CANONICAL_OWNERSHIP["compliance"]["status"] == "IMPLEMENTED"
 
 
 def test_standing_gate_documents_ownership_graph_and_product_map():

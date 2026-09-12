@@ -41,3 +41,13 @@ The create-once Evidence-first registry rejects substitution, replay, expiration
 cross-tenant facts, and durability failure. Outcomes remain `OBSERVATION_ONLY`;
 they cannot change mapping status, policy, tests, Evidence, or authority and do
 not represent certification or continuous compliance.
+
+## Integrated lifecycle proof
+
+The tested FW-COMP lifecycle composes one canonical mapping registry, the
+canonical FW-EVID ledger adapter, and the assessment registry. Exact mapping
+digests and tenant/control/Evidence bindings survive end to end; duplicate,
+replay, substitution, cross-tenant, expiry, and durability failures leave
+protected state unchanged. Product Integrity reports this narrow metadata-only
+DRY_RUN lifecycle as Proven while explicitly excluding certification,
+attestation, external reporting, control execution, and continuous compliance.
