@@ -35,6 +35,7 @@ def test_failure_output_and_binding_fail_closed(result):
 def test_configuration_and_prompt_bounds():
     with pytest.raises(AnythingLLMError): AnythingLLMConfig(workspace="../escape")
     with pytest.raises(AnythingLLMError): AnythingLLMReviewer(AnythingLLMConfig()).run(None,JOB,COMMIT,"x"*48001)
+    with pytest.raises(AnythingLLMError): AnythingLLMReviewer(AnythingLLMConfig()).run(None,JOB,COMMIT,"x"*47000)
 
 def test_windows_bridge_requires_exact_firewall_protection_for_wildcard_listener():
     bridge = (Path(__file__).parents[1] / "scripts" / "anythingllm-review-bridge.ps1").read_text()

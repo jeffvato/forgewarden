@@ -1311,7 +1311,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-UX-007 — Canonical Harness activity provider
 - Requirement: Mission Control incremental backend integration
-- State: READY
+- State: REVIEW
 - Priority: P0
 - Dependencies: FW-UX-006 and FW-HARNESS-017
 - Approval: Jeff authorized Mission Control backend integration; this unit may expose existing sanitized local read-only Harness activity only.

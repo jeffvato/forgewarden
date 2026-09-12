@@ -100,3 +100,19 @@ rejected Core state as live. A Demo Provider failure still rejects the scenario
 instead of presenting incomplete simulated data. This first integration adds no remote API,
 authentication, mutation callback, execution, containment, recovery, or
 deployment authority.
+
+## Canonical Harness activity provider
+
+The loopback console exposes `/api/harness-activity` as the read-only adapter for
+the existing immutable `MissionControlView`. A trusted Harness controller may
+inject its already validated projection; the adapter revalidates tenant, queue,
+dependencies, current and next task, exact commit, bounded visible text, safety
+state, and secret exclusion before serialization. It returns `CANONICAL`,
+`EMPTY`, or `UNAVAILABLE` and never fabricates activity when no controller view
+is attached.
+
+The AI Harness screen retains its deterministic demo workflow and displays the
+canonical provider state separately. A malformed or unavailable Harness view is
+discarded without contaminating Demo Mode. The provider exposes no controller,
+scheduler, Git, approval, review, model, credential, recovery, response, or
+deployment callback.

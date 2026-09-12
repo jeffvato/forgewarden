@@ -47,7 +47,7 @@ class AnythingLLMReviewer:
         del snapshot
         if not _JOB.fullmatch(job_id) or not _SHA.fullmatch(commit):
             raise AnythingLLMError("AnythingLLM review binding is invalid")
-        if not isinstance(prompt, str) or not prompt.strip() or len(prompt.encode("utf-8")) > self.config.max_prompt_bytes:
+        if not isinstance(prompt, str) or not prompt.strip():
             raise AnythingLLMError("AnythingLLM prompt is missing or exceeds its bound")
         bridge = Path(__file__).resolve().parents[1] / "scripts" / "anythingllm-review-bridge.ps1"
         if not bridge.is_file() or bridge.is_symlink():
@@ -64,6 +64,8 @@ class AnythingLLMReviewer:
             + json.dumps(schema(job_id, commit), separators=(",", ":"))
             + "\nReview context:\n" + prompt
         ).encode("utf-8")
+        if len(request) > self.config.max_prompt_bytes:
+            raise AnythingLLMError("AnythingLLM prompt is missing or exceeds its bound")
         env = {"SystemRoot": os.environ.get("SystemRoot", r"C:\\Windows"), "WINDIR": os.environ.get("WINDIR", r"C:\\Windows")}
         completed = self._runner(
             [r"/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe", "-NoLogo", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",

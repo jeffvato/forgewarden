@@ -5,7 +5,7 @@ import pytest
 from swarm.harness_context import BudgetAdmission, BudgetUsage
 from swarm.harness_task import HarnessTask, TaskStatus
 from swarm.harness_worker import WorkerRegistration, WorkerRole, WorkerTransport
-from swarm.mission_control import MissionControlError, project_ai_security, project_mission_control
+from swarm.mission_control import MissionControlError, project_ai_security, project_mission_control, serialize_harness_activity
 from tests.test_fw_aid import classified_source, cross_fact, proposal_args
 from swarm.ai_agent_defense import AICrossDomainCorrelator, AIContainmentProposalRegistry
 
@@ -106,6 +106,25 @@ def test_projection_rejects_dependency_outside_canonical_queue():
 def test_idle_projection_has_no_worker_or_budget():
     view = project(current_task=None, worker=None, budget=None, next_task="FWQ-0001", current_commit=None)
     assert view.current_task is None and view.active_worker is None and view.budget_used is None
+
+
+def test_harness_activity_serializes_canonical_and_empty_views_without_authority():
+    canonical = serialize_harness_activity(project())
+    assert canonical["data_mode"] == "CANONICAL"
+    assert canonical["view"]["current_task"] == "FWQ-0001"
+    assert canonical["view"]["task_queue"][1]["dependencies"] == ("FWQ-0001",)
+    assert canonical["safety"] == {"mutation_allowed": False, "deployment": "DISABLED", "kill_switch": "ENGAGED"}
+    assert serialize_harness_activity(None)["data_mode"] == "EMPTY"
+
+
+def test_harness_activity_revalidates_forged_or_secret_bearing_views():
+    with pytest.raises(MissionControlError):
+        serialize_harness_activity(replace(project(), mutation_allowed=True))
+    with pytest.raises(MissionControlError, match="secret-bearing"):
+        serialize_harness_activity(replace(project(), recent_decisions=("api_key=secret-value",)))
+    with pytest.raises(MissionControlError, match="dependencies"):
+        bad_task = replace(project().task_queue[0], dependencies=("FWQ-9999",))
+        serialize_harness_activity(replace(project(), task_queue=(bad_task, project().task_queue[1])))
 
 
 def ai_bundle():

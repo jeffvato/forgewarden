@@ -8,11 +8,15 @@ import threading
 import subprocess
 from http import HTTPStatus
 from http.server import ThreadingHTTPServer
-from swarm.console import addon_audit_snapshot, addon_snapshot, approval_snapshot, dispatch_plan, evidence_snapshot, installation_snapshot, job_detail, jobs_snapshot, load_profiles, ConsoleHandler
+from swarm.console import addon_audit_snapshot, addon_snapshot, approval_snapshot, dispatch_plan, evidence_snapshot, harness_activity_snapshot, installation_snapshot, job_detail, jobs_snapshot, load_profiles, ConsoleHandler
 from swarm.core import SwarmError
 from swarm.mission_control_demo import DEMO_SCENARIO_ID, mission_control_demo_snapshot
 
 class ConsoleTests(unittest.TestCase):
+    def test_harness_activity_provider_has_honest_empty_and_unavailable_states(self):
+        self.assertEqual(harness_activity_snapshot()["data_mode"], "EMPTY")
+        self.assertEqual(harness_activity_snapshot(lambda: (_ for _ in ()).throw(RuntimeError("offline")))["data_mode"], "UNAVAILABLE")
+
     def test_frontend_contract_and_rendering_boundaries(self):
         root = Path(__file__).parents[1]
         result = subprocess.run(["node", "tests/test_console_frontend.js"], cwd=root, text=True, capture_output=True, check=False)
@@ -173,6 +177,12 @@ class ConsoleTests(unittest.TestCase):
             snapshot = json.loads(resp.read().decode())
             self.assertEqual(snapshot["data_mode"], "DEMO")
             self.assertEqual(snapshot["scenario"]["id"], DEMO_SCENARIO_ID)
+            conn.request("GET", "/api/harness-activity")
+            resp = conn.getresponse()
+            self.assertEqual(resp.status, HTTPStatus.OK)
+            activity = json.loads(resp.read().decode())
+            self.assertEqual(activity["data_mode"], "EMPTY")
+            self.assertFalse(activity["safety"]["mutation_allowed"])
             conn.request("GET", "/api/jobs/not%20a%20job")
             resp = conn.getresponse()
             self.assertEqual(resp.status, HTTPStatus.BAD_REQUEST)

@@ -221,7 +221,7 @@ def test_review_cycle_embeds_large_exact_patch_for_tool_free_anythingllm(repo_fi
     )
     assert result["state"] == "APPROVED"
     assert seen["snapshot_patch"] is True
-    assert "Exact candidate patch from Git:" in seen["context"]
+    assert "Exact candidate patch from Git (zero unchanged context):" in seen["context"]
     assert "large.txt" in seen["context"]
     assert "available at EXACT_CANDIDATE.patch" not in seen["context"]
 

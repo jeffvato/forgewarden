@@ -11,6 +11,7 @@ from .phase2a import safety_status, workflow_status
 from .addons import AddonManager, AddonManifestError
 from .desktop_bridge import job_status as bridge_job_status, recent_audit
 from .mission_control_demo import mission_control_demo_snapshot
+from .mission_control import MissionControlError, serialize_harness_activity
 
 ROOT = Path(__file__).resolve().parents[1]
 PROFILE_PATH = ROOT / "config" / "llm-profiles.json"
@@ -77,6 +78,15 @@ def approval_snapshot(root: Path | None = None) -> dict[str, Any]:
         records.append({key: value.get(key) for key in ("approval_id", "job_id", "reviewer", "decision", "expires_at", "consumed", "mutation_allowed", "deployment")})
     return {"records": records[-50:]}
 
+def harness_activity_snapshot(provider: Any = None) -> dict[str, Any]:
+    """Read one injected canonical Harness view without granting console authority."""
+    if provider is None:
+        return serialize_harness_activity(None)
+    try:
+        return serialize_harness_activity(provider())
+    except (MissionControlError, OSError, RuntimeError, TypeError, ValueError):
+        return {"schema_version": 1, "data_mode": "UNAVAILABLE", "data_label": "CANONICAL HARNESS ACTIVITY UNAVAILABLE", "view": None, "safety": {"mutation_allowed": False, "deployment": "DISABLED", "kill_switch": "ENGAGED"}}
+
 def load_profiles(path: Path = PROFILE_PATH) -> list[dict[str, Any]]:
     from .core import read_restricted_bytes, SwarmError
     try:
@@ -115,6 +125,7 @@ def dispatch_plan(model_id: str, task: str, objective: str, profiles: list[dict[
 
 class ConsoleHandler(BaseHTTPRequestHandler):
     server_version = "ForgewardenConsole/0.1"
+    harness_view_provider = staticmethod(lambda: None)
     def _send(self, status: int, payload: bytes, content_type: str) -> None:
         self.send_response(status); self.send_header("Content-Type", content_type); self.send_header("Content-Length", str(len(payload))); self.send_header("Cache-Control", "no-store"); self.end_headers(); self.wfile.write(payload)
     def _json(self, status: int, payload: Any) -> None:
@@ -146,6 +157,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             return
         if route == "/api/approvals": self._json(HTTPStatus.OK, approval_snapshot()); return
         if route == "/api/mission-control": self._json(HTTPStatus.OK, mission_control_demo_snapshot()); return
+        if route == "/api/harness-activity": self._json(HTTPStatus.OK, harness_activity_snapshot(self.harness_view_provider)); return
         assets = {"/":("index.html","text/html; charset=utf-8"),"/styles.css":("styles.css","text/css; charset=utf-8"),"/app.js":("app.js","text/javascript; charset=utf-8")}
         if route not in assets: self._json(HTTPStatus.NOT_FOUND, {"error":"not found"}); return
         filename, content_type = assets[route]

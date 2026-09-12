@@ -2,8 +2,8 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
-from typing import Mapping
+from dataclasses import asdict, dataclass
+from typing import Any, Mapping
 
 from .harness_context import BudgetAdmission, BudgetUsage
 from .harness_task import HarnessTask, TaskStatus
@@ -56,6 +56,35 @@ class MissionControlView:
     kill_switch: str
     deployment: str = "DISABLED"
     mutation_allowed: bool = False
+
+
+def serialize_harness_activity(view: MissionControlView | None) -> dict[str, Any]:
+    """Serialize a validated, authority-free Harness projection for the console."""
+    base = {"schema_version": 1, "safety": {"mutation_allowed": False, "deployment": "DISABLED", "kill_switch": "ENGAGED"}}
+    if view is None:
+        return {**base, "data_mode": "EMPTY", "data_label": "NO CANONICAL HARNESS ACTIVITY", "view": None}
+    if not isinstance(view, MissionControlView) or view.schema_version != 1 or not _TENANT.fullmatch(view.tenant_id):
+        raise MissionControlError("Harness activity projection is malformed")
+    if view.mutation_allowed or view.deployment != "DISABLED" or view.kill_switch != "ENGAGED":
+        raise MissionControlError("Harness activity safety boundary is invalid")
+    if not 1 <= len(view.task_queue) <= 1024 or not all(isinstance(item, MissionTaskView) for item in view.task_queue):
+        raise MissionControlError("Harness activity queue is malformed or excessive")
+    task_ids = tuple(item.task_id for item in view.task_queue)
+    if len(set(task_ids)) != len(task_ids) or any(dependency not in task_ids for item in view.task_queue for dependency in item.dependencies):
+        raise MissionControlError("Harness activity dependencies are incomplete")
+    if view.current_task is not None and view.current_task not in task_ids:
+        raise MissionControlError("Harness activity current task is unknown")
+    if view.next_task is not None and view.next_task not in task_ids:
+        raise MissionControlError("Harness activity next task is unknown")
+    if view.current_commit is not None and not _SHA.fullmatch(view.current_commit):
+        raise MissionControlError("Harness activity commit is not exact")
+    visible = (
+        view.phase, view.validation_status, view.review_status, *view.recent_decisions,
+        *(value for item in view.task_queue for value in (item.task_id, item.requirement_id, item.title, item.status, item.blocker or "", *item.dependencies, *item.relevant_files)),
+    )
+    if len(view.recent_decisions) > 32 or any(not isinstance(value, str) or len(value.encode()) > 1000 or _SECRET.search(value) for value in visible):
+        raise MissionControlError("Harness activity is secret-bearing or excessive")
+    return {**base, "data_mode": "CANONICAL", "data_label": "CANONICAL READ-ONLY HARNESS ACTIVITY", "view": asdict(view)}
 
 
 def project_mission_control(

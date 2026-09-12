@@ -116,7 +116,9 @@ def run_review_cycle(
         raise ReviewRunnerError("review context must be non-empty text")
     commit = _validate_inputs(repository, candidate_commit, job_id)
     patch = _git(repository, "show", "--format=fuller", "--stat", "--patch", commit)
+    compact_patch = _git(repository, "show", "--format=fuller", "--stat", "--patch", "--unified=0", commit)
     inline_patch_context = context + "\n\nExact candidate patch from Git:\n" + patch
+    anythingllm_context = context + "\n\nExact candidate patch from Git (zero unchanged context):\n" + compact_patch
     patch_file_mode = len(inline_patch_context.encode("utf-8")) > 24_000 or "FULL_SNAPSHOT_READ_ONLY_REVIEW" in context
     review_context = (context + "\n\nExact candidate patch is available at EXACT_CANDIDATE.patch. Use only the read-only file viewer to inspect that exact patch.") if patch_file_mode else inline_patch_context
     requested = tuple(dict.fromkeys(reviewers))
@@ -177,7 +179,7 @@ def run_review_cycle(
                 # the externalized snapshot patch, but its adapter owns a larger
                 # bounded prompt contract and will fail closed if inline content
                 # exceeds that limit. File-capable reviewers retain snapshot mode.
-                provider_context = inline_patch_context if provider == "ANYTHINGLLM" else review_context
+                provider_context = anythingllm_context if provider == "ANYTHINGLLM" else review_context
                 result = invoke(snapshots[provider], job_id, commit, provider_context)
                 contract_provider = provider.lower() if provider in {"CLAUDE", "GEMINI"} else "claude"
                 validate_contract(result, contract_provider, expected_job_id=job_id, expected_commit=commit)
