@@ -3,6 +3,7 @@ import pytest
 from swarm.endpoint_fixtures import EndpointFixtureDenied
 from swarm.normalized_events import AI_EVENT_CLASSES, NormalizedEventStore, validate_ai_workload_event
 from swarm.ai_agent_defense import *
+from swarm.harness_evidence import HarnessLifecycleEvidence
 
 def event(**changes):
  value={"schema_version":"1","event_id":"fw-event/tenant-a/aid-1","tenant_id":"tenant-a","event_class":"AID-PRIVILEGE","source":"harness.fixture","classification":"INTERNAL","observed_at_epoch":100,"agent_ref":"fw-id/tenant-a/codex-worker","model_ref":"fw-model/tenant-a/codex","session_ref":"fw-session/tenant-a/session-1","task_ref":"fw-task/tenant-a/task-1","initiating_user_ref":"fw-id/tenant-a/operator","purpose_sha256":"a"*64,"capability_lease_ref":"fw-lease/tenant-a/lease-1","action_ticket_ref":"fw-action/tenant-a/ticket-1","tool_category":"MCP","mcp_server_ref":"registered-mcp","target_resource_ref":"fw-resource/tenant-a/repository","decision":"DENIED","anomaly_indicators":["authority_expansion","repeated_denial"],"evidence_references":["fw-evid/tenant-a/harness-1"],"mode":"DRY_RUN","action":"DETECT_ONLY","authority_granted":False}; value.update(changes); return value
@@ -78,3 +79,37 @@ def test_finding_contract_rejects_malformed_policy_and_authority(changes):
  values=dict(schema_version="1",finding_id="fw-finding/tenant-a/f",tenant_id="tenant-a",source_event_id="fw-event/tenant-a/e",agent_ref="fw-id/tenant-a/a",threat_class="AID-PRIVILEGE",severity="CRITICAL",confidence=80,matched_facts=("authority_expansion",),evidence_references=("fw-evid/tenant-a/e",),observed_at_epoch=1)
  values.update(changes)
  with pytest.raises(AIThreatClassificationError): AIThreatFinding(**values)
+
+
+def lifecycle(*,attempted=("permission.expand",),denied=("permission.expand",),tenant="tenant-a",worker="codex-worker",model="gpt-approved"):
+ return HarnessLifecycleEvidence(1,"task_denied",tenant,"FW-AID-004","FW-AID-004","controller",worker,"openai",model,"a"*64,("source.write",),attempted,denied,("swarm/ai_agent_defense.py",),(),(),(),"DENIED","DENIED","2026-09-12T02:00:00Z",None,())
+
+def binding(**changes):
+ value=dict(event_id="fw-event/tenant-a/harness-1",session_ref="fw-session/tenant-a/s-1",capability_lease_ref="fw-lease/tenant-a/l-1",action_ticket_ref="fw-action/tenant-a/t-1",mcp_server_ref="registered-mcp",target_resource_ref="fw-resource/tenant-a/repository",evidence_references=("fw-evid/tenant-a/harness-1",)); value.update(changes); return HarnessMonitorBinding(**value)
+
+def test_harness_monitor_maps_closed_security_signals_into_canonical_store():
+ calls=[]; store=NormalizedEventStore(lambda *args:calls.append(args)); monitor=HarnessAIDMonitorAdapter("tenant-a",store)
+ cases=(("permission.expand","AID-PRIVILEGE","authority_expansion"),("secret.read","AID-SECRETS","secret_access"),("mcp.unapproved","AID-MISSION","unexpected_tool"),("path.out_of_scope","AID-MISSION","mission_deviation"),("agent.coordinate","AID-COORDINATION","unapproved_coordination"),("review.manipulate","AID-EVALUATION","reviewer_manipulation"),("test.manipulate","AID-EVALUATION","test_manipulation"),("evidence.modify","AID-TAMPER","evidence_tamper"))
+ for index,(action,threat,indicator) in enumerate(cases):
+  item=monitor.observe(lifecycle(attempted=(action,),denied=(action,)),binding(event_id=f"fw-event/tenant-a/harness-{index}"))
+  assert item.event_class==threat and item.anomaly_indicators==(indicator,)
+  assert item.purpose_sha256=="a"*64 and item.agent_ref.endswith("/codex-worker") and item.model_ref.endswith("/gpt-approved")
+  assert item.action=="DETECT_ONLY" and not item.authority_granted
+ assert len(calls)==len(cases)
+
+def test_harness_monitor_uses_deterministic_priority_and_never_mutates_lifecycle():
+ source=lifecycle(attempted=("permission.expand","evidence.modify"),denied=("permission.expand","evidence.modify")); before=source
+ monitor=HarnessAIDMonitorAdapter("tenant-a",NormalizedEventStore(lambda *_:None)); item=monitor.observe(source,binding())
+ assert item.event_class=="AID-TAMPER" and item.anomaly_indicators==("evidence_tamper",) and source==before
+
+def test_harness_monitor_fails_closed_on_missing_cross_tenant_raw_unknown_replay_and_evidence_failure():
+ store=NormalizedEventStore(lambda *_:None); monitor=HarnessAIDMonitorAdapter("tenant-a",store)
+ with pytest.raises(AIThreatClassificationError,match="no closed"): monitor.observe(lifecycle(attempted=("benign.read",),denied=()),binding())
+ with pytest.raises(AIThreatClassificationError,match="binding"): monitor.observe(lifecycle(tenant="tenant-b"),binding())
+ with pytest.raises(AIThreatClassificationError,match="binding"): monitor.observe(lifecycle(worker=None),binding())
+ with pytest.raises(AIThreatClassificationError,match="admission"): monitor.observe(lifecycle(),binding(session_ref="fw-session/tenant-b/s"))
+ first=monitor.observe(lifecycle(),binding())
+ with pytest.raises(AIThreatClassificationError,match="admission"): monitor.observe(lifecycle(),binding())
+ assert store.pending_ai_security_events(tenant_id="tenant-a",agent_ref=first.agent_ref)==(first,)
+ failed=HarnessAIDMonitorAdapter("tenant-a",NormalizedEventStore(lambda *_:(_ for _ in ()).throw(OSError("offline"))))
+ with pytest.raises(AIThreatClassificationError,match="admission"): failed.observe(lifecycle(),binding())

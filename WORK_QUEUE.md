@@ -1065,7 +1065,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-AID-004 — Governed harness monitoring adapter
 - Requirement: FW-AID protection for ForgeWarden's AI development harness
-- State: READY
+- State: REVIEW
 - Priority: P0
 - Dependencies: FW-AID-003 and FW-HARNESS-014
 - Approval: fixture-only conversion of existing harness lifecycle facts into canonical FW-AID telemetry is authorized; live hooks, interception, containment, and response remain unauthorized.

@@ -194,7 +194,7 @@ cannot authorize or execute response.
 
 ## Harness protection and separation of duties
 
-FW-HARNESS is the first protected environment. Caller-supplied harness facts
+`HarnessAIDMonitorAdapter` now makes FW-HARNESS the first fixture-driven protected environment by converting validated lifecycle denials and attempts into privacy-minimized canonical telemetry through a separately owned `NormalizedEventStore`. FW-HARNESS is the first protected environment. Caller-supplied harness facts
 cover Codex, reviewers, future approved specialists, identity/model, task,
 context hash, offered/invoked tools, allowed/changed paths, Git scope,
 validation/review outcomes, denials, budgets, provider calls, coordination, and
