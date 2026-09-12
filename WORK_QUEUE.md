@@ -1188,7 +1188,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-AID-010 — Integrated AI intrusion lifecycle proof
 - Requirement: FW-AID integrated lifecycle acceptance
-- State: READY
+- State: REVIEW
 - Priority: P0
 - Dependencies: FW-AID-009
 - Approval: deterministic fixture-only integration proof and ownership reconciliation are authorized; live collection and response remain unauthorized.

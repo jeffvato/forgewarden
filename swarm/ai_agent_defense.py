@@ -140,7 +140,7 @@ class AICrossDomainCorrelator:
    if story_id in self._stories or story_id in self._pending: raise AIThreatClassificationError("correlation replay or pending")
    self._pending.add(story_id)
   try:
-   shared_affected=[event.agent_ref]+sorted({item.affected_ref for item in facts})
+   shared_affected=sorted({event.agent_ref}|{item.affected_ref for item in facts})
    evidence=sorted(set(finding.evidence_references)|{item.evidence_ref for item in facts})
    common=dict(tenant_id=self.tenant_id,title="AI-enabled intrusion correlation",severity="CRITICAL" if finding.severity=="CRITICAL" else "HIGH",status="OPEN",created_at_epoch=min(event.observed_at_epoch,facts[0].occurred_at_epoch),updated_at_epoch=max(item.occurred_at_epoch for item in facts),affected_refs=shared_affected,normalized_event_refs=[event.event_id],evidence_refs=evidence,disposition="NONE")
    ai=project_soc_incident(dict(common,incident_id=ai_incident_id),tenant_id=self.tenant_id,now_epoch=common["updated_at_epoch"],audit=self._audit)

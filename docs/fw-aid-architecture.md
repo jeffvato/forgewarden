@@ -226,3 +226,8 @@ absence of real filesystem/process/network/credential/containment effects.
 ## Endpoint and MicroSensor attribution (FW-AID-009)
 
 The canonical `NormalizedEventStore` now admits a versioned, tenant-bound, caller-supplied AI attribution record only for an exact endpoint event that is still pending. The adapter carries opaque FW-ID, session, task, capability-lease, Action Ticket, and FW-EVID references; it rejects raw fields, cross-tenant bindings, chronology mismatches, replay, Evidence failure, and any authority-bearing mode or action. It performs correlation only and adds no live sensor, endpoint hook, process, filesystem, network, credential, containment, or response authority.
+
+
+## Integrated lifecycle proof (FW-AID-010)
+
+The implemented fixture-only lifecycle composes canonical Harness monitoring, endpoint attribution, `NormalizedEventStore`, deterministic classification, FW-SOC cross-domain correlation, proposal-only containment metadata, FW-EVID chronology, and the read-only Mission Control projection. Product Integrity records FW-AID as implemented and tested within this DRY_RUN scope. Live telemetry, enforcement, containment execution, recovery execution, and deployment remain unimplemented and unauthorized.

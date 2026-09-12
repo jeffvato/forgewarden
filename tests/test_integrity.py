@@ -65,6 +65,8 @@ def test_canonical_ownership_exposes_missing_roadmap_primitives_honestly():
     assert CANONICAL_OWNERSHIP["soc_incidents"]["status"] == "IMPLEMENTED_PARTIAL"
     assert CANONICAL_OWNERSHIP["compliance"]["implementation"].startswith("swarm.compliance ControlMapping")
     assert CANONICAL_OWNERSHIP["compliance"]["status"] == "IMPLEMENTED"
+    assert CANONICAL_OWNERSHIP["ai_agent_defense"]["implementation"].startswith("swarm.ai_agent_defense")
+    assert CANONICAL_OWNERSHIP["ai_agent_defense"]["status"] == "IMPLEMENTED"
 
 
 def test_standing_gate_documents_ownership_graph_and_product_map():
@@ -103,7 +105,8 @@ def test_gate_reports_current_repository_health_and_dependency_risk():
     assert report["checks"]["tests"]
     assert report["checks"]["golden_path"]
     assert report["head"]
-    assert any(item["area"] == "architecture" for item in report["findings"])
+    assert report["missing_canonical_owners"] == []
+    assert not any(item["area"] == "architecture" for item in report["findings"])
 
 
 def test_gate_runs_the_canonical_golden_path_by_default():
