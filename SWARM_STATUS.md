@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: FW-UX-002 Mission Control incident detail accepted
-- Next task: FW-UX-003 AI Defense and Harness assurance workspaces.
+- Current focus: FW-UX-003 AI Defense and Harness assurance workspaces accepted
+- Next task: FW-UX-004 governance assurance workspaces.
 - Harness role: permanent ForgeWarden Core subsystem and default controller for ForgeWarden's own development; one governed architecture serves both roles under D-023.
 - Worker transport direction: registered local CLIs and explicitly approved API-backed workers; API keys are resolved only through FW-KEYS secret handles inside trusted adapters and never enter model context or lifecycle evidence.
 - Provider authentication direction: deterministic OpenAI, Anthropic, and Google/Gemini profiles with provider-specific official OAuth where available and approved API-key classes otherwise; Gemini CLI is registered as `agy` for read-only roles, FW-ID owns delegated identity, and FW-KEYS owns all credential material.
@@ -55,6 +55,7 @@ On every restart or continuation:
 
 ## Execution log
 
+- 2026-09-12: FW-UX-003 accepted at 038de2b019b2c5a07c33f35d1ca1e4d41dfa1f53. Mission Control now has polished, read-only AI Intrusion Defense and Harness assurance workspaces over the centralized deterministic demo provider, with agent chronology, policy denials, scoped authority, routing rationale, budgets, validation, exact artifact, reviewer, and escalation state. All control, Evidence, containment, and review claims remain visibly simulated/proposal-only. Focused 31 pytest plus Node contract passed; desktop visual inspection passed; exact Claude APPROVE/LOW with no blockers/missing tests; full and Product Integrity fresh full each passed 1604/1 with all hard checks and Golden Path, YELLOW only for pre-existing tzdata. FW-UX-004 is next.
 - 2026-09-11: FW-HARNESS-017 accepted at `9d196c4032da456d2d2274eecdd15e3a8d33ebf9`. First ordinary failure permits one same-tier repair; repeated same or different failures escalate one tier; security/architecture uncertainty escalates; scope, budget, kill-switch, and Evidence failures block; T4 requires human escalation. Immutable bounded tenant Failure Packets are Evidence-first and replay-denied and execute nothing. Focused 75 passed; exact Claude APPROVE/LOW with no blockers/missing tests; full and integrity fresh full each passed 1421/1 with all hard gates and 4 Golden Paths. The project-wide operating contract and parallel Mission Control showcase directive are now being reconciled against canonical owners.
 
 - 2026-09-11: FW-HARNESS-016 accepted at `b647df6b8b78c5703da99909e247a03d21653ae1`. The Harness now binds exact deterministic risk tiers into a bounded Approved Model Registry projection and chooses the lowest-cost eligible approved candidate satisfying tenant, environment, role, data, tools, and assurance. T4/human/denied decisions select nothing; unavailable providers can fall back only to a separately approved same-or-higher tier; no candidate fails closed with the canonical assurance error. Routes grant no invocation or deployment authority. Focused 65 passed; exact Claude APPROVE/LOW; full and integrity fresh full each passed 1396/1 with all hard gates and 4 Golden Paths. FW-HARNESS-017 is next.

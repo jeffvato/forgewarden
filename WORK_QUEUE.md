@@ -1227,7 +1227,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-UX-003 — AI Defense and Harness assurance workspaces
 - Requirement: FW-UX differentiator workspaces
-- State: READY
+- State: DONE
 - Priority: P0
 - Dependencies: FW-UX-002 and FW-AID-010
 - Approval: reusable read-only UI against labeled deterministic demo data is authorized; model invocation, live monitoring, and response remain unauthorized.
@@ -1242,6 +1242,27 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - responsive and accessible views add no control callbacks or authority.
 - Expected validation: focused frontend/server tests, visual inspection, exact independent read-only review, then full suite/integrity once.
 - Security considerations: views explain deterministic authority but remain read-only DEMO projections.
+
+- Completion evidence: exact candidate 038de2b019b2c5a07c33f35d1ca1e4d41dfa1f53; focused 31 pytest plus Node frontend contract passed; desktop visual inspection passed for both assurance workspaces; exact Claude review phase2a-f6c130a62759f7abbc12c78f APPROVE/LOW with no blockers or missing tests; full 1604 passed/1 skipped; Product Integrity fresh full 1604 passed/1 skipped with all hard checks and Golden Path passed, YELLOW only for the pre-existing tzdata dependency finding.
+
+### FW-UX-004 — Governance assurance workspaces
+- Requirement: FW-UX governance differentiator workspaces
+- State: READY
+- Priority: P0
+- Dependencies: FW-UX-003, FW-EVID-006, FW-HARNESS-016
+- Approval: reusable read-only UI against labeled deterministic demo data is authorized; approvals, policy mutation, model activation, MCP mutation, and response remain unauthorized.
+- Description: Add polished Evidence Vault, deterministic policy/Action Ticket, Model Broker, and MCP assurance workspaces over the centralized demo provider so operators can trace authority and provenance without implying live backend capability.
+- Target path: console/index.html
+- Allowed paths: swarm/mission_control_demo.py, console/index.html, console/app.js, console/styles.css, tests/test_console.py, tests/test_console_frontend.js, docs/management-console.md, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_console.py tests/test_mission_control.py && node --test tests/test_console_frontend.js
+- Acceptance criteria:
+  - Evidence shows bounded chronology, actor/source/tenant, related incident/ticket, hashes and explicitly simulated verification state;
+  - policy and Action Ticket views explain subject, resource, requested action, deterministic decision, scope, expiry, and approval state without control callbacks;
+  - Model Broker shows approved/restricted/unavailable model posture and exact assurance rationale without live invocation or silent fallback;
+  - MCP shows registered demo servers, trust, tools, lease/agent scope, denials, security events, and kill state without connection or mutation authority;
+  - all values come from the centralized deterministic provider, are validated and escaped, and remain visibly DEMO/SIMULATED; responsive and accessible presentation remains intact.
+- Expected validation: focused frontend/server tests, visual inspection, exact independent read-only review, then full suite/integrity once.
+- Security considerations: read-only demo projections cannot approve, connect, invoke, mutate policy, activate models, issue tickets, verify cryptography, or change Evidence.
 
 ### FW-REC-002 — Durable recovery checkpoint persistence and reconstruction
 - Requirement: FW-REC persistent recovery metadata
