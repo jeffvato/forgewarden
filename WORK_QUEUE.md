@@ -962,7 +962,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-COMP-002 — Canonical compliance mapping Evidence adapter
 - Requirement: FW-COMP lifecycle Evidence integration
-- State: REVIEW
+- State: DONE
 - Priority: P0
 - Dependencies: FW-COMP-001 and FW-EVID-006
 - Approval: deterministic metadata-only Evidence admission is authorized; certification, external reporting, control execution, and compliance authority remain unauthorized.
@@ -978,6 +978,26 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no certification, external submission, credential, network, deployment, remediation, recovery, containment, filesystem/process, or response authority is added.
 - Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
 - Security considerations: Evidence records that a mapping was admitted; it does not certify the mapped control or authorize execution.
+
+- Completion evidence: exact candidate `eadc358389da26c487c5ce70f5e0a89add6638b0`; focused 68 passed; exact Claude review `phase2a-eadc358389da26c487c5ce70` returned APPROVE/LOW with no blockers or missing tests; full 1476 passed/1 skipped; Product Integrity fresh full 1476 passed/1 skipped, invariant/ownership checks and 4 Golden Paths passed with YELLOW only for the pre-existing `tzdata` dependency and Defined FW-COMP/FW-AID ownership metadata.
+
+### FW-COMP-003 — Evidence-backed control assessment observation contract
+- Requirement: FW-COMP deterministic assessment observations
+- State: READY
+- Priority: P0
+- Dependencies: FW-COMP-002
+- Approval: bounded metadata-only assessment observations are authorized; certification, attestation, external reporting, control execution, and compliance authority remain unauthorized.
+- Description: Define immutable tenant-bound observations that reference an exact admitted mapping and canonical Evidence/test/policy facts, with explicit observed/not-observed outcomes and expiry, without converting observations into certification claims.
+- Target path: swarm/compliance.py
+- Allowed paths: swarm/compliance.py, tests/test_compliance.py, docs/fw-comp-inventory.md, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_compliance.py tests/test_evidence.py
+- Acceptance criteria:
+  - observation binds exact mapping digest, tenant, control, assessor identity, observation type/outcome, canonical Evidence references, policy/test references, observed time, and expiry;
+  - missing/stale mappings, cross-tenant facts, unsupported outcomes, expired observations, replay, secret-bearing values, and claimed certification or authority fail closed;
+  - observations remain descriptive inputs and cannot mutate mappings, policy, Evidence, validation results, or implementation status;
+  - no certification, external submission, credential, network, deployment, remediation, recovery, containment, filesystem/process, or response authority is added.
+- Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
+- Security considerations: an observation records bounded facts at a point in time and never proves continuous compliance or authorizes an action.
 
 ### FW-REC-002 — Durable recovery checkpoint persistence and reconstruction
 - Requirement: FW-REC persistent recovery metadata

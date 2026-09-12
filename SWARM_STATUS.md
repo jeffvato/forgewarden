@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: FW-COMP-001 compliance ownership inventory and canonical control mapping contract accepted
-- Next task: FW-COMP-002 canonical compliance mapping Evidence adapter.
+- Current focus: FW-COMP-002 canonical compliance mapping Evidence adapter accepted
+- Next task: FW-COMP-003 Evidence-backed control assessment observation contract.
 - Harness role: permanent ForgeWarden Core subsystem and default controller for ForgeWarden's own development; one governed architecture serves both roles under D-023.
 - Worker transport direction: registered local CLIs and explicitly approved API-backed workers; API keys are resolved only through FW-KEYS secret handles inside trusted adapters and never enter model context or lifecycle evidence.
 - Provider authentication direction: deterministic OpenAI, Anthropic, and Google/Gemini profiles with provider-specific official OAuth where available and approved API-key classes otherwise; Gemini CLI is registered as `agy` for read-only roles, FW-ID owns delegated identity, and FW-KEYS owns all credential material.
@@ -34,17 +34,17 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-COMP-001
-- Starting commit: 0e57a9b524ffa34ce4c875f4c03453e0e581d3c0
-- Candidate commit: ec7be16605726f1bcb289fbb06258018715b6128
-- Accepted commit: ec7be16605726f1bcb289fbb06258018715b6128
-- Files changed: canonical compliance control mapping contract, ownership inventory, and deterministic failure-path proof
-- Deterministic validation: focused 29 passed; full 1471 passed/1 skipped; integrity fresh full 1471 passed/1 skipped, invariant/ownership checks and 4 Golden Paths pass with YELLOW only for the pre-existing dependency and Defined FW-AID owner
-- Independent review: exact Claude APPROVE/LOW with no blockers or missing tests (phase2a-c7be16605726f1bcb289fbb0)
+- Task ID: FW-COMP-002
+- Starting commit: d5128557c9dacfde02afab7fc37bad6ed6f2e4c6
+- Candidate commit: eadc358389da26c487c5ce70f5e0a89add6638b0
+- Accepted commit: eadc358389da26c487c5ce70f5e0a89add6638b0
+- Files changed: exact mapping resolver, deterministic mapping digest, canonical FW-EVID adapter, inventory documentation, and failure-path tests
+- Deterministic validation: focused 68 passed; full 1476 passed/1 skipped; integrity fresh full 1476 passed/1 skipped, invariant/ownership checks and 4 Golden Paths pass with YELLOW only for the pre-existing dependency and Defined FW-COMP/FW-AID ownership metadata
+- Independent review: exact Claude APPROVE/LOW with no blockers or missing tests (`phase2a-eadc358389da26c487c5ce70`)
 - Gemini review: disabled and not required under D-020
-- Unresolved findings: external framework catalogs, certification, reporting, control execution, and FW-AID implementation remain outside this metadata-only milestone
+- Unresolved findings: Product Integrity ownership metadata remains Defined until the integrated FW-COMP proof; external frameworks, certification, reporting, and control execution remain unauthorized
 - Blocker: none
-- Next action: implement FW-COMP-002 by adapting exact accepted mappings into the canonical FW-EVID lifecycle without adding compliance authority.
+- Next action: implement FW-COMP-003 as an immutable Evidence-backed assessment observation without certification or execution authority.
 
 - Completion inventory: `docs/completion-audit-2026-09-09.md` (baseline `0afcbdd`).
 - FWQ-0008 implementation and binding hardening exist; VALIDATED retains a historical provenance caveat, not an implementation assignment. FWQ-0009 is recorded accepted and unchanged at source/test level from its reviewed candidate.
