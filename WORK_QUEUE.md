@@ -1149,7 +1149,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-AID-008 — Dedicated adversarial simulation suite
 - Requirement: FW-AID safe adversarial validation
-- State: REVIEW
+- State: DONE
 - Priority: P0
 - Dependencies: FW-AID-007
 - Approval: inert fixture simulations across existing FW-AID contracts are authorized; real exploit execution, live sensors, containment, and response remain unauthorized.
@@ -1165,6 +1165,25 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no live sensor, exploit, credential, network/process/filesystem access, containment, remediation, recovery execution, deployment, or response authority is added.
 - Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
 - Security considerations: adversarial inputs are inert metadata fixtures and cannot become executable instructions or authority.
+- Completion evidence: exact candidate `906f98b28c8cbf63832d359a6f4d117e665aa1ee`; focused 89 passed; exact Claude review `phase2a-906f98b28c8cbf63832d359a` APPROVE/LOW with no blockers or missing tests; full 1589 passed/1 skipped; Product Integrity fresh full 1589 passed/1 skipped, all hard checks and 4 Golden Paths passed with YELLOW only for the pre-existing dependency and partial FW-AID ownership status.
+
+### FW-AID-009 — Endpoint and MicroSensor AI attribution adapter
+- Requirement: FW-AID endpoint correlation contract
+- State: READY
+- Priority: P0
+- Dependencies: FW-AID-008
+- Approval: caller-supplied fixture attribution and deterministic correlation are authorized; live collection and response remain unauthorized.
+- Description: Add versioned, tenant-bound AI workload attribution fields to the existing endpoint fixture boundary and correlate them with canonical FW-AID events without creating a second event store.
+- Target path: swarm/endpoint_adapter.py
+- Allowed paths: swarm/endpoint_adapter.py, swarm/normalized_events.py, swarm/ai_agent_defense.py, tests/test_endpoint_adapter.py, tests/test_fw_aid.py, docs/fw-aid-architecture.md, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_endpoint_adapter.py tests/test_fw_aid.py
+- Acceptance criteria:
+  - bounded caller-supplied fixtures bind endpoint activity to opaque agent, session, task, capability-lease, and Action Ticket references;
+  - tenant, schema, replay, chronology, and Evidence failures fail closed;
+  - correlation reuses NormalizedEventStore and FW-AID classifiers and stores no prompt, command, credential, or secret material;
+  - no live collection, sensor hook, filesystem/process/network access, containment, remediation, deployment, or response authority is added.
+- Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
+- Security considerations: adapter input is inert caller-supplied metadata and cannot grant authority or execute endpoint actions.
 
 ### FW-REC-002 — Durable recovery checkpoint persistence and reconstruction
 - Requirement: FW-REC persistent recovery metadata
