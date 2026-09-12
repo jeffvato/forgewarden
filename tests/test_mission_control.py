@@ -5,9 +5,11 @@ import pytest
 from swarm.harness_context import BudgetAdmission, BudgetUsage
 from swarm.harness_task import HarnessTask, TaskStatus
 from swarm.harness_worker import WorkerRegistration, WorkerRole, WorkerTransport
-from swarm.mission_control import MissionControlError, project_ai_security, project_mission_control, serialize_harness_activity
+from swarm.mission_control import MissionControlError, project_ai_security, project_mission_control, serialize_harness_activity, serialize_incident_activity
 from tests.test_fw_aid import classified_source, cross_fact, proposal_args
+from tests.test_soc import incident, timeline_entry, playbook_step, mutating_step
 from swarm.ai_agent_defense import AICrossDomainCorrelator, AIContainmentProposalRegistry
+from swarm.soc import project_soc_dry_run_lifecycle
 
 
 def task(task_id="FWQ-0001", status=TaskStatus.READY, **changes):
@@ -134,6 +136,46 @@ def test_harness_activity_rejects_invalid_commit_and_unbounded_queue():
     oversized = tuple(replace(row, task_id=f"FWQ-{index:04d}", dependencies=()) for index in range(1025))
     with pytest.raises(MissionControlError, match="excessive"):
         serialize_harness_activity(replace(project(), task_queue=oversized))
+
+
+def incident_lifecycle():
+    return project_soc_dry_run_lifecycle(
+        (incident(), incident(incident_id="incident-2", evidence_refs=["evidence/record-2"])),
+        primary_incident_id="incident-1", story_id="story-1",
+        timeline_entries=(timeline_entry(),), playbook_id="playbook-1",
+        playbook_steps=(playbook_step(), mutating_step()), tenant_id="tenant-a",
+        now_epoch=120, accepted_policy_decision_refs=("policy/decision-1",),
+        accepted_action_ticket_refs=("ticket/one",), kill_switch_state="ENGAGED",
+        deployment_state="DISABLED", audit=lambda *_args: None,
+    )
+
+
+def test_incident_activity_serializes_canonical_reference_only_lifecycle():
+    lifecycle = incident_lifecycle()
+    payload = serialize_incident_activity(lifecycle)
+    assert payload["data_mode"] == "CANONICAL"
+    assert payload["view"]["primary_incident_id"] == "incident-1"
+    assert payload["view"]["attack_story"]["incident_ids"] == ("incident-1", "incident-2")
+    assert payload["view"]["response_proposal"]["action"] == "PROPOSE_ONLY"
+    assert payload["safety"]["response_executed"] is False
+    assert serialize_incident_activity(None)["data_mode"] == "EMPTY"
+
+
+def test_incident_activity_revalidates_tenant_safety_secrets_and_dependencies():
+    lifecycle = incident_lifecycle()
+    with pytest.raises(MissionControlError, match="safety"):
+        serialize_incident_activity(replace(lifecycle, kill_switch="CLEARED"))
+    foreign = replace(lifecycle.incidents[1], tenant_id="tenant-b")
+    with pytest.raises(MissionControlError, match="tenancy"):
+        serialize_incident_activity(replace(lifecycle, incidents=(lifecycle.incidents[0], foreign)))
+    secret = replace(lifecycle.incidents[0], title="api_key=secret-value")
+    with pytest.raises(MissionControlError, match="secret-bearing"):
+        serialize_incident_activity(replace(lifecycle, incidents=(secret, lifecycle.incidents[1])))
+    bad_step = replace(lifecycle.playbook.steps[1], depends_on=("missing-step",))
+    with pytest.raises(MissionControlError, match="dependency"):
+        serialize_incident_activity(replace(lifecycle, playbook=replace(lifecycle.playbook, steps=(lifecycle.playbook.steps[0], bad_step))))
+    with pytest.raises(MissionControlError, match="binding"):
+        serialize_incident_activity(replace(lifecycle, timeline=object()))
 
 
 def ai_bundle():

@@ -8,7 +8,7 @@ import threading
 import subprocess
 from http import HTTPStatus
 from http.server import ThreadingHTTPServer
-from swarm.console import addon_audit_snapshot, addon_snapshot, approval_snapshot, dispatch_plan, evidence_snapshot, harness_activity_snapshot, installation_snapshot, job_detail, jobs_snapshot, load_profiles, ConsoleHandler
+from swarm.console import addon_audit_snapshot, addon_snapshot, approval_snapshot, dispatch_plan, evidence_snapshot, harness_activity_snapshot, incident_activity_snapshot, installation_snapshot, job_detail, jobs_snapshot, load_profiles, ConsoleHandler
 from swarm.core import SwarmError
 from swarm.mission_control_demo import DEMO_SCENARIO_ID, mission_control_demo_snapshot
 
@@ -16,6 +16,12 @@ class ConsoleTests(unittest.TestCase):
     def test_harness_activity_provider_has_honest_empty_and_unavailable_states(self):
         self.assertEqual(harness_activity_snapshot()["data_mode"], "EMPTY")
         self.assertEqual(harness_activity_snapshot(lambda: (_ for _ in ()).throw(RuntimeError("offline")))["data_mode"], "UNAVAILABLE")
+
+    def test_incident_activity_provider_has_honest_empty_and_unavailable_states(self):
+        self.assertEqual(incident_activity_snapshot()["data_mode"], "EMPTY")
+        unavailable = incident_activity_snapshot(lambda: (_ for _ in ()).throw(RuntimeError("offline")))
+        self.assertEqual(unavailable["data_mode"], "UNAVAILABLE")
+        self.assertFalse(unavailable["safety"]["response_executed"])
 
     def test_frontend_contract_and_rendering_boundaries(self):
         root = Path(__file__).parents[1]
@@ -77,6 +83,7 @@ class ConsoleTests(unittest.TestCase):
         self.assertIn('aria-label="Previous demo step"', html)
         self.assertIn("prefers-reduced-motion", (Path(__file__).parents[1] / "console" / "styles.css").read_text(encoding="utf-8"))
         self.assertIn("UNIFIED ATTACK STORY", html)
+        self.assertIn('id="incident-live-state"', html)
         self.assertIn("RESPONSE & RECOVERY", html)
         self.assertIn("DEMO / NOT VERIFIED", html)
     def test_profiles_are_complete_and_global_guards_are_inherited(self):
@@ -183,6 +190,12 @@ class ConsoleTests(unittest.TestCase):
             activity = json.loads(resp.read().decode())
             self.assertEqual(activity["data_mode"], "EMPTY")
             self.assertFalse(activity["safety"]["mutation_allowed"])
+            conn.request("GET", "/api/incident-activity")
+            resp = conn.getresponse()
+            self.assertEqual(resp.status, HTTPStatus.OK)
+            incident_activity = json.loads(resp.read().decode())
+            self.assertEqual(incident_activity["data_mode"], "EMPTY")
+            self.assertFalse(incident_activity["safety"]["response_executed"])
             conn.request("GET", "/api/jobs/not%20a%20job")
             resp = conn.getresponse()
             self.assertEqual(resp.status, HTTPStatus.BAD_REQUEST)

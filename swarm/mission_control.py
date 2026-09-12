@@ -10,6 +10,8 @@ from .harness_task import HarnessTask, TaskStatus
 from .harness_worker import WorkerRegistration
 from .normalized_events import AIWorkloadSecurityEvent
 from .ai_agent_defense import AIAttackStory, AIContainmentProposal, AIThreatFinding
+from .asoc import MUTATING_ACTIONS, READ_ONLY_ACTIONS
+from .soc import SOCAttackStoryProjection, SOCDryRunLifecycle, SOCIncidentProjection, SOCIncidentTimeline, SOCPlaybookProposal, SOCPlaybookStep, SOCTimelineEntry
 
 
 _TENANT = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$")
@@ -85,6 +87,154 @@ def serialize_harness_activity(view: MissionControlView | None) -> dict[str, Any
     if len(view.recent_decisions) > 32 or any(not isinstance(value, str) or len(value.encode()) > 1000 or _SECRET.search(value) for value in visible):
         raise MissionControlError("Harness activity is secret-bearing or excessive")
     return {**base, "data_mode": "CANONICAL", "data_label": "CANONICAL READ-ONLY HARNESS ACTIVITY", "view": asdict(view)}
+
+
+def serialize_incident_activity(lifecycle: SOCDryRunLifecycle | None) -> dict[str, Any]:
+    """Serialize canonical FW-SOC reference facts without adding case authority."""
+    base = {
+        "schema_version": 1,
+        "safety": {
+            "mutation_allowed": False,
+            "deployment": "DISABLED",
+            "kill_switch": "ENGAGED",
+            "response_executed": False,
+        },
+    }
+    if lifecycle is None:
+        return {**base, "data_mode": "EMPTY", "data_label": "NO CANONICAL INCIDENT ACTIVITY", "view": None}
+    if not isinstance(lifecycle, SOCDryRunLifecycle):
+        raise MissionControlError("incident activity projection is malformed")
+    if (
+        lifecycle.mode != "DRY_RUN"
+        or lifecycle.deployment != "DISABLED"
+        or lifecycle.kill_switch != "ENGAGED"
+        or lifecycle.authority_expanded
+        or not 2 <= len(lifecycle.incidents) <= 32
+    ):
+        raise MissionControlError("incident activity safety boundary is invalid")
+
+    incidents = lifecycle.incidents
+    tenant_ids = {item.tenant_id for item in incidents if isinstance(item, SOCIncidentProjection)}
+    if len(tenant_ids) != 1 or len(incidents) != sum(isinstance(item, SOCIncidentProjection) for item in incidents):
+        raise MissionControlError("incident activity tenancy is malformed")
+    tenant_id = next(iter(tenant_ids))
+    if not _TENANT.fullmatch(tenant_id):
+        raise MissionControlError("incident activity tenant is malformed")
+    incident_ids = tuple(item.incident_id for item in incidents)
+    if len(set(incident_ids)) != len(incident_ids):
+        raise MissionControlError("incident activity contains duplicate incidents")
+    for item in incidents:
+        if (
+            item.trust != "UNTRUSTED_CASE_FACT"
+            or item.mode != "DRY_RUN"
+            or item.action != "RECORD_ONLY"
+            or not item.affected_refs
+            or not item.normalized_event_refs
+            or not item.evidence_refs
+            or len(item.affected_refs) > 64
+            or len(item.normalized_event_refs) > 64
+            or len(item.evidence_refs) > 64
+            or item.severity not in {"LOW", "MEDIUM", "HIGH", "CRITICAL"}
+            or item.status not in {"OPEN", "TRIAGED", "INVESTIGATING", "RESOLVED", "CLOSED"}
+            or item.disposition not in {"NONE", "TRUE_POSITIVE", "FALSE_POSITIVE", "MITIGATED", "ACCEPTED_RISK"}
+            or (item.status in {"OPEN", "TRIAGED", "INVESTIGATING"}) != (item.disposition == "NONE")
+            or not isinstance(item.created_at_epoch, int)
+            or isinstance(item.created_at_epoch, bool)
+            or not isinstance(item.updated_at_epoch, int)
+            or isinstance(item.updated_at_epoch, bool)
+            or not 0 <= item.created_at_epoch <= item.updated_at_epoch
+            or any(len(set(refs)) != len(refs) for refs in (item.affected_refs, item.normalized_event_refs, item.evidence_refs))
+        ):
+            raise MissionControlError("incident activity contains unsafe case facts")
+
+    story, timeline, playbook = lifecycle.attack_story, lifecycle.timeline, lifecycle.playbook
+    if (
+        not isinstance(story, SOCAttackStoryProjection)
+        or not isinstance(timeline, SOCIncidentTimeline)
+        or not isinstance(playbook, SOCPlaybookProposal)
+        or story.tenant_id != tenant_id
+        or story.trust != "UNTRUSTED_CASE_FACT"
+        or story.mode != "DRY_RUN"
+        or story.action != "CORRELATE_ONLY"
+        or set(story.incident_ids) != set(incident_ids)
+        or len(story.incident_ids) != len(incident_ids)
+        or story.severity not in {"LOW", "MEDIUM", "HIGH", "CRITICAL"}
+        or not isinstance(story.first_seen_epoch, int)
+        or isinstance(story.first_seen_epoch, bool)
+        or not isinstance(story.last_seen_epoch, int)
+        or isinstance(story.last_seen_epoch, bool)
+        or not 0 <= story.first_seen_epoch <= story.last_seen_epoch
+        or timeline.tenant_id != tenant_id
+        or timeline.incident_id not in set(incident_ids)
+        or timeline.trust != "UNTRUSTED_CASE_FACT"
+        or timeline.mode != "DRY_RUN"
+        or timeline.action != "PROJECT_ONLY"
+        or not 1 <= len(timeline.entries) <= 128
+        or playbook.tenant_id != tenant_id
+        or playbook.incident_id != timeline.incident_id
+        or playbook.mode != "DRY_RUN"
+        or playbook.deployment != "DISABLED"
+        or playbook.kill_switch != "ENGAGED"
+        or playbook.authority_expanded
+        or playbook.action != "PROPOSE_ONLY"
+        or not 1 <= len(playbook.steps) <= 32
+    ):
+        raise MissionControlError("incident activity lifecycle binding is invalid")
+
+    primary = next(item for item in incidents if item.incident_id == timeline.incident_id)
+    ordered_entries = tuple(sorted(timeline.entries, key=lambda item: (item.occurred_at_epoch, item.entry_id)))
+    if timeline.entries != ordered_entries or len({item.entry_id for item in timeline.entries}) != len(timeline.entries):
+        raise MissionControlError("incident activity chronology is invalid")
+    if any(
+        not isinstance(item, SOCTimelineEntry)
+        or item.tenant_id != tenant_id
+        or item.incident_id != primary.incident_id
+        or not primary.created_at_epoch <= item.occurred_at_epoch <= primary.updated_at_epoch
+        for item in timeline.entries
+    ):
+        raise MissionControlError("incident activity timeline binding is invalid")
+    completed: set[str] = set()
+    for step in playbook.steps:
+        if (
+            not isinstance(step, SOCPlaybookStep)
+            or any(dependency not in completed for dependency in step.depends_on)
+            or step.step_id in completed
+            or step.action_class not in READ_ONLY_ACTIONS | MUTATING_ACTIONS
+            or (step.action_class in MUTATING_ACTIONS and None in (step.approval_ref, step.action_ticket_ref, step.checkpoint_ref, step.rollback_ref))
+            or (step.action_class in READ_ONLY_ACTIONS and any(value is not None for value in (step.approval_ref, step.action_ticket_ref, step.checkpoint_ref, step.rollback_ref)))
+        ):
+            raise MissionControlError("incident activity playbook dependency is invalid")
+        completed.add(step.step_id)
+
+    visible = tuple(
+        value
+        for value in (
+            tenant_id,
+            story.story_id,
+            *(value for item in incidents for value in (item.incident_id, item.title, *item.affected_refs, *item.normalized_event_refs, *item.evidence_refs)),
+            *(value for item in timeline.entries for value in (item.entry_id, item.actor_ref, item.source_ref, item.evidence_ref)),
+            *(value for item in playbook.steps for value in (item.step_id, item.capability, item.resource_ref, item.policy_decision_ref, item.approval_ref or "", item.action_ticket_ref or "", item.checkpoint_ref or "", item.rollback_ref or "")),
+        )
+    )
+    if any(not isinstance(value, str) or len(value.encode()) > 1000 or _SECRET.search(value) for value in visible):
+        raise MissionControlError("incident activity is secret-bearing or excessive")
+    return {
+        **base,
+        "data_mode": "CANONICAL",
+        "data_label": "CANONICAL READ-ONLY INCIDENT ACTIVITY",
+        "view": {
+            "tenant_id": tenant_id,
+            "primary_incident_id": primary.incident_id,
+            "incidents": [asdict(item) for item in incidents],
+            "attack_story": asdict(story),
+            "timeline": asdict(timeline),
+            "response_proposal": asdict(playbook),
+            "mutation_allowed": False,
+            "deployment": "DISABLED",
+            "kill_switch": "ENGAGED",
+            "response_executed": False,
+        },
+    }
 
 
 def project_mission_control(

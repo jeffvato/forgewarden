@@ -1329,6 +1329,26 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 - Security considerations: Mission Control consumes sanitized canonical Harness state as untrusted read-only input and receives no controller callbacks.
 - Completion evidence: repaired exact candidate `4997c080d6d24d144b663be4475c6cbcc4ddbcbf`; focused 55 Python tests plus Node frontend contract passed after adding all three negative boundary tests requested by the first review; exact AnythingLLM/Qwen job `phase2a-4997c080d6d24d144b663be4` returned APPROVE/LOW with no blockers or missing tests; full 1619 passed/1 skipped; Product Integrity fresh full 1619 passed/1 skipped with all hard checks and 4 Golden Paths passing, YELLOW only for pre-existing `tzdata`.
 
+### FW-UX-008 — Canonical incident and attack-story provider
+- Requirement: Mission Control incremental backend integration
+- State: REVIEW
+- Priority: P0
+- Dependencies: FW-UX-007, FW-SOC-03, and FW-AID-010
+- Approval: Jeff authorized the mapped Mission Control backend integration sequence; this unit may expose existing sanitized local read-only FW-SOC lifecycle projections only.
+- Description: Add one bounded canonical provider that translates the existing tenant-bound FW-SOC incident, attack-story, timeline, and inert response-playbook projection into Mission Control while preserving the separate deterministic Demo Provider.
+- Target path: swarm/mission_control.py
+- Allowed paths: swarm/mission_control.py, swarm/console.py, console/app.js, console/index.html, tests/test_console.py, tests/test_mission_control.py, tests/test_console_frontend.js, docs/management-console.md, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_mission_control.py tests/test_console.py tests/test_soc.py && node --test tests/test_console_frontend.js
+- Acceptance criteria:
+  - the provider consumes the existing `SOCDryRunLifecycle` and FW-SOC projections rather than creating a second incident or event store;
+  - output is bounded, tenant-scoped, reference-only, secret-filtered, read-only, and explicitly labeled CANONICAL, EMPTY, or UNAVAILABLE;
+  - incident, attack-story, chronology, Evidence references, and inert response proposals retain their exact canonical bindings;
+  - missing, malformed, cross-tenant, secret-bearing, dependency-invalid, authority-expanding, response-executing, deployment-enabled, or kill-switch-cleared state fails closed without contaminating Demo data;
+  - Mission Control renders canonical incident references when available and labels all response steps PROPOSE ONLY / NOT EXECUTED;
+  - no incident mutation, Evidence mutation, policy evaluation, approval, Action Ticket issuance, response, recovery execution, network transport, credentials, model invocation, or deployment authority is added.
+- Expected validation: focused provider/frontend tests, exact AnythingLLM/Qwen read-only review, then full suite/integrity once after approval.
+- Security considerations: canonical FW-SOC remains authoritative; the view receives immutable reference facts and no controller callback.
+
 ### FW-REC-002 — Durable recovery checkpoint persistence and reconstruction
 - Requirement: FW-REC persistent recovery metadata
 - State: DONE
