@@ -139,3 +139,8 @@ def test_ai_security_projection_rejects_cross_tenant_orphan_duplicate_secret_and
 def test_ai_security_projection_does_not_mutate_sources_and_bounds_events():
  event,finding,story,proposal=ai_bundle(); before=(repr(event),repr(finding),repr(story),repr(proposal)); project_ai_security(tenant_id="tenant-a",events=(event,),findings=(finding,),stories=(story,),proposals=(proposal,)); assert before==(repr(event),repr(finding),repr(story),repr(proposal))
  with pytest.raises(MissionControlError): project_ai_security(tenant_id="tenant-a",events=(),findings=(),stories=())
+
+
+def test_ai_security_projection_supports_no_containment_proposal_without_type_error():
+ event,finding,story,_=ai_bundle(); view=project_ai_security(tenant_id="tenant-a",events=(event,),findings=(finding,),stories=(story,),proposals=())
+ assert view.agents[0].containment_proposal_id is None and view.agents[0].containment_state=="NONE"

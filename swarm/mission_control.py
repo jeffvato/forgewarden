@@ -133,7 +133,7 @@ def project_ai_security(*,tenant_id:str,events:tuple[AIWorkloadSecurityEvent,...
         finding=finding_by_event.get(event.event_id); story=story_by_event.get(event.event_id)
         if finding is None or story is None or finding.finding_id!=story.finding_id or finding.agent_ref!=event.agent_ref or story.model_ref!=event.model_ref or story.task_ref!=event.task_ref: raise MissionControlError("AI Security fact binding incomplete")
         proposal=proposal_by_story.get(story.projection.story_id)
-        evidence=tuple(sorted(set(event.evidence_references)|set(finding.evidence_references)|({} if proposal is None else set(proposal.evidence_references))))
+        evidence=tuple(sorted(set(event.evidence_references)|set(finding.evidence_references)|(set() if proposal is None else set(proposal.evidence_references))))
         visible=(event.agent_ref,event.model_ref,event.task_ref,event.session_ref,event.capability_lease_ref,event.action_ticket_ref,event.mcp_server_ref,story.projection.story_id,*evidence,*event.anomaly_indicators)
         if any(_SECRET.search(value) or len(value.encode())>1000 for value in visible): raise MissionControlError("AI Security projection secret-bearing or excessive")
         rows.append(AIAgentSecurityView(event.event_id,event.agent_ref,event.model_ref,event.task_ref,event.session_ref,event.capability_lease_ref,event.action_ticket_ref,finding.threat_class,finding.severity,finding.confidence,event.anomaly_indicators,event.decision,event.tool_category,event.mcp_server_ref,story.projection.story_id,story.projection.incident_ids,evidence,proposal.proposal_id if proposal else None,proposal.action_class if proposal else None,"PROPOSE_ONLY" if proposal else "NONE"))
