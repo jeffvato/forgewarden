@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: FW-AID-004 governed harness monitoring adapter accepted
-- Next task: FW-AID-005 cross-domain AI intrusion correlation and attack story.
+- Current focus: FW-AID-005 cross-domain AI intrusion correlation and attack story accepted
+- Next task: FW-AID-006 deterministic containment proposal and policy contract.
 - Harness role: permanent ForgeWarden Core subsystem and default controller for ForgeWarden's own development; one governed architecture serves both roles under D-023.
 - Worker transport direction: registered local CLIs and explicitly approved API-backed workers; API keys are resolved only through FW-KEYS secret handles inside trusted adapters and never enter model context or lifecycle evidence.
 - Provider authentication direction: deterministic OpenAI, Anthropic, and Google/Gemini profiles with provider-specific official OAuth where available and approved API-key classes otherwise; Gemini CLI is registered as `agy` for read-only roles, FW-ID owns delegated identity, and FW-KEYS owns all credential material.
@@ -34,17 +34,17 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-AID-004
-- Starting commit: efa8dbc4b46ae46b0eb94745ddb05e5dd6349eff
-- Candidate commit: 5ede6beece0707973b4f018a92ebd3553bee7609
-- Accepted commit: 5ede6beece0707973b4f018a92ebd3553bee7609
-- Files changed: separate harness-to-FW-AID monitoring adapter, closed security-signal translation, deterministic priority, canonical event-store admission, architecture status, and adversarial tests
-- Deterministic validation: focused 94 passed after one bounded import/test correction; full 1536 passed/1 skipped; integrity fresh full 1536 passed/1 skipped, all hard checks and 4 Golden Paths pass with YELLOW only for the pre-existing dependency and partial FW-AID ownership status
-- Independent review: exact Claude APPROVE/LOW with no blockers or missing tests (`phase2a-5ede6beece0707973b4f018a`)
+- Task ID: FW-AID-005
+- Starting commit: 9e903b8169eced673269a4a8f817f5f08ce2c48e
+- Candidate commit: 49743ac430e24a6518e0a8e81f0fa99a2f976472
+- Accepted commit: 49743ac430e24a6518e0a8e81f0fa99a2f976472
+- Files changed: tenant-bound cross-domain fact contract, deterministic high-confidence correlation, canonical FW-SOC incident/attack-story composition, architecture status, and failure-path tests
+- Deterministic validation: focused 122 passed after bounded test corrections; full 1539 passed/1 skipped; integrity fresh full 1539 passed/1 skipped, all hard checks and 4 Golden Paths pass with YELLOW only for the pre-existing dependency and partial FW-AID ownership status
+- Independent review: exact Claude APPROVE/LOW with no blockers or missing tests (`phase2a-49743ac430e24a6518e0a8e8`)
 - Gemini review: disabled and not required under D-020
-- Unresolved findings: cross-domain correlation, containment proposals, Mission Control projection, adversarial suite, endpoint adapter, and integrated proof remain; all live response authority remains unauthorized
+- Unresolved findings: containment proposals, Mission Control projection, dedicated adversarial suite, endpoint adapter, and integrated proof remain; all live response authority remains unauthorized
 - Blocker: none
-- Next action: implement FW-AID-005 as deterministic fixture-only cross-domain correlation into the canonical FW-SOC attack story.
+- Next action: implement FW-AID-006 as an immutable PROPOSE_ONLY containment policy contract with exact authority references and no executor.
 
 - Completion inventory: `docs/completion-audit-2026-09-09.md` (baseline `0afcbdd`).
 - FWQ-0008 implementation and binding hardening exist; VALIDATED retains a historical provenance caveat, not an implementation assignment. FWQ-0009 is recorded accepted and unchanged at source/test level from its reviewed candidate.

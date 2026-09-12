@@ -1086,7 +1086,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-AID-005 — Cross-domain AI intrusion correlation and attack story
 - Requirement: FW-AID canonical cross-domain correlation
-- State: REVIEW
+- State: DONE
 - Priority: P0
 - Dependencies: FW-AID-004, FW-SOC-03, FW-AV, FW-ENDPOINT, FW-ID, FW-MCP
 - Approval: deterministic fixture-only correlation and inert attack-story projection are authorized; live collection, containment, and response remain unauthorized.
@@ -1102,6 +1102,27 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no live sensor, model call, credential, network/process/filesystem hook, containment, quarantine, remediation, recovery execution, deployment, or response authority is added.
 - Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
 - Security considerations: the attack story is an Evidence-backed correlation result and advisory policy input, never an authorization to act.
+
+- Completion evidence: exact candidate `49743ac430e24a6518e0a8e81f0fa99a2f976472`; focused 122 passed after bounded test corrections; exact Claude review `phase2a-49743ac430e24a6518e0a8e8` returned APPROVE/LOW with no blockers or missing tests; full 1539 passed/1 skipped; Product Integrity fresh full 1539 passed/1 skipped, all hard checks and 4 Golden Paths passed with YELLOW only for the pre-existing `tzdata` dependency and partial FW-AID ownership status.
+
+### FW-AID-006 — Deterministic containment proposal and policy contract
+- Requirement: FW-AID inert containment policy input
+- State: READY
+- Priority: P0
+- Dependencies: FW-AID-005, FW-ROOT/Z3, Action Tickets, FW-REC
+- Approval: deterministic PROPOSE_ONLY containment metadata and policy-input validation are authorized; containment execution, revocation, isolation, quarantine, and response remain unauthorized.
+- Description: Map exact accepted FW-AID findings and attack stories to bounded inert containment proposal classes with required policy, lease, Action Ticket, approval, blast-radius, Evidence, checkpoint, and recovery references while executing nothing.
+- Target path: swarm/ai_agent_defense.py
+- Allowed paths: swarm/ai_agent_defense.py, swarm/policy_gate.py, swarm/soc.py, tests/test_fw_aid.py, tests/test_policy_gate.py, docs/fw-aid-architecture.md, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_fw_aid.py tests/test_policy_gate.py tests/test_soc.py
+- Acceptance criteria:
+  - closed severity/threat policy maps to supported proposal classes and exact target/blast-radius bounds;
+  - mutating proposals require tenant-matched policy decision, short lease, single-use Action Ticket, approval, checkpoint, rollback/recovery, and Evidence references;
+  - AI self-containment lifting, policy bypass, kill-switch clearing, authority expansion, unsupported action, missing/stale/substituted references, cross-tenant input, replay, and Evidence failure fail closed;
+  - every result remains immutable DRY_RUN/PROPOSE_ONLY with deployment disabled and no execution callback;
+  - no credential, live network/process/filesystem control, containment, quarantine, remediation, recovery execution, deployment, or response authority is added.
+- Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
+- Security considerations: the proposal is advisory metadata; canonical deterministic policy and authorized executors remain the only action boundary.
 
 ### FW-REC-002 — Durable recovery checkpoint persistence and reconstruction
 - Requirement: FW-REC persistent recovery metadata
