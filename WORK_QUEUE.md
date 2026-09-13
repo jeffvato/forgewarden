@@ -80,7 +80,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-ASM-005 — Inert Action Ticket-bound risk-reduction proposal
 - Requirement: FW-ASM bounded non-executing response intent
-- State: REPAIR
+- State: DONE
 - Priority: P0
 - Dependencies: FW-ASM-004
 - Approval: Jeff authorized the ordered FW-ASM phase using small bounded candidates.
@@ -89,10 +89,11 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 - Allowed paths: swarm/attack_surface.py, tests/test_attack_surface.py, WORK_QUEUE.md, SWARM_STATUS.md
 - Test command: python3 -m pytest -q tests/test_attack_surface.py tests/test_action_ticket.py
 - Acceptance criteria: engaged kill switch, exact policy/target/ticket binding, and Evidence are mandatory; output is PROPOSE_ONLY and cannot alter an asset or external service.
+- Completion evidence: implementation candidate `c7beba4efe72e8cd1263cb365df7e3dc19361f2e`; test-only repair `22aab2585521921bc58ef36e290b1990f87dc232`. Exact AnythingLLM/Qwen APPROVE/LOW requested direct malformed-reference, missing/expired-ticket, replay, and forged-source proofs; replay and forged-source proofs already existed, and exact repair job `phase2a-22aab2585521921bc58ef36e` closed the remaining paths and returned APPROVE/LOW with no blockers or missing tests. Focused validation passed 67 tests and the full suite passed 1937 with 1 skipped. Product Integrity passed every hard check and the Golden Path, with only the pre-existing `tzdata` dependency YELLOW. Evidence: `docs/fw-asm-005-qwen-review.json`, `docs/fw-asm-005-qwen-repair-review.json`, `docs/fw-asm-005-integrity.json`.
 
 ### FW-ASM-006 — Integrated lifecycle and Mission Control projection
 - Requirement: FW-ASM accepted-stage composition and operator visibility
-- State: BLOCKED
+- State: READY
 - Priority: P0
 - Dependencies: FW-ASM-005
 - Approval: Jeff authorized the ordered FW-ASM phase using small bounded candidates.

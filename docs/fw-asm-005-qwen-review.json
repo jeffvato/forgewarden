@@ -1,0 +1,48 @@
+{
+  "adjudication": null,
+  "candidate_commit": "c7beba4efe72e8cd1263cb365df7e3dc19361f2e",
+  "deployment": "DISABLED",
+  "job_id": "phase2a-c7beba4efe72e8cd1263cb36",
+  "kill_switch": "ENGAGED",
+  "mutation_allowed": false,
+  "reviews": [
+    {
+      "provider": "ANYTHINGLLM",
+      "result": {
+        "blocking_findings": [],
+        "job_id": "phase2a-c7beba4efe72e8cd1263cb36",
+        "non_blocking_notes": [
+          "The function `propose_attack_surface_risk_reduction` validates inputs strictly against the canonical binding, ensuring that only HIGH/CRITICAL risks from UNTRUSTED_DATA in DRY_RUN mode with CORRELATE_ONLY action and no granted authority are processed.",
+          "The kill switch state is verified to be ENGAGED before proceeding, which is a mandatory safety control.",
+          "Reference validation ensures that the target and policy decision references match the tenant ID and exposure reference from the binding, preventing cross-tenant or mismatched resource proposals.",
+          "Action ticket validation and consumption are performed to ensure single-use and replay protection. The ticket is validated before audit logging and then consumed, which aligns with the requirement for a signed single-use Action Ticket.",
+          "The audit logging step is wrapped in a try-except block to handle potential failures, raising a specific error if evidence writing fails.",
+          "The returned dataclass `AttackSurfaceRiskReductionProposal` is immutable and explicitly sets deployment to DISABLED, authority_granted to False, and response_executed to False, ensuring the proposal is inert.",
+          "Tests cover the happy path, boundary mismatches (kill switch, target, policy, subject, lease, policy version), source invalidation (risk, trust, mode, action, authority), and evidence write failure.",
+          "The regex `_PROPOSAL_REF` is used to validate the format of target and policy decision references, ensuring they match the expected pattern."
+        ],
+        "proposed_rules": [
+          "Ensure all Action Ticket validations (expiry, format, existence) are covered by dedicated unit tests in addition to integration-style tests."
+        ],
+        "reasoning_summary": "The commit implements a proposal-only risk reduction mechanism for attack surface management. It strictly enforces that only HIGH/CRITICAL risks from untrusted data in dry-run mode can be proposed, and only if the kill switch is engaged. The target and policy references must match the tenant and exposure reference from the binding. A signed single-use Action Ticket is required and consumed, preventing replay. The output is an inert proposal with deployment disabled and no execution authority. The code includes comprehensive input validation and error handling. Tests cover the main paths and boundary conditions. The implementation aligns with the acceptance criteria for FW-ASM-005. No blocking issues were found. Some additional tests for edge cases in ticket validation and reference formatting could improve coverage, but these are non-blocking.",
+        "reviewed_commit": "c7beba4efe72e8cd1263cb365df7e3dc19361f2e",
+        "risk": "LOW",
+        "tests_missing": [
+          "Test for replay denial after ticket consumption (second call with same ticket_id should fail, which is partially covered by the first test but could be more explicit)",
+          "Test for invalid ticket ID format or non-existent ticket in registry",
+          "Test for expired ticket (expires_at < now)",
+          "Test for invalid policy decision reference format (e.g., wrong prefix or malformed string)",
+          "Test for invalid target reference format (e.g., wrong prefix or malformed string)",
+          "Test for binding with risk MEDIUM or LOW being rejected",
+          "Test for binding with trust TRUSTED being rejected",
+          "Test for binding with mode LIVE being rejected",
+          "Test for binding with action EXECUTE being rejected",
+          "Test for binding with authority_granted True being rejected"
+        ],
+        "verdict": "APPROVE"
+      },
+      "state": "REVIEW_RETURNED"
+    }
+  ],
+  "state": "REVIEW_REQUIRED"
+}

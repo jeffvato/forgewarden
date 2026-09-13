@@ -1,0 +1,29 @@
+{
+  "adjudication": null,
+  "candidate_commit": "22aab2585521921bc58ef36e290b1990f87dc232",
+  "deployment": "DISABLED",
+  "job_id": "phase2a-22aab2585521921bc58ef36e",
+  "kill_switch": "ENGAGED",
+  "mutation_allowed": false,
+  "reviews": [
+    {
+      "provider": "ANYTHINGLLM",
+      "result": {
+        "blocking_findings": [],
+        "job_id": "phase2a-22aab2585521921bc58ef36e",
+        "non_blocking_notes": [
+          "Patch strictly adds test coverage for malformed references, missing tickets, and expiry boundaries without modifying runtime logic.",
+          "Status file updates correctly reflect the transition from REVIEW to REPAIR state."
+        ],
+        "proposed_rules": [],
+        "reasoning_summary": "The commit 22aab2585521921bc58ef36e290b1990f87dc232 is a test-only repair for Phase 2A job phase2a-22aab2585521921bc58ef36e. It closes the remaining requested test paths for the FW-ASM-005 proposal implementation: malformed target/policy references, missing ticket IDs, and ticket expiry boundary denials. The parent commit already covered replay and forged source fields. Since the change is strictly additive to the test suite (`tests/test_attack_surface.py`) and metadata files, with no changes to runtime behavior or authority logic, the risk is LOW. Focused validation passed 67 tests. All requested gaps from the previous review cycle are addressed.",
+        "reviewed_commit": "22aab2585521921bc58ef36e290b1990f87dc232",
+        "risk": "LOW",
+        "tests_missing": [],
+        "verdict": "APPROVE"
+      },
+      "state": "APPROVED"
+    }
+  ],
+  "state": "APPROVED"
+}
