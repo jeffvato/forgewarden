@@ -22,7 +22,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-SAAS-002 — Caller-supplied SaaS observation normalization
 - Requirement: FW-SAAS immutable tenant-bound metadata boundary
-- State: REVIEW
+- State: DONE
 - Priority: P0
 - Dependencies: FW-SAAS-001
 - Approval: Jeff authorized the ordered FW-SAAS phase using small bounded candidates.
@@ -37,6 +37,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no provider API, OAuth exchange, token/credential access, network, SaaS mutation, containment, remediation, deployment, or response authority is added.
 - Expected validation: focused Linux proof, exact independent read-only review, then full suite and Product Integrity once after approval.
 - Security considerations: fixture references and indicators remain caller-supplied untrusted facts and cannot grant identity or provider authority.
+- Completion evidence: exact candidate `f1928e2c0a124a7df635357a2cb333be0a2cabb3`; focused 11 passed. AnythingLLM was unavailable, then exact Claude job `phase2a-f1928e2c0a124a7df635357a` returned APPROVE/LOW with no blockers or missing tests. Full 1728 passed/1 skipped; Product Integrity fresh full 1728/1 and Golden Path 11 passed with every hard check and only pre-existing `tzdata` YELLOW. Evidence: `docs/fw-saas-002-qwen-review.json`, `docs/fw-saas-002-claude-review.json`, `docs/fw-saas-002-integrity.json`.
 
 ### FW-SAAS-001 — SaaS security ownership and fixture inventory
 - Requirement: FW-SAAS canonical ownership and bounded implementation route

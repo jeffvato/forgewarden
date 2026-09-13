@@ -1,0 +1,29 @@
+{
+  "adjudication": null,
+  "candidate_commit": "f1928e2c0a124a7df635357a2cb333be0a2cabb3",
+  "deployment": "DISABLED",
+  "job_id": "phase2a-f1928e2c0a124a7df635357a",
+  "kill_switch": "ENGAGED",
+  "mutation_allowed": false,
+  "reviews": [
+    {
+      "provider": "CLAUDE",
+      "result": {
+        "blocking_findings": [],
+        "job_id": "phase2a-f1928e2c0a124a7df635357a",
+        "non_blocking_notes": [
+          "Audit callback contract is trust boundary \u2014 caller must not grant identity/provider authority via the callback mechanism; documentation explicit on this (WORK_QUEUE.md fixture security note)",
+          "Size limit (32KB) is implementation choice; if observations exceed this, caller-supplied normalization fails closed as designed"
+        ],
+        "proposed_rules": [],
+        "reasoning_summary": "FW-SAAS-002 implements strict caller-supplied SaaS observation normalization with deterministic entry-point validation and Evidence-first, fail-closed semantics. All acceptance criteria met: (1) Providers, observation types, and indicators enforced via 4-element, 4-element, and 7-element allowlists with exact match validation; (2) References, fixture size, indicators count, and time/tenant bounds strictly bounded with SaaSObservationDenied on any violation; (3) SaaSObservation is frozen dataclass with trust=UNTRUSTED_DATA and mode/action defaults (DRY_RUN/DETECT_ONLY); (4) Indicators deterministically sorted before return; (5) Evidence logged before return with deployment=DISABLED; (6) Evidence dict excludes application_ref, principal_ref, target_ref (verified by both design and test assertion); (7) No provider API, OAuth exchange, token/credential access, network, SaaS mutation, containment, remediation, deployment, or response authority added. Test suite covers positive path (immutability, ordering, Evidence presence/minimization, untrusted defaults), 11 fail-closed boundary cases (tenant, provider, type, indicators, fields, references, time), and Evidence-callback failure mode. Patch is narrow, deterministic, and exhibits fail-closed behavior on all input validation failures.",
+        "reviewed_commit": "f1928e2c0a124a7df635357a2cb333be0a2cabb3",
+        "risk": "LOW",
+        "tests_missing": [],
+        "verdict": "APPROVE"
+      },
+      "state": "APPROVED"
+    }
+  ],
+  "state": "APPROVED"
+}
