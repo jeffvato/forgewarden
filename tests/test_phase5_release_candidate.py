@@ -103,6 +103,7 @@ class Phase5ReleaseCandidateTests(unittest.TestCase):
                 self.assertEqual(result["publication"], "DISABLED")
                 self.assertEqual(result["source_binding_sha256"],
                                  _source_binding_sha256(self.head, result["policy_sha256"]))
+                self.assertNotIn("source_commit", result)
                 self.assertFalse(result["matched_values_included"])
                 self.assertEqual([item["path"] for item in result["files"]],
                                  sorted(track["allowlist"]))
