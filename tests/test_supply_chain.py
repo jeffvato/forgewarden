@@ -169,6 +169,9 @@ def test_supply_reference_binding_is_immutable_evidence_first_and_inert():
     ({"catalog_ref": "fw-signature/tenant-a/addon-1"}, "OWNER_REF_INVALID"),
     ({"signature_ref": "fw-signature/tenant-b/publisher-1"}, "OWNER_REF_INVALID"),
     ({"evidence_refs": ()}, "EVIDENCE_REFS_INVALID"),
+    ({"evidence_refs": ("fw-evid/tenant-a/supply-1", "fw-evid/tenant-a/supply-1")}, "EVIDENCE_REFS_INVALID"),
+    ({"evidence_refs": ("fw-evid/tenant-b/supply-1",)}, "EVIDENCE_REFS_INVALID"),
+    ({"evidence_refs": ("fw-vuln/tenant-a/osv-1",)}, "EVIDENCE_REFS_INVALID"),
     ({"evidence_refs": tuple(f"fw-evid/tenant-a/{index}" for index in range(17))}, "EVIDENCE_REFS_INVALID"),
 ])
 def test_supply_reference_binding_rejects_malformed_cross_tenant_or_replay(overrides, reason):
