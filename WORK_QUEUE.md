@@ -1532,6 +1532,28 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 - Security considerations: audit and queue metadata are untrusted planning evidence and cannot grant execution, policy, credential, Git, response, recovery, or deployment authority.
 - Completion evidence: exact candidate `c16987e2751525c811872e5893113b86799b1bc7`; deterministic queue/state/source inspection and `git diff --check` passed; exact Claude review `phase2a-c16987e2751525c811872e58` returned APPROVE/LOW with no blockers or missing tests. No product source or validation input changed, so unchanged full/integrity validation was not replayed.
 
+
+### FW-INTEGRITY-003 — Accepted-work capability reality traceability
+- Requirement: FW-INTEGRITY executable product-status evidence
+- State: IN_PROGRESS
+- Priority: P0
+- Dependencies: FW-INTEGRITY-002, FW-UX-012, and FW-GOV-006
+- Approval: Jeff explicitly authorized the next phase as a reality audit tied to Mission Control integration; this milestone adds deterministic read-only traceability and no runtime authority.
+- Description: Reconcile every accepted stable-ID requirement record against surviving repository artifacts, declared validation paths, Evidence references, and resolvable completion commits without treating artifact presence as current runtime or production proof.
+- Target path: swarm/integrity.py
+- Allowed paths: swarm/integrity.py, tests/test_integrity.py, docs/fw-integrity-reality-audit.md, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_integrity.py
+- Acceptance criteria:
+  - inspect every DONE non-FWQ requirement record and require bounded repository paths plus a resolvable completion commit;
+  - implementation records require a surviving declared test or Golden Path, while documentation-only records remain explicitly distinguished;
+  - missing, unsafe, stale, or unresolvable references produce an unsupported-claim result and a hard Product Integrity failure;
+  - accepted families absent from the canonical functionality map are surfaced as an explicit YELLOW product-status gap;
+  - wildcard Evidence references resolve only to existing repository artifacts;
+  - output states that it is traceability-only, runs no validation itself, and never infers production readiness;
+  - no model, tool, Git mutation, credential, network, filesystem/process action, response, recovery execution, deployment, or authority is added.
+- Expected validation: one focused Linux proof, exact independent read-only review, then one full suite and Product Integrity Gate after approval.
+- Security considerations: queue and artifact metadata remain untrusted inputs; deterministic traceability cannot replace current execution, exact review, or production validation.
+
 ### FW-API-001 — Canonical tenant-bound read-only request admission
 - Requirement: FW-API versioned least-privilege API/SDK contract
 - State: DONE
@@ -1721,7 +1743,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 - Expected validation: focused Linux proof, exact independent read-only review, then full suite/integrity once.
 - Security considerations: a control mapping is descriptive evidence metadata and never proves certification or authorizes an action by itself.
 
-- Completion evidence: exact repaired candidate c7be16605726f1bcb289fbb06258018715b6128; focused 29 passed after adding all identifier-format boundaries named by the first review; exact Claude review phase2a-c7be16605726f1bcb289fbb0 returned APPROVE/LOW with no blockers or missing tests; full 1471 passed/1 skipped; Product Integrity fresh full 1471 passed/1 skipped, invariant/ownership checks and 4 Golden Paths passed with YELLOW only for the pre-existing 	zdata dependency and Defined FW-AID owner.
+- Completion evidence: exact repaired candidate `ec7be16605726f1bcb289fbb06258018715b6128`; focused 29 passed after adding all identifier-format boundaries named by the first review; exact Claude review phase2a-c7be16605726f1bcb289fbb0 returned APPROVE/LOW with no blockers or missing tests; full 1471 passed/1 skipped; Product Integrity fresh full 1471 passed/1 skipped, invariant/ownership checks and 4 Golden Paths passed with YELLOW only for the pre-existing `tzdata` dependency and Defined FW-AID owner.
 
 ### FW-COMP-002 — Canonical compliance mapping Evidence adapter
 - Requirement: FW-COMP lifecycle Evidence integration
@@ -1918,7 +1940,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 - Approval: inert fixture simulations across existing FW-AID contracts are authorized; real exploit execution, live sensors, containment, and response remain unauthorized.
 - Description: Add a dedicated deterministic adversarial suite covering prompt injection, poisoned retrieval, credential discovery/exfiltration, egress, lateral movement, sandbox escape, privilege expansion, unauthorized MCP/shell, EDR/Evidence/log tampering, unapproved coordination, test/reviewer manipulation, policy bypass, self-authority, and kill-switch clearing through the canonical telemetry/detection/correlation/proposal boundaries.
 - Target path: tests/test_fw_aid_adversarial.py
-- Allowed paths: tests/test_fw_aid_adversarial.py, tests/fixtures/fw_aid/, swarm/ai_agent_defense.py, swarm/normalized_events.py, docs/fw-aid-architecture.md, WORK_QUEUE.md, SWARM_STATUS.md
+- Allowed paths: tests/test_fw_aid_adversarial.py, swarm/ai_agent_defense.py, swarm/normalized_events.py, docs/fw-aid-architecture.md, WORK_QUEUE.md, SWARM_STATUS.md
 - Test command: python3 -m pytest -q tests/test_fw_aid_adversarial.py tests/test_fw_aid.py
 - Acceptance criteria:
   - safe deterministic fixtures cover every required attack class and verify normalization, detection, Evidence ordering, tenant isolation, replay denial, bounded resources, and inert proposal output;
@@ -1938,7 +1960,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 - Approval: caller-supplied fixture attribution and deterministic correlation are authorized; live collection and response remain unauthorized.
 - Description: Add versioned, tenant-bound AI workload attribution fields to the existing endpoint fixture boundary and correlate them with canonical FW-AID events without creating a second event store.
 - Target path: swarm/endpoint_adapter.py
-- Allowed paths: swarm/endpoint_adapter.py, swarm/normalized_events.py, swarm/ai_agent_defense.py, tests/test_endpoint_adapter.py, tests/test_fw_aid.py, docs/fw-aid-architecture.md, WORK_QUEUE.md, SWARM_STATUS.md
+- Allowed paths: swarm/endpoint_fixtures.py, swarm/normalized_events.py, swarm/ai_agent_defense.py, tests/test_endpoint_adapter.py, tests/test_fw_aid.py, docs/fw-aid-architecture.md, WORK_QUEUE.md, SWARM_STATUS.md
 - Test command: python3 -m pytest -q tests/test_endpoint_adapter.py tests/test_fw_aid.py
 - Acceptance criteria:
   - bounded caller-supplied fixtures bind endpoint activity to opaque agent, session, task, capability-lease, and Action Ticket references;
@@ -1957,7 +1979,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 - Approval: deterministic fixture-only integration proof and ownership reconciliation are authorized; live collection and response remain unauthorized.
 - Description: Prove one tenant-bound AI intrusion lifecycle across harness monitoring, endpoint attribution, normalization, detection, cross-domain FW-SOC correlation, proposal-only containment, Mission Control, and canonical Evidence chronology.
 - Target path: tests/test_fw_aid_lifecycle.py
-- Allowed paths: tests/test_fw_aid_lifecycle.py, tests/test_fw_aid_architecture.py, swarm/ai_agent_defense.py, swarm/normalized_events.py, swarm/mission_control.py, docs/fw-aid-architecture.md, docs/architecture-ownership.yaml, ROADMAP.md, WORK_QUEUE.md, SWARM_STATUS.md
+- Allowed paths: tests/test_fw_aid_lifecycle.py, tests/test_fw_aid_architecture.py, swarm/ai_agent_defense.py, swarm/normalized_events.py, swarm/mission_control.py, swarm/integrity.py, docs/fw-aid-architecture.md, ROADMAP.md, WORK_QUEUE.md, SWARM_STATUS.md
 - Test command: python3 -m pytest -q tests/test_fw_aid_lifecycle.py tests/test_fw_aid.py tests/test_endpoint_adapter.py
 - Acceptance criteria:
   - one inert fixture lifecycle has exact tenant, identity, task, lease, Action Ticket, endpoint, incident, and Evidence bindings through every canonical owner;

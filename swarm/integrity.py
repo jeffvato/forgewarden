@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -44,6 +45,155 @@ FUNCTIONALITY_MAP: tuple[dict[str, Any], ...] = (
     {"requirement_id": "FW-OPS", "state": "Proven", "component": "swarm.operations / swarm.operations_capacity / swarm.mission_control", "dependencies": ["FW-EVID sink", "FW-REC checkpoint/resume", "FW-ENDPOINT capacity facts", "Mission Control"], "user_surface": "Mission Control canonical read-only operations continuity projection", "unit_tests": "PASS", "integration_tests": "PASS", "golden_path": "PASS: health and pressure Evidence through restart reconstruction, resume admission, and read-only operator projection", "limitations": "local caller-supplied DRY_RUN metadata only; no live telemetry, HA/DR coordination, service/process control, retention movement, rollback execution, or deployment"},
     {"requirement_id": "FW-INTEGRITY", "state": "Implemented", "component": "swarm.integrity", "dependencies": ["Git", "Python", "pytest", "documentation registry"], "user_surface": "integrity gate report", "unit_tests": "PASS", "integration_tests": "IN_PROGRESS", "golden_path": "first baseline path established", "limitations": "database migration checks are not applicable to this repository yet"},
 )
+
+
+_REQUIREMENT_HEADING = re.compile(r"^### (FW-(?!Q-)[A-Z0-9-]+) — .+$", re.MULTILINE)
+_COMMIT_REFERENCE = re.compile(r"(?<![0-9a-f])[0-9a-f]{7,64}(?![0-9a-f])")
+_REPOSITORY_PATH = re.compile(
+    r"(?<![A-Za-z0-9_.-])((?:(?:swarm|tests|docs|console|config|policies|scripts)/"
+    r"[A-Za-z0-9_./*?-]+)|(?:ROADMAP|WORK_QUEUE|SWARM_STATUS|BLOCKERS|DECISIONS|AGENTS)\.md)"
+)
+_REALITY_REQUIRED_FIELDS = ("State", "Allowed paths", "Completion evidence")
+
+
+def _family_id(requirement_id: str) -> str:
+    parts = requirement_id.split("-")
+    return "-".join(parts[:2])
+
+
+def _extract_field(body: str, field: str) -> str | None:
+    match = re.search(rf"^- {re.escape(field)}: *(.*)$", body, flags=re.MULTILINE)
+    return match.group(1).strip() if match else None
+
+
+def _extract_paths(value: str) -> tuple[str, ...]:
+    return tuple(dict.fromkeys(match.group(1).rstrip(".,;:") for match in _REPOSITORY_PATH.finditer(value)))
+
+
+def audit_completed_requirement_work(root: Path) -> dict[str, Any]:
+    """Reconcile accepted requirement records with repository artifacts.
+
+    This is a traceability audit, not a substitute for executing tests or for
+    exact-commit review. It proves that a DONE record points at surviving
+    implementation/documentation, validation files, and a commit that exists
+    in the current repository. Runtime assurance remains the responsibility
+    of the Product Integrity Gate and the recorded exact review.
+    """
+    root = root.resolve()
+    queue_path = root / "WORK_QUEUE.md"
+    try:
+        queue = queue_path.read_text(encoding="utf-8")
+    except OSError as exc:
+        return {
+            "schema_version": 1,
+            "assessment": "UNAVAILABLE",
+            "assurance": "TRACEABILITY_ONLY",
+            "reason": type(exc).__name__,
+            "tasks": [],
+            "summary": {"accepted": 0, "traceable": 0, "unsupported": 0},
+            "unmapped_accepted_families": [],
+        }
+
+    headings = list(_REQUIREMENT_HEADING.finditer(queue))
+    all_references = tuple(dict.fromkeys(_COMMIT_REFERENCE.findall(queue)))
+    try:
+        resolved = subprocess.run(
+            ["git", "cat-file", "--batch-check=%(objectname) %(objecttype)"],
+            cwd=root,
+            input="\n".join(all_references) + "\n",
+            text=True,
+            capture_output=True,
+            timeout=30,
+            check=False,
+        )
+        resolved_commits_by_reference = {
+            reference: line.split()[0]
+            for reference, line in zip(all_references, resolved.stdout.splitlines())
+            if len(line.split()) == 2 and line.split()[1] == "commit"
+        }
+    except (OSError, subprocess.TimeoutExpired):
+        resolved_commits_by_reference = {}
+    tasks: list[dict[str, Any]] = []
+    for index, heading in enumerate(headings):
+        requirement_id = heading.group(1)
+        body = queue[heading.end() : headings[index + 1].start() if index + 1 < len(headings) else len(queue)]
+        fields = {field: _extract_field(body, field) for field in _REALITY_REQUIRED_FIELDS}
+        if fields["State"] != "DONE":
+            continue
+        allowed_paths = _extract_paths(fields["Allowed paths"] or "")
+        test_command = _extract_field(body, "Test command") or ""
+        test_paths = tuple(path for path in _extract_paths(test_command) if path.startswith(("tests/", "scripts/")))
+        completion = fields["Completion evidence"] or ""
+        evidence_paths = tuple(path for path in _extract_paths(completion) if path.startswith("docs/"))
+        commit_references = tuple(dict.fromkeys(_COMMIT_REFERENCE.findall(completion)))
+
+        missing_fields = tuple(field for field, value in fields.items() if not value)
+        referenced_paths = (*allowed_paths, *test_paths, *evidence_paths)
+        unsafe_paths = tuple(
+            path for path in referenced_paths
+            if Path(path).is_absolute() or ".." in Path(path).parts
+        )
+        safe_paths = tuple(path for path in referenced_paths if path not in unsafe_paths)
+        missing_paths = tuple(dict.fromkeys(
+            path for path in safe_paths
+            if not (list(root.glob(path)) if "*" in path else (root / path).exists())
+        ))
+        resolved_commits = [
+            resolved_commits_by_reference[reference]
+            for reference in commit_references
+            if reference in resolved_commits_by_reference
+        ]
+        documentation_only = bool(allowed_paths) and all(
+            path.endswith((".md", ".json", ".yaml", ".yml")) for path in allowed_paths
+        )
+        reasons: list[str] = []
+        if missing_fields:
+            reasons.append("MISSING_REQUIRED_QUEUE_FIELDS")
+        if not allowed_paths:
+            reasons.append("NO_TRACEABLE_ALLOWED_PATHS")
+        if not documentation_only and not test_paths:
+            reasons.append("NO_TRACEABLE_TEST_PATHS")
+        if missing_paths:
+            reasons.append("REFERENCED_ARTIFACT_MISSING")
+        if unsafe_paths:
+            reasons.append("UNSAFE_REFERENCED_PATH")
+        if not commit_references or not resolved_commits:
+            reasons.append("NO_RESOLVABLE_COMPLETION_COMMIT")
+        tasks.append(
+            {
+                "requirement_id": requirement_id,
+                "family_id": _family_id(requirement_id),
+                "kind": "DOCUMENTATION_ONLY" if documentation_only else "IMPLEMENTATION",
+                "traceability": "TRACEABLE" if not reasons else "UNSUPPORTED_CLAIM",
+                "reasons": reasons,
+                "allowed_paths": list(allowed_paths),
+                "test_paths": list(test_paths),
+                "evidence_paths": list(evidence_paths),
+                "commit_references": list(commit_references),
+                "resolved_commits": list(dict.fromkeys(resolved_commits)),
+                "missing_paths": list(missing_paths),
+            }
+        )
+
+    accepted_families = {_family_id(task["requirement_id"]) for task in tasks}
+    mapped_families = {_family_id(item["requirement_id"]) for item in FUNCTIONALITY_MAP}
+    unsupported = [task for task in tasks if task["traceability"] != "TRACEABLE"]
+    unmapped = sorted(accepted_families - mapped_families)
+    return {
+        "schema_version": 1,
+        "assessment": "TRACEABLE" if not unsupported else "UNSUPPORTED_CLAIMS",
+        "assurance": "TRACEABILITY_ONLY",
+        "runtime_validation": "NOT_RUN_BY_THIS_AUDIT",
+        "production_readiness_inferred": False,
+        "tasks": tasks,
+        "summary": {
+            "accepted": len(tasks),
+            "traceable": len(tasks) - len(unsupported),
+            "unsupported": len(unsupported),
+            "accepted_families": len(accepted_families),
+        },
+        "unmapped_accepted_families": unmapped,
+    }
 
 
 def validate_canonical_ownership(ownership: dict[str, dict[str, Any]] = CANONICAL_OWNERSHIP) -> dict[str, str]:
@@ -100,6 +250,7 @@ def run_product_integrity_gate(root: Path, *, test_command: Iterable[str] | None
     build = _run([sys.executable, "-m", "compileall", "-q", "swarm"], root)
     startup = _run([sys.executable, "-c", "import swarm.core, swarm.console, swarm.asoc, swarm.integrity"], root)
     config = _config_check(root)
+    reality = audit_completed_requirement_work(root)
     try:
         invariants = validate_invariant_manifest()
         ownership = validate_canonical_ownership()
@@ -119,10 +270,14 @@ def run_product_integrity_gate(root: Path, *, test_command: Iterable[str] | None
         findings.append({"severity": "YELLOW", "area": "dependencies", "reason": "pip check reports missing or incompatible packages"})
     if missing_owners:
         findings.append({"severity": "YELLOW", "area": "architecture", "reason": "roadmap ownership has no concrete module: " + ", ".join(missing_owners)})
-    checks = {"repository": git["clean"], "build": build["passed"], "startup": startup["passed"], "configuration": config["passed"], "invariant_manifest": architecture["passed"], "architecture_ownership": architecture["passed"], "tests": tests["passed"], "golden_path": golden.get("passed", False)}
+    if reality["summary"]["unsupported"]:
+        findings.append({"severity": "RED", "area": "product_reality", "reason": "accepted queue records lack traceable implementation, test, Evidence, or commit artifacts"})
+    if reality["unmapped_accepted_families"]:
+        findings.append({"severity": "YELLOW", "area": "product_reality", "reason": "accepted families are absent from the functionality map: " + ", ".join(reality["unmapped_accepted_families"])})
+    checks = {"repository": git["clean"], "build": build["passed"], "startup": startup["passed"], "configuration": config["passed"], "invariant_manifest": architecture["passed"], "architecture_ownership": architecture["passed"], "completion_traceability": reality["assessment"] == "TRACEABLE", "tests": tests["passed"], "golden_path": golden.get("passed", False)}
     hard_failures = [name for name, passed in checks.items() if not passed and name != "golden_path"]
     decision = "RED" if hard_failures else ("YELLOW" if findings or not golden.get("passed") else "GREEN")
-    return {"schema_version": "1", "decision": decision, "head": git["head"], "checks": checks, "findings": findings, "architecture_validation": architecture, "missing_canonical_owners": missing_owners, "dependency_check": dependencies, "commands": {"tests": tests, "golden_path": golden}, "functionality": [dict(item, last_validated_commit=git["head"]) for item in FUNCTIONALITY_MAP], "canonical_ownership": CANONICAL_OWNERSHIP}
+    return {"schema_version": "1", "decision": decision, "head": git["head"], "checks": checks, "findings": findings, "architecture_validation": architecture, "reality_audit": reality, "missing_canonical_owners": missing_owners, "dependency_check": dependencies, "commands": {"tests": tests, "golden_path": golden}, "functionality": [dict(item, last_validated_commit=git["head"]) for item in FUNCTIONALITY_MAP], "canonical_ownership": CANONICAL_OWNERSHIP}
 
 
 def write_gate_report(report: dict[str, Any], path: Path) -> None:
