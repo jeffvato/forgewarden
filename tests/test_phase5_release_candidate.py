@@ -1,3 +1,4 @@
+import hashlib
 import json
 import subprocess
 import tempfile
@@ -6,7 +7,7 @@ from pathlib import Path
 from unittest import mock
 
 import yaml
-from jsonschema import Draft202012Validator
+from jsonschema import Draft202012Validator, ValidationError
 
 import swarm.phase5_release_candidate as candidate_module
 from swarm.phase5_release_candidate import (
@@ -52,7 +53,7 @@ class Phase5PublicExportPolicyTests(unittest.TestCase):
             changed = Path(temp) / "policy.yaml"
             changed.write_text(yaml.safe_dump(policy), encoding="utf-8")
             with mock.patch.object(candidate_module, "_EXPORT_POLICY", changed):
-                with self.assertRaises(Exception):
+                with self.assertRaises(ValidationError):
                     _load_contract("PUBLIC_SDK")
 
 
@@ -65,6 +66,28 @@ class Phase5ReleaseCandidateTests(unittest.TestCase):
         ).stdout.strip()
         cls.policy = yaml.safe_load(
             (ROOT / "config/phase5-public-export.yaml").read_text(encoding="utf-8"))
+
+    @staticmethod
+    def git(root: Path, *args: str) -> str:
+        result = subprocess.run(
+            ["git", "-C", str(root), *args], capture_output=True, text=True, check=False)
+        if result.returncode:
+            raise AssertionError(result.stderr)
+        return result.stdout.strip()
+
+    def fixture_repository(self, root: Path, *, content: bytes = b"safe public fixture\n",
+                           selected: str | None = None, selected_content: bytes | None = None) -> str:
+        allowlist = self.policy["tracks"]["PUBLIC_SDK"]["allowlist"]
+        for relative in allowlist:
+            target = root / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(selected_content if relative == selected else content)
+        self.git(root, "init", "-b", "main")
+        self.git(root, "config", "user.name", "Deterministic Fixture")
+        self.git(root, "config", "user.email", "fixture@example.invalid")
+        self.git(root, "add", ".")
+        self.git(root, "commit", "-m", "fixture")
+        return self.git(root, "rev-parse", "HEAD")
 
     def test_real_sdk_and_demo_exports_are_exact_allowlisted_candidates(self):
         before = {path: (ROOT / path).read_bytes()
@@ -84,6 +107,15 @@ class Phase5ReleaseCandidateTests(unittest.TestCase):
                     (destination / self.policy["manifest_name"]).read_text(encoding="utf-8")))
                 self.assertFalse((destination / ".git").exists())
                 self.assertFalse((destination / "WORK_QUEUE.md").exists())
+                self.assertEqual(set(result), {
+                    "schema_version", "track", "publication", "source_commit",
+                    "policy_sha256", "matched_values_included", "file_count",
+                    "total_bytes", "files",
+                })
+                for item in result["files"]:
+                    data = (destination / item["path"]).read_bytes()
+                    self.assertEqual((item["size"], item["sha256"]),
+                                     (len(data), hashlib.sha256(data).hexdigest()))
         self.assertEqual(before, {path: (ROOT / path).read_bytes() for path in before})
 
         with tempfile.TemporaryDirectory(prefix="phase5-repeat-") as temp:
@@ -135,6 +167,86 @@ class Phase5ReleaseCandidateTests(unittest.TestCase):
         ):
             with self.subTest(path=path), self.assertRaisesRegex(ValueError, "prohibited"):
                 _validate_public_path(Path(path))
+
+    def test_symlink_and_inside_source_destinations_fail_closed(self):
+        with tempfile.TemporaryDirectory(prefix="phase5-public-boundary-") as temp:
+            parent = Path(temp)
+            real = parent / "real"
+            real.mkdir()
+            link = parent / "link"
+            link.symlink_to(real, target_is_directory=True)
+            with self.assertRaises(FileExistsError):
+                build_release_candidate(
+                    ROOT, link, track="PUBLIC_SDK", expected_source_commit=self.head)
+            source_link = parent / "source"
+            source_link.symlink_to(ROOT, target_is_directory=True)
+            with self.assertRaisesRegex(ValueError, "real directory"):
+                build_release_candidate(
+                    source_link, parent / "candidate", track="PUBLIC_SDK",
+                    expected_source_commit=self.head)
+        inside = ROOT / "candidate-must-not-exist"
+        with self.assertRaisesRegex(ValueError, "outside"):
+            build_release_candidate(
+                ROOT, inside, track="PUBLIC_SDK", expected_source_commit=self.head)
+        self.assertFalse(inside.exists())
+
+    def test_file_count_and_path_shape_budgets_fail_closed(self):
+        limits = self.policy["limits"]
+        for values in ([], ["../escape.py"], ["a.py", "A.PY"],
+                       [f"docs/{index}.md" for index in range(limits["max_files"] + 1)]):
+            with self.subTest(values=len(values)), self.assertRaises(ValueError):
+                _normalize_allowlist(values, limits)
+
+    def test_tamper_empty_oversize_and_aggregate_failures_remove_candidate(self):
+        allowlist = self.policy["tracks"]["PUBLIC_SDK"]["allowlist"]
+        cases = (
+            ("empty", allowlist[0], b""),
+            ("oversize", allowlist[0], b"x" * (self.policy["limits"]["max_file_bytes"] + 1)),
+            ("credential", allowlist[0], b'api_key="synthetic-long-secret"\n'),
+            ("aggregate", None, b"x" * 300000),
+        )
+        for name, selected, content in cases:
+            with self.subTest(name=name), tempfile.TemporaryDirectory(
+                    prefix=f"phase5-{name}-") as temp:
+                root = Path(temp) / "source"
+                root.mkdir()
+                head = self.fixture_repository(
+                    root, content=content if selected is None else b"safe\n",
+                    selected=selected, selected_content=content)
+                destination = Path(temp) / "candidate"
+                with self.assertRaises(ValueError):
+                    build_release_candidate(
+                        root, destination, track="PUBLIC_SDK", expected_source_commit=head)
+                self.assertFalse(destination.exists())
+
+        with tempfile.TemporaryDirectory(prefix="phase5-tamper-") as temp:
+            root = Path(temp) / "source"
+            root.mkdir()
+            head = self.fixture_repository(root)
+            (root / allowlist[0]).write_text("changed after commit\n", encoding="utf-8")
+            destination = Path(temp) / "candidate"
+            with self.assertRaisesRegex(ValueError, "drifted"):
+                build_release_candidate(
+                    root, destination, track="PUBLIC_SDK", expected_source_commit=head)
+            self.assertFalse(destination.exists())
+
+    def test_allowlisted_symlink_is_not_followed_and_candidate_is_removed(self):
+        with tempfile.TemporaryDirectory(prefix="phase5-source-link-") as temp:
+            root = Path(temp) / "source"
+            root.mkdir()
+            allowlist = self.policy["tracks"]["PUBLIC_SDK"]["allowlist"]
+            self.fixture_repository(root)
+            target = root / allowlist[0]
+            target.unlink()
+            target.symlink_to(root / allowlist[1])
+            self.git(root, "add", allowlist[0])
+            self.git(root, "commit", "-m", "symlink fixture")
+            head = self.git(root, "rev-parse", "HEAD")
+            destination = Path(temp) / "candidate"
+            with self.assertRaisesRegex(ValueError, "regular file"):
+                build_release_candidate(
+                    root, destination, track="PUBLIC_SDK", expected_source_commit=head)
+            self.assertFalse(destination.exists())
 
 
 if __name__ == "__main__":

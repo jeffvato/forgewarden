@@ -294,7 +294,8 @@ def build_release_candidate(
         encoded = (json.dumps(manifest, indent=2, sort_keys=True) + "\n").encode("utf-8")
         if len(encoded) > policy["limits"]["max_manifest_bytes"]:
             raise ValueError("public-export manifest budget exceeded")
-        (destination_root / policy["manifest_name"]).write_bytes(encoded)
+        with (destination_root / policy["manifest_name"]).open("xb") as handle:
+            handle.write(encoded)
         return manifest
     except Exception:
         _cleanup(destination_root)
