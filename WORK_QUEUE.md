@@ -1668,7 +1668,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-INTEGRITY-008 — Bounded control-plane performance baseline
 - Requirement: FW-INTEGRITY performance and resource regression assurance
-- State: READY
+- State: DONE
 - Priority: P0
 - Dependencies: FW-INTEGRITY-005, FW-INTEGRITY-006, and FW-INTEGRITY-007
 - Approval: Jeff authorized continued next-phase integrity work; bounded local measurement of existing pure control-plane paths is within current test authority.
@@ -1685,6 +1685,8 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - add no benchmark framework dependency, package installation, network/provider access, service/sensor execution, response/recovery action, deployment, or authority.
 - Expected validation: one focused Linux performance proof, exact independent read-only review, then one full suite and Product Integrity Gate after approval.
 - Security considerations: this measures existing pure local control functions only; thresholds are test policy and cannot grant runtime capacity, execution, deployment, or production authority.
+- Completion evidence: accepted as three bounded exact commits: policy `503bc9578b297386de9436c8ac92284768791283`, fixed scenarios `a1bc2a0477ff52a989e0092734a7e54fc51528f3`, and isolated exact-commit runner `82d67023fd31b2424f73117940a4ffba601d0325`. Focused proof passed 38 tests. AnythingLLM/Qwen returned exact APPROVE/LOW for the policy slice with no blockers or missing tests; it then failed closed on unavailable or malformed responses, and the authorized Claude fallback returned exact APPROVE/LOW for both remaining slices with no blockers or missing tests. The final full suite passed 2169 tests with one skip. Product Integrity passed every hard check, 119/119 accepted-task traceability, 15 integrity tests, and the 38-test performance proof; only the pre-existing local `tzdata` dependency remains YELLOW. The baseline is local regression evidence only and grants no production capacity, service-level, network, process, deployment, or response authority.
+
 
 ### FW-API-001 — Canonical tenant-bound read-only request admission
 - Requirement: FW-API versioned least-privilege API/SDK contract
