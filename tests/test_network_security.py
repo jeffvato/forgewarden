@@ -165,3 +165,24 @@ def test_network_classifier_revalidates_tenant_authority_and_evidence():
             value, tenant_id="tenant-a",
             audit=lambda *_args: (_ for _ in ()).throw(RuntimeError("offline")),
         )
+
+
+@pytest.mark.parametrize("direction", ["INBOUND", "OUTBOUND", "EAST_WEST"])
+def test_network_probe_is_direction_neutral_metadata(direction):
+    finding = classify_network_observation(
+        observation(direction=direction, indicators=["NETWORK_PROBE"]),
+        tenant_id="tenant-a", audit=lambda *_args: None,
+    )
+    assert finding.risk == "MEDIUM"
+
+
+def test_network_classifier_uses_highest_risk_for_combined_consistent_facts():
+    finding = classify_network_observation(
+        observation(
+            protocol="DNS", port=53, direction="OUTBOUND",
+            indicators=["C2_PATTERN", "DNS_ANOMALY"],
+        ),
+        tenant_id="tenant-a", audit=lambda *_args: None,
+    )
+    assert finding.risk == "CRITICAL"
+    assert finding.recommendations == ("WARN", "PROPOSE_BLOCK")

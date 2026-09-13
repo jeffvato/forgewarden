@@ -1,5 +1,7 @@
 # ForgeWarden Swarm Status
 
+- 2026-09-13: FW-NET-003 is in bounded test-only repair after exact AnythingLLM/Qwen returned APPROVE/LOW but requested direct proof for direction-neutral network probing and mixed-risk precedence. Runtime behavior and authority are unchanged.
+
 - 2026-09-13: FW-NET-003 is in exact review after focused validation passed 35 tests. Exact admitted network indicators now produce deterministic advisory MEDIUM/HIGH/CRITICAL risk with fixed WARN/PROPOSE_BLOCK recommendations. Empty, contradictory, cross-tenant, authority-shaped, or Evidence-failing input denies. No model decision, network operation, containment, deployment, or response authority was added.
 
 - 2026-09-13: FW-NET-002 accepted at repair `225c4722bb4437db43feffd3e7645874ef2337f1`. Immutable Evidence-first caller-supplied network observations enforce strict tenant, canonical owner-reference, time, protocol, port, direction, indicator, shape, and size bounds. Initial AnythingLLM output was invalid and rejected; exact Claude APPROVE/LOW identified four missing boundary proofs, which the test-only repair closed. Focused 23 and full 1829/1 passed; exact AnythingLLM/Qwen repair review returned APPROVE/LOW with no blockers or missing tests. Product Integrity fresh full 1829/1 and Golden Path 23 passed with every hard check and only pre-existing dependency YELLOW. No packet, socket, sensor, query, scan, network mutation, containment, deployment, or response authority was added. FW-NET-003 deterministic threat classification is next.
