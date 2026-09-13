@@ -1,6 +1,6 @@
 # ForgeWarden Swarm Status
 
-- 2026-09-12: FW-API-001 candidate prepared: canonical immutable tenant-bound read-only request admission now consumes existing FW-ID, deterministic policy, signed lease, and FW-EVID interfaces; malformed, stale, replayed, cross-tenant, unknown/inactive identity, missing/expired/mismatched lease, unsafe runtime, mutation, secret-bearing, and Evidence failure paths deny before any handler/model/tool invocation. Focused Linux proof passed 99 tests and git diff check passed. Exact independent review is next.
+- 2026-09-13: FW-API-001 accepted at candidate `2e9aa47da907f77be54894fc443487c0081f853d`: canonical immutable tenant-bound read-only request admission now consumes existing FW-ID, deterministic policy, signed lease, and FW-EVID interfaces; every named denial fails before handler/model/tool invocation. Focused proof passed 99 tests. The first Claude attempt exhausted its bounded turns and AnythingLLM was unavailable; the required return to Claude then produced exact APPROVE/LOW with no blockers or missing tests. Full and Product Integrity fresh suites passed 1660 tests with 1 skipped; all hard checks passed and health remains YELLOW only for pre-existing `tzdata`. The bounded read-only FW-API phase is complete; FW-OPS inventory and first substantive milestone are next.
 
 - 2026-09-12: FW-INTEGRITY-002 Core completion/dependency audit accepted at `c16987e2751525c811872e5893113b86799b1bc7`: all existing executable queue work is reconciled as DONE except the intentionally VALIDATED FWQ-0008 provenance caveat; bounded DRY_RUN implementations and production limitations are explicit; FW-API is confirmed as the first genuine missing canonical family. Deterministic source/queue inspection and `git diff --check` passed; exact Claude review returned APPROVE/LOW with no blockers or missing tests. No product validation was rerun for the documentation-only audit. FW-API-001 is now READY.
 
@@ -11,8 +11,8 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: FW-API-001 exact candidate review.
-- Next task: FW-API-001 exact independent review, then acceptance gates.
+- Current focus: FW-API-001 accepted; bounded canonical read-only admission is complete.
+- Next task: inventory the canonical FW-OPS surface and define its first substantive bounded milestone.
 - Harness role: permanent ForgeWarden Core subsystem and default controller for ForgeWarden's own development; one governed architecture serves both roles under D-023.
 - Worker transport direction: registered local CLIs and explicitly approved API-backed workers; API keys are resolved only through FW-KEYS secret handles inside trusted adapters and never enter model context or lifecycle evidence.
 - Provider authentication direction: deterministic OpenAI, Anthropic, and Google/Gemini profiles with provider-specific official OAuth where available and approved API-key classes otherwise; Gemini CLI is registered as `agy` for read-only roles, FW-ID owns delegated identity, and FW-KEYS owns all credential material.
@@ -24,9 +24,9 @@
 - Kill-switch policy: remains engaged where configured
 - Confirmed product response policy: warn for every finding; quarantine only high-confidence trusted-content detections behind deterministic policy; clean/repair only as ticketed, approved, recoverable Core remediation.
 - Codex role: sole application-code writer
-- Claude role: disabled for the active workflow unless Jeff explicitly re-enables it (D-026).
+- Claude role: preferred independent read-only reviewer under Jeff's latest explicit heartbeat direction; bounded unavailability falls back to AnythingLLM/Qwen.
 - Gemini role: disabled for the active workflow; no longer a required reviewer (D-020).
-- AnythingLLM/Qwen role: required independent read-only reviewer using user-specified `qwen/qwen3.8-27b` (D-026); Windows local API, workspace `n8n`, DPAPI credential boundary, and executable-bound firewall protection are verified. Groq limits require one fresh bounded review at a time.
+- AnythingLLM/Qwen role: independent read-only fallback reviewer using user-specified `qwen/qwen3.8-27b`; Windows local API, workspace `n8n`, DPAPI credential boundary, and executable-bound firewall protection are verified. Groq limits require one fresh bounded review at a time.
 
 ## Resume protocol
 
@@ -37,7 +37,7 @@ On every restart or continuation:
 3. Reconcile this status file with actual repository evidence.
 4. If a task was interrupted, resume from the last provably valid checkpoint rather than restarting the project.
 5. Otherwise claim the highest-priority READY task whose dependencies are complete.
-6. Run the Codex → deterministic validation → independent exact-commit review → Codex repair/revalidation cycle using required AnythingLLM/Qwen under D-026. Require validated APPROVE/LOW with no blocking findings or missing tests; do not invoke Claude or Gemini unless Jeff explicitly re-enables them.
+6. Run the Codex → deterministic validation → independent exact-commit review → Codex repair/revalidation cycle using Claude first, AnythingLLM/Qwen after bounded Claude unavailability, and Claude again after bounded AnythingLLM unavailability. Require validated APPROVE/LOW with no blocking findings or missing tests; Gemini remains disabled.
 7. After acceptance, checkpoint and immediately continue to the next READY task.
 
 ## Work-unit checkpoint

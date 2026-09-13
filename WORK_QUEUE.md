@@ -902,7 +902,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-API-001 — Canonical tenant-bound read-only request admission
 - Requirement: FW-API versioned least-privilege API/SDK contract
-- State: REVIEW
+- State: DONE
 - Priority: P0
 - Dependencies: FW-INTEGRITY-002, FW-ID-005, FW-EVID-006, FWQ-0075, and FWQ-0007
 - Approval: Jeff explicitly activated FW-API after the bounded Core completion/dependency audit; caller-supplied local contract work is authorized without listener or transport activation.
@@ -919,6 +919,8 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - tests prove one allowed read-only path and every named fail-closed boundary.
 - Expected validation: one focused Linux proof, exact independent read-only review, then one full suite and Product Integrity Gate after approval.
 - Security considerations: FW-API consumes canonical FW-ID, policy, lease, and FW-EVID facts; it must not become a parallel identity, policy, capability, Action Ticket, or Evidence owner.
+
+- Completion evidence: exact candidate `2e9aa47da907f77be54894fc443487c0081f853d`; focused 99 passed; the first Claude attempt ended unavailable at its bounded turn limit and AnythingLLM was unavailable, then the required return to Claude produced exact APPROVE/LOW with no blockers or missing tests; full 1660 passed/1 skipped; Product Integrity fresh checks and full/Golden Path validations passed 1660/1 with YELLOW only for the pre-existing `tzdata` dependency. The bounded caller-supplied read-only FW-API phase is complete; no listener, transport, response body, mutation, credential, deployment, or execution authority was added.
 
 ### FW-UX-001 — Mission Control showcase foundation
 - Requirement: FW-UX Mission Control and honest Demo Mode
