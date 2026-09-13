@@ -114,6 +114,19 @@ class SupplyChainBlockProposal:
     response_executed: bool = False
 
 
+@dataclass(frozen=True)
+class SupplyChainDryRunLifecycle:
+    observation: SupplyChainObservation
+    finding: SupplyChainFinding
+    binding: SupplyChainReferenceBinding
+    proposal: SupplyChainBlockProposal
+    mode: str = "DRY_RUN"
+    deployment: str = "DISABLED"
+    kill_switch: str = "ENGAGED"
+    authority_granted: bool = False
+    response_executed: bool = False
+
+
 def normalize_supply_chain_observation(
     fixture: Mapping[str, Any], *, tenant_id: str, now_epoch: int,
     audit: Callable[[str, dict[str, Any]], None],
@@ -396,3 +409,34 @@ def propose_supply_chain_block(
         binding.event_id, expected_tenant, binding.component_ref, target_ref,
         policy_decision_ref, ticket_id, binding.risk,
     )
+
+
+def run_supply_chain_dry_run_lifecycle(
+    fixture: Mapping[str, Any], *, tenant_id: str, now_epoch: int,
+    indicators: tuple[str, ...], vulnerability_refs: tuple[str, ...],
+    catalog_ref: str, signature_ref: str, evidence_refs: tuple[str, ...],
+    tickets: ActionTicketRegistry, ticket_id: str, target_ref: str,
+    policy_decision_ref: str, subject_agent_id: str, lease_id: str,
+    policy_version: str, kill_switch_state: str,
+    audit: Callable[[str, dict[str, Any]], None],
+) -> SupplyChainDryRunLifecycle:
+    """Compose accepted FW-SUPPLY stages without adding execution authority."""
+    observation = normalize_supply_chain_observation(
+        fixture, tenant_id=tenant_id, now_epoch=now_epoch, audit=audit,
+    )
+    finding = classify_supply_chain_observation(
+        observation, tenant_id=tenant_id, indicators=indicators, audit=audit,
+    )
+    binding = bind_supply_chain_references(
+        finding, tenant_id=tenant_id, vulnerability_refs=vulnerability_refs,
+        catalog_ref=catalog_ref, signature_ref=signature_ref,
+        evidence_refs=evidence_refs, audit=audit,
+    )
+    proposal = propose_supply_chain_block(
+        binding, tickets=tickets, ticket_id=ticket_id, target_ref=target_ref,
+        policy_decision_ref=policy_decision_ref,
+        subject_agent_id=subject_agent_id, lease_id=lease_id,
+        policy_version=policy_version, now=now_epoch,
+        kill_switch_state=kill_switch_state, audit=audit,
+    )
+    return SupplyChainDryRunLifecycle(observation, finding, binding, proposal)

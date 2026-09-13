@@ -20,6 +20,25 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 
 Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical implementation is not new work. FWQ-0008 VALIDATED preserves a provenance caveat, not a request to rebuild or automatically repeat review. FWQ-0012–0016 are reconciled DONE from existing implementation and recorded proof.
 
+### FW-SUPPLY-006 — Integrated lifecycle and Mission Control projection
+- Requirement: FW-SUPPLY accepted-stage composition and operator visibility
+- State: IN_PROGRESS
+- Priority: P0
+- Dependencies: FW-SUPPLY-005
+- Approval: Jeff authorized the ordered FW-SUPPLY phase using small bounded candidates.
+- Description: Compose accepted component normalization, classification, canonical owner-reference, and inert Action Ticket proposal stages and expose exact read-only state through Mission Control.
+- Target paths: swarm/supply_chain.py, swarm/mission_control.py
+- Allowed paths: swarm/supply_chain.py, swarm/mission_control.py, tests/test_supply_chain.py, tests/test_mission_control.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_supply_chain.py tests/test_mission_control.py tests/test_action_ticket.py
+- Acceptance criteria:
+  - one deterministic HIGH/CRITICAL lifecycle preserves exact stage ordering and tenant/source bindings through an inert proposal;
+  - lower-risk or failed stages stop without later proposal output;
+  - Mission Control exposes sanitized canonical or explicitly DEMO-labeled facts with no callbacks or ticket authority;
+  - cross-tenant, source-binding, safety-state, or secret-bearing projection input fails closed;
+  - no feed/registry/package/build access, installation, blocking, signing, publication, deployment, remediation, rollback, quarantine, or response executor is added.
+- Expected validation: focused Linux proof, exact independent read-only review, then full suite and Product Integrity once after approval.
+- Security considerations: lifecycle composition and visibility preserve canonical owners and cannot authorize supply-chain action.
+
 ### FW-SUPPLY-005 — Inert Action Ticket-bound component block proposal
 - Requirement: FW-SUPPLY bounded non-executing response intent
 - State: DONE

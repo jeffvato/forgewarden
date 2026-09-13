@@ -21,6 +21,7 @@ from .operations import OperationalHealthProjection
 from .operations_capacity import CapacityAssessment
 from .recovery import ResumeAdmission, ResumeAdmissionDecision
 from .saas_security import SaaSDryRunLifecycle
+from .supply_chain import SupplyChainDryRunLifecycle
 
 
 _TENANT = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$")
@@ -596,6 +597,80 @@ def project_saas_security(
         proposal.target_ref, proposal.policy_decision_ref,
         proposal.action_ticket_ref, correlation.evidence_refs, data_mode,
         "DEMO / SIMULATED DATA" if data_mode == "DEMO" else "CANONICAL READ-ONLY SAAS SECURITY LIFECYCLE",
+    )
+
+
+@dataclass(frozen=True)
+class SupplyChainMissionView:
+    schema_version: int
+    tenant_id: str
+    event_id: str
+    component_ref: str
+    ecosystem: str
+    risk: str
+    indicators: tuple[str, ...]
+    vulnerability_refs: tuple[str, ...]
+    catalog_ref: str
+    signature_ref: str
+    evidence_refs: tuple[str, ...]
+    proposal_action: str
+    proposal_state: str
+    target_ref: str
+    policy_decision_ref: str
+    action_ticket_ref: str
+    data_mode: str = "CANONICAL"
+    data_label: str = "CANONICAL READ-ONLY SUPPLY-CHAIN LIFECYCLE"
+    kill_switch: str = "ENGAGED"
+    deployment: str = "DISABLED"
+    mutation_allowed: bool = False
+    response_executed: bool = False
+
+
+def project_supply_chain(
+    lifecycle: SupplyChainDryRunLifecycle, *, tenant_id: str,
+    data_mode: str = "CANONICAL",
+) -> SupplyChainMissionView:
+    """Project one canonical supply-chain lifecycle without control authority."""
+    if not isinstance(lifecycle, SupplyChainDryRunLifecycle) or not _TENANT.fullmatch(tenant_id):
+        raise MissionControlError("supply-chain lifecycle malformed")
+    observation, finding = lifecycle.observation, lifecycle.finding
+    binding, proposal = lifecycle.binding, lifecycle.proposal
+    if (
+        data_mode not in {"CANONICAL", "DEMO"}
+        or lifecycle.mode != "DRY_RUN" or lifecycle.deployment != "DISABLED"
+        or lifecycle.kill_switch != "ENGAGED" or lifecycle.authority_granted
+        or lifecycle.response_executed
+        or any(item.tenant_id != tenant_id for item in (observation, finding, binding, proposal))
+        or len({item.event_id for item in (observation, finding, binding, proposal)}) != 1
+        or finding.component_ref != observation.component_ref
+        or finding.ecosystem != observation.ecosystem
+        or binding.component_ref != finding.component_ref
+        or binding.risk != finding.risk or binding.indicators != finding.indicators
+        or proposal.component_ref != binding.component_ref or proposal.risk != binding.risk
+        or observation.mode != "DRY_RUN" or observation.action != "DETECT_ONLY"
+        or finding.mode != "DRY_RUN" or finding.action != "DETECT_ONLY"
+        or binding.mode != "DRY_RUN" or binding.action != "CORRELATE_ONLY"
+        or proposal.mode != "DRY_RUN" or proposal.disposition != "PROPOSE_ONLY"
+        or proposal.deployment != "DISABLED" or proposal.kill_switch != "ENGAGED"
+        or proposal.authority_granted or proposal.response_executed
+    ):
+        raise MissionControlError("supply-chain lifecycle binding or authority invalid")
+    visible = (
+        observation.event_id, observation.component_ref, observation.ecosystem,
+        *finding.indicators, *binding.vulnerability_refs, binding.catalog_ref,
+        binding.signature_ref, *binding.evidence_refs, proposal.target_ref,
+        proposal.policy_decision_ref, proposal.action_ticket_ref,
+    )
+    if any(not isinstance(value, str) or len(value.encode()) > 1000 or _SECRET.search(value) for value in visible):
+        raise MissionControlError("supply-chain lifecycle secret-bearing or excessive")
+    return SupplyChainMissionView(
+        1, tenant_id, observation.event_id, observation.component_ref,
+        observation.ecosystem, finding.risk, finding.indicators,
+        binding.vulnerability_refs, binding.catalog_ref, binding.signature_ref,
+        binding.evidence_refs, proposal.action_class, proposal.disposition,
+        proposal.target_ref, proposal.policy_decision_ref,
+        proposal.action_ticket_ref, data_mode,
+        "DEMO / SIMULATED DATA" if data_mode == "DEMO" else "CANONICAL READ-ONLY SUPPLY-CHAIN LIFECYCLE",
     )
 
 

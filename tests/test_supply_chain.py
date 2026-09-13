@@ -4,7 +4,7 @@ import pytest
 
 from swarm.action_ticket import ActionTicket, ActionTicketRegistry
 from swarm.asoc import HMACLeaseSigner
-from swarm.supply_chain import SupplyChainObservationDenied, bind_supply_chain_references, classify_supply_chain_observation, normalize_supply_chain_observation, propose_supply_chain_block
+from swarm.supply_chain import SupplyChainObservationDenied, bind_supply_chain_references, classify_supply_chain_observation, normalize_supply_chain_observation, propose_supply_chain_block, run_supply_chain_dry_run_lifecycle
 
 
 def fixture(**overrides):
@@ -270,3 +270,59 @@ def test_supply_block_proposal_revalidates_source_and_evidence():
                 audit=lambda *_args: (_ for _ in ()).throw(RuntimeError("offline")),
             ),
         )
+
+
+def supply_lifecycle(*, audit=lambda *_args: None):
+    return run_supply_chain_dry_run_lifecycle(
+        fixture(), tenant_id="tenant-a", now_epoch=150,
+        indicators=("KNOWN_EXPLOITED",),
+        vulnerability_refs=("fw-vuln/tenant-a/osv-1",),
+        catalog_ref="fw-catalog/tenant-a/addon-1",
+        signature_ref="fw-signature/tenant-a/publisher-1",
+        evidence_refs=("fw-evid/tenant-a/supply-1",), tickets=tickets(),
+        ticket_id="ticket-1", target_ref="fw-component/tenant-a/requests",
+        policy_decision_ref="fw-policy/tenant-a/decision-1",
+        subject_agent_id="agent-1", lease_id="lease-1",
+        policy_version="policy-v1", kill_switch_state="ENGAGED", audit=audit,
+    )
+
+
+def test_supply_integrated_lifecycle_preserves_stage_order_and_no_authority():
+    evidence = []
+    lifecycle = supply_lifecycle(audit=lambda *items: evidence.append(items))
+    assert [item[0] for item in evidence] == [
+        "supply_chain_observation_normalized",
+        "supply_chain_observation_classified",
+        "supply_chain_references_bound",
+        "supply_chain_block_proposed",
+    ]
+    assert len({
+        lifecycle.observation.event_id, lifecycle.finding.event_id,
+        lifecycle.binding.event_id, lifecycle.proposal.event_id,
+    }) == 1
+    assert lifecycle.mode == "DRY_RUN" and lifecycle.deployment == "DISABLED"
+    assert lifecycle.kill_switch == "ENGAGED"
+    assert lifecycle.authority_granted is False and lifecycle.response_executed is False
+
+
+def test_supply_integrated_lifecycle_stops_before_proposal_for_medium_risk():
+    evidence = []
+    with pytest.raises(SupplyChainObservationDenied, match="PROPOSAL_SOURCE_INVALID"):
+        run_supply_chain_dry_run_lifecycle(
+            fixture(), tenant_id="tenant-a", now_epoch=150,
+            indicators=("KNOWN_VULNERABILITY",),
+            vulnerability_refs=("fw-vuln/tenant-a/osv-1",),
+            catalog_ref="fw-catalog/tenant-a/addon-1",
+            signature_ref="fw-signature/tenant-a/publisher-1",
+            evidence_refs=("fw-evid/tenant-a/supply-1",), tickets=tickets(),
+            ticket_id="ticket-1", target_ref="fw-component/tenant-a/requests",
+            policy_decision_ref="fw-policy/tenant-a/decision-1",
+            subject_agent_id="agent-1", lease_id="lease-1",
+            policy_version="policy-v1", kill_switch_state="ENGAGED",
+            audit=lambda *items: evidence.append(items),
+        )
+    assert [item[0] for item in evidence] == [
+        "supply_chain_observation_normalized",
+        "supply_chain_observation_classified",
+        "supply_chain_references_bound",
+    ]

@@ -8,7 +8,7 @@ from swarm.harness_models import ApprovedModelCandidate
 from swarm.harness_risk import AssuranceTier
 from swarm.mcp_gateway import MCPGatewaySafetyState, MCPToolCatalogEntry
 from swarm.harness_worker import WorkerRegistration, WorkerRole, WorkerTransport
-from swarm.mission_control import MissionControlError, ModelMCPActivity, PolicyTicketActivity, project_ai_security, project_mission_control, project_saas_security, serialize_evidence_activity, serialize_harness_activity, serialize_incident_activity, serialize_model_mcp_activity, serialize_policy_ticket_activity
+from swarm.mission_control import MissionControlError, ModelMCPActivity, PolicyTicketActivity, project_ai_security, project_mission_control, project_saas_security, project_supply_chain, serialize_evidence_activity, serialize_harness_activity, serialize_incident_activity, serialize_model_mcp_activity, serialize_policy_ticket_activity
 from swarm.action_ticket import ActionTicket
 from swarm.policy_gate import PolicyContext, PolicyDecision
 from swarm.evidence import EvidenceRecord, evidence_record_sha256, validate_evidence_envelope
@@ -17,6 +17,7 @@ from tests.test_soc import incident, timeline_entry, playbook_step, mutating_ste
 from swarm.ai_agent_defense import AICrossDomainCorrelator, AIContainmentProposalRegistry
 from swarm.soc import project_soc_dry_run_lifecycle
 from tests.test_saas_security import saas_lifecycle
+from tests.test_supply_chain import supply_lifecycle
 
 
 def task(task_id="FWQ-0001", status=TaskStatus.READY, **changes):
@@ -383,3 +384,36 @@ def test_saas_security_projection_labels_demo_and_rejects_tamper_or_cross_tenant
     secret = replace(lifecycle, proposal=replace(lifecycle.proposal, policy_decision_ref="api_key=secret-value"))
     with pytest.raises(MissionControlError, match="secret-bearing"):
         project_saas_security(secret, tenant_id="tenant-a")
+
+
+def test_supply_chain_projection_exposes_lifecycle_without_authority():
+    lifecycle = supply_lifecycle()
+    view = project_supply_chain(lifecycle, tenant_id="tenant-a")
+    assert view.event_id == "supply-1" and view.risk == "CRITICAL"
+    assert view.vulnerability_refs == ("fw-vuln/tenant-a/osv-1",)
+    assert view.proposal_action == "BLOCK_COMPONENT_PROPOSAL"
+    assert view.proposal_state == "PROPOSE_ONLY"
+    assert view.kill_switch == "ENGAGED" and view.deployment == "DISABLED"
+    assert view.mutation_allowed is False and view.response_executed is False
+    assert not hasattr(view, "execute") and not hasattr(view, "approve")
+
+
+def test_supply_chain_projection_labels_demo_and_rejects_tamper_or_secret():
+    lifecycle = supply_lifecycle()
+    assert project_supply_chain(
+        lifecycle, tenant_id="tenant-a", data_mode="DEMO",
+    ).data_label == "DEMO / SIMULATED DATA"
+    for invalid in (
+        replace(lifecycle, kill_switch="CLEARED"),
+        replace(lifecycle, proposal=replace(lifecycle.proposal, event_id="supply-2")),
+    ):
+        with pytest.raises(MissionControlError, match="binding"):
+            project_supply_chain(invalid, tenant_id="tenant-a")
+    with pytest.raises(MissionControlError, match="binding"):
+        project_supply_chain(lifecycle, tenant_id="tenant-b")
+    secret = replace(
+        lifecycle,
+        proposal=replace(lifecycle.proposal, policy_decision_ref="api_key=secret"),
+    )
+    with pytest.raises(MissionControlError, match="secret-bearing"):
+        project_supply_chain(secret, tenant_id="tenant-a")
