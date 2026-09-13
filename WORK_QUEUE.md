@@ -54,7 +54,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-NET-003 — Network anomaly and threat classification
 - Requirement: FW-NET exact supplied-fact evaluation
-- State: REPAIR
+- State: DONE
 - Priority: P0
 - Dependencies: FW-NET-002
 - Approval: Jeff authorized the ordered FW-NET phase using small bounded candidates.
@@ -63,10 +63,11 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 - Allowed paths: swarm/network_security.py, tests/test_network_security.py, WORK_QUEUE.md, SWARM_STATUS.md
 - Test command: python3 -m pytest -q tests/test_network_security.py
 - Acceptance criteria: bounded exact indicators produce advisory risk; malformed, contradictory, cross-tenant, or authority-shaped facts deny; no model decision or response executor is added.
+- Completion evidence: initial candidate `f55997946067a27389b0e61955ff13f494ce4a41` passed focused 35. Exact AnythingLLM/Qwen returned APPROVE/LOW but requested direct direction-neutral probe and mixed-risk precedence tests. Test-only repair `8d1abbdad6cfe9ebdd2d4e0fff228475a8334458` closed both and passed focused 39; exact AnythingLLM/Qwen repair review returned APPROVE/LOW with no blockers or missing tests. Full 1845 passed/1 skipped; Product Integrity fresh full 1845/1 and Golden Path 39 passed with every hard check and only pre-existing dependency YELLOW. Evidence: `docs/fw-net-003-*.json`.
 
 ### FW-NET-004 — Canonical cross-domain reference binding
 - Requirement: FW-NET owner composition
-- State: BLOCKED
+- State: READY
 - Priority: P0
 - Dependencies: FW-NET-003
 - Approval: Jeff authorized the ordered FW-NET phase using small bounded candidates.

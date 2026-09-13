@@ -1,0 +1,30 @@
+{
+  "adjudication": null,
+  "candidate_commit": "8d1abbdad6cfe9ebdd2d4e0fff228475a8334458",
+  "deployment": "DISABLED",
+  "job_id": "phase2a-8d1abbdad6cfe9ebdd2d4e0f",
+  "kill_switch": "ENGAGED",
+  "mutation_allowed": false,
+  "reviews": [
+    {
+      "provider": "ANYTHINGLLM",
+      "result": {
+        "blocking_findings": [],
+        "job_id": "phase2a-8d1abbdad6cfe9ebdd2d4e0f",
+        "non_blocking_notes": [
+          "The patch is strictly test-only and documentation updates, adhering to the 'test-only repair' constraint.",
+          "The new tests directly address the previous review feedback by explicitly asserting direction neutrality for NETWORK_PROBE and precedence logic for combined risks.",
+          "No runtime code, authority logic, or model/network execution paths are modified."
+        ],
+        "proposed_rules": [],
+        "reasoning_summary": "The commit 8d1abbdad6cfe9ebdd2d4e0fff228475a8334458 is a test-only repair for job phase2a-8d1abbdad6cfe9ebdd2d4e0f. It adds two tests to `tests/test_network_security.py`. The first test, `test_network_probe_is_direction_neutral_metadata`, parametrizes over INBOUND, OUTBOUND, and EAST_WEST directions to verify that `NETWORK_PROBE` indicators consistently result in a 'MEDIUM' risk classification, proving direction neutrality. The second test, `test_network_classifier_uses_highest_risk_for_combined_consistent_facts`, verifies that a combination of 'C2_PATTERN' and 'DNS_ANOMALY' indicators results in a 'CRITICAL' risk classification and the expected recommendations ('WARN', 'PROPOSE_BLOCK'), proving consistent combined-risk precedence. The patch also updates `SWARM_STATUS.md` and `WORK_QUEUE.md` to reflect the repair status. There are no changes to runtime logic, authority checks, or execution paths. The tests are deterministic and align with the acceptance criteria of advisory classification and fail-closed behavior. No blocking findings or missing tests are identified relative to the specific repair scope.",
+        "reviewed_commit": "8d1abbdad6cfe9ebdd2d4e0fff228475a8334458",
+        "risk": "LOW",
+        "tests_missing": [],
+        "verdict": "APPROVE"
+      },
+      "state": "APPROVED"
+    }
+  ],
+  "state": "APPROVED"
+}

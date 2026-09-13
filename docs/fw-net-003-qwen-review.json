@@ -1,0 +1,34 @@
+{
+  "adjudication": null,
+  "candidate_commit": "f55997946067a27389b0e61955ff13f494ce4a41",
+  "deployment": "DISABLED",
+  "job_id": "phase2a-f55997946067a27389b0e619",
+  "kill_switch": "ENGAGED",
+  "mutation_allowed": false,
+  "reviews": [
+    {
+      "provider": "ANYTHINGLLM",
+      "result": {
+        "blocking_findings": [],
+        "job_id": "phase2a-f55997946067a27389b0e619",
+        "non_blocking_notes": [
+          "The defensive 'LOW' risk branch is unreachable given the closed indicator set, but it serves as a safe default if the indicator set is expanded in the future without updating the classification logic.",
+          "The audit log payload explicitly includes 'deployment': 'DISABLED' and 'response_executed': False, which strongly reinforces the non-executing nature of the finding."
+        ],
+        "proposed_rules": [
+          "Ensure that any new indicators added to _INDICATORS have corresponding protocol/direction consistency checks and risk classifications to maintain the closed-set invariant and fail-closed behavior."
+        ],
+        "reasoning_summary": "The implementation correctly adheres to the acceptance criteria for FW-NET-003. It classifies only exact admitted facts deterministically without consulting a model. The risk levels (MEDIUM/HIGH/CRITICAL) and recommendations (WARN/PROPOSE_BLOCK) are fixed and derived from the indicator set. The code fails closed on empty, malformed, contradictory, cross-tenant, authority-shaped, or Evidence-failing inputs. No live network access, mutation, containment, deployment, or response executor is introduced. The tests cover the deterministic behavior, rejection of invalid inputs, and revalidation of tenant/authority/evidence. The precedence of risk classification is correct (CRITICAL > HIGH > MEDIUM). The protocol/direction consistency checks are appropriate for the specific indicators (e.g., UNAUTHORIZED_EGRESS requires OUTBOUND, LATERAL_MOVEMENT requires EAST_WEST, SMB_WRITE requires SMB protocol, DNS_ANOMALY requires DNS protocol). The frozen dataclass ensures immutability of the finding. The audit call is wrapped in a try/except to deny on failure, ensuring evidence integrity.",
+        "reviewed_commit": "f55997946067a27389b0e61955ff13f494ce4a41",
+        "risk": "LOW",
+        "tests_missing": [
+          "Test for NETWORK_PROBE with direction constraints (if any exist, though currently no direction constraint is applied to it in the code)",
+          "Test for combined indicators that might trigger different risk levels (e.g., DNS_ANOMALY + C2_PATTERN should be CRITICAL due to precedence, though the current if/elif structure handles this correctly by checking higher risks first)"
+        ],
+        "verdict": "APPROVE"
+      },
+      "state": "REVIEW_RETURNED"
+    }
+  ],
+  "state": "REVIEW_REQUIRED"
+}
