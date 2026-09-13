@@ -41,7 +41,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-NET-002 — Caller-supplied network observation
 - Requirement: FW-NET immutable tenant-bound metadata boundary
-- State: READY
+- State: REVIEW
 - Priority: P0
 - Dependencies: FW-NET-001
 - Approval: Jeff authorized the ordered FW-NET phase using small bounded candidates.
