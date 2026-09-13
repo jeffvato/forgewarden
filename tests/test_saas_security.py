@@ -148,6 +148,8 @@ def test_saas_correlation_binds_canonical_references_evidence_first_and_inert():
     ({"soc_incident_ref": "fw-incident/tenant-b/saas-1"}, "CORRELATION_REF_INVALID"),
     ({"aid_finding_ref": "fw-incident/tenant-a/saas-1"}, "CORRELATION_REF_INVALID"),
     ({"evidence_refs": ()}, "EVIDENCE_REFS_INVALID"),
+    ({"evidence_refs": ("fw-evid/tenant-a/saas-1", "fw-evid/tenant-a/saas-1")}, "EVIDENCE_REFS_INVALID"),
+    ({"evidence_refs": tuple(f"fw-evid/tenant-a/saas-{index}" for index in range(17))}, "EVIDENCE_REFS_INVALID"),
     ({"evidence_refs": ("fw-evid/tenant-b/saas-1",)}, "EVIDENCE_REFS_INVALID"),
 ])
 def test_saas_correlation_rejects_cross_tenant_or_malformed_references(kwargs, reason):
