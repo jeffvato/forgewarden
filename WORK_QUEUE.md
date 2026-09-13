@@ -1373,7 +1373,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-UX-010 — Canonical policy and Action Ticket provider
 - Requirement: Mission Control incremental backend integration
-- State: REVIEW
+- State: DONE
 - Priority: P0
 - Dependencies: FW-UX-009, FW-ROOT deterministic policy, and canonical Action Tickets
 - Approval: Jeff authorized the mapped Mission Control backend integration sequence; this unit may expose existing sanitized local read-only policy-decision and Action Ticket projections only.
@@ -1390,6 +1390,27 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no policy evaluation, approval, Action Ticket issuance/consumption, key access, response, recovery execution, network transport, credentials, model invocation, or deployment authority is added.
 - Expected validation: focused provider/frontend tests, exact Claude read-only review, then full suite/integrity once after approval.
 - Security considerations: canonical policy and Action Ticket owners remain authoritative; the UI receives immutable explanatory facts and no control callback.
+- Completion evidence: exact candidate `19eb5927448c0efe4f516415ace214d5c06a2b54`; focused proof passed 80 Python tests plus the Node frontend contract; exact Claude review `phase2a-19eb5927448c0efe4f516415` returned APPROVE/LOW with no blockers or missing tests; full 1633 passed/1 skipped; Product Integrity fresh full 1633 passed/1 skipped with all hard checks and 4 Golden Paths passing, YELLOW only for pre-existing `tzdata`.
+
+### FW-UX-011 — Canonical Model Broker and MCP activity provider
+- Requirement: Mission Control incremental backend integration
+- State: READY
+- Priority: P0
+- Dependencies: FW-UX-010, FW-HARNESS-016, and FW-MCP-05
+- Approval: Jeff authorized the mapped Mission Control backend integration sequence; this unit may expose existing sanitized local read-only Model Broker and MCP Gateway projections only.
+- Description: Add one bounded canonical provider for approved model eligibility/availability and MCP server/tool admission state without exposing routing, invocation, tool execution, registry mutation, or credential controls.
+- Target path: swarm/mission_control.py
+- Allowed paths: swarm/mission_control.py, swarm/console.py, console/app.js, console/index.html, tests/test_console.py, tests/test_mission_control.py, tests/test_console_frontend.js, docs/management-console.md, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_mission_control.py tests/test_console.py tests/test_model_broker.py tests/test_mcp_gateway.py && node --test tests/test_console_frontend.js
+- Acceptance criteria:
+  - reuse canonical Approved Model Registry/Model Broker and MCP Gateway facts instead of creating duplicate registries or routing/tool layers;
+  - preserve tenant, provider/model, assurance, approval, availability, server/tool, capability, lease, and denial bindings;
+  - return bounded, secret-filtered, read-only CANONICAL, EMPTY, or UNAVAILABLE state with no silent model fallback;
+  - malformed, cross-tenant, unapproved-model, substituted-server/tool, secret-bearing, authority-expanding, deployment-enabled, or kill-switch-cleared state fails closed without contaminating Demo data;
+  - Mission Control distinguishes approved, restricted, unavailable, denied, and disconnected state honestly;
+  - no model invocation/routing mutation, MCP discovery/mutation/tool execution, credential resolution, policy evaluation, approval, response, recovery execution, network transport, or deployment authority is added.
+- Expected validation: focused provider/frontend tests, exact Claude read-only review, then full suite/integrity once after approval.
+- Security considerations: Model Broker and MCP Gateway remain authoritative; the UI receives immutable explanatory facts and no execution callback.
 
 ### FW-REC-002 — Durable recovery checkpoint persistence and reconstruction
 - Requirement: FW-REC persistent recovery metadata
