@@ -67,7 +67,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-NET-004 — Canonical cross-domain reference binding
 - Requirement: FW-NET owner composition
-- State: REVIEW
+- State: REPAIR
 - Priority: P0
 - Dependencies: FW-NET-003
 - Approval: Jeff authorized the ordered FW-NET phase using small bounded candidates.

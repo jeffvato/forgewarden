@@ -1,5 +1,7 @@
 # ForgeWarden Swarm Status
 
+- 2026-09-13: FW-NET-004 is in bounded test-only repair after exact AnythingLLM/Qwen returned APPROVE/LOW but requested direct MEDIUM/WARN and forged trust/mode/action proofs. Runtime behavior and authority are unchanged.
+
 - 2026-09-13: FW-NET-004 is in exact review after focused validation passed 51 tests. Exact network findings now bind source-matched Endpoint plus tenant-matched FW-AID, FW-SOC, FW-ID, and bounded FW-EVID references without creating owner state. Mismatch, duplicate, over-cap, authority-shaped, cross-tenant, or Evidence-failing input denies. No live network or response authority was added.
 
 - 2026-09-13: FW-NET-003 accepted at repair `8d1abbdad6cfe9ebdd2d4e0fff228475a8334458`. Exact admitted network indicators produce deterministic advisory MEDIUM/HIGH/CRITICAL risk with security-first precedence and fixed WARN/PROPOSE_BLOCK recommendations. Empty, contradictory, cross-tenant, authority-shaped, or Evidence-failing input denies. Initial exact AnythingLLM/Qwen APPROVE/LOW requested two direct proofs; the test-only repair closed both and received exact APPROVE/LOW with no blockers or missing tests. Focused 39 and full 1845/1 passed; Product Integrity fresh full 1845/1 and Golden Path 39 passed with every hard check and only pre-existing dependency YELLOW. No model decision, network operation, containment, deployment, or response authority was added. FW-NET-004 canonical cross-domain reference binding is next.

@@ -252,3 +252,21 @@ def test_network_reference_binding_revalidates_finding_and_evidence():
                 audit=lambda *_args: (_ for _ in ()).throw(RuntimeError("offline")),
             ),
         )
+
+
+def test_network_reference_binding_accepts_medium_warn_only_finding():
+    medium = classify_network_observation(
+        observation(indicators=["NETWORK_PROBE"]),
+        tenant_id="tenant-a", audit=lambda *_args: None,
+    )
+    value = bind_network_references(medium, **binding_args())
+    assert value.risk == "MEDIUM"
+
+
+@pytest.mark.parametrize("changes", [
+    {"trust": "TRUSTED"}, {"mode": "LIVE"}, {"action": "BLOCK"},
+    {"authority_granted": True},
+])
+def test_network_reference_binding_rejects_forged_finding_authority(changes):
+    with pytest.raises(NetworkObservationDenied, match="FINDING_INVALID"):
+        bind_network_references(replace(finding(), **changes), **binding_args())
