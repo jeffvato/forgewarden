@@ -1,0 +1,37 @@
+{
+  "adjudication": null,
+  "candidate_commit": "514e67b4c636b3bb8ef54952f702a9a52b08bd04",
+  "deployment": "DISABLED",
+  "job_id": "phase2a-514e67b4c636b3bb8ef54952",
+  "kill_switch": "ENGAGED",
+  "mutation_allowed": false,
+  "reviews": [
+    {
+      "provider": "ANYTHINGLLM",
+      "result": {
+        "blocking_findings": [
+          "The validation logic requires `data_classifications` to be a `tuple` (line 84 in high_assurance.py). However, the input is derived from JSON deserialization (implied by `json.dumps` usage and standard API contracts), which produces `list` objects, not `tuple` objects. Consequently, any valid JSON input will be rejected with `DATA_CLASSIFICATIONS_INVALID` because `isinstance(classes, tuple)` is false for lists. The tests pass only because the test helper `profile()` manually constructs a dictionary with a `tuple` value, which is not a realistic representation of deserialized JSON input. This is a functional break for the intended input source."
+        ],
+        "job_id": "phase2a-514e67b4c636b3bb8ef54952",
+        "non_blocking_notes": [
+          "The `audit` call in `normalize_high_assurance_profile` writes evidence *after* all validation checks pass. The acceptance criteria states 'Evidence must be written before successful return', which is satisfied, but it is also after the potential failure points. This is correct for 'fail closed' semantics (no evidence on failure), but it means the 'Evidence first' phrasing in the docstring is slightly misleading if interpreted as 'written before any other processing'. It is written before the *return*, which is the critical constraint.",
+          "The `source_trust`, `mode`, `deployment`, and `authority_granted` fields are hardcoded in the returned dataclass and the audit log, which correctly enforces the 'untrusted metadata' and 'no authority' requirements.",
+          "The regex patterns for tenant-bound references (profile_id, security_boundary, evidence_ref, ato_reference) correctly enforce tenant isolation by checking `match.group(1) != tenant_id`."
+        ],
+        "proposed_rules": [
+          "Input fields expected to be lists from JSON deserialization must be validated against `list` type and converted to `tuple` for immutability, or the input contract must explicitly require `tuple` inputs and the validation must be tested with realistic JSON-derived inputs."
+        ],
+        "reasoning_summary": "The implementation correctly enforces immutability, tenant scoping, and fail-closed behavior for malformed, stale, cross-tenant, secret-shaped, and claim-shaped inputs. The security boundaries and authorization state logic are sound. However, there is a critical functional bug: the `data_classifications` field is validated to be a `tuple`, but JSON deserialization produces `lists`. Since the input is described as 'caller-supplied' and validated via `json.dumps` (implying JSON interchange), the function will reject all valid JSON inputs for this field. The provided tests do not catch this because they manually construct `tuple` objects in the test fixture, bypassing the JSON serialization/deserialization path that would expose the bug. This makes the function unusable for its intended purpose without modification. Therefore, human review is required to determine if the input contract should accept lists (and convert to tuples) or if the test suite is misrepresenting the actual input format.",
+        "reviewed_commit": "514e67b4c636b3bb8ef54952f702a9a52b08bd04",
+        "risk": "MEDIUM",
+        "tests_missing": [
+          "Test for JSON-deserialized input (i.e., `data_classifications` as a `list`) to verify the current implementation fails and to document the need for normalization or type coercion.",
+          "Test for `data_classifications` containing duplicate values (e.g., `(\"CONFIDENTIAL\", \"CONFIDENTIAL\")`). The current logic `tuple(sorted(set(classes))) != classes` will reject this, but it is not explicitly tested. While rejection is a safe default, it should be an explicit test case."
+        ],
+        "verdict": "HUMAN_REQUIRED"
+      },
+      "state": "REVIEW_RETURNED"
+    }
+  ],
+  "state": "REVIEW_REQUIRED"
+}

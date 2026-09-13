@@ -35,7 +35,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-GOV-002 — High-assurance authorization profile
 - Requirement: FW-GOV immutable tenant-bound authorization metadata
-- State: READY
+- State: DONE
 - Priority: P0
 - Dependencies: FW-GOV-001, FW-ID, FW-EVID
 - Approval: Jeff authorized the ordered FW-GOV phase through the continuing heartbeat.
@@ -44,10 +44,11 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 - Allowed paths: swarm/high_assurance.py, tests/test_high_assurance.py, WORK_QUEUE.md, SWARM_STATUS.md
 - Test command: python3 -m pytest -q tests/test_high_assurance.py
 - Acceptance criteria: immutable bounded untrusted DRY_RUN metadata is Evidence-first and grants no authorization; malformed, stale, cross-tenant, claim-shaped, or authority-bearing inputs deny.
+- Completion evidence: implementation candidate `514e67b4c636b3bb8ef54952f702a9a52b08bd04`; exact repair candidate `f90312a8e3b3d90f6ac30a3d5f68663141bca1e3`. Initial AnythingLLM/Qwen review identified JSON list compatibility and duplicate-value proof; the repair closed both and focused validation passed 29. AnythingLLM was then unavailable, so the explicitly authorized exact Claude fallback job `phase2a-f90312a8e3b3d90f6ac30a3d` returned APPROVE/LOW with no blockers or missing tests. Full validation and Product Integrity each passed 2042 tests with 1 skipped; the focused Golden Path passed 29. Every hard integrity check passed, with YELLOW only for the pre-existing `tzdata` dependency. Evidence: `docs/fw-gov-002-qwen-review.json`, `docs/fw-gov-002-qwen-review-repair.json`, `docs/fw-gov-002-claude-review-repair.json`, `docs/fw-gov-002-integrity.json`.
 
 ### FW-GOV-003 — Deterministic model authorization admission
 - Requirement: FW-GOV profile and Approved Model Registry composition
-- State: BLOCKED
+- State: READY
 - Priority: P0
 - Dependencies: FW-GOV-002, FW-HARNESS
 - Approval: Jeff authorized the ordered FW-GOV phase through the continuing heartbeat.
