@@ -22,7 +22,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-SAAS-003 — Deterministic SaaS posture and threat classification
 - Requirement: FW-SAAS exact indicator evaluation
-- State: REPAIR
+- State: DONE
 - Priority: P0
 - Dependencies: FW-SAAS-002
 - Approval: Jeff authorized the ordered FW-SAAS phase using small bounded candidates.
@@ -37,6 +37,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no provider API, OAuth/token/credential access, network, SaaS mutation, containment, remediation, deployment, or response authority is added.
 - Expected validation: focused Linux proof, exact independent read-only review, then full suite and Product Integrity once after approval.
 - Security considerations: risk confidence and recommendations remain advisory and cannot authorize SaaS or identity action.
+- Completion evidence: initial candidate `0c4f6b40324950bf4f96b806f8665f6b33140fc4` passed 16 focused tests and exact Qwen returned APPROVE/LOW with three missing direct boundary tests. Repair `773a940c48033bad3362375aeaa14618b690e261` added exactly those tests and passed focused 18. AnythingLLM was unavailable for repair review, then exact Claude job `phase2a-773a940c48033bad3362375a` returned APPROVE/LOW with no blockers or missing tests. Full 1735 passed/1 skipped; Product Integrity fresh full 1735/1 and Golden Path 18 passed with every hard check and only pre-existing `tzdata` YELLOW. Evidence: `docs/fw-saas-003-*.json`.
 
 ### FW-SAAS-002 — Caller-supplied SaaS observation normalization
 - Requirement: FW-SAAS immutable tenant-bound metadata boundary
