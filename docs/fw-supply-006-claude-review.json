@@ -1,0 +1,28 @@
+{
+  "adjudication": null,
+  "candidate_commit": "ec3734d72d10f5c74df88e2270b927c64118a850",
+  "deployment": "DISABLED",
+  "job_id": "phase2a-ec3734d72d10f5c74df88e22",
+  "kill_switch": "ENGAGED",
+  "mutation_allowed": false,
+  "reviews": [
+    {
+      "provider": "CLAUDE",
+      "result": {
+        "blocking_findings": [],
+        "job_id": "phase2a-ec3734d72d10f5c74df88e22",
+        "non_blocking_notes": [
+          "Patch is narrow, focused, and deterministic. Stage composition preserves exact ordering and tenant/source bindings through frozen immutable dataclasses. All four lifecycle stages transition correctly with no authority or deployment capability. Mission Control projection validation is comprehensive: tenant_id/event_id consistency enforced across all stages, secret-bearing and cross-tenant input rejected, mode/kill_switch/deployment locked to safe defaults. Tests cover happy path (CRITICAL risk trigger), gating (MEDIUM risk stops before proposal), cross-tenant rejection, secret rejection, and DEMO labeling. No executor functions or feed/registry/build/publish/deploy capabilities added."
+        ],
+        "proposed_rules": [],
+        "reasoning_summary": "FW-SUPPLY-006 acceptance criteria fully satisfied. The integrated lifecycle function composes the four normalized/classified/bound/proposed stages in deterministic order, preserving tenant/source bindings through immutable frozen dataclasses. Lower-risk indicators (MEDIUM) correctly fail before proposal stage. Mission Control projection exposes only sanitized, read-only canonical or DEMO-labeled facts with comprehensive validation: rejects secret-bearing values, cross-tenant binding, tampered event_ids, and all operating modes locked (DRY_RUN/DISABLED/ENGAGED). No authority_granted or response_executed capabilities present. No executor functions for deployment, remediation, or response are added. Test coverage is deterministic and focused: stage ordering, risk-based gating, immutability, cross-tenant rejection, secret rejection, and DEMO labeling. Patch scope is narrow and safely isolated to composition and read-only projection only.",
+        "reviewed_commit": "ec3734d72d10f5c74df88e2270b927c64118a850",
+        "risk": "LOW",
+        "tests_missing": [],
+        "verdict": "APPROVE"
+      },
+      "state": "APPROVED"
+    }
+  ],
+  "state": "APPROVED"
+}

@@ -22,7 +22,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-SUPPLY-006 — Integrated lifecycle and Mission Control projection
 - Requirement: FW-SUPPLY accepted-stage composition and operator visibility
-- State: IN_PROGRESS
+- State: DONE
 - Priority: P0
 - Dependencies: FW-SUPPLY-005
 - Approval: Jeff authorized the ordered FW-SUPPLY phase using small bounded candidates.
@@ -38,6 +38,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no feed/registry/package/build access, installation, blocking, signing, publication, deployment, remediation, rollback, quarantine, or response executor is added.
 - Expected validation: focused Linux proof, exact independent read-only review, then full suite and Product Integrity once after approval.
 - Security considerations: lifecycle composition and visibility preserve canonical owners and cannot authorize supply-chain action.
+- Completion evidence: exact candidate `ec3734d72d10f5c74df88e2270b927c64118a850`; focused 94 passed. AnythingLLM was unavailable, then exact Claude job `phase2a-ec3734d72d10f5c74df88e22` returned APPROVE/LOW with no blockers or missing tests. Full 1806 passed/1 skipped; Product Integrity fresh full 1806/1 and Golden Path 94 passed with every hard check and only pre-existing dependency YELLOW. Evidence: `docs/fw-supply-006-*.json`.
 
 ### FW-SUPPLY-005 — Inert Action Ticket-bound component block proposal
 - Requirement: FW-SUPPLY bounded non-executing response intent
