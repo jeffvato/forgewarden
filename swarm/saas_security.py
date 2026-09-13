@@ -57,6 +57,19 @@ class SaaSObservation:
     action: str = "DETECT_ONLY"
 
 
+@dataclass(frozen=True)
+class SaaSFinding:
+    event_id: str
+    tenant_id: str
+    provider: str
+    signals: tuple[str, ...]
+    confidence: str
+    recommendations: tuple[str, ...] = ("WARN",)
+    trust: str = "UNTRUSTED_DATA"
+    mode: str = "DRY_RUN"
+    action: str = "DETECT_ONLY"
+
+
 def normalize_saas_observation(
     fixture: Mapping[str, Any], *, tenant_id: str, now_epoch: int,
     audit: Callable[[str, dict[str, Any]], None],
@@ -121,4 +134,79 @@ def normalize_saas_observation(
     return SaaSObservation(
         event_id, expected_tenant, observed, provider, application_ref,
         principal_ref, target_ref, observation_type, indicators, evidence_ref,
+    )
+
+
+def classify_saas_observation(
+    observation: SaaSObservation, *, tenant_id: str,
+    audit: Callable[[str, dict[str, Any]], None],
+) -> SaaSFinding:
+    """Classify exact normalized indicators without provider or response access."""
+    if not isinstance(observation, SaaSObservation) or not callable(audit):
+        raise SaaSObservationDenied("OBSERVATION_INVALID")
+    expected_tenant = _reference(tenant_id, "TENANT")
+    if observation.tenant_id != expected_tenant:
+        raise SaaSObservationDenied("TENANT_MISMATCH")
+    if (
+        observation.trust != "UNTRUSTED_DATA"
+        or observation.mode != "DRY_RUN"
+        or observation.action != "DETECT_ONLY"
+    ):
+        raise SaaSObservationDenied("OBSERVATION_AUTHORITY_INVALID")
+    if (
+        observation.provider not in _PROVIDERS
+        or observation.observation_type not in _OBSERVATION_TYPES
+        or not isinstance(observation.observed_at_epoch, int)
+        or isinstance(observation.observed_at_epoch, bool)
+        or observation.observed_at_epoch < 0
+        or not isinstance(observation.related_indicators, tuple)
+        or not 1 <= len(observation.related_indicators) <= MAX_SAAS_INDICATORS
+        or tuple(sorted(set(observation.related_indicators))) != observation.related_indicators
+        or any(item not in _INDICATORS for item in observation.related_indicators)
+    ):
+        raise SaaSObservationDenied("OBSERVATION_INVALID")
+    for value, field in (
+        (observation.event_id, "EVENT_ID"),
+        (observation.application_ref, "APPLICATION_REF"),
+        (observation.principal_ref, "PRINCIPAL_REF"),
+        (observation.target_ref, "TARGET_REF"),
+        (observation.evidence_ref, "EVIDENCE_REF"),
+    ):
+        _reference(value, field)
+    signals = set(observation.related_indicators)
+    high_pairs = (
+        {"RISKY_OAUTH_CONSENT", "EXCESSIVE_PRIVILEGE"},
+        {"AI_APP_DATA_ACCESS", "PUBLIC_SHARE"},
+        {"SUSPICIOUS_SIGN_IN", "EXCESSIVE_PRIVILEGE"},
+    )
+    if any(pair <= signals for pair in high_pairs):
+        confidence = "HIGH"
+    elif signals & {
+        "AI_APP_DATA_ACCESS", "PUBLIC_SHARE", "RISKY_OAUTH_CONSENT",
+        "SUSPICIOUS_SIGN_IN", "UNSAFE_THIRD_PARTY_APP",
+    }:
+        confidence = "MEDIUM"
+    else:
+        confidence = "LOW"
+    ordered = tuple(sorted(signals))
+    try:
+        audit("saas_observation_classified", {
+            "event_id": observation.event_id,
+            "tenant_id": expected_tenant,
+            "provider": observation.provider,
+            "observation_type": observation.observation_type,
+            "signals": list(ordered),
+            "confidence": confidence,
+            "recommendations": ["WARN"],
+            "trust": "UNTRUSTED_DATA",
+            "mode": "DRY_RUN",
+            "action": "DETECT_ONLY",
+            "response_executed": False,
+            "deployment": "DISABLED",
+        })
+    except Exception as exc:
+        raise SaaSObservationDenied("EVIDENCE_WRITE_FAILED") from exc
+    return SaaSFinding(
+        observation.event_id, expected_tenant, observation.provider, ordered,
+        confidence,
     )

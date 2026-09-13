@@ -20,6 +20,24 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 
 Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical implementation is not new work. FWQ-0008 VALIDATED preserves a provenance caveat, not a request to rebuild or automatically repeat review. FWQ-0012–0016 are reconciled DONE from existing implementation and recorded proof.
 
+### FW-SAAS-003 — Deterministic SaaS posture and threat classification
+- Requirement: FW-SAAS exact indicator evaluation
+- State: REVIEW
+- Priority: P0
+- Dependencies: FW-SAAS-002
+- Approval: Jeff authorized the ordered FW-SAAS phase using small bounded candidates.
+- Description: Revalidate canonical SaaS observations and classify exact posture/threat indicator combinations into Evidence-first warn-only findings.
+- Target path: swarm/saas_security.py
+- Allowed paths: swarm/saas_security.py, tests/test_saas_security.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_saas_security.py
+- Acceptance criteria:
+  - exact normalized signals produce deterministic LOW/MEDIUM/HIGH confidence with explicit high-risk combinations;
+  - tenant, immutable untrusted observation, allowlist, reference, and authority boundaries are revalidated;
+  - Evidence succeeds before return, excludes application/principal/target references, and records WARN with response/deployment disabled;
+  - no provider API, OAuth/token/credential access, network, SaaS mutation, containment, remediation, deployment, or response authority is added.
+- Expected validation: focused Linux proof, exact independent read-only review, then full suite and Product Integrity once after approval.
+- Security considerations: risk confidence and recommendations remain advisory and cannot authorize SaaS or identity action.
+
 ### FW-SAAS-002 — Caller-supplied SaaS observation normalization
 - Requirement: FW-SAAS immutable tenant-bound metadata boundary
 - State: DONE
