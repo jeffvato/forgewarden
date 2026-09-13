@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from swarm.phase5_release_audit import HistoryReleaseAudit, ReleaseAudit
+from swarm.phase5_release_audit import _LIMITS, HistoryReleaseAudit, ReleaseAudit
 
 
 class Phase5ReleaseAuditTests(unittest.TestCase):
@@ -214,6 +214,31 @@ class Phase5HistoryReleaseAuditTests(unittest.TestCase):
             self.assertTrue(sanitized["candidate_proof_required"])
             self.assertEqual(result["ref_set_sha256"], sanitized["ref_set_sha256"])
             self.assertEqual(result["policy_sha256"], sanitized["policy_sha256"])
+
+    def test_aggregate_blob_budget_exhaustion_fails_closed_before_git_read(self):
+        blob_size = _LIMITS["blob_bytes"]
+        count = _LIMITS["total_blob_bytes"] // blob_size + 1
+        sizes = {f"{index:040x}": blob_size for index in range(count)}
+        with tempfile.TemporaryDirectory(prefix="phase5-aggregate-budget-") as temp:
+            with self.assertRaisesRegex(ValueError, "aggregate blob budget exceeded"):
+                HistoryReleaseAudit(Path(temp))._contents(sizes)
+
+    def test_malformed_git_line_fails_closed(self):
+        with tempfile.TemporaryDirectory(prefix="phase5-malformed-git-") as temp:
+            audit = HistoryReleaseAudit(Path(temp))
+            audit._git = lambda *args, **kwargs: b"unexpected-line\n"
+            with self.assertRaisesRegex(ValueError, "unsafe ref"):
+                audit._refs()
+
+    def test_symlinked_repository_root_is_rejected(self):
+        with tempfile.TemporaryDirectory(prefix="phase5-symlink-root-") as temp:
+            root = Path(temp)
+            repository = root / "repository"
+            link = root / "repository-link"
+            repository.mkdir()
+            link.symlink_to(repository, target_is_directory=True)
+            with self.assertRaisesRegex(ValueError, "real directory"):
+                HistoryReleaseAudit(link)
 
     def test_exact_head_git_and_path_failures_are_closed(self):
         with tempfile.TemporaryDirectory(prefix="phase5-drift-") as temp:
