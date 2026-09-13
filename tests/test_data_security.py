@@ -2,7 +2,7 @@ from dataclasses import FrozenInstanceError, replace
 
 import pytest
 
-from swarm.data_security import DataSecurityObservationDenied, classify_data_security_observation, normalize_data_security_observation
+from swarm.data_security import DataSecurityObservationDenied, bind_data_security_references, classify_data_security_observation, normalize_data_security_observation
 
 
 def fixture(**overrides):
@@ -178,4 +178,69 @@ def test_data_security_classification_denies_invalid_observation(invalid):
     with pytest.raises(DataSecurityObservationDenied, match="OBSERVATION_INVALID"):
         classify_data_security_observation(
             invalid, tenant_id="tenant-a", audit=lambda *_args: None,
+        )
+
+
+def finding():
+    return classify_data_security_observation(
+        observation(policy_state="VIOLATION"), tenant_id="tenant-a",
+        audit=lambda *_args: None,
+    )
+
+
+def binding_kwargs(**overrides):
+    values = {
+        "tenant_id": "tenant-a", "saas_ref": "fw-saas/tenant-a/storage-1",
+        "supply_ref": "fw-component/tenant-a/repository-1",
+        "ai_workflow_ref": "fw-workflow/tenant-a/agent-task-1",
+        "policy_decision_ref": "fw-policy/tenant-a/dspm-1",
+        "soc_incident_ref": "fw-incident/tenant-a/dspm-1",
+        "evidence_refs": ("fw-evid/tenant-a/dspm-1",),
+    }
+    values.update(overrides)
+    return values
+
+
+def test_data_security_reference_binding_reuses_canonical_owners_evidence_first():
+    evidence = []
+    value = bind_data_security_references(
+        finding(), **binding_kwargs(), audit=lambda *args: evidence.append(args),
+    )
+    assert value.data_asset_ref == "fw-data/tenant-a/customer-records"
+    assert value.owner_identity_ref == "fw-id/tenant-a.data-owner"
+    assert value.saas_ref == "fw-saas/tenant-a/storage-1"
+    assert value.action == "CORRELATE_ONLY" and value.authority_granted is False
+    assert evidence[0][1]["deployment"] == "DISABLED"
+    assert evidence[0][1]["response_executed"] is False
+
+
+@pytest.mark.parametrize("changes,reason", [
+    ({"tenant_id": "tenant-b"}, "TENANT_MISMATCH"),
+    ({"saas_ref": "fw-saas/tenant-b/storage-1"}, "SAAS_REF_INVALID"),
+    ({"supply_ref": "fw-vuln/tenant-a/repository-1"}, "SUPPLY_REF_INVALID"),
+    ({"ai_workflow_ref": "fw-workflow/tenant-b/agent-task-1"}, "AI_WORKFLOW_REF_INVALID"),
+    ({"policy_decision_ref": "fw-policy/tenant-b/dspm-1"}, "POLICY_REF_INVALID"),
+    ({"soc_incident_ref": "fw-incident/tenant-b/dspm-1"}, "SOC_INCIDENT_REF_INVALID"),
+    ({"evidence_refs": ()}, "EVIDENCE_REFS_INVALID"),
+    ({"evidence_refs": ("fw-vuln/tenant-a/dspm-1",)}, "EVIDENCE_REFS_INVALID"),
+    ({"evidence_refs": ("fw-evid/tenant-a/dspm-1", "fw-evid/tenant-a/dspm-1")}, "EVIDENCE_REFS_INVALID"),
+])
+def test_data_security_reference_binding_denies_invalid_or_cross_tenant_refs(changes, reason):
+    with pytest.raises(DataSecurityObservationDenied, match=reason):
+        bind_data_security_references(
+            finding(), **binding_kwargs(**changes), audit=lambda *_args: None,
+        )
+
+
+def test_data_security_reference_binding_denies_forged_finding_and_evidence_failure():
+    source = finding()
+    with pytest.raises(DataSecurityObservationDenied, match="FINDING_INVALID"):
+        bind_data_security_references(
+            replace(source, authority_granted=True), **binding_kwargs(),
+            audit=lambda *_args: None,
+        )
+    with pytest.raises(DataSecurityObservationDenied, match="EVIDENCE_WRITE_FAILED"):
+        bind_data_security_references(
+            source, **binding_kwargs(),
+            audit=lambda *_args: (_ for _ in ()).throw(RuntimeError("offline")),
         )

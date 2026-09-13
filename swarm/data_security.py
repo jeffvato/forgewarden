@@ -13,12 +13,17 @@ from typing import Any, Callable, Mapping
 
 MAX_DSPM_FIXTURE_BYTES = 32 * 1024
 MAX_DSPM_COPY_COUNT = 100_000
+MAX_DSPM_EVIDENCE_REFS = 16
 _TEXT = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:/@+-]{0,255}$")
 _TENANT = re.compile(r"^[a-z][a-z0-9_.-]{0,127}$")
 _OWNER_REF = re.compile(
     r"^fw-(data|asset|evid)/([a-z][a-z0-9_.-]{0,127})/[a-z][a-z0-9_.:/+-]{0,191}$"
 )
 _IDENTITY_REF = re.compile(r"^fw-id/([a-z][a-z0-9_.-]{0,127})\.[a-z][a-z0-9_.-]{0,126}$")
+_CANONICAL_REF = re.compile(
+    r"^fw-(saas|component|workflow|policy|incident|evid)/"
+    r"([a-z][a-z0-9_.-]{0,127})/[a-z][a-z0-9_.:/+-]{0,191}$"
+)
 _CLASSIFICATIONS = frozenset({"CONFIDENTIAL", "INTERNAL", "PUBLIC", "RESTRICTED"})
 _LOCATIONS = frozenset({
     "AI_WORKFLOW", "BROWSER_EMAIL", "DATABASE", "ENDPOINT", "REPOSITORY", "SAAS_CLOUD",
@@ -87,6 +92,8 @@ class DataSecurityFinding:
     tenant_id: str
     data_asset_ref: str
     location_asset_ref: str
+    owner_identity_ref: str
+    location_class: str
     classification: str
     signals: tuple[str, ...]
     risk: str
@@ -94,6 +101,26 @@ class DataSecurityFinding:
     trust: str = "UNTRUSTED_DATA"
     mode: str = "DRY_RUN"
     action: str = "ADVISE_ONLY"
+    authority_granted: bool = False
+
+
+@dataclass(frozen=True)
+class DataSecurityReferenceBinding:
+    event_id: str
+    tenant_id: str
+    data_asset_ref: str
+    location_asset_ref: str
+    owner_identity_ref: str
+    risk: str
+    saas_ref: str
+    supply_ref: str
+    ai_workflow_ref: str
+    policy_decision_ref: str
+    soc_incident_ref: str
+    evidence_refs: tuple[str, ...]
+    trust: str = "UNTRUSTED_DATA"
+    mode: str = "DRY_RUN"
+    action: str = "CORRELATE_ONLY"
     authority_granted: bool = False
 
 
@@ -241,6 +268,80 @@ def classify_data_security_observation(
         raise DataSecurityObservationDenied("EVIDENCE_WRITE_FAILED") from exc
     return DataSecurityFinding(
         observation.event_id, tenant_id, observation.data_asset_ref,
-        observation.location_asset_ref, observation.classification,
-        ordered_signals, risk, recommendations,
+        observation.location_asset_ref, observation.owner_identity_ref,
+        observation.location_class, observation.classification, ordered_signals,
+        risk, recommendations,
+    )
+
+
+def bind_data_security_references(
+    finding: DataSecurityFinding, *, tenant_id: str, saas_ref: str,
+    supply_ref: str, ai_workflow_ref: str, policy_decision_ref: str,
+    soc_incident_ref: str, evidence_refs: tuple[str, ...],
+    audit: Callable[[str, dict[str, Any]], None],
+) -> DataSecurityReferenceBinding:
+    """Bind existing owner references without accessing data or creating state."""
+    if not isinstance(finding, DataSecurityFinding) or not callable(audit):
+        raise DataSecurityObservationDenied("FINDING_INVALID")
+    if not isinstance(tenant_id, str) or not _TENANT.fullmatch(tenant_id):
+        raise DataSecurityObservationDenied("TENANT_INVALID")
+    if finding.tenant_id != tenant_id:
+        raise DataSecurityObservationDenied("TENANT_MISMATCH")
+    expected_recommendations = (
+        ("WARN", "PROPOSE_DLP") if finding.risk in {"HIGH", "CRITICAL"} else ("WARN",)
+    )
+    if (
+        finding.risk not in {"LOW", "MEDIUM", "HIGH", "CRITICAL"}
+        or finding.recommendations != expected_recommendations
+        or finding.trust != "UNTRUSTED_DATA" or finding.mode != "DRY_RUN"
+        or finding.action != "ADVISE_ONLY"
+        or finding.authority_granted is not False
+        or tuple(sorted(set(finding.signals))) != finding.signals
+        or not set(finding.signals) <= _RISK_SIGNALS
+    ):
+        raise DataSecurityObservationDenied("FINDING_INVALID")
+    data_ref = _owner_ref(finding.data_asset_ref, "data", tenant_id, "DATA_ASSET_REF")
+    location_ref = _owner_ref(finding.location_asset_ref, "asset", tenant_id, "LOCATION_ASSET_REF")
+    identity_match = _IDENTITY_REF.fullmatch(finding.owner_identity_ref) if isinstance(finding.owner_identity_ref, str) else None
+    if identity_match is None or identity_match.group(1) != tenant_id:
+        raise DataSecurityObservationDenied("OWNER_IDENTITY_REF_INVALID")
+    for value, kind, reason in (
+        (saas_ref, "saas", "SAAS_REF_INVALID"),
+        (supply_ref, "component", "SUPPLY_REF_INVALID"),
+        (ai_workflow_ref, "workflow", "AI_WORKFLOW_REF_INVALID"),
+        (policy_decision_ref, "policy", "POLICY_REF_INVALID"),
+        (soc_incident_ref, "incident", "SOC_INCIDENT_REF_INVALID"),
+    ):
+        match = _CANONICAL_REF.fullmatch(value) if isinstance(value, str) else None
+        if match is None or match.group(1) != kind or match.group(2) != tenant_id:
+            raise DataSecurityObservationDenied(reason)
+    if (
+        not isinstance(evidence_refs, tuple)
+        or not 1 <= len(evidence_refs) <= MAX_DSPM_EVIDENCE_REFS
+        or tuple(sorted(set(evidence_refs))) != evidence_refs
+    ):
+        raise DataSecurityObservationDenied("EVIDENCE_REFS_INVALID")
+    for value in evidence_refs:
+        match = _CANONICAL_REF.fullmatch(value) if isinstance(value, str) else None
+        if match is None or match.group(1) != "evid" or match.group(2) != tenant_id:
+            raise DataSecurityObservationDenied("EVIDENCE_REFS_INVALID")
+    try:
+        audit("data_security_references_bound", {
+            "event_id": finding.event_id, "tenant_id": tenant_id,
+            "data_asset_ref": data_ref, "location_asset_ref": location_ref,
+            "owner_identity_ref": finding.owner_identity_ref, "risk": finding.risk,
+            "saas_ref": saas_ref, "supply_ref": supply_ref,
+            "ai_workflow_ref": ai_workflow_ref,
+            "policy_decision_ref": policy_decision_ref,
+            "soc_incident_ref": soc_incident_ref, "evidence_refs": evidence_refs,
+            "trust": "UNTRUSTED_DATA", "mode": "DRY_RUN",
+            "action": "CORRELATE_ONLY", "deployment": "DISABLED",
+            "response_executed": False, "authority_granted": False,
+        })
+    except Exception as exc:
+        raise DataSecurityObservationDenied("EVIDENCE_WRITE_FAILED") from exc
+    return DataSecurityReferenceBinding(
+        finding.event_id, tenant_id, data_ref, location_ref,
+        finding.owner_identity_ref, finding.risk, saas_ref, supply_ref,
+        ai_workflow_ref, policy_decision_ref, soc_incident_ref, evidence_refs,
     )

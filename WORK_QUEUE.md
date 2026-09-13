@@ -61,7 +61,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-DSPM-004 — Canonical data-security reference binding
 - Requirement: FW-DSPM owner-system composition
-- State: READY
+- State: REVIEW
 - Priority: P0
 - Dependencies: FW-DSPM-003
 - Approval: Jeff authorized the ordered FW-DSPM phase through the continuing heartbeat.
