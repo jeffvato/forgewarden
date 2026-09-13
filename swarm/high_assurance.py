@@ -152,6 +152,20 @@ class HighAssuranceEvidenceBinding:
     authority_granted: bool = False
 
 
+@dataclass(frozen=True)
+class HighAssuranceDryRunLifecycle:
+    profile: HighAssuranceAuthorizationProfile
+    admission: HighAssuranceModelAdmission
+    failure: HighAssuranceCandidateFailure | None
+    failover: HighAssuranceFailoverDecision | None
+    evidence: HighAssuranceEvidenceBinding
+    mode: str = "DRY_RUN"
+    deployment: str = "DISABLED"
+    kill_switch: str = "ENGAGED"
+    invocation_authorized: bool = False
+    authority_granted: bool = False
+
+
 def _tenant_ref(value: Any, pattern: re.Pattern[str], tenant_id: str, reason: str) -> str:
     match = pattern.fullmatch(value) if isinstance(value, str) else None
     if match is None or match.group(1) != tenant_id:
@@ -546,4 +560,45 @@ def bind_high_assurance_evidence(
         profile.environment, admission.data_classification,
         profile.authorization_state, failed_id, selected_id, provider, model_id,
         tier, decision, validated_refs,
+    )
+
+
+def run_high_assurance_dry_run_lifecycle(
+    profile_fixture: Mapping[str, Any], primary_candidate: ApprovedModelCandidate,
+    *, tenant_id: str, security_boundary: str, environment: str,
+    data_classification: str, now_epoch: int, evidence_refs: tuple[str, ...],
+    audit: Callable[[str, dict[str, Any]], None],
+    failure_fixture: Mapping[str, Any] | None = None,
+    fallback_candidates: tuple[ApprovedModelCandidate, ...] = (),
+) -> HighAssuranceDryRunLifecycle:
+    """Compose accepted FW-GOV stages without provider or execution authority."""
+    profile = normalize_high_assurance_profile(
+        profile_fixture, tenant_id=tenant_id, now_epoch=now_epoch, audit=audit,
+    )
+    admission = admit_high_assurance_model(
+        profile, primary_candidate, tenant_id=tenant_id,
+        security_boundary=security_boundary, environment=environment,
+        data_classification=data_classification, now_epoch=now_epoch,
+        audit=audit,
+    )
+    failure = None
+    failover = None
+    if failure_fixture is not None:
+        failure = normalize_high_assurance_failure(
+            failure_fixture, tenant_id=tenant_id, now_epoch=now_epoch,
+            audit=audit,
+        )
+        failover = select_high_assurance_failover(
+            profile, admission, failure, fallback_candidates,
+            tenant_id=tenant_id, data_classification=data_classification,
+            now_epoch=now_epoch, audit=audit,
+        )
+    elif fallback_candidates:
+        raise HighAssuranceProfileDenied("UNBOUND_FALLBACK_CANDIDATES")
+    evidence = bind_high_assurance_evidence(
+        profile, admission, tenant_id=tenant_id, evidence_refs=evidence_refs,
+        audit=audit, failure=failure, failover=failover,
+    )
+    return HighAssuranceDryRunLifecycle(
+        profile, admission, failure, failover, evidence,
     )

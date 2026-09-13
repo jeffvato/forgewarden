@@ -9,8 +9,8 @@ from swarm.harness_risk import AssuranceTier
 from swarm.mcp_gateway import MCPGatewaySafetyState, MCPToolCatalogEntry
 from swarm.harness_worker import WorkerRegistration, WorkerRole, WorkerTransport
 from swarm.mission_control import MissionControlError, ModelMCPActivity, PolicyTicketActivity, project_ai_security, project_attack_surface, project_data_security, project_high_assurance, project_mission_control, project_network_security, project_saas_security, project_supply_chain, serialize_evidence_activity, serialize_harness_activity, serialize_incident_activity, serialize_model_mcp_activity, serialize_policy_ticket_activity
-from tests.test_high_assurance import admission as gov_admission, admitted_profile as gov_profile
-from swarm.high_assurance import bind_high_assurance_evidence
+from tests.test_high_assurance import admission as gov_admission, admitted_profile as gov_profile, candidate as gov_candidate, failure_fixture as gov_failure_fixture, profile as gov_profile_fixture
+from swarm.high_assurance import bind_high_assurance_evidence, run_high_assurance_dry_run_lifecycle
 from swarm.action_ticket import ActionTicket
 from swarm.policy_gate import PolicyContext, PolicyDecision
 from swarm.evidence import EvidenceRecord, evidence_record_sha256, validate_evidence_envelope
@@ -611,3 +611,23 @@ def test_high_assurance_projection_denies_cross_tenant_tamper_secret_and_unknown
             project_high_assurance(changed, tenant_id="tenant-a")
     with pytest.raises(MissionControlError):
         project_high_assurance(binding, tenant_id="tenant-a", data_mode="UNKNOWN")
+
+
+def test_integrated_high_assurance_lifecycle_projects_exact_failover_story():
+    profile_fixture = gov_profile_fixture()
+    primary = gov_candidate()
+    fallback = gov_candidate(candidate_id="equivalent", model_id="equivalent-model", estimated_cost_microunits=5)
+    failure_fixture = gov_failure_fixture()
+    refs = tuple(sorted((profile_fixture["evidence_ref"], primary.registry_evidence_reference, failure_fixture["evidence_ref"])))
+    lifecycle = run_high_assurance_dry_run_lifecycle(
+        profile_fixture, primary, tenant_id="tenant-a",
+        security_boundary="fw-boundary/tenant-a/government",
+        environment="GOVERNMENT", data_classification="RESTRICTED",
+        now_epoch=155, evidence_refs=refs, audit=lambda *_: None,
+        failure_fixture=failure_fixture, fallback_candidates=(fallback,),
+    )
+    view = project_high_assurance(lifecycle.evidence, tenant_id="tenant-a")
+    assert view.failed_candidate_id == "approved-reviewer"
+    assert view.selected_candidate_id == "equivalent"
+    assert view.assurance_tier == "T3" and view.decision == "APPROVED_EQUIVALENT_SELECTED"
+    assert not view.invocation_authorized and view.kill_switch == "ENGAGED"

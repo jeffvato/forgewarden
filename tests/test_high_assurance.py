@@ -2,7 +2,7 @@ from dataclasses import FrozenInstanceError, replace
 
 import pytest
 
-from swarm.high_assurance import HighAssuranceProfileDenied, admit_high_assurance_model, bind_high_assurance_evidence, normalize_high_assurance_failure, normalize_high_assurance_profile, select_high_assurance_failover
+from swarm.high_assurance import HighAssuranceProfileDenied, admit_high_assurance_model, bind_high_assurance_evidence, normalize_high_assurance_failure, normalize_high_assurance_profile, run_high_assurance_dry_run_lifecycle, select_high_assurance_failover
 from swarm.harness_models import ApprovedModelCandidate
 from swarm.harness_risk import AssuranceTier
 from swarm.harness_worker import WorkerRole
@@ -313,3 +313,51 @@ def test_evidence_binding_wraps_durability_failure_with_original_cause():
             audit=lambda *_: (_ for _ in ()).throw(failure),
         )
     assert caught.value.__cause__ is failure
+
+
+def lifecycle(*, profile_changes=None, primary_changes=None, failure_changes=None, fallbacks=(), evidence_refs=None, now_epoch=155):
+    profile_value = profile(**(profile_changes or {}))
+    primary = candidate(**(primary_changes or {}))
+    failure_value = failure_fixture(**failure_changes) if failure_changes is not None else None
+    refs = evidence_refs or tuple(sorted((profile_value["evidence_ref"], primary.registry_evidence_reference) + ((failure_value["evidence_ref"],) if failure_value else ())))
+    return run_high_assurance_dry_run_lifecycle(
+        profile_value, primary, tenant_id="tenant-a",
+        security_boundary="fw-boundary/tenant-a/government",
+        environment=profile_value["environment"], data_classification="RESTRICTED",
+        now_epoch=now_epoch, evidence_refs=refs, audit=lambda *_: None,
+        failure_fixture=failure_value, fallback_candidates=fallbacks,
+    )
+
+
+def test_integrated_direct_and_failover_lifecycles_preserve_exact_bindings():
+    direct = lifecycle()
+    assert direct.failure is None and direct.failover is None
+    assert direct.evidence.selected_candidate_id == direct.admission.candidate_id
+    assert direct.kill_switch == "ENGAGED" and not direct.invocation_authorized
+    fallback = candidate(candidate_id="equivalent", model_id="equivalent-model", estimated_cost_microunits=5)
+    recovered = lifecycle(failure_changes={}, fallbacks=(fallback,))
+    assert recovered.failure.candidate_id == recovered.admission.candidate_id
+    assert recovered.failover.selected_candidate_id == fallback.candidate_id
+    assert recovered.evidence.selected_candidate_id == fallback.candidate_id
+    assert recovered.evidence.evidence_refs == tuple(sorted((recovered.profile.evidence_ref, recovered.admission.registry_evidence_ref, recovered.failure.evidence_ref)))
+
+
+def test_integrated_lifecycle_denies_downgrade_stale_substitution_and_no_approved_model():
+    with pytest.raises(HighAssuranceProfileDenied, match="NO_APPROVED_MODEL"):
+        lifecycle(failure_changes={}, fallbacks=(candidate(candidate_id="weak", model_id="weak-model", assurance_tier=AssuranceTier.T2),))
+    with pytest.raises(HighAssuranceProfileDenied, match="VALIDITY_INVALID"):
+        lifecycle(now_epoch=200)
+    with pytest.raises(HighAssuranceProfileDenied, match="FAILURE_BINDING_MISMATCH"):
+        lifecycle(failure_changes={"candidate_id": "substituted"}, fallbacks=(candidate(candidate_id="equivalent", model_id="equivalent-model"),))
+    with pytest.raises(HighAssuranceProfileDenied, match="UNBOUND_FALLBACK"):
+        lifecycle(fallbacks=(candidate(candidate_id="unused", model_id="unused-model"),))
+
+
+def test_integrated_offline_lifecycle_rejects_remote_fallback_and_opaque_authority_surface():
+    offline = {"environment": "OFFLINE", "sovereign_required": True, "offline_required": True}
+    primary = {"environment": "offline"}
+    with pytest.raises(HighAssuranceProfileDenied, match="NO_APPROVED_MODEL"):
+        lifecycle(profile_changes=offline, primary_changes=primary, failure_changes={"environment": "OFFLINE"}, fallbacks=(candidate(candidate_id="remote", model_id="remote-model", environment="government"),))
+    result = lifecycle(profile_changes=offline, primary_changes=primary, failure_changes={"environment": "OFFLINE"}, fallbacks=(candidate(candidate_id="local", model_id="local-model", environment="offline"),))
+    assert not hasattr(result, "router") and not hasattr(result, "invoke")
+    assert not result.authority_granted and not result.invocation_authorized
