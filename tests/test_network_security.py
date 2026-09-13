@@ -73,3 +73,36 @@ def test_network_observation_rejects_invalid_time_type_and_evidence_failure():
             fixture(), tenant_id="tenant-a", now_epoch=150,
             audit=lambda *_args: (_ for _ in ()).throw(RuntimeError("offline")),
         )
+
+
+@pytest.mark.parametrize("port", [0, 65535])
+def test_network_observation_accepts_port_boundaries(port):
+    value = normalize_network_observation(
+        fixture(port=port, indicators=[]), tenant_id="tenant-a", now_epoch=150,
+        audit=lambda *_args: None,
+    )
+    assert value.port == port
+    assert value.indicators == ()
+
+
+@pytest.mark.parametrize("now_epoch", [-1, None])
+def test_network_observation_rejects_invalid_current_time(now_epoch):
+    with pytest.raises(NetworkObservationDenied, match="OBSERVED_AT_INVALID"):
+        normalize_network_observation(
+            fixture(), tenant_id="tenant-a", now_epoch=now_epoch,
+            audit=lambda *_args: None,
+        )
+
+
+@pytest.mark.parametrize("field,value,reason", [
+    ("device_ref", "device-1", "DEVICE_REF_INVALID"),
+    ("source_ref", "fw-network/tenant-a/contains whitespace", "SOURCE_REF_INVALID"),
+    ("destination_ref", "fw-network/tenant-a/", "DESTINATION_REF_INVALID"),
+    ("evidence_ref", "fw-evid/tenant-a/../network-1", "EVIDENCE_REF_INVALID"),
+])
+def test_network_observation_rejects_malformed_owner_references(field, value, reason):
+    with pytest.raises(NetworkObservationDenied, match=reason):
+        normalize_network_observation(
+            fixture(**{field: value}), tenant_id="tenant-a", now_epoch=150,
+            audit=lambda *_args: None,
+        )

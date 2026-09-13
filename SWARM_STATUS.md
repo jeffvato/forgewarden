@@ -1,5 +1,7 @@
 # ForgeWarden Swarm Status
 
+- 2026-09-13: FW-NET-002 is in bounded test-only repair after exact Claude review returned APPROVE/LOW but listed direct boundary tests as missing. The repair covers valid port endpoints, explicitly valid empty indicators, invalid current time, and malformed canonical owner references without changing runtime behavior or authority.
+
 - 2026-09-13: FW-NET-002 is in exact review after focused validation passed 15 tests. The candidate adds only immutable Evidence-first caller-supplied network metadata with strict tenant, owner-reference, protocol, port, direction, time, indicator, and size bounds. It opens no socket, captures no packet, queries no service, and grants no network or response authority.
 
 - 2026-09-13: FW-NET-001 accepted at candidate `a9c30f03842c83f77ad29df123f104b8dbebb7eb`. The ownership inventory reuses canonical Endpoint/NormalizedEventStore, FW-RANSOM, FW-AID, Identity/FW-KEYS, policy/Action Ticket, FW-EVID, FW-SOC, and Mission Control controls. Deterministic inventory and `git diff --check` passed; exact AnythingLLM/Qwen returned APPROVE/LOW with no blockers or missing tests. No product suite or Product Integrity rerun was required for this documentation-only milestone. No live network observation or response authority was added. FW-NET-002 immutable tenant-bound caller-supplied network metadata is next.
