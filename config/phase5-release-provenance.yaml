@@ -1,0 +1,70 @@
+schema_version: "1"
+publication: DISABLED
+format: FORGEWARDEN_SBOM_CANDIDATE_V1
+compatibility_target: SPDX_2_3
+source_manifest_name: FORGEWARDEN-PUBLIC-MANIFEST.json
+license_concluded: NOASSERTION
+license_declared: NOASSERTION
+legal_status: PENDING
+production_ready: false
+allowed_schema_identifiers:
+  - https://forgewarden.org/schemas/addon-manifest.schema.json
+  - https://json-schema.org/draft/2020-12/schema
+
+limits:
+  max_manifest_bytes: 65536
+  max_files: 8
+  max_file_bytes: 524288
+  max_total_bytes: 786432
+  max_references: 64
+  max_output_bytes: 131072
+  max_path_bytes: 240
+
+tracks:
+  PUBLIC_SDK:
+    standalone_class: DOCUMENTATION_AND_SCHEMA_ONLY
+    file_roles:
+      docs/add-on-sdk.md: DOCUMENTATION
+      schemas/addon-manifest.schema.json: SCHEMA
+    python_stdlib: []
+    local_asset_root: ""
+    optional_api_interfaces: []
+  SOURCE_AVAILABLE_DEMO:
+    standalone_class: STATIC_DEMO_WITH_OPTIONAL_CORE_API
+    file_roles:
+      console/app.js: APPLICATION
+      console/demo-data.json: DEMO_DATA
+      console/index.html: DOCUMENT
+      console/styles.css: STYLESHEET
+      swarm/mission_control_demo.py: DEMO_PROVIDER
+    python_stdlib:
+      - __future__
+      - copy
+      - typing
+    local_asset_root: console
+    optional_api_interfaces:
+      - /api/canonical-activity
+      - /api/capability-status
+      - /api/mission-control
+      - /api/status
+
+required_pending_gates:
+  - legal_review
+  - chain_of_title_review
+  - trademark_media_review
+  - dependency_sbom_review
+  - customer_root_release_approval
+
+required_denials:
+  - PRIVATE_CORE_DEPENDENCY
+  - CROSS_TRACK_REFERENCE
+  - UNDECLARED_DEPENDENCY
+  - UNRESOLVED_REFERENCE
+  - REMOTE_OR_URL_LOADED_CODE
+  - DYNAMIC_IMPORT_OR_EVALUATION
+  - MUTABLE_OR_RANGED_VERSION
+  - UNKNOWN_ORIGIN_OR_LICENSE
+  - TAMPERED_OR_EXTRA_FILE
+  - SECRET_OR_IDENTIFIER_CONTENT
+  - PUBLICATION_OR_PRODUCTION_CLAIM
+  - AUTHORITY

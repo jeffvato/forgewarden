@@ -166,6 +166,8 @@ class Phase5ReleaseCandidateTests(unittest.TestCase):
                 _validate_public_content(sample)
             self.assertNotIn(sample.decode("utf-8", errors="ignore").strip(), str(error.exception))
         _validate_public_content(b'tenant_id="TENANT-DEMO-01"\njob_id="JOB-DEMO-01"\n')
+        with self.assertRaises(ValueError):
+            _source_binding_sha256(None, "0" * 64)  # type: ignore[arg-type]
 
     def test_private_generated_review_and_unproven_media_paths_are_rejected(self):
         for path in (

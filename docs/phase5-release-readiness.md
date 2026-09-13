@@ -71,3 +71,23 @@ The candidate is not a repository and the builder cannot select a license,
 initialize Git, add a remote, use a network/provider/credential, publish,
 deploy, change visibility, or grant authority. A later release controller and
 explicit human gates must independently authorize any release operation.
+
+## Offline dependency provenance candidate
+
+FWQ-0082 validates an exact local export manifest, its one-way private-source
+binding, the current export policy, every allowlisted path, size, and digest,
+and the absence of extra paths or Git metadata. It then classifies bounded
+Python, Markdown, JavaScript, HTML, CSS, and JSON references without installing
+packages or consulting a registry. The SDK track is explicitly documentation
+and schema only. The source-available Demo includes its deterministic local
+data fallback; canonical same-origin API routes remain declared optional
+interfaces and are not required for the static Demo to load.
+
+The deterministic result is a `FORGEWARDEN_SBOM_CANDIDATE_V1` document aimed at
+future SPDX 2.3 conversion. It is not a conformance, license-clearance, legal,
+or production-readiness claim. File and reference licenses remain
+`NOASSERTION`; legal, chain-of-title, trademark/media, dependency-review, and
+Customer Root gates remain pending. The result includes only file, manifest,
+policy, and one-way source-binding digests, never the private source commit.
+Network, package installation, provider, credential, Git-remote, publication,
+deployment, and authority operations remain absent.

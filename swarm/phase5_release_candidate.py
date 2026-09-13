@@ -239,7 +239,9 @@ def _policy_sha256(profile: dict[str, Any], policy: dict[str, Any]) -> str:
 
 def _source_binding_sha256(source_commit: str, policy_sha256: str) -> str:
     """Bind private source state without publishing its historical commit ID."""
-    if not _SHA.fullmatch(source_commit) or not re.fullmatch(r"[0-9a-f]{64}", policy_sha256):
+    if (not isinstance(source_commit, str) or not isinstance(policy_sha256, str)
+            or not _SHA.fullmatch(source_commit)
+            or not re.fullmatch(r"[0-9a-f]{64}", policy_sha256)):
         raise ValueError("public-export source binding input is invalid")
     payload = f"FORGEWARDEN_PUBLIC_SOURCE_BINDING_V1\0{source_commit}\0{policy_sha256}".encode()
     return hashlib.sha256(payload).hexdigest()

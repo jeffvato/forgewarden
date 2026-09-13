@@ -1743,7 +1743,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - consume only an exact FWQ-0081 candidate manifest whose source commit, track, policy hash, file paths, sizes, and digests validate;
   - replace the public manifest's raw private source-commit identifier with a domain-separated one-way binding that remains verifiable by the trusted caller;
   - remove private-Core executable examples and personal initials from public-track content, and provide a deterministic included Demo-data fallback for absent backend routes;
-  - deterministically classify every shipped code import/reference as standard-library, local included file, declared third-party component, or denied unresolved dependency;
+  - deterministically classify every shipped code import/reference as standard-library, local included file, declared third-party component, declared optional canonical API interface, non-loading schema identifier, or denied unresolved dependency;
   - reject undeclared, ranged, mutable, remote, URL-loaded, private-Core, cross-track, unlicensed/unknown-origin, duplicate, tampered, excessive, or secret-bearing dependency facts;
   - emit bounded SPDX-compatible or equivalent candidate metadata with publication DISABLED, license fields NOASSERTION while legal decisions remain unselected, exact file/component digests, provenance source, and no personal/cloud/operational identifiers;
   - prove the standalone PUBLIC_SDK and SOURCE_AVAILABLE_DEMO dependency closure offline, with no package installation, registry lookup, network/provider call, credential, billing, Git remote, publication, deployment, or authority;
