@@ -3,7 +3,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from swarm.integrity import CANONICAL_OWNERSHIP, FUNCTIONALITY_MAP, audit_completed_requirement_work, run_product_integrity_gate, validate_canonical_ownership
+from swarm.integrity import CANONICAL_OWNERSHIP, FUNCTIONALITY_MAP, audit_completed_requirement_work, run_product_integrity_gate, validate_canonical_ownership, validate_functionality_map
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -39,8 +39,7 @@ def test_canonical_ownership_validation_rejects_malformed_records():
 def test_functionality_map_distinguishes_proven_from_not_yet_proven():
     states = {item["requirement_id"]: item["state"] for item in FUNCTIONALITY_MAP}
     assert states["FW-CORE"] == "Proven"
-    assert states["FW-ASOC-01"] == "Proven"
-    assert states["FW-ASOC-02"] == "Proven"
+    assert states["FW-ASOC"] == "Proven"
     assert states["FW-ID"] == "Proven"
     assert states["FW-KEYS"] == "Proven"
     assert states["FW-EVID"] == "Proven"
@@ -138,7 +137,7 @@ def test_reality_audit_traces_accepted_work_without_inferring_runtime_or_product
     assert report["summary"]["unsupported"] == 0
     assert report["runtime_validation"] == "NOT_RUN_BY_THIS_AUDIT"
     assert report["production_readiness_inferred"] is False
-    assert {"FW-HARNESS", "FW-UX", "FW-GOV"}.issubset(report["unmapped_accepted_families"])
+    assert report["unmapped_accepted_families"] == []
     endpoint = next(item for item in report["tasks"] if item["requirement_id"] == "FW-AID-009")
     assert "swarm/endpoint_fixtures.py" in endpoint["allowed_paths"]
     assert endpoint["traceability"] == "TRACEABLE"
@@ -202,4 +201,41 @@ def test_integrity_gate_exposes_completion_traceability():
     assert report["checks"]["completion_traceability"]
     assert report["reality_audit"]["assessment"] == "TRACEABLE"
     assert report["reality_audit"]["production_readiness_inferred"] is False
-    assert any(item["area"] == "product_reality" for item in report["findings"])
+    assert report["checks"]["functionality_map"]
+    assert not any(item["area"] == "product_reality" for item in report["findings"])
+
+
+
+def test_functionality_map_covers_accepted_families_with_honest_boundaries():
+    reality = audit_completed_requirement_work(ROOT)
+    result = validate_functionality_map(reality)
+    assert result["accepted_family_count"] == 22
+    assert result["mapped_family_count"] == 24
+    assert result["extra_foundational_families"] == ["FW-ASOC", "FW-CORE"]
+    assert result["operating_mode"] == "DRY_RUN"
+    assert result["live_enabled"] is False
+    assert result["production_ready"] is False
+    mapped = {item["requirement_id"]: item for item in FUNCTIONALITY_MAP}
+    for family in ("FW-HARNESS", "FW-AID", "FW-UX", "FW-GOV", "FW-ENDPOINT"):
+        assert mapped[family]["production_ready"] is False
+        assert mapped[family]["live_enabled"] is False
+        assert mapped[family]["limitations"]
+    assert mapped["FW-UX"]["demo_available"] is True
+    assert mapped["FW-API"]["limitations"].startswith("No listener")
+
+
+def test_functionality_map_rejects_duplicate_missing_and_live_claims():
+    reality = audit_completed_requirement_work(ROOT)
+    valid = tuple(dict(item) for item in FUNCTIONALITY_MAP)
+    for malformed in (
+        valid + (dict(valid[0]),),
+        tuple(item for item in valid if item["requirement_id"] != "FW-GOV"),
+        tuple({**item, "production_ready": True} if item["requirement_id"] == "FW-UX" else item for item in valid),
+        tuple({**item, "state": "Proven", "integration_status": "PARTIAL"} if item["requirement_id"] == "FW-INTEGRITY" else item for item in valid),
+    ):
+        try:
+            validate_functionality_map(reality, malformed)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("dishonest functionality map was accepted")

@@ -1558,7 +1558,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-INTEGRITY-004 — Canonical capability status reconciliation
 - Requirement: FW-INTEGRITY truthful product status and Mission Control source contract
-- State: READY
+- State: IN_PROGRESS
 - Priority: P0
 - Dependencies: FW-INTEGRITY-003
 - Approval: Jeff authorized continuation into the next phase with a reality audit and Mission Control integration; this bounded unit reconciles status metadata only.

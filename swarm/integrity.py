@@ -32,18 +32,65 @@ CANONICAL_OWNERSHIP: dict[str, dict[str, Any]] = {
 }
 
 
+def _capability(
+    requirement_id: str,
+    component: str,
+    dependencies: list[str],
+    user_surface: str,
+    golden_path: str,
+    limitations: str,
+    *,
+    state: str = "Proven",
+    implementation_status: str = "IMPLEMENTED",
+    integration_status: str = "INTEGRATED",
+    proof_status: str = "ACCEPTED_BOUNDED",
+    demo_available: bool = False,
+) -> dict[str, Any]:
+    return {
+        "requirement_id": requirement_id,
+        "state": state,
+        "component": component,
+        "dependencies": dependencies,
+        "user_surface": user_surface,
+        "unit_tests": "PASS",
+        "integration_tests": "PASS" if integration_status == "INTEGRATED" else "PARTIAL",
+        "golden_path": golden_path,
+        "limitations": limitations,
+        "implementation_status": implementation_status,
+        "integration_status": integration_status,
+        "proof_status": proof_status,
+        "demo_available": demo_available,
+        "operating_mode": "DRY_RUN",
+        "live_enabled": False,
+        "production_ready": False,
+    }
+
+
 FUNCTIONALITY_MAP: tuple[dict[str, Any], ...] = (
-    {"requirement_id": "FW-CORE", "state": "Proven", "component": "swarm.core / swarm.autonomous_loop", "dependencies": ["policy_gate", "AuditLog", "Git"], "user_surface": "local runner and console", "unit_tests": "PASS", "integration_tests": "PASS", "golden_path": "A partial monitor/review dry-run path", "limitations": "no production deployment; live mutation disabled"},
-    {"requirement_id": "FW-ASOC-01", "state": "Proven", "component": "swarm.asoc", "dependencies": ["FW-ID reference", "FW-ROOT deterministic policy", "Action Tickets", "Model Broker", "MCP Gateway", "Audit sink"], "user_surface": "internal authorization interface", "unit_tests": "PASS", "integration_tests": "PASS", "golden_path": "PASS: canonical authorization plus replay, kill-switch, recovery, and cross-tenant denials", "limitations": "in-memory single-process dry-run registries; external service adapters and a full Z3 solver remain future work"},
-    {"requirement_id": "FW-ASOC-02", "state": "Proven", "component": "swarm.asoc.AggregateBlastRadiusLedger / WorkBudgetLedger / LeaseRegistry", "dependencies": ["DeterministicPolicy", "Action Tickets", "CapabilityAuthorizer", "Audit sink", "recovery controls"], "user_surface": "internal authorization interface", "unit_tests": "PASS", "integration_tests": "PASS", "golden_path": "PASS: aggregate caps, bounded delegation, and lease/tenant work budgets with recovery and concurrency denials", "limitations": "in-memory single-process DRY_RUN scope; broader ASOC orchestration remains future work"},
-    {"requirement_id": "FW-ID", "state": "Proven", "component": "swarm.identity.IdentityRecord / IdentityRegistry / DelegatedProviderIdentity", "dependencies": ["FW-KEYS opaque references", "FW-EVID sink", "FW-HARNESS worker admission"], "user_surface": "internal identity and worker-binding interface", "unit_tests": "PASS", "integration_tests": "PASS", "golden_path": "PASS: tenant-bound registration, provider-reference binding, worker admission, revocation and replay denial", "limitations": "in-memory DRY_RUN metadata only; no real authentication, federation, OAuth exchange, credential resolution, device trust or production identity service"},
-    {"requirement_id": "FW-KEYS", "state": "Proven", "component": "swarm.keys.SecretHandleRegistry with identity/harness and TrustedSignatureCatalog consumers", "dependencies": ["FW-ID owner reference", "FW-EVID sink", "trusted backend boundary"], "user_surface": "internal opaque secret-handle lifecycle interface", "unit_tests": "PASS", "integration_tests": "PASS", "golden_path": "PASS: registration, activation, exact consumer binding, lifecycle invalidation, generation replay denial, and Evidence minimization", "limitations": "in-memory metadata only; no backend, vault, HSM, material resolution, authentication, key generation, signing or encryption authority"},
-    {"requirement_id": "FW-EVID", "state": "Proven", "component": "swarm.evidence with harness and accepted-work adapters plus swarm.core.AuditLog", "dependencies": ["domain payload validators", "tenant identity references", "restricted local AuditLog"], "user_surface": "internal canonical Evidence lifecycle", "unit_tests": "PASS", "integration_tests": "PASS", "golden_path": "PASS: validated payload digest, tenant chain, durable append, restart reconstruction, replay and tamper denial", "limitations": "local unsigned DRY_RUN evidence only; no retention execution, cryptographic signing, replication, external storage or export"},
-    {"requirement_id": "FW-REC", "state": "Proven", "component": "swarm.recovery", "dependencies": ["RecoveryCheckpoint", "private atomic persistence", "FW-EVID sink", "trusted Git/Evidence facts", "kill switch"], "user_surface": "internal recovery admission metadata", "unit_tests": "PASS", "integration_tests": "PASS", "golden_path": "PASS: checkpoint persistence, restart reconstruction, exact resume admission, Evidence-first retry, replay/tamper denial", "limitations": "local metadata-only DRY_RUN coordination; no restore, rollback, restart, repair, deletion, containment, deployment, filesystem, process or response execution"},
-    {"requirement_id": "FW-COMP", "state": "Proven", "component": "swarm.compliance", "dependencies": ["FW-ID references", "FW-EVID ledger", "policy/test fact references"], "user_surface": "internal compliance mapping metadata", "unit_tests": "PASS", "integration_tests": "PASS", "golden_path": "PASS: tenant-bound mapping, canonical Evidence admission, bounded assessment, replay/substitution/expiry/durability denial", "limitations": "local in-memory metadata-only DRY_RUN proof; no certification, attestation, external reporting, control execution or continuous-compliance claim"},
-    {"requirement_id": "FW-AID", "state": "Proven", "component": "swarm.ai_agent_defense / swarm.normalized_events / swarm.mission_control", "dependencies": ["FW-ENDPOINT fixtures", "FW-ID/FW-KEYS references", "NormalizedEventStore", "FW-SOC", "FW-EVID", "FW-HARNESS", "Mission Control"], "user_surface": "Mission Control canonical read-only AI Security projection", "unit_tests": "PASS", "integration_tests": "PASS", "golden_path": "PASS: fixture-only harness and endpoint attribution through detection, correlation, proposal, Evidence, and Mission Control", "limitations": "caller-supplied DRY_RUN metadata only; no live sensor, credential access, network/process control, containment execution, recovery execution, or deployment authority"},
-    {"requirement_id": "FW-OPS", "state": "Proven", "component": "swarm.operations / swarm.operations_capacity / swarm.mission_control", "dependencies": ["FW-EVID sink", "FW-REC checkpoint/resume", "FW-ENDPOINT capacity facts", "Mission Control"], "user_surface": "Mission Control canonical read-only operations continuity projection", "unit_tests": "PASS", "integration_tests": "PASS", "golden_path": "PASS: health and pressure Evidence through restart reconstruction, resume admission, and read-only operator projection", "limitations": "local caller-supplied DRY_RUN metadata only; no live telemetry, HA/DR coordination, service/process control, retention movement, rollback execution, or deployment"},
-    {"requirement_id": "FW-INTEGRITY", "state": "Implemented", "component": "swarm.integrity", "dependencies": ["Git", "Python", "pytest", "documentation registry"], "user_surface": "integrity gate report", "unit_tests": "PASS", "integration_tests": "IN_PROGRESS", "golden_path": "first baseline path established", "limitations": "database migration checks are not applicable to this repository yet"},
+    _capability("FW-CORE", "swarm.core / swarm.autonomous_loop", ["policy_gate", "AuditLog", "Git"], "local runner and console", "PASS: bounded dry-run/review control path", "No production deployment or live mutation"),
+    _capability("FW-ASOC", "swarm.asoc", ["FW-ID", "FW-ROOT", "Action Tickets", "Model Broker", "MCP Gateway", "FW-EVID"], "internal authorization interface", "PASS: authorization, aggregate budgets, delegation, replay, recovery, kill-switch, and cross-tenant denials", "In-memory single-process DRY_RUN registries; no full external orchestration or Z3 solver"),
+    _capability("FW-ID", "swarm.identity", ["FW-KEYS", "FW-EVID", "FW-HARNESS"], "internal identity and worker-binding interface", "PASS: tenant identity lifecycle, worker admission, revocation, and replay denial", "In-memory metadata only; no live authentication, federation, OAuth exchange, or device trust"),
+    _capability("FW-KEYS", "swarm.keys", ["FW-ID", "FW-EVID", "trusted backend boundary"], "internal opaque-handle interface", "PASS: handle registration, binding, invalidation, and replay denial", "No vault/HSM backend, material resolution, signing, encryption, or live credentials"),
+    _capability("FW-EVID", "swarm.evidence / swarm.core.AuditLog", ["domain validators", "tenant identity"], "internal canonical Evidence lifecycle", "PASS: tenant chain, durable append, restart reconstruction, replay, and tamper denial", "Local unsigned Evidence; no external storage, replication, cryptographic signing, or export"),
+    _capability("FW-REC", "swarm.recovery", ["FW-EVID", "Git facts", "kill switch"], "internal recovery-admission metadata", "PASS: checkpoint persistence, reconstruction, exact resume admission, and tamper denial", "Metadata coordination only; no restore, rollback, restart, repair, or recovery execution"),
+    _capability("FW-COMP", "swarm.compliance", ["FW-ID", "FW-EVID", "policy/test references"], "internal compliance mapping metadata", "PASS: mapping, Evidence admission, assessment, replay, expiry, and durability denial", "No certification, attestation, external reporting, or control execution"),
+    _capability("FW-HARNESS", "swarm.harness_controller / swarm.harness_task / swarm.harness_context", ["FW-ID", "FW-KEYS", "FW-EVID", "Model Broker", "Git controller"], "Mission Control and internal controller", "PASS: persistent task, context, budgets, worker/reviewer, validation, escalation, and resume contracts", "Bounded local engineering harness; provider invocations remain adapter-controlled and deployment disabled", demo_available=True),
+    _capability("FW-AID", "swarm.ai_agent_defense / swarm.normalized_events", ["FW-ENDPOINT", "FW-ID", "FW-KEYS", "FW-SOC", "FW-EVID", "FW-HARNESS"], "Mission Control AI Security", "PASS: fixture attribution through detection, correlation, proposal, Evidence, and projection", "Caller-supplied metadata only; no live sensor, enforcement, containment, or recovery execution", demo_available=True),
+    _capability("FW-API", "swarm.api_contract", ["FW-ID", "policy", "leases", "FW-EVID"], "internal read-only admission contract", "PASS: versioned tenant-bound read admission and fail-closed mutation/authority denials", "No listener, remote transport, response handler, authentication exchange, or mutation API"),
+    _capability("FW-MCP", "swarm.mcp_gateway", ["FW-ID", "policy", "leases", "FW-EVID"], "internal MCP admission interface", "PASS: registered tool admission, tenant/capability binding, replay, and kill-switch denial", "No arbitrary tool execution, live discovery, credential resolution, or external MCP transport"),
+    _capability("FW-UX", "swarm.console / swarm.mission_control / console", ["FW-HARNESS", "FW-AID", "FW-SOC", "FW-EVID"], "ForgeWarden Mission Control", "PASS: demo separation plus canonical read-only provider lifecycle and tenant denial", "Loopback read-only console; most operational scenario data remains clearly labeled DEMO", demo_available=True),
+    _capability("FW-SOC", "swarm.soc", ["NormalizedEventStore", "FW-AID", "FW-EVID", "Action Tickets"], "Mission Control incident projection", "PASS: normalized alert, correlated attack story, inert playbook proposal, and Evidence lifecycle", "Caller-supplied metadata only; no live SIEM ingestion, case service, or response execution", demo_available=True),
+    _capability("FW-ENDPOINT", "swarm.endpoint_fixtures / swarm.sensor_adapter / swarm.normalized_events", ["FW-ID", "FW-EVID", "FW-AID"], "internal endpoint fixture pipeline", "PASS: Windows/Linux/macOS/Android fixtures, batching, correlation, recovery replay, and AI attribution", "No installed MicroSensor, platform hook, live collection, process control, or endpoint response"),
+    _capability("FW-RANSOM", "swarm.ransomware", ["FW-ENDPOINT", "FW-EVID", "Action Tickets"], "internal RansomGuard detector and proposal", "PASS: supplied behavioral detection, correlation, inert containment proposal, and false-positive proof", "No live filesystem sensor, isolation, snapshot, rollback, or remediation execution", demo_available=True),
+    _capability("FW-BME", "swarm.browser_email", ["FW-AID", "FW-SOC", "FW-EVID"], "internal browser/email detection interface", "PASS: caller-supplied content metadata, classification, correlation, and inert response proposal", "No browser extension, mail transport, content retrieval, account action, or network enforcement"),
+    _capability("FW-SAAS", "swarm.saas_security", ["FW-ID", "FW-KEYS", "FW-EVID", "FW-SOC"], "internal SaaS security lifecycle", "PASS: supplied posture facts, risk, ownership binding, proposal, and Mission Control projection", "No SaaS discovery, provider API, OAuth exchange, mutation, or response execution"),
+    _capability("FW-SUPPLY", "swarm.supply_chain", ["FW-KEYS", "TrustedSignatureCatalog", "FW-EVID", "FW-SOC"], "internal supply-chain lifecycle", "PASS: supplied artifact facts, risk, provenance binding, proposal, and projection", "No repository scanner, package retrieval, CI/CD integration, signing, or deployment enforcement"),
+    _capability("FW-NET", "swarm.network_security", ["FW-ENDPOINT", "FW-ID", "FW-EVID", "FW-SOC"], "internal network security lifecycle", "PASS: supplied observation, classification, owner binding, proposal, and projection", "No packet/DNS sensor, socket, NAC, firewall change, containment, or network response"),
+    _capability("FW-ASM", "swarm.attack_surface", ["FW-ENDPOINT", "FW-NET", "FW-SAAS", "FW-EVID"], "internal attack-surface lifecycle", "PASS: supplied external-asset facts, classification, owner binding, proposal, and projection", "No discovery, DNS resolution, scan, cloud query, exploit, takedown, or remediation"),
+    _capability("FW-DSPM", "swarm.data_security", ["FW-ENDPOINT", "FW-SAAS", "FW-SUPPLY", "FW-EVID"], "internal data-security lifecycle", "PASS: supplied posture facts, classification, owner binding, DLP proposal, and projection", "No content discovery, inspection, query, data movement, DLP enforcement, or remediation"),
+    _capability("FW-GOV", "swarm.high_assurance", ["Approved Model Registry", "Model Broker", "FW-EVID", "Mission Control"], "internal high-assurance admission and projection", "PASS: profile, exact model admission, approved-equivalent failover, Evidence, and projection", "No provider invocation, sovereign infrastructure, ATO/certification, credential resolution, or deployment"),
+    _capability("FW-OPS", "swarm.operations / swarm.operations_capacity", ["FW-EVID", "FW-REC", "FW-ENDPOINT"], "Mission Control operations continuity", "PASS: health/capacity Evidence, reconstruction, resume admission, and projection", "Caller-supplied local metadata; no live telemetry, HA/DR control, retention movement, or service operation"),
+    _capability("FW-INTEGRITY", "swarm.integrity", ["Git", "Python", "pytest", "invariant manifest", "WORK_QUEUE"], "integrity gate and capability-status report", "PASS: build/startup/configuration/invariants/tests/Golden Path plus accepted-work traceability", "Current proof is repository-local; clean packaging, mutation testing, and broader production-like execution remain", state="Implemented", proof_status="CURRENT_REPOSITORY_VALIDATION"),
 )
 
 
@@ -196,6 +243,74 @@ def audit_completed_requirement_work(root: Path) -> dict[str, Any]:
     }
 
 
+_FUNCTIONALITY_REQUIRED_FIELDS = frozenset({
+    "requirement_id", "state", "component", "dependencies", "user_surface",
+    "unit_tests", "integration_tests", "golden_path", "limitations",
+    "implementation_status", "integration_status", "proof_status",
+    "demo_available", "operating_mode", "live_enabled", "production_ready",
+})
+
+
+def validate_functionality_map(
+    reality: dict[str, Any],
+    functionality: tuple[dict[str, Any], ...] = FUNCTIONALITY_MAP,
+) -> dict[str, Any]:
+    """Validate one honest capability-status projection against accepted work."""
+    if reality.get("assessment") != "TRACEABLE" or reality.get("production_readiness_inferred") is not False:
+        raise ValueError("functionality map requires a traceable non-authorizing reality audit")
+    if not functionality:
+        raise ValueError("functionality map is empty")
+    families: dict[str, str] = {}
+    for item in functionality:
+        if not isinstance(item, dict) or set(item) != _FUNCTIONALITY_REQUIRED_FIELDS:
+            raise ValueError("functionality record is malformed")
+        requirement_id = item["requirement_id"]
+        if not isinstance(requirement_id, str) or not re.fullmatch(r"FW-[A-Z0-9]+", requirement_id):
+            raise ValueError("functionality requirement ID is malformed")
+        family = _family_id(requirement_id)
+        if family in families:
+            raise ValueError("functionality map contains duplicate family")
+        families[family] = requirement_id
+        if item["state"] not in {"Designed", "Implemented", "Integrated", "Proven"}:
+            raise ValueError("functionality proof state is malformed")
+        if item["implementation_status"] not in {"PARTIAL", "IMPLEMENTED"}:
+            raise ValueError("functionality implementation state is malformed")
+        if item["integration_status"] not in {"PARTIAL", "INTEGRATED"}:
+            raise ValueError("functionality integration state is malformed")
+        if item["proof_status"] not in {"ACCEPTED_BOUNDED", "CURRENT_REPOSITORY_VALIDATION"}:
+            raise ValueError("functionality proof evidence state is malformed")
+        if item["operating_mode"] != "DRY_RUN" or item["live_enabled"] is not False or item["production_ready"] is not False:
+            raise ValueError("functionality map claims unsupported live or production authority")
+        if not isinstance(item["demo_available"], bool):
+            raise ValueError("functionality demo state is malformed")
+        for field in ("component", "user_surface", "golden_path", "limitations"):
+            if not isinstance(item[field], str) or not item[field].strip() or len(item[field]) > 1024:
+                raise ValueError("functionality text field is malformed")
+        if not isinstance(item["dependencies"], list) or any(
+            not isinstance(value, str) or not value.strip() for value in item["dependencies"]
+        ):
+            raise ValueError("functionality dependencies are malformed")
+        if item["state"] == "Proven" and (
+            item["implementation_status"] != "IMPLEMENTED"
+            or item["integration_status"] != "INTEGRATED"
+            or item["proof_status"] != "ACCEPTED_BOUNDED"
+        ):
+            raise ValueError("functionality map claims proof stronger than its evidence")
+    accepted_families = {task["family_id"] for task in reality["tasks"]}
+    missing = sorted(accepted_families - set(families))
+    if missing:
+        raise ValueError("functionality map omits accepted families: " + ", ".join(missing))
+    return {
+        "passed": True,
+        "accepted_family_count": len(accepted_families),
+        "mapped_family_count": len(families),
+        "extra_foundational_families": sorted(set(families) - accepted_families),
+        "operating_mode": "DRY_RUN",
+        "live_enabled": False,
+        "production_ready": False,
+    }
+
+
 def validate_canonical_ownership(ownership: dict[str, dict[str, Any]] = CANONICAL_OWNERSHIP) -> dict[str, str]:
     """Detect duplicate or malformed canonical component declarations."""
     if not ownership:
@@ -254,7 +369,8 @@ def run_product_integrity_gate(root: Path, *, test_command: Iterable[str] | None
     try:
         invariants = validate_invariant_manifest()
         ownership = validate_canonical_ownership()
-        architecture = {"passed": True, "invariant_ids": [item.invariant_id for item in invariants], "owners": ownership}
+        functionality_validation = validate_functionality_map(reality)
+        architecture = {"passed": True, "invariant_ids": [item.invariant_id for item in invariants], "owners": ownership, "functionality_map": functionality_validation}
     except (PolicyInvariantError, ValueError) as exc:
         architecture = {"passed": False, "reason": str(exc)}
     tests = _run(list(test_command or [sys.executable, "-m", "pytest", "-q"]), root, 300)
@@ -274,7 +390,7 @@ def run_product_integrity_gate(root: Path, *, test_command: Iterable[str] | None
         findings.append({"severity": "RED", "area": "product_reality", "reason": "accepted queue records lack traceable implementation, test, Evidence, or commit artifacts"})
     if reality["unmapped_accepted_families"]:
         findings.append({"severity": "YELLOW", "area": "product_reality", "reason": "accepted families are absent from the functionality map: " + ", ".join(reality["unmapped_accepted_families"])})
-    checks = {"repository": git["clean"], "build": build["passed"], "startup": startup["passed"], "configuration": config["passed"], "invariant_manifest": architecture["passed"], "architecture_ownership": architecture["passed"], "completion_traceability": reality["assessment"] == "TRACEABLE", "tests": tests["passed"], "golden_path": golden.get("passed", False)}
+    checks = {"repository": git["clean"], "build": build["passed"], "startup": startup["passed"], "configuration": config["passed"], "invariant_manifest": architecture["passed"], "architecture_ownership": architecture["passed"], "functionality_map": architecture["passed"], "completion_traceability": reality["assessment"] == "TRACEABLE", "tests": tests["passed"], "golden_path": golden.get("passed", False)}
     hard_failures = [name for name, passed in checks.items() if not passed and name != "golden_path"]
     decision = "RED" if hard_failures else ("YELLOW" if findings or not golden.get("passed") else "GREEN")
     return {"schema_version": "1", "decision": decision, "head": git["head"], "checks": checks, "findings": findings, "architecture_validation": architecture, "reality_audit": reality, "missing_canonical_owners": missing_owners, "dependency_check": dependencies, "commands": {"tests": tests, "golden_path": golden}, "functionality": [dict(item, last_validated_commit=git["head"]) for item in FUNCTIONALITY_MAP], "canonical_ownership": CANONICAL_OWNERSHIP}
