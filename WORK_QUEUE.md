@@ -1415,7 +1415,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-UX-012 — Integrated canonical backend lifecycle proof
 - Requirement: Mission Control incremental backend integration
-- State: REVIEW
+- State: DONE
 - Priority: P0
 - Dependencies: FW-UX-007 through FW-UX-011
 - Approval: Jeff authorized completion of the mapped Mission Control backend integration sequence and its integrated lifecycle proof.
@@ -1431,6 +1431,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - the integrated view exposes no execution, routing, Git, credential, policy, approval, response, recovery, network, or deployment callback.
 - Expected validation: one focused Linux lifecycle proof, exact independent read-only review, then one full suite and Product Integrity Gate after approval.
 - Security considerations: integration validates and displays canonical facts only; canonical subsystem owners and deterministic enforcement remain authoritative.
+- Completion evidence: exact candidate `9a46f0ddb68fa374c09101ff56a234153c8ba127`; focused proof passed 19 Python tests plus the Node frontend contract; a first Claude attempt reached its bounded turn limit and AnythingLLM was unavailable, then exact Claude retry `phase2a-9a46f0ddb68fa374c09101ff` returned APPROVE/LOW with no blockers or missing tests; full suite passed 1641/1; Product Integrity fresh full passed 1641/1 with all hard checks and 4 Golden Paths passing, YELLOW only for pre-existing `tzdata`.
 
 ### FW-REC-002 — Durable recovery checkpoint persistence and reconstruction
 - Requirement: FW-REC persistent recovery metadata

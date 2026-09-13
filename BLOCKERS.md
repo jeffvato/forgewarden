@@ -12,6 +12,7 @@ This file records only genuine blockers that require Customer Root authority, un
 - Independent READY work: none before this ordered FW-UX lifecycle proof is accepted.
 - Current candidate/checkpoint: candidate `9a46f0ddb68fa374c09101ff56a234153c8ba127`; last accepted checkpoint `254b70b8920b6c996c49e7537bfe907477514a11`.
 - First resume action: retry Claude once on the unchanged exact candidate at the next heartbeat; if it remains unavailable, retry the configured AnythingLLM/Qwen bridge within its bounded rate limits. Continue only on validated exact APPROVE/LOW.
+- Resolution: the next bounded Claude retry returned schema-valid exact APPROVE/LOW for `9a46f0ddb68fa374c09101ff56a234153c8ba127` with no blockers or missing tests. Full and integrity validation passed; no approval was inferred from the earlier provider failures.
 
 ### B-034 — FW-EVID-001 exact review temporarily unavailable
 

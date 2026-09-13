@@ -1,5 +1,7 @@
 # ForgeWarden Swarm Status
 
+- 2026-09-12: FW-UX-012 accepted at candidate `9a46f0ddb68fa374c09101ff56a234153c8ba127`: the loopback Mission Control client now consumes one tenant-bound aggregate of canonical Harness, incident, Evidence, policy/Action Ticket, Model Broker, and MCP provider facts with honest canonical/partial/empty/unavailable states and no execution callbacks. Focused proof passed 19 Python tests plus the Node frontend contract; exact Claude retry returned APPROVE/LOW with no blockers or missing tests after earlier Claude/AnythingLLM availability failures; full and fresh integrity suites passed 1641 tests with 1 skipped and all 4 Golden Paths passing. Health remains YELLOW only for pre-existing `tzdata`. The next step is one bounded Core completion/dependency audit.
+
 - 2026-09-12: FW-UX-011 accepted at candidate `415730f10a309b27ac940f8631f1eaeb892a027d`: Mission Control now exposes bounded canonical Approved Model Registry and MCP Gateway catalog facts with explicit CANONICAL/EMPTY/UNAVAILABLE states and no routing, invocation, lease, tool, credential, or deployment authority. Focused proof passed 101 Python tests plus the Node frontend contract; exact Claude review returned APPROVE/LOW with no blockers or missing tests; full suite and fresh integrity suite passed 1637 tests with 1 skipped and all 4 Golden Paths passing. Health remains YELLOW only for pre-existing `tzdata`. FW-UX-012 is next.
 
 ## Current state
