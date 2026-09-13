@@ -302,13 +302,16 @@ def test_data_security_dlp_proposal_consumes_ticket_and_never_executes():
     ({"target_ref": "fw-data/tenant-b/customer-records"}, "PROPOSAL_REF_INVALID"),
     ({"target_ref": "fw-data/tenant-a/other"}, "PROPOSAL_REF_INVALID"),
     ({"target_ref": "fw-asset/tenant-a/customer-records"}, "PROPOSAL_REF_INVALID"),
+    ({"target_ref": "fw-data/tenant-a/contains whitespace"}, "PROPOSAL_REF_INVALID"),
     ({"policy_decision_ref": "fw-policy/tenant-b/dspm-1"}, "PROPOSAL_REF_INVALID"),
     ({"policy_decision_ref": "policy-without-prefix"}, "PROPOSAL_REF_INVALID"),
+    ({"policy_decision_ref": "fw-policy/tenant-a/"}, "PROPOSAL_REF_INVALID"),
     ({"ticket_id": "missing-ticket"}, "ACTION_TICKET_DENIED"),
     ({"subject_agent_id": "agent-2"}, "ACTION_TICKET_DENIED"),
     ({"lease_id": "lease-2"}, "ACTION_TICKET_DENIED"),
     ({"policy_version": "policy-v2"}, "ACTION_TICKET_DENIED"),
     ({"now": 200}, "ACTION_TICKET_DENIED"),
+    ({"now": 201}, "ACTION_TICKET_DENIED"),
 ])
 def test_data_security_dlp_proposal_denies_boundary_mismatch(changes, reason):
     with pytest.raises(DataSecurityObservationDenied, match=reason):
