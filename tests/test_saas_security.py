@@ -10,6 +10,7 @@ from swarm.saas_security import (
     classify_saas_observation,
     normalize_saas_observation,
     propose_saas_app_disable,
+    run_saas_dry_run_lifecycle,
 )
 
 
@@ -268,3 +269,51 @@ def test_saas_response_proposal_requires_high_confidence_and_evidence():
                 audit=lambda *_args: (_ for _ in ()).throw(RuntimeError("offline")),
             ),
         )
+
+
+def saas_lifecycle(*, tenant_id="tenant-a", audit=lambda *_args: None):
+    return run_saas_dry_run_lifecycle(
+        _fixture(tenant_id=tenant_id), tenant_id=tenant_id, now_epoch=150,
+        soc_incident_ref=f"fw-incident/{tenant_id}/saas-1",
+        aid_finding_ref=f"fw-finding/{tenant_id}/saas-1",
+        evidence_refs=(f"fw-evid/{tenant_id}/saas-1",), tickets=_tickets(tenant_id=tenant_id),
+        ticket_id="ticket-1", target_ref=f"fw-resource/{tenant_id}/app-1",
+        policy_decision_ref=f"fw-policy/{tenant_id}/decision-1",
+        subject_agent_id="agent-1", lease_id="lease-1",
+        policy_version="policy-v1", kill_switch_state="ENGAGED", audit=audit,
+    )
+
+
+def test_saas_integrated_lifecycle_preserves_stage_order_and_no_authority():
+    evidence = []
+    lifecycle = saas_lifecycle(audit=lambda *items: evidence.append(items))
+    assert [item[0] for item in evidence] == [
+        "saas_observation_normalized", "saas_observation_classified",
+        "saas_correlation_references_bound", "saas_app_disable_proposed",
+    ]
+    assert lifecycle.observation.event_id == lifecycle.finding.event_id
+    assert lifecycle.finding.event_id == lifecycle.correlation.event_id
+    assert lifecycle.correlation.event_id == lifecycle.proposal.event_id
+    assert lifecycle.mode == "DRY_RUN" and lifecycle.deployment == "DISABLED"
+    assert lifecycle.kill_switch == "ENGAGED"
+    assert lifecycle.authority_granted is False and lifecycle.response_executed is False
+
+
+def test_saas_integrated_lifecycle_fails_before_proposal_on_non_high_finding():
+    evidence = []
+    with pytest.raises(SaaSObservationDenied, match="PROPOSAL_SOURCE_INVALID"):
+        run_saas_dry_run_lifecycle(
+            _fixture(related_indicators=["DORMANT_ACCOUNT"]), tenant_id="tenant-a",
+            now_epoch=150, soc_incident_ref="fw-incident/tenant-a/saas-1",
+            aid_finding_ref="fw-finding/tenant-a/saas-1",
+            evidence_refs=("fw-evid/tenant-a/saas-1",), tickets=_tickets(),
+            ticket_id="ticket-1", target_ref="fw-resource/tenant-a/app-1",
+            policy_decision_ref="fw-policy/tenant-a/decision-1",
+            subject_agent_id="agent-1", lease_id="lease-1",
+            policy_version="policy-v1", kill_switch_state="ENGAGED",
+            audit=lambda *items: evidence.append(items),
+        )
+    assert [item[0] for item in evidence] == [
+        "saas_observation_normalized", "saas_observation_classified",
+        "saas_correlation_references_bound",
+    ]

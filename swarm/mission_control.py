@@ -20,6 +20,7 @@ from .soc import SOCAttackStoryProjection, SOCDryRunLifecycle, SOCIncidentProjec
 from .operations import OperationalHealthProjection
 from .operations_capacity import CapacityAssessment
 from .recovery import ResumeAdmission, ResumeAdmissionDecision
+from .saas_security import SaaSDryRunLifecycle
 
 
 _TENANT = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$")
@@ -520,6 +521,82 @@ def project_ai_security(*,tenant_id:str,events:tuple[AIWorkloadSecurityEvent,...
         rows.append(AIAgentSecurityView(event.event_id,event.agent_ref,event.model_ref,event.task_ref,event.session_ref,event.capability_lease_ref,event.action_ticket_ref,finding.threat_class,finding.severity,finding.confidence,event.anomaly_indicators,event.decision,event.tool_category,event.mcp_server_ref,story.projection.story_id,story.projection.incident_ids,evidence,proposal.proposal_id if proposal else None,proposal.action_class if proposal else None,"PROPOSE_ONLY" if proposal else "NONE"))
     if set(finding_by_event)!=set(item.event_id for item in events) or set(story_by_event)!=set(item.event_id for item in events) or any(key not in {item.projection.story_id for item in stories} for key in proposal_by_story): raise MissionControlError("AI Security orphan fact")
     return AISecurityMissionView(1,tenant_id,data_mode,"DEMO / SIMULATED DATA" if data_mode=="DEMO" else "CANONICAL READ-ONLY DATA",tuple(rows),kill_switch)
+
+
+@dataclass(frozen=True)
+class SaaSSecurityMissionView:
+    schema_version: int
+    tenant_id: str
+    event_id: str
+    provider: str
+    confidence: str
+    signals: tuple[str, ...]
+    soc_incident_ref: str
+    aid_finding_ref: str
+    proposal_action: str
+    proposal_state: str
+    target_ref: str
+    policy_decision_ref: str
+    action_ticket_ref: str
+    evidence_refs: tuple[str, ...]
+    data_mode: str = "CANONICAL"
+    data_label: str = "CANONICAL READ-ONLY SAAS SECURITY LIFECYCLE"
+    kill_switch: str = "ENGAGED"
+    deployment: str = "DISABLED"
+    mutation_allowed: bool = False
+    response_executed: bool = False
+
+
+def project_saas_security(
+    lifecycle: SaaSDryRunLifecycle, *, tenant_id: str,
+    data_mode: str = "CANONICAL",
+) -> SaaSSecurityMissionView:
+    """Project one canonical SaaS lifecycle without provider or ticket authority."""
+    if not isinstance(lifecycle, SaaSDryRunLifecycle) or not _TENANT.fullmatch(tenant_id):
+        raise MissionControlError("SaaS lifecycle malformed")
+    observation = lifecycle.observation
+    finding = lifecycle.finding
+    correlation = lifecycle.correlation
+    proposal = lifecycle.proposal
+    if (
+        data_mode not in {"CANONICAL", "DEMO"}
+        or lifecycle.mode != "DRY_RUN"
+        or lifecycle.deployment != "DISABLED"
+        or lifecycle.kill_switch != "ENGAGED"
+        or lifecycle.authority_granted
+        or lifecycle.response_executed
+        or any(item.tenant_id != tenant_id for item in (observation, finding, correlation, proposal))
+        or len({item.event_id for item in (observation, finding, correlation, proposal)}) != 1
+        or finding.provider != observation.provider
+        or correlation.provider != finding.provider
+        or correlation.confidence != finding.confidence
+        or correlation.signals != finding.signals
+        or proposal.soc_incident_ref != correlation.soc_incident_ref
+        or proposal.aid_finding_ref != correlation.aid_finding_ref
+        or observation.mode != "DRY_RUN" or observation.action != "DETECT_ONLY"
+        or finding.mode != "DRY_RUN" or finding.action != "DETECT_ONLY"
+        or correlation.mode != "DRY_RUN" or correlation.action != "CORRELATE_ONLY"
+        or proposal.mode != "DRY_RUN" or proposal.disposition != "PROPOSE_ONLY"
+        or proposal.deployment != "DISABLED" or proposal.kill_switch != "ENGAGED"
+        or proposal.authority_granted or proposal.response_executed
+    ):
+        raise MissionControlError("SaaS lifecycle binding or authority invalid")
+    visible = (
+        observation.event_id, observation.provider, *finding.signals,
+        correlation.soc_incident_ref, correlation.aid_finding_ref,
+        proposal.target_ref, proposal.policy_decision_ref,
+        proposal.action_ticket_ref, *correlation.evidence_refs,
+    )
+    if any(not isinstance(value, str) or len(value.encode()) > 1000 or _SECRET.search(value) for value in visible):
+        raise MissionControlError("SaaS lifecycle secret-bearing or excessive")
+    return SaaSSecurityMissionView(
+        1, tenant_id, observation.event_id, observation.provider,
+        finding.confidence, finding.signals, correlation.soc_incident_ref,
+        correlation.aid_finding_ref, proposal.action_class, proposal.disposition,
+        proposal.target_ref, proposal.policy_decision_ref,
+        proposal.action_ticket_ref, correlation.evidence_refs, data_mode,
+        "DEMO / SIMULATED DATA" if data_mode == "DEMO" else "CANONICAL READ-ONLY SAAS SECURITY LIFECYCLE",
+    )
 
 
 @dataclass(frozen=True)

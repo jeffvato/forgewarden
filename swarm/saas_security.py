@@ -109,6 +109,19 @@ class SaaSResponseProposal:
     response_executed: bool = False
 
 
+@dataclass(frozen=True)
+class SaaSDryRunLifecycle:
+    observation: SaaSObservation
+    finding: SaaSFinding
+    correlation: SaaSCorrelationReference
+    proposal: SaaSResponseProposal
+    mode: str = "DRY_RUN"
+    deployment: str = "DISABLED"
+    kill_switch: str = "ENGAGED"
+    authority_granted: bool = False
+    response_executed: bool = False
+
+
 def normalize_saas_observation(
     fixture: Mapping[str, Any], *, tenant_id: str, now_epoch: int,
     audit: Callable[[str, dict[str, Any]], None],
@@ -394,3 +407,33 @@ def propose_saas_app_disable(
         correlation.soc_incident_ref, correlation.aid_finding_ref,
         policy_decision_ref, ticket_id,
     )
+
+
+def run_saas_dry_run_lifecycle(
+    fixture: Mapping[str, Any], *, tenant_id: str, now_epoch: int,
+    soc_incident_ref: str, aid_finding_ref: str,
+    evidence_refs: tuple[str, ...], tickets: ActionTicketRegistry,
+    ticket_id: str, target_ref: str, policy_decision_ref: str,
+    subject_agent_id: str, lease_id: str, policy_version: str,
+    kill_switch_state: str, audit: Callable[[str, dict[str, Any]], None],
+) -> SaaSDryRunLifecycle:
+    """Compose the accepted FW-SAAS stages without adding a new authority path."""
+    observation = normalize_saas_observation(
+        fixture, tenant_id=tenant_id, now_epoch=now_epoch, audit=audit,
+    )
+    finding = classify_saas_observation(
+        observation, tenant_id=tenant_id, audit=audit,
+    )
+    correlation = bind_saas_correlation_references(
+        finding, tenant_id=tenant_id, soc_incident_ref=soc_incident_ref,
+        aid_finding_ref=aid_finding_ref, evidence_refs=evidence_refs,
+        audit=audit,
+    )
+    proposal = propose_saas_app_disable(
+        correlation, tickets=tickets, ticket_id=ticket_id,
+        target_ref=target_ref, policy_decision_ref=policy_decision_ref,
+        subject_agent_id=subject_agent_id, lease_id=lease_id,
+        policy_version=policy_version, now=now_epoch,
+        kill_switch_state=kill_switch_state, audit=audit,
+    )
+    return SaaSDryRunLifecycle(observation, finding, correlation, proposal)
