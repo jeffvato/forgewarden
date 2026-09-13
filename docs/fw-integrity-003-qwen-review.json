@@ -1,0 +1,33 @@
+{
+  "adjudication": null,
+  "candidate_commit": "45f4b90fda129ee1154ff48c3c2586ff378c8315",
+  "deployment": "DISABLED",
+  "job_id": "phase2a-45f4b90fda129ee1154ff48c",
+  "kill_switch": "ENGAGED",
+  "mutation_allowed": false,
+  "reviews": [
+    {
+      "provider": "ANYTHINGLLM",
+      "result": {
+        "blocking_findings": [],
+        "job_id": "phase2a-45f4b90fda129ee1154ff48c",
+        "non_blocking_notes": [
+          "The use of subprocess.run for git cat-file is bounded by a 30-second timeout and executes a read-only command, which aligns with the read-only constraint while ensuring Git references are resolved against the actual repository object store rather than just string presence.",
+          "The commit-reference expression matches 7-64 hexadecimal characters and distinguishes candidate commit references from non-hex review metadata, while relying on well-formed queue metadata.",
+          "The audit correctly distinguishes documentation-only records from implementation records, applying test-path traceability only to implementation records.",
+          "The Product Integrity integration adds RED findings for unsupported claims and YELLOW findings for unmapped accepted families, preserving fail-closed behavior while exposing known product-status gaps."
+        ],
+        "proposed_rules": [
+          "All integrity audits that reference Git commits must use git cat-file or an equivalent read-only Git command to verify that references identify repository objects."
+        ],
+        "reasoning_summary": "The patch implements FW-INTEGRITY-003 by reconciling DONE requirement records with allowed paths, test commands, Evidence references, and Git commit objects. It is bounded, read-only, fails closed for missing artifacts, and explicitly does not infer runtime or production readiness. Historical queue corrections identify the existing canonical artifacts and commit. Tests cover traceability, missing artifacts, unsafe paths, and integrity-gate projection. No model, credential, network, mutation, deployment, response, recovery execution, or authority capability is added.",
+        "reviewed_commit": "45f4b90fda129ee1154ff48c3c2586ff378c8315",
+        "risk": "LOW",
+        "tests_missing": [],
+        "verdict": "APPROVE"
+      },
+      "state": "APPROVED"
+    }
+  ],
+  "state": "APPROVED"
+}

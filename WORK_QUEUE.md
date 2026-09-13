@@ -1535,7 +1535,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-INTEGRITY-003 — Accepted-work capability reality traceability
 - Requirement: FW-INTEGRITY executable product-status evidence
-- State: IN_PROGRESS
+- State: DONE
 - Priority: P0
 - Dependencies: FW-INTEGRITY-002, FW-UX-012, and FW-GOV-006
 - Approval: Jeff explicitly authorized the next phase as a reality audit tied to Mission Control integration; this milestone adds deterministic read-only traceability and no runtime authority.
@@ -1553,6 +1553,28 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no model, tool, Git mutation, credential, network, filesystem/process action, response, recovery execution, deployment, or authority is added.
 - Expected validation: one focused Linux proof, exact independent read-only review, then one full suite and Product Integrity Gate after approval.
 - Security considerations: queue and artifact metadata remain untrusted inputs; deterministic traceability cannot replace current execution, exact review, or production validation.
+- Completion evidence: exact candidate `45f4b90fda129ee1154ff48c3c2586ff378c8315`; focused 13 passed; exact AnythingLLM/Qwen job `phase2a-45f4b90fda129ee1154ff48c` returned APPROVE/LOW with no blockers or missing tests; full suite passed 2092/1; Product Integrity passed every hard check, completion traceability, and the 13-test Golden Path, with YELLOW only for pre-existing `tzdata` and the 14 functionality-map gaps exposed by this milestone. The audit traced all 114 previously accepted requirement tasks across 22 families and explicitly inferred no runtime or production readiness. Evidence: `docs/fw-integrity-003-qwen-review.json`, `docs/fw-integrity-003-integrity.json`.
+
+
+### FW-INTEGRITY-004 — Canonical capability status reconciliation
+- Requirement: FW-INTEGRITY truthful product status and Mission Control source contract
+- State: READY
+- Priority: P0
+- Dependencies: FW-INTEGRITY-003
+- Approval: Jeff authorized continuation into the next phase with a reality audit and Mission Control integration; this bounded unit reconciles status metadata only.
+- Description: Extend the canonical functionality map to represent every accepted requirement family exactly once with explicit proof state, operating boundary, live readiness, and limitations, consuming FW-INTEGRITY-003 traceability rather than historical prose alone.
+- Target path: swarm/integrity.py
+- Allowed paths: swarm/integrity.py, tests/test_integrity.py, docs/fw-integrity-functionality-map.md, docs/fw-integrity-reality-audit.md, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_integrity.py
+- Acceptance criteria:
+  - every accepted family reported by the traceability audit has exactly one canonical functionality-map entry;
+  - each entry distinguishes implementation, integration, current deterministic proof, DEMO availability, operating mode, production readiness, and concrete limitations;
+  - no family may claim a state stronger than its accepted traceability and validation evidence supports;
+  - absent, duplicate, malformed, live-authority, deployment-enabled, or production-ready-without-evidence entries fail closed;
+  - Product Integrity removes the unmapped-family YELLOW only when the complete canonical projection validates;
+  - output is bounded read-only product-status data suitable for a later Mission Control adapter and provides no callbacks or authority.
+- Expected validation: one focused Linux proof, exact independent read-only review, then one full suite and Product Integrity Gate after approval.
+- Security considerations: product-status metadata cannot activate, invoke, deploy, contain, recover, mutate, certify, or grant authority.
 
 ### FW-API-001 — Canonical tenant-bound read-only request admission
 - Requirement: FW-API versioned least-privilege API/SDK contract
