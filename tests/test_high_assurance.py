@@ -300,3 +300,16 @@ def test_evidence_binding_denies_incomplete_duplicate_cross_tenant_or_tampered_c
         bind_high_assurance_evidence(profile_value, admission_value, tenant_id="tenant-a", evidence_refs=base, audit=lambda *_: None, failure=failure_value, failover=replace(failover_value, failed_candidate_id="other"))
     with pytest.raises(HighAssuranceProfileDenied, match="ADMISSION_BINDING_INVALID"):
         bind_high_assurance_evidence(profile_value, replace(admission_value, invocation_authorized=True), tenant_id="tenant-a", evidence_refs=tuple(sorted((profile_value.evidence_ref, admission_value.registry_evidence_ref))), audit=lambda *_: None)
+
+
+def test_evidence_binding_wraps_durability_failure_with_original_cause():
+    profile_value = admitted_profile(); admission_value = admission(profile_value=profile_value)
+    refs = tuple(sorted((profile_value.evidence_ref, admission_value.registry_evidence_ref)))
+    failure = OSError("evidence offline")
+    with pytest.raises(HighAssuranceProfileDenied, match="EVIDENCE_WRITE_FAILED") as caught:
+        bind_high_assurance_evidence(
+            profile_value, admission_value, tenant_id="tenant-a",
+            evidence_refs=refs,
+            audit=lambda *_: (_ for _ in ()).throw(failure),
+        )
+    assert caught.value.__cause__ is failure
