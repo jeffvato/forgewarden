@@ -3,8 +3,8 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: FW-UX-008 accepted; Mission Control now consumes bounded canonical FW-SOC incident and attack-story activity while preserving proposal-only response and separate Demo data.
-- Next task: FW-UX-009 canonical Evidence activity provider.
+- Current focus: FW-UX-009 accepted; Mission Control now consumes bounded canonical FW-EVID chains with local digest/chain validation and honest absent-signature state.
+- Next task: FW-UX-010 canonical policy and Action Ticket provider.
 - Harness role: permanent ForgeWarden Core subsystem and default controller for ForgeWarden's own development; one governed architecture serves both roles under D-023.
 - Worker transport direction: registered local CLIs and explicitly approved API-backed workers; API keys are resolved only through FW-KEYS secret handles inside trusted adapters and never enter model context or lifecycle evidence.
 - Provider authentication direction: deterministic OpenAI, Anthropic, and Google/Gemini profiles with provider-specific official OAuth where available and approved API-key classes otherwise; Gemini CLI is registered as `agy` for read-only roles, FW-ID owns delegated identity, and FW-KEYS owns all credential material.
@@ -34,17 +34,18 @@ On every restart or continuation:
 
 ## Work-unit checkpoint
 
-- Task ID: FW-UX-008 Canonical incident and attack-story provider
-- Starting commit: 8b58b48392fa70277cd432ab1d80be16d2e1396a
-- Candidate commits: backend `7155354fcf77eca6cb998a8b1d6627da8880c61b`; frontend `63a34baad213a29ac38fe4413d54d8b6154dce22`
-- Files changed: canonical FW-SOC lifecycle serializer and loopback endpoint, independent frontend provider/labels and attack-story rendering, adversarial and collection-boundary tests, queue and console documentation
-- Deterministic validation: focused 88 Python tests plus Node contract passed; full 1622 passed/1 skipped; Product Integrity fresh full 1622 passed/1 skipped with all hard checks and 4 Golden Paths passing
-- Independent review: backend and repaired frontend exact AnythingLLM/Qwen reviews passed APPROVE/LOW with no blockers or missing tests; frontend job `phase2a-63a34baad213a29ac38fe441`
+- Task ID: FW-UX-009 Canonical Evidence activity provider
+- Starting commit: 906956db69d82ac7e4471c13b83d2b2c3e986cc3
+- Candidate commit: `b2ea73d6d1f06ea51b00e3a1197536aef240dcb3`
+- Files changed: canonical FW-EVID chain serializer and loopback endpoint, independent frontend provider and verification labels, adversarial chain/XSS/unavailable tests, queue and console documentation
+- Deterministic validation: focused 86 Python tests plus Node contract passed; full 1626 passed/1 skipped; Product Integrity fresh full 1626 passed/1 skipped with all hard checks and 4 Golden Paths passing
+- Independent review: exact Claude APPROVE/LOW with no blockers or missing tests (`phase2a-b2ea73d6d1f06ea51b00e3a1`)
 - Integrity finding: YELLOW only for the pre-existing missing `tzdata` dependency
-- Safety state: canonical incident activity remains tenant-bound and read-only; response remains proposal-only and unexecuted; DRY_RUN, disabled deployment, and engaged kill switch remain mandatory; scenario data remains DEMO
+- Safety state: canonical Evidence activity remains tenant-bound, payload-free, and read-only; no signing is claimed or performed; DRY_RUN, disabled deployment, and engaged kill switch remain mandatory; scenario data remains DEMO
 
 ## Execution log
 
+- 2026-09-12: FW-UX-009 accepted at `b2ea73d6d1f06ea51b00e3a1197536aef240dcb3`. Mission Control now projects existing canonical FW-EVID record chains, recomputes envelope digests and previous-record links, rejects tamper/replay/cross-tenant/secret-bearing state, and distinguishes local chain validation from absent signatures. Focused 86 Python tests plus Node contract passed; exact Claude job `phase2a-b2ea73d6d1f06ea51b00e3a1` returned APPROVE/LOW with no blockers or missing tests; full and Product Integrity fresh full each passed 1626/1 with all hard checks and 4 Golden Paths passing, YELLOW only for pre-existing `tzdata`. FW-UX-010 is next.
 - 2026-09-12: FW-UX-008 accepted across backend candidate `7155354fcf77eca6cb998a8b1d6627da8880c61b` and repaired frontend candidate `63a34baad213a29ac38fe4413d54d8b6154dce22`. Mission Control now projects canonical tenant-bound FW-SOC incidents, attack-story chronology, Evidence references, and inert response proposals through an independent read-only provider with explicit CANONICAL, EMPTY, and UNAVAILABLE states. Focused 88 Python tests plus Node contract passed; exact AnythingLLM/Qwen reviews passed APPROVE/LOW with no blockers or missing tests after bounded requested test repairs; full and Product Integrity fresh full each passed 1622/1 with all hard checks and 4 Golden Paths passing, YELLOW only for pre-existing `tzdata`. FW-UX-009 is next.
 - 2026-09-12: FW-UX-007 accepted at `4997c080d6d24d144b663be4475c6cbcc4ddbcbf`. Mission Control now exposes the existing canonical Harness projection through an independent loopback read-only provider with explicit CANONICAL, EMPTY, and UNAVAILABLE states. Tenant, queue/dependency, exact-commit, safety, bounded-size, and secret-bearing state are revalidated before serialization; invalid live state cannot contaminate Demo data. Focused 55 Python tests plus Node contract passed after adding all three negative tests requested by the first Qwen review; exact Qwen job `phase2a-4997c080d6d24d144b663be4` returned APPROVE/LOW with no blockers/missing tests; full and Product Integrity fresh full each passed 1619/1, all hard checks and 4 Golden Paths passed, YELLOW only for pre-existing `tzdata`. No substantive READY item remains.
 - 2026-09-12: FW-UX-006 accepted at `976203f9366c75d2864837cfbdbde1a38cbd4656`. Mission Control independently validates the existing loopback Core status and centralized Demo Provider, displays canonical safety state when valid, and clearly labels unavailable Core state while retaining the simulated scenario. The exact-review runner now supplies bounded inline patches to API-only AnythingLLM and preserves snapshot mode for file-capable reviewers. Focused 44 Python tests plus Node contract passed; exact Qwen APPROVE/LOW with no blockers/missing tests; full and Product Integrity fresh full each passed 1615/1 with all hard checks and Golden Path passing, YELLOW only for pre-existing `tzdata`. FW-UX-007 is next.

@@ -1352,7 +1352,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-UX-009 — Canonical Evidence activity provider
 - Requirement: Mission Control incremental backend integration
-- State: REVIEW
+- State: DONE
 - Priority: P0
 - Dependencies: FW-UX-008 and FW-EVID-006
 - Approval: Jeff authorized the mapped Mission Control backend integration sequence; this unit may expose existing sanitized local read-only FW-EVID projections only.
@@ -1369,6 +1369,27 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no Evidence mutation, signing, key access, policy evaluation, approval, Action Ticket issuance, response, recovery execution, network transport, credentials, model invocation, or deployment authority is added.
 - Expected validation: focused provider/frontend tests, exact AnythingLLM/Qwen read-only review, then full suite/integrity once after approval.
 - Security considerations: FW-EVID remains authoritative; Mission Control receives immutable bounded projections and no append, sign, verify, repair, or delete callback.
+- Completion evidence: repaired exact candidate `b2ea73d6d1f06ea51b00e3a1197536aef240dcb3`; focused proof passed 86 Python tests plus the Node frontend contract; exact Claude review `phase2a-b2ea73d6d1f06ea51b00e3a1` returned APPROVE/LOW with no blockers or missing tests after explicit timestamp-XSS and provider-unavailable tests resolved the prior Qwen concerns; full 1626 passed/1 skipped; Product Integrity fresh full 1626 passed/1 skipped with all hard checks and 4 Golden Paths passing, YELLOW only for pre-existing `tzdata`.
+
+### FW-UX-010 — Canonical policy and Action Ticket provider
+- Requirement: Mission Control incremental backend integration
+- State: READY
+- Priority: P0
+- Dependencies: FW-UX-009, FW-ROOT deterministic policy, and canonical Action Tickets
+- Approval: Jeff authorized the mapped Mission Control backend integration sequence; this unit may expose existing sanitized local read-only policy-decision and Action Ticket projections only.
+- Description: Add one bounded canonical provider that explains deterministic policy decisions and associated Action Ticket state without exposing policy evaluation, approval, signing, consumption, or execution controls.
+- Target path: swarm/mission_control.py
+- Allowed paths: swarm/mission_control.py, swarm/console.py, console/app.js, console/index.html, tests/test_console.py, tests/test_mission_control.py, tests/test_console_frontend.js, docs/management-console.md, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_mission_control.py tests/test_console.py tests/test_policy_gate.py tests/test_action_ticket.py && node --test tests/test_console_frontend.js
+- Acceptance criteria:
+  - reuse canonical deterministic policy decisions and Action Ticket records rather than creating another policy engine, approval store, or ticket registry;
+  - preserve exact tenant, subject, resource, action, decision, approval, expiry, signature-status, and usage-state bindings;
+  - return bounded, secret-filtered, read-only CANONICAL, EMPTY, or UNAVAILABLE data and label any absent verification honestly;
+  - malformed, cross-tenant, expired/substituted/replayed, authority-expanding, deployment-enabled, or kill-switch-cleared state fails closed without contaminating Demo data;
+  - Mission Control explains the policy/ticket relationship without offering approval, signature, consume, execute, or mutation controls;
+  - no policy evaluation, approval, Action Ticket issuance/consumption, key access, response, recovery execution, network transport, credentials, model invocation, or deployment authority is added.
+- Expected validation: focused provider/frontend tests, exact Claude read-only review, then full suite/integrity once after approval.
+- Security considerations: canonical policy and Action Ticket owners remain authoritative; the UI receives immutable explanatory facts and no control callback.
 
 ### FW-REC-002 — Durable recovery checkpoint persistence and reconstruction
 - Requirement: FW-REC persistent recovery metadata
