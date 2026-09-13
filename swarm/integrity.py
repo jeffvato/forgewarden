@@ -348,6 +348,82 @@ def validate_performance_policy(value: Any) -> tuple[dict[str, int | str], ...]:
     return tuple(normalized)
 
 
+def _run_control_performance_scenario(scenario_id: str, iterations: int) -> dict[str, Any]:
+    """Execute one fixed pure control scenario inside the bounded child."""
+    if scenario_id not in _PERFORMANCE_SCENARIOS:
+        raise ValueError("performance scenario is unsupported")
+    if not isinstance(iterations, int) or isinstance(iterations, bool) or not 10 <= iterations <= 10_000:
+        raise ValueError("performance scenario iterations are invalid")
+    import time
+    import tracemalloc
+
+    if scenario_id == "identity_policy":
+        from .identity import validate_identity_record
+        from .policy_gate import DeterministicPolicy, PolicyContext, PolicyRule
+        identity = {
+            "schema_version": "1", "identity_id": "fw-id/agent-a", "tenant_id": "tenant-a",
+            "identity_kind": "AI_AGENT", "owner_identity_ref": "fw-id/owner-a",
+            "purpose": "bounded performance fixture", "lifecycle_state": "ACTIVE",
+            "created_at_epoch": 100, "lifecycle_changed_at_epoch": 101,
+            "expires_at_epoch": 1000, "provider_subject_ref": None,
+            "credential_handle_ref": None,
+        }
+        context = PolicyContext("tenant-a", "agent-a", "telemetry.read", "endpoint-1", "READ", "policy-v1")
+        policy = DeterministicPolicy([PolicyRule("tenant-a", "telemetry.read", "endpoint-1", "READ", "policy-v1")])
+        operation = lambda: int(validate_identity_record(identity).tenant_id == "tenant-a" and policy.evaluate(context).allowed)
+    elif scenario_id == "evidence_hash":
+        from .evidence import EvidenceEnvelope, evidence_record_sha256
+        envelope = EvidenceEnvelope(
+            "1", "fw-evid/tenant-a/task/1", "tenant-a", "task_accepted",
+            "fw-id/agent-a", "tenant-a", "fw-task/fwq-0001", "tenant-a",
+            "2026-09-13T12:00:00Z", "INTERNAL", "fw-schema/harness/1", "a" * 64,
+            None, "fw-corr/tenant-a/fwq-0001", (), "DRY_RUN", "DISABLED", False,
+        )
+        operation = lambda: int(evidence_record_sha256(envelope)[:8], 16)
+    elif scenario_id == "model_routing":
+        from .harness_models import ApprovedModelCandidate, route_approved_model
+        from .harness_risk import AssuranceTier, RiskDecision
+        from .harness_worker import WorkerRole
+        risk = RiskDecision("FWQ-0001", "tenant-a", 20, AssuranceTier.T1, "CLASSIFIED", (), False)
+        candidates = (
+            ApprovedModelCandidate("candidate-a", "tenant-a", "provider-a", "model-a", "local", AssuranceTier.T1, (WorkerRole.CODE_WRITER,), ("INTERNAL",), ("source.read",), 1, "evidence/model-a", True, True),
+            ApprovedModelCandidate("candidate-b", "tenant-a", "provider-b", "model-b", "local", AssuranceTier.T2, (WorkerRole.CODE_WRITER,), ("INTERNAL",), ("source.read",), 2, "evidence/model-b", True, True),
+        )
+        operation = lambda: int(route_approved_model(risk, candidates, task_id="FWQ-0001", tenant_id="tenant-a", role=WorkerRole.CODE_WRITER, data_classification="INTERNAL", required_tools=("source.read",), environment="local").candidate_id == "candidate-a")
+    elif scenario_id == "normalized_event":
+        from .normalized_events import AIWorkloadSecurityEvent
+        values = (
+            "1", "fw-event/tenant-a/event-1", "tenant-a", "AID-INJECTION", "harness",
+            "INTERNAL", 100, "fw-id/tenant-a/agent-1", "fw-model/tenant-a/model-1",
+            "fw-session/tenant-a/session-1", "fw-task/tenant-a/task-1",
+            "fw-id/tenant-a/user-1", "a" * 64, "fw-lease/tenant-a/lease-1",
+            "fw-action/tenant-a/ticket-1", "MCP", "mcp.server-1",
+            "fw-resource/tenant-a/repository-1", "DENIED", ("prompt_injection",),
+            ("fw-evid/tenant-a/event/1",),
+        )
+        operation = lambda: int(AIWorkloadSecurityEvent(*values).authority_granted is False)
+    else:
+        from .mission_control_demo import mission_control_demo_snapshot
+        operation = lambda: int(mission_control_demo_snapshot()["posture"]["score"])
+
+    checksum = 0
+    tracemalloc.start()
+    started = time.perf_counter()
+    try:
+        for _index in range(iterations):
+            checksum = (checksum + operation()) % 4_294_967_291
+        wall_ms = round((time.perf_counter() - started) * 1000, 3)
+        peak_kib = (tracemalloc.get_traced_memory()[1] + 1023) // 1024
+    finally:
+        tracemalloc.stop()
+    return {
+        "schema_version": 1, "scenario_id": scenario_id, "iterations": iterations,
+        "operations": iterations, "wall_ms": wall_ms, "peak_kib": peak_kib,
+        "processes": 1, "checksum": checksum, "mode": "DRY_RUN",
+        "deployment": "DISABLED", "authority_granted": False,
+    }
+
+
 def _clean_archive_name(name: str) -> Path:
     """Return a safe relative archive path or fail before extraction."""
     if not isinstance(name, str) or not name or "\\" in name:
