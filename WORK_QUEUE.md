@@ -22,7 +22,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-ENDPOINT-14 — Endpoint and RansomGuard continuation inventory
 - Requirement: FW-ENDPOINT/FW-RANSOM continuation ownership and next-platform admission
-- State: REVIEW
+- State: DONE
 - Priority: P0
 - Dependencies: FW-ENDPOINT-13, FW-ENDPOINT-ANDROID-02, FW-RANSOM-05, FW-OPS-004
 - Approval: Jeff authorized continued implementation through FW-ENDPOINT/FW-RANSOM after FW-OPS and directed small review candidates suitable for AnythingLLM/Qwen under Groq limits.
@@ -37,6 +37,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - the exact documentation-only candidate receives independent read-only review with no claim of new runtime behavior.
 - Expected validation: deterministic source/test/evidence mapping, diff check, and exact independent read-only review; no product suite or Product Integrity rerun because runtime behavior is unchanged.
 - Security considerations: roadmap admission cannot grant endpoint or response authority, and reviewer/provider substitution cannot weaken exact-commit acceptance.
+- Completion evidence: exact candidate `4482c8599bddd74be152dcbfa7a646dd78244b70`; `git diff --check` passed; deterministic source/test/evidence inventory confirmed the accepted controls; exact AnythingLLM/Qwen job `phase2a-4482c8599bddd74be152dcbf` returned APPROVE/LOW with no blockers or missing tests. No product suite or Product Integrity rerun was required because runtime behavior did not change. Review: `docs/fw-endpoint-14-qwen-review.json`.
 
 ### FWQ-0079 — Self-hosted canonical development harness activation
 - Requirement: FW-HARNESS-014 self-hosted engineering execution
