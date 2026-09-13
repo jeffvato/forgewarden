@@ -1,4 +1,5 @@
 import json
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -42,46 +43,53 @@ class Phase5PublicExportPolicyTests(unittest.TestCase):
 
 
 class Phase5ReleaseCandidateTests(unittest.TestCase):
-    def test_candidate_excludes_private_and_generated_content_without_mutating_source(self):
-        with tempfile.TemporaryDirectory(prefix="phase5-candidate-source-") as source_temp, tempfile.TemporaryDirectory(prefix="phase5-candidate-dest-") as dest_temp:
-            source = Path(source_temp)
-            destination = Path(dest_temp) / "candidate"
-            (source / "README.md").write_text("Forgewarden\n", encoding="utf-8")
-            private = source / "docs" / "n8n-onboarding-report.md"
-            ambiguous = source / "config" / "hermes-profile.yaml"
-            private.parent.mkdir()
-            ambiguous.parent.mkdir()
-            private.write_text("customer_data\n", encoding="utf-8")
-            ambiguous.write_text("/home/jeff\n", encoding="utf-8")
-            generated = source / "__pycache__" / "module.pyc"
-            generated.parent.mkdir()
-            generated.write_bytes(b"generated")
-            metadata = source / "README.md:Zone.Identifier"
-            metadata.write_text("Zone.Identifier\n", encoding="utf-8")
-            before = private.read_bytes()
+    @classmethod
+    def setUpClass(cls):
+        cls.head = subprocess.run(
+            ["git", "-C", str(ROOT), "rev-parse", "HEAD"], capture_output=True,
+            text=True, check=True,
+        ).stdout.strip()
+        cls.policy = yaml.safe_load(
+            (ROOT / "config/phase5-public-export.yaml").read_text(encoding="utf-8"))
 
-            result = build_release_candidate(source, destination)
+    def test_real_sdk_and_demo_exports_are_exact_allowlisted_candidates(self):
+        before = {path: (ROOT / path).read_bytes()
+                  for track in self.policy["tracks"].values() for path in track["allowlist"]}
+        with tempfile.TemporaryDirectory(prefix="phase5-public-export-") as temp:
+            parent = Path(temp)
+            for track_name, track in self.policy["tracks"].items():
+                destination = parent / track_name
+                result = build_release_candidate(
+                    ROOT, destination, track=track_name, expected_source_commit=self.head)
+                self.assertEqual((result["publication"], result["source_commit"]),
+                                 ("DISABLED", self.head))
+                self.assertFalse(result["matched_values_included"])
+                self.assertEqual([item["path"] for item in result["files"]],
+                                 sorted(track["allowlist"]))
+                self.assertEqual(result, json.loads(
+                    (destination / self.policy["manifest_name"]).read_text(encoding="utf-8")))
+                self.assertFalse((destination / ".git").exists())
+                self.assertFalse((destination / "WORK_QUEUE.md").exists())
+        self.assertEqual(before, {path: (ROOT / path).read_bytes() for path in before})
 
-            self.assertEqual(result["publication"], "DISABLED")
-            self.assertFalse(result["mutation_performed"])
-            self.assertFalse(result["source_tree_mutated"])
-            self.assertTrue((destination / "README.md").is_file())
-            self.assertTrue((destination / "docs" / "install.md").is_file())
-            self.assertTrue((destination / "docs" / "reproducibility.md").is_file())
-            self.assertTrue((destination / "requirements.lock").is_file())
-            self.assertFalse((destination / "docs" / "n8n-onboarding-report.md").exists())
-            self.assertFalse((destination / "config" / "hermes-profile.yaml").exists())
-            self.assertFalse((destination / "__pycache__").exists())
-            self.assertFalse((destination / "README.md:Zone.Identifier").exists())
-            self.assertEqual(private.read_bytes(), before)
-
-    def test_candidate_refuses_existing_destination(self):
-        with tempfile.TemporaryDirectory(prefix="phase5-candidate-source-") as source_temp, tempfile.TemporaryDirectory(prefix="phase5-candidate-dest-") as dest_temp:
-            source = Path(source_temp)
-            destination = Path(dest_temp) / "candidate"
-            destination.mkdir()
+    def test_existing_destination_private_track_and_wrong_commit_fail_closed(self):
+        with tempfile.TemporaryDirectory(prefix="phase5-public-denial-") as temp:
+            parent = Path(temp)
+            existing = parent / "existing"
+            existing.mkdir()
             with self.assertRaises(FileExistsError):
-                build_release_candidate(source, destination)
+                build_release_candidate(
+                    ROOT, existing, track="PUBLIC_SDK", expected_source_commit=self.head)
+            with self.assertRaisesRegex(ValueError, "unsupported"):
+                build_release_candidate(
+                    ROOT, parent / "private", track="PRIVATE_CORE",
+                    expected_source_commit=self.head)
+            with self.assertRaisesRegex(ValueError, "does not match"):
+                build_release_candidate(
+                    ROOT, parent / "drift", track="PUBLIC_SDK",
+                    expected_source_commit="0" * 40)
+            self.assertFalse((parent / "private").exists())
+            self.assertFalse((parent / "drift").exists())
 
 
 if __name__ == "__main__":
