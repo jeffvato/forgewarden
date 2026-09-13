@@ -991,7 +991,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-OPS-004 — Local restart continuity lifecycle proof
 - Requirement: FW-OPS integration with FW-REC, FW-EVID, Mission Control, and Product Integrity
-- State: REVIEW
+- State: DONE
 - Priority: P0
 - Dependencies: FW-OPS-003, FW-REC-003, FW-EVID-006, FW-UX-012, and FW-INTEGRITY-001
 - Approval: Jeff authorized completion of the bounded FW-OPS family; local metadata persistence and read-only projection are permitted without recovery execution.
@@ -1007,6 +1007,8 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - Product Integrity records FW-OPS Proven only within the explicit local caller-supplied metadata boundary and documents live operations limitations.
 - Expected validation: focused Linux lifecycle proof, exact independent read-only review, then one full suite and Product Integrity Gate after approval.
 - Security considerations: FW-OPS consumes FW-REC and FW-EVID decisions; it does not own recovery, Evidence, policy, deployment, or operational execution.
+
+- Completion evidence: exact candidate `f64e38c2579ee002e65fbf909d8edc7c202ab7c2`; focused 130 passed; exact AnythingLLM/Qwen review `phase2a-f64e38c2579ee002e65fbf90` returned APPROVE/LOW with no blockers or missing tests; full 1704 passed/1 skipped. The first Product Integrity run was RED only because the pre-existing desktop-bridge fixture briefly retained one child; its isolated retry passed, then the justified fresh Product Integrity retry passed full and Golden Path 1704/1 with all hard checks and YELLOW only for pre-existing `tzdata`. Product Integrity reports FW-OPS Proven within its explicit local caller-supplied DRY_RUN boundary.
 
 ### FW-UX-001 — Mission Control showcase foundation
 - Requirement: FW-UX Mission Control and honest Demo Mode

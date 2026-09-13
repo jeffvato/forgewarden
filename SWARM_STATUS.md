@@ -1,6 +1,6 @@
 # ForgeWarden Swarm Status
 
-- 2026-09-13: FW-OPS-004 candidate prepared: canonical health and capacity metadata now pass through private atomic FW-REC checkpoint reconstruction, Evidence-first resume admission, and an immutable tenant-bound Mission Control continuity projection. Corrupt checkpoints, stale chronology, substituted tenant/Evidence/safety/status, and authority-bearing facts deny; the view cannot execute recovery. Product Integrity maps FW-OPS as Proven only within the caller-supplied local DRY_RUN boundary. Focused lifecycle review is next.
+- 2026-09-13: FW-OPS-004 accepted at candidate `f64e38c2579ee002e65fbf909d8edc7c202ab7c2`: canonical health and capacity metadata pass through private atomic FW-REC checkpoint reconstruction, Evidence-first resume admission, and immutable tenant-bound Mission Control continuity projection. Exact AnythingLLM/Qwen review returned APPROVE/LOW; focused 130 and full 1704/1 passed. The first integrity run was RED only for the pre-existing transient desktop-bridge child-reaping fixture; that isolated test passed, and the justified fresh integrity retry passed full and Golden Path 1704/1 with all hard checks and only the pre-existing `tzdata` YELLOW. Product Integrity now reports FW-OPS Proven within its local caller-supplied DRY_RUN boundary. The bounded FW-OPS phase is complete; FW-ENDPOINT/FW-RANSOM continuation inventory is next.
 
 - 2026-09-13: FW-OPS-003 accepted at candidate `f0cf0e53a04a51e3700cfaacff5590b98a2d78f9`: a configurable immutable policy assesses at most eight fresh, ordered, unique, same-tenant canonical operational projections as NORMAL, ELEVATED, SUSTAINED, or CRITICAL. Exact AnythingLLM/Qwen review returned APPROVE/LOW with no blockers or missing tests; focused 36 passed; full and Product Integrity fresh suites each passed 1696/1 with all hard checks passing and YELLOW only for pre-existing `tzdata`. Evidence-first output remains DRY_RUN/OBSERVE_ONLY and grants no operational authority. FW-OPS-004 local continuity proof is next.
 
@@ -19,8 +19,8 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: FW-OPS-004 lifecycle candidate validation.
-- Next task: finish FW-OPS-004 focused validation and exact review.
+- Current focus: FW-OPS bounded lifecycle accepted and Proven within local caller-supplied DRY_RUN scope.
+- Next task: inventory the accepted FW-ENDPOINT/FW-RANSOM boundary and identify the first genuine continuation gap.
 - Harness role: permanent ForgeWarden Core subsystem and default controller for ForgeWarden's own development; one governed architecture serves both roles under D-023.
 - Worker transport direction: registered local CLIs and explicitly approved API-backed workers; API keys are resolved only through FW-KEYS secret handles inside trusted adapters and never enter model context or lifecycle evidence.
 - Provider authentication direction: deterministic OpenAI, Anthropic, and Google/Gemini profiles with provider-specific official OAuth where available and approved API-key classes otherwise; Gemini CLI is registered as `agy` for read-only roles, FW-ID owns delegated identity, and FW-KEYS owns all credential material.
