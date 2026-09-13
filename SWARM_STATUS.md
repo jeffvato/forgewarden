@@ -1,5 +1,7 @@
 # ForgeWarden Swarm Status
 
+- 2026-09-13: FW-NET-006 is in bounded test-only repair after exact AnythingLLM/Qwen returned APPROVE/LOW but requested direct cross-tenant Endpoint-reference and excessive Evidence-reference projection proofs. Runtime behavior and authority are unchanged.
+
 - 2026-09-13: FW-NET-006 is in exact review after focused validation passed 116 tests. One deterministic lifecycle now composes accepted network observation, classification, canonical owner binding, and inert Action Ticket proposal stages; Mission Control projects sanitized canonical or explicitly simulated facts without callbacks or authority. Lower-risk and invalid stages stop before proposal output.
 
 - 2026-09-13: FW-NET-005 accepted at candidate `4d48492ba3062ce502ffc4b62cd4acdadd48a551`. Exact HIGH/CRITICAL network bindings create only an inert Evidence-first NETWORK_CONTAINMENT_PROPOSAL when tenant-bound target/policy references, the engaged kill switch, and a signed single-use Action Ticket match. Replay, mismatch, source-authority, and Evidence failure deny. Focused 70 and full 1871/1 passed. AnythingLLM was unavailable, then exact Claude returned APPROVE/LOW with no blockers or missing tests. Product Integrity fresh full 1871/1 and Golden Path 70 passed with every hard check and only pre-existing dependency YELLOW. No network mutation, containment, deployment, or response executor was added. FW-NET-006 integrated lifecycle and Mission Control projection is next.

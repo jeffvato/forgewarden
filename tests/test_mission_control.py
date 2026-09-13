@@ -441,6 +441,13 @@ def test_network_security_projection_labels_demo_and_rejects_tamper_or_secret():
         replace(lifecycle, kill_switch="CLEARED"),
         replace(lifecycle, proposal=replace(lifecycle.proposal, event_id="network-2")),
         replace(lifecycle, binding=replace(lifecycle.binding, risk="CRITICAL")),
+        replace(
+            lifecycle,
+            binding=replace(
+                lifecycle.binding,
+                endpoint_event_ref="fw-endpoint/tenant-b/network-1",
+            ),
+        ),
     ):
         with pytest.raises(MissionControlError, match="binding"):
             project_network_security(invalid, tenant_id="tenant-a")
@@ -452,3 +459,9 @@ def test_network_security_projection_labels_demo_and_rejects_tamper_or_secret():
     )
     with pytest.raises(MissionControlError, match="secret-bearing"):
         project_network_security(secret, tenant_id="tenant-a")
+    excessive = replace(
+        lifecycle,
+        binding=replace(lifecycle.binding, evidence_refs=("x" * 1001,)),
+    )
+    with pytest.raises(MissionControlError, match="excessive"):
+        project_network_security(excessive, tenant_id="tenant-a")
