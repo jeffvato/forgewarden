@@ -20,6 +20,24 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 
 Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical implementation is not new work. FWQ-0008 VALIDATED preserves a provenance caveat, not a request to rebuild or automatically repeat review. FWQ-0012–0016 are reconciled DONE from existing implementation and recorded proof.
 
+### FW-RANSOM-06 — macOS canonical-event compatibility proof
+- Requirement: FW-RANSOM cross-platform normalized-event reuse
+- State: REVIEW
+- Priority: P0
+- Dependencies: FW-ENDPOINT-MACOS-01, FW-RANSOM-05
+- Approval: Jeff authorized FW-ENDPOINT/FW-RANSOM continuation as small bounded candidates.
+- Description: Prove that accepted macOS caller-supplied observations reach the existing RansomGuard evaluator without a parallel detector or expanded response authority.
+- Target path: tests/test_macos_ransomware.py
+- Allowed paths: tests/test_macos_ransomware.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_macos_ransomware.py tests/test_macos_fixtures.py tests/test_ransomware.py
+- Acceptance criteria:
+  - a deterministically ordered macOS batch produces the existing exact high-confidence ransomware signals;
+  - canonical endpoint Evidence precedes RansomGuard evaluation Evidence;
+  - outputs remain DRY_RUN/DETECT_ONLY and deployment disabled;
+  - no RansomGuard implementation, response executor, platform access, containment, remediation, recovery execution, or deployment authority is duplicated or added.
+- Expected validation: focused Linux proof, exact independent read-only review, then one full suite and Product Integrity run after approval.
+- Security considerations: this is an integration proof over caller-supplied fixtures; recommendations remain non-authoritative.
+
 ### FW-ENDPOINT-MACOS-01 — Caller-supplied macOS fixture admission
 - Requirement: FW-ENDPOINT bounded macOS normalization
 - State: DONE
