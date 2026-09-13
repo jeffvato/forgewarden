@@ -22,7 +22,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-GOV-001 — High-assurance ownership and bounded route
 - Requirement: FW-GOV canonical ownership inventory
-- State: REVIEW
+- State: DONE
 - Priority: P0
 - Dependencies: FW-DSPM-006, FW-HARNESS, FW-ID, FW-KEYS, FW-EVID
 - Approval: Jeff authorized the ordered FW-GOV phase through the continuing heartbeat.
@@ -31,10 +31,11 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 - Allowed paths: docs/fw-gov-inventory.md, WORK_QUEUE.md, SWARM_STATUS.md
 - Test command: git diff --check HEAD^ HEAD and deterministic repository/source/test/evidence inventory
 - Acceptance criteria: canonical owners and substantive stable-ID implementation route are explicit; no opaque router, provider activation, credential, live ATO/FedRAMP claim, deployment, sovereign infrastructure, model invocation, authority expansion, or security downgrade is added.
+- Completion evidence: candidate ; exact AnythingLLM/Qwen job  returned APPROVE/LOW with no blocking findings or missing tests in ; deterministic inventory and  passed; documentation-only milestone required no product-suite or Product Integrity rerun.
 
 ### FW-GOV-002 — High-assurance authorization profile
 - Requirement: FW-GOV immutable tenant-bound authorization metadata
-- State: BLOCKED
+- State: READY
 - Priority: P0
 - Dependencies: FW-GOV-001, FW-ID, FW-EVID
 - Approval: Jeff authorized the ordered FW-GOV phase through the continuing heartbeat.
