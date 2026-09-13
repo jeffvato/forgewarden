@@ -14,6 +14,7 @@ import sys
 import tarfile
 import tempfile
 import hashlib
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
 from .policy_gate import PolicyInvariantError, validate_invariant_manifest
@@ -34,6 +35,271 @@ _CLEAN_SECRET = re.compile(
     rb"(?:api[_-]?key|client[_-]?secret|access[_-]?token|password)\s*[:=]\s*[\"'][^\"']{16,}[\"'])"
 )
 _CLEAN_SHA = re.compile(r"^[0-9a-f]{40}$")
+
+
+@dataclass(frozen=True)
+class InvariantMutation:
+    """One fixed source mutation and the existing test that must detect it."""
+
+    mutation_id: str
+    invariant_id: str
+    owner: str
+    path: str
+    original: str
+    replacement: str
+    test_selector: str
+
+
+@dataclass(frozen=True)
+class _MutationProcessResult:
+    returncode: int | None
+    output: bytes
+    timed_out: bool = False
+
+
+INVARIANT_MUTATIONS: tuple[InvariantMutation, ...] = (
+    InvariantMutation(
+        "FW-MUT-SELF-AUTHORITY", "FW-INV-001", "FW-HARNESS/FW-ROOT",
+        "swarm/harness_authority.py",
+        'or decision["authority_expanded"] is not False',
+        "or False",
+        "tests/test_harness_authority.py::test_unsafe_stale_or_unconsumed_decision_denies",
+    ),
+    InvariantMutation(
+        "FW-MUT-TENANT-ISOLATION", "FW-INV-003", "FW-ID/FW-EVID",
+        "swarm/evidence.py",
+        "if self.actor_tenant_id != tenant or self.subject_tenant_id != tenant:",
+        "if self.actor_tenant_id != tenant and self.subject_tenant_id != tenant:",
+        "tests/test_evidence.py::test_invalid_or_cross_tenant_evidence_metadata_fails_closed",
+    ),
+    InvariantMutation(
+        "FW-MUT-EVIDENCE-IMMUTABILITY", "FW-INV-004", "FW-EVID",
+        "swarm/evidence.py",
+        "@dataclass(frozen=True)\nclass EvidenceEnvelope:",
+        "@dataclass()\nclass EvidenceEnvelope:",
+        "tests/test_evidence.py::test_canonical_evidence_envelope_is_exact_immutable_and_payload_free",
+    ),
+    InvariantMutation(
+        "FW-MUT-INDEPENDENT-REVIEW", "FW-INV-006", "FW-HARNESS",
+        "swarm/review_handoff.py",
+        "if set(cycle.reviews) != required:",
+        "if not set(cycle.reviews).issubset(required):",
+        "tests/test_review_handoff.py::test_completion_requires_configured_reviewers_and_string_findings",
+    ),
+    InvariantMutation(
+        "FW-MUT-ASSURANCE-DOWNGRADE", "FW-INV-007", "Model Broker",
+        "swarm/harness_models.py",
+        "and item.assurance_tier >= risk.tier and role in item.allowed_roles",
+        "and item.assurance_tier <= risk.tier and role in item.allowed_roles",
+        "tests/test_harness_models.py::test_security_tier_cannot_route_weaker_or_unapproved_model",
+    ),
+    InvariantMutation(
+        "FW-MUT-MCP-AUTHORITY", "FW-INV-008", "MCP Gateway",
+        "swarm/mcp_gateway.py",
+        "if grant not in self._grants or grant in self._revoked:",
+        "if grant in self._revoked:",
+        "tests/test_mcp_gateway.py::test_admission_requires_evidence_and_exact_grant_fields",
+    ),
+    InvariantMutation(
+        "FW-MUT-KILL-SWITCH", "FW-INV-005", "FW-OPS/FW-ROOT",
+        "swarm/policy_gate.py",
+        "allowed_kill_switch = {KILL_SWITCH_ENGAGED}",
+        "allowed_kill_switch = {KILL_SWITCH_ENGAGED, KILL_SWITCH_CLEARED_FOR_DRY_RUN}",
+        "tests/test_policy_gate.py::test_unsafe_evidence_fails_closed",
+    ),
+    InvariantMutation(
+        "FW-MUT-DEPLOYMENT", "FW-INV-005", "FW-OPS/FW-ROOT",
+        "swarm/policy_gate.py",
+        "if deployment != DEPLOYMENT_DISABLED:",
+        "if deployment == DEPLOYMENT_DISABLED:",
+        "tests/test_policy_gate.py::test_unsafe_evidence_fails_closed",
+    ),
+)
+
+_MUTATION_ID = re.compile(r"^FW-MUT-[A-Z0-9-]{3,64}$")
+_MUTATION_INVARIANT = re.compile(r"^FW-INV-\d{3}$")
+_MUTATION_SELECTOR = re.compile(r"^tests/test_[a-z0-9_]+\.py::test_[a-z0-9_]+$")
+_MUTATION_MAX_OUTPUT = 64 * 1024
+
+
+def _validate_mutation_manifest(mutations: tuple[InvariantMutation, ...]) -> tuple[InvariantMutation, ...]:
+    if (
+        not isinstance(mutations, tuple) or not 1 <= len(mutations) <= 16
+        or not all(isinstance(item, InvariantMutation) for item in mutations)
+    ):
+        raise ValueError("mutation manifest must be a bounded tuple")
+    ids = [item.mutation_id for item in mutations]
+    if len(ids) != len(set(ids)):
+        raise ValueError("mutation manifest IDs must be unique")
+    for item in mutations:
+        relative = _clean_archive_name(item.path)
+        if relative.as_posix() != item.path or not item.path.startswith("swarm/") or relative.suffix != ".py":
+            raise ValueError("mutation target path is outside the bounded source scope")
+        if not _MUTATION_ID.fullmatch(item.mutation_id) or not _MUTATION_INVARIANT.fullmatch(item.invariant_id):
+            raise ValueError("mutation identity is malformed")
+        if (
+            not isinstance(item.owner, str) or not item.owner.strip() or len(item.owner) > 128
+            or not isinstance(item.original, str) or not item.original or len(item.original.encode("utf-8")) > 2048
+            or not isinstance(item.replacement, str) or item.replacement == item.original
+            or len(item.replacement.encode("utf-8")) > 2048
+            or not _MUTATION_SELECTOR.fullmatch(item.test_selector)
+        ):
+            raise ValueError("mutation manifest entry is malformed")
+    return mutations
+
+
+def _extract_mutation_archive(archived: bytes, checkout: Path) -> None:
+    try:
+        archive = tarfile.open(fileobj=io.BytesIO(archived), mode="r:")
+    except tarfile.TarError as exc:
+        raise ValueError("mutation archive is malformed") from exc
+    with archive:
+        members = archive.getmembers()
+        if not 1 <= len(members) <= 5000:
+            raise ValueError("mutation archive member count is invalid")
+        seen: set[str] = set()
+        for member in members:
+            relative = _clean_archive_name(member.name)
+            normalized = relative.as_posix()
+            if normalized in seen:
+                raise ValueError("mutation archive contains duplicate paths")
+            seen.add(normalized)
+            target = checkout / relative
+            if member.isdir():
+                target.mkdir(parents=True, exist_ok=True)
+                continue
+            if not member.isfile() or member.issym() or member.islnk():
+                raise ValueError("mutation archive contains a link or special file")
+            if member.size < 0 or member.size > 2 * 1024 * 1024:
+                raise ValueError("mutation archive member size is invalid")
+            source = archive.extractfile(member)
+            if source is None:
+                raise ValueError("mutation archive member is unreadable")
+            content = source.read(2 * 1024 * 1024 + 1)
+            if len(content) != member.size:
+                raise ValueError("mutation archive member is truncated")
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(content)
+
+
+def _apply_invariant_mutation(checkout: Path, mutation: InvariantMutation) -> None:
+    target = checkout / mutation.path
+    try:
+        source = target.read_text(encoding="utf-8")
+    except (OSError, UnicodeError) as exc:
+        raise ValueError("mutation target is unavailable") from exc
+    if source.count(mutation.original) != 1:
+        raise ValueError("mutation target must occur exactly once")
+    mutated = source.replace(mutation.original, mutation.replacement, 1)
+    if mutated.count(mutation.replacement) != source.count(mutation.replacement) + 1:
+        raise ValueError("mutation replacement is ambiguous")
+    target.write_text(mutated, encoding="utf-8")
+
+
+def _run_mutation_test(checkout: Path, selector: str, timeout_seconds: int) -> _MutationProcessResult:
+    environment = {
+        key: value for key, value in os.environ.items()
+        if key not in {"PYTHONPATH", "PYTEST_ADDOPTS"}
+    }
+    environment.update({"PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1", "PYTHONDONTWRITEBYTECODE": "1"})
+    try:
+        result = subprocess.run(
+            [sys.executable, "-m", "pytest", "-q", selector], cwd=checkout,
+            env=environment, capture_output=True, timeout=timeout_seconds, check=False,
+        )
+    except subprocess.TimeoutExpired as exc:
+        output = (exc.stdout or b"") + (exc.stderr or b"")
+        return _MutationProcessResult(None, output, True)
+    except OSError as exc:
+        raise ValueError("mutation test process is unavailable") from exc
+    return _MutationProcessResult(result.returncode, result.stdout + result.stderr)
+
+
+def _validated_mutation_result(result: _MutationProcessResult) -> dict[str, Any]:
+    if not isinstance(result, _MutationProcessResult):
+        raise ValueError("mutation test result is malformed")
+    if result.timed_out:
+        raise ValueError("mutation test timed out")
+    if len(result.output) > _MUTATION_MAX_OUTPUT:
+        raise ValueError("mutation test output exceeds the bounded limit")
+    if _CLEAN_SECRET.search(result.output):
+        raise ValueError("mutation test output contains secret-bearing content")
+    if result.returncode is None or not isinstance(result.returncode, int) or isinstance(result.returncode, bool):
+        raise ValueError("mutation test return code is invalid")
+    if result.returncode == 0:
+        raise ValueError("critical invariant mutant survived")
+    return {
+        "result": "KILLED",
+        "returncode": result.returncode,
+        "output_retained": False,
+    }
+
+
+def run_mutation_resistance_proof(root: Path, expected_commit: str) -> dict[str, Any]:
+    """Kill fixed critical-invariant mutants in disposable exact-commit archives."""
+    root = root.resolve()
+    if not _CLEAN_SHA.fullmatch(expected_commit):
+        raise ValueError("mutation proof expected commit is invalid")
+    mutations = _validate_mutation_manifest(INVARIANT_MUTATIONS)
+
+    def exact_head() -> str:
+        try:
+            return subprocess.run(
+                ["git", "rev-parse", "HEAD"], cwd=root, text=True,
+                capture_output=True, timeout=10, check=True,
+            ).stdout.strip()
+        except (OSError, subprocess.SubprocessError) as exc:
+            raise ValueError("mutation proof Git state is unavailable") from exc
+
+    if exact_head() != expected_commit:
+        raise ValueError("mutation proof current commit mismatch")
+    try:
+        archived = subprocess.run(
+            ["git", "archive", "--format=tar", expected_commit], cwd=root,
+            capture_output=True, timeout=30, check=True,
+        ).stdout
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise ValueError("mutation proof archive is unavailable") from exc
+    if not archived or len(archived) > 64 * 1024 * 1024:
+        raise ValueError("mutation proof archive size is invalid")
+
+    results: list[dict[str, Any]] = []
+    for mutation in mutations:
+        if exact_head() != expected_commit:
+            raise ValueError("mutation proof source commit changed")
+        with tempfile.TemporaryDirectory(prefix="forgewarden-invariant-mutant-") as temporary:
+            checkout = Path(temporary).resolve()
+            _extract_mutation_archive(archived, checkout)
+            _apply_invariant_mutation(checkout, mutation)
+            outcome = _validated_mutation_result(
+                _run_mutation_test(checkout, mutation.test_selector, 45)
+            )
+            results.append({
+                "mutation_id": mutation.mutation_id,
+                "invariant_id": mutation.invariant_id,
+                "owner": mutation.owner,
+                "path": mutation.path,
+                "test_selector": mutation.test_selector,
+                **outcome,
+            })
+        if Path(temporary).exists():
+            raise ValueError("mutation checkout cleanup failed")
+    if exact_head() != expected_commit:
+        raise ValueError("mutation proof source commit changed")
+    return {
+        "schema_version": 1,
+        "proof": "CRITICAL_INVARIANT_MUTATION_RESISTANCE",
+        "commit": expected_commit,
+        "mutants": results,
+        "summary": {"defined": len(mutations), "killed": len(results), "survived": 0},
+        "temporary_checkouts_removed": True,
+        "mode": "DRY_RUN",
+        "deployment": "DISABLED",
+        "kill_switch": "ENGAGED",
+        "live_enabled": False,
+        "production_ready": False,
+        "authority_granted": False,
+    }
 
 
 def _clean_archive_name(name: str) -> Path:

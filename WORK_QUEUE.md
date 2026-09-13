@@ -1646,7 +1646,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-INTEGRITY-007 — Critical invariant mutation-resistance proof
 - Requirement: FW-INTEGRITY security-test effectiveness
-- State: READY
+- State: IN_PROGRESS
 - Priority: P0
 - Dependencies: FW-INTEGRITY-005 and FW-INTEGRITY-006
 - Approval: Jeff authorized continued next-phase integrity work; bounded mutation proof in disposable archives is within the existing test authority.
