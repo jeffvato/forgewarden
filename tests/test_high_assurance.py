@@ -2,7 +2,7 @@ from dataclasses import FrozenInstanceError, replace
 
 import pytest
 
-from swarm.high_assurance import HighAssuranceProfileDenied, admit_high_assurance_model, normalize_high_assurance_profile
+from swarm.high_assurance import HighAssuranceProfileDenied, admit_high_assurance_model, normalize_high_assurance_failure, normalize_high_assurance_profile, select_high_assurance_failover
 from swarm.harness_models import ApprovedModelCandidate
 from swarm.harness_risk import AssuranceTier
 from swarm.harness_worker import WorkerRole
@@ -170,3 +170,98 @@ def test_model_admission_revalidates_forged_or_cross_tenant_evidence_references(
     forged_profile = replace(admitted_profile(), **profile_changes)
     with pytest.raises(HighAssuranceProfileDenied, match=reason):
         admission(forged_profile, candidate(**candidate_changes))
+
+
+def failure_fixture(**changes):
+    value = {
+        "failure_id": "fw-gov-failure/tenant-a/provider-down-1",
+        "tenant_id": "tenant-a", "profile_id": "fw-gov-profile/tenant-a/reviewer-prod",
+        "candidate_id": "approved-reviewer", "environment": "GOVERNMENT",
+        "failed_at_epoch": 151, "reason": "PROVIDER_UNAVAILABLE",
+        "evidence_ref": "fw-evid/tenant-a/gov/failure-1",
+    }
+    value.update(changes)
+    return value
+
+
+def failure(**changes):
+    return normalize_high_assurance_failure(failure_fixture(**changes), tenant_id="tenant-a", now_epoch=155, audit=lambda *_: None)
+
+
+def test_failure_metadata_is_exact_immutable_evidence_first_and_non_invoking():
+    events = []
+    result = normalize_high_assurance_failure(failure_fixture(), tenant_id="tenant-a", now_epoch=155, audit=lambda *args: events.append(args))
+    assert result.reason == "PROVIDER_UNAVAILABLE" and result.mode == "DRY_RUN"
+    assert result.authority_granted is False
+    assert events[0][1]["provider_retried"] is False
+    with pytest.raises(FrozenInstanceError):
+        result.reason = "TIMEOUT"
+
+
+@pytest.mark.parametrize("changes,reason", [
+    ({"extra": "retry"}, "FAILURE_INVALID"),
+    ({"tenant_id": "tenant-b"}, "TENANT_MISMATCH"),
+    ({"failure_id": "fw-gov-failure/tenant-b/failure"}, "FAILURE_ID_INVALID"),
+    ({"profile_id": "fw-gov-profile/tenant-b/profile"}, "PROFILE_ID_INVALID"),
+    ({"evidence_ref": "fw-evid/tenant-b/failure"}, "EVIDENCE_REF_INVALID"),
+    ({"candidate_id": ""}, "CANDIDATE_ID_INVALID"),
+    ({"environment": "REMOTE"}, "ENVIRONMENT_INVALID"),
+    ({"reason": "AUTHORITY_EXPANSION"}, "FAILURE_REASON_INVALID"),
+    ({"failed_at_epoch": 156}, "FAILURE_TIME_INVALID"),
+    ({"failed_at_epoch": True}, "FAILURE_TIME_INVALID"),
+])
+def test_failure_metadata_denies_malformed_cross_tenant_or_future_input(changes, reason):
+    with pytest.raises(HighAssuranceProfileDenied, match=reason):
+        normalize_high_assurance_failure(failure_fixture(**changes), tenant_id="tenant-a", now_epoch=155, audit=lambda *_: None)
+
+
+def failover(profile_value=None, admission_value=None, failure_value=None, candidates=None, **changes):
+    profile_value = profile_value or admitted_profile()
+    admission_value = admission_value or admission(profile_value=profile_value)
+    failure_value = failure_value or failure()
+    candidates = candidates or (candidate(candidate_id="equivalent", model_id="equivalent-model", estimated_cost_microunits=5),)
+    arguments = {"tenant_id": "tenant-a", "data_classification": "RESTRICTED", "now_epoch": 155, "audit": lambda *_: None}
+    arguments.update(changes)
+    return select_high_assurance_failover(profile_value, admission_value, failure_value, candidates, **arguments)
+
+
+def test_failover_selects_lowest_cost_same_or_higher_approved_equivalent_without_invocation():
+    events = []
+    choices = (
+        candidate(candidate_id="higher", model_id="higher-model", assurance_tier=AssuranceTier.T4, estimated_cost_microunits=20),
+        candidate(candidate_id="same", model_id="same-model", estimated_cost_microunits=10),
+        candidate(candidate_id="weak", model_id="weak-model", assurance_tier=AssuranceTier.T2, estimated_cost_microunits=1),
+    )
+    result = failover(candidates=choices, audit=lambda *args: events.append(args))
+    assert result.selected_candidate_id == "same" and result.assurance_tier == "T3"
+    assert result.invocation_authorized is False and result.authority_granted is False
+    assert events[0][1]["deployment"] == "DISABLED"
+
+
+def test_offline_profile_denies_remote_candidates_and_accepts_only_offline_equivalent():
+    offline_profile = admitted_profile(environment="OFFLINE", sovereign_required=True, offline_required=True)
+    offline_admission = admission(offline_profile, candidate(environment="offline"), environment="OFFLINE")
+    offline_failure = failure(environment="OFFLINE")
+    with pytest.raises(HighAssuranceProfileDenied, match="NO_APPROVED_MODEL"):
+        failover(offline_profile, offline_admission, offline_failure, (candidate(candidate_id="remote", model_id="remote-model", environment="government"),))
+    selected = failover(offline_profile, offline_admission, offline_failure, (candidate(candidate_id="local", model_id="local-model", environment="offline"),))
+    assert selected.environment == "OFFLINE" and selected.selected_candidate_id == "local"
+
+
+@pytest.mark.parametrize("candidate_changes", [
+    {"assurance_tier": AssuranceTier.T2}, {"approved": False}, {"available": False},
+    {"tenant_id": "tenant-b"}, {"environment": "commercial"},
+    {"allowed_data_classifications": ("CONFIDENTIAL",)},
+])
+def test_failover_denies_downgrade_unapproved_unavailable_or_non_equivalent(candidate_changes):
+    with pytest.raises(HighAssuranceProfileDenied, match="NO_APPROVED_MODEL"):
+        failover(candidates=(candidate(candidate_id="other", model_id="other-model", **candidate_changes),))
+
+
+def test_failover_denies_failure_substitution_forged_authority_and_evidence_failure():
+    with pytest.raises(HighAssuranceProfileDenied, match="FAILURE_BINDING_MISMATCH"):
+        failover(failure_value=replace(failure(), candidate_id="other"))
+    with pytest.raises(HighAssuranceProfileDenied, match="FAILOVER_AUTHORITY_INVALID"):
+        failover(failure_value=replace(failure(), authority_granted=True))
+    with pytest.raises(HighAssuranceProfileDenied, match="EVIDENCE_WRITE_FAILED"):
+        failover(audit=lambda *_: (_ for _ in ()).throw(OSError("offline")))

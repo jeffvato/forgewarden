@@ -35,6 +35,13 @@ _TIERS = frozenset({"T0", "T1", "T2", "T3", "T4"})
 _AUTH_STATES = frozenset({"PENDING", "EVIDENCE_BOUND", "SUSPENDED", "REVOKED", "EXPIRED"})
 _FEDRAMP_STATES = frozenset({"NOT_APPLICABLE", "IN_PROCESS", "AUTHORIZED"})
 _DOD_LEVELS = frozenset({"NOT_APPLICABLE", "IL2", "IL4", "IL5", "IL6"})
+_FAILURE_FIELDS = frozenset({
+    "failure_id", "tenant_id", "profile_id", "candidate_id", "environment",
+    "failed_at_epoch", "reason", "evidence_ref",
+})
+_FAILURE_ID = re.compile(r"^fw-gov-failure/([a-z][a-z0-9_.-]{0,127})/[a-z][a-z0-9_.-]{0,127}$")
+_FAILURE_REASONS = frozenset({"MODEL_UNAVAILABLE", "PROVIDER_UNAVAILABLE", "RATE_LIMIT", "TIMEOUT"})
+NO_APPROVED_MODEL_AVAILABLE = "NO_APPROVED_MODEL_AVAILABLE_FOR_REQUIRED_ASSURANCE_LEVEL"
 
 
 class HighAssuranceProfileDenied(PermissionError):
@@ -83,6 +90,40 @@ class HighAssuranceModelAdmission:
     profile_evidence_ref: str
     registry_evidence_ref: str
     disposition: str = "METADATA_ADMITTED"
+    mode: str = "DRY_RUN"
+    deployment: str = "DISABLED"
+    invocation_authorized: bool = False
+    authority_granted: bool = False
+
+
+@dataclass(frozen=True)
+class HighAssuranceCandidateFailure:
+    failure_id: str
+    tenant_id: str
+    profile_id: str
+    candidate_id: str
+    environment: str
+    failed_at_epoch: int
+    reason: str
+    evidence_ref: str
+    source_trust: str = "CALLER_SUPPLIED_UNTRUSTED"
+    mode: str = "DRY_RUN"
+    authority_granted: bool = False
+
+
+@dataclass(frozen=True)
+class HighAssuranceFailoverDecision:
+    failure_id: str
+    profile_id: str
+    tenant_id: str
+    failed_candidate_id: str
+    selected_candidate_id: str
+    provider: str
+    model_id: str
+    environment: str
+    assurance_tier: str
+    reason: str
+    disposition: str = "APPROVED_EQUIVALENT_SELECTED"
     mode: str = "DRY_RUN"
     deployment: str = "DISABLED"
     invocation_authorized: bool = False
@@ -270,4 +311,135 @@ def admit_high_assurance_model(
         required_tier.name, candidate.assurance_tier.name,
         profile.authorization_state, profile_evidence_ref,
         registry_evidence_ref,
+    )
+
+
+def normalize_high_assurance_failure(
+    fixture: Mapping[str, Any], *, tenant_id: str, now_epoch: int,
+    audit: Callable[[str, dict[str, Any]], None],
+) -> HighAssuranceCandidateFailure:
+    """Validate bounded candidate-failure metadata without retrying a provider."""
+    if not isinstance(fixture, Mapping) or not callable(audit) or set(fixture) != _FAILURE_FIELDS:
+        raise HighAssuranceProfileDenied("FAILURE_INVALID")
+    try:
+        encoded = json.dumps(fixture, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise HighAssuranceProfileDenied("FAILURE_INVALID") from exc
+    if len(encoded) > MAX_PROFILE_BYTES or _SECRET.search(encoded.decode("utf-8")):
+        raise HighAssuranceProfileDenied("FAILURE_INVALID")
+    if not isinstance(tenant_id, str) or not _TENANT.fullmatch(tenant_id):
+        raise HighAssuranceProfileDenied("TENANT_INVALID")
+    if fixture.get("tenant_id") != tenant_id:
+        raise HighAssuranceProfileDenied("TENANT_MISMATCH")
+    failure_id = _tenant_ref(fixture.get("failure_id"), _FAILURE_ID, tenant_id, "FAILURE_ID_INVALID")
+    profile_id = _tenant_ref(fixture.get("profile_id"), _PROFILE, tenant_id, "PROFILE_ID_INVALID")
+    evidence_ref = _tenant_ref(fixture.get("evidence_ref"), _EVID_REF, tenant_id, "EVIDENCE_REF_INVALID")
+    candidate_id, environment, reason = fixture.get("candidate_id"), fixture.get("environment"), fixture.get("reason")
+    if not isinstance(candidate_id, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.:@/-]{0,255}", candidate_id):
+        raise HighAssuranceProfileDenied("CANDIDATE_ID_INVALID")
+    if environment not in _ENVIRONMENTS:
+        raise HighAssuranceProfileDenied("ENVIRONMENT_INVALID")
+    if reason not in _FAILURE_REASONS:
+        raise HighAssuranceProfileDenied("FAILURE_REASON_INVALID")
+    failed_at = fixture.get("failed_at_epoch")
+    if any(not isinstance(value, int) or isinstance(value, bool) for value in (failed_at, now_epoch)) or failed_at < 0 or failed_at > now_epoch:
+        raise HighAssuranceProfileDenied("FAILURE_TIME_INVALID")
+    try:
+        audit("high_assurance_candidate_failed", {
+            "failure_id": failure_id, "tenant_id": tenant_id,
+            "profile_id": profile_id, "candidate_id": candidate_id,
+            "environment": environment, "failed_at_epoch": failed_at,
+            "reason": reason, "evidence_ref": evidence_ref,
+            "source_trust": "CALLER_SUPPLIED_UNTRUSTED", "mode": "DRY_RUN",
+            "deployment": "DISABLED", "provider_retried": False,
+            "invocation_authorized": False, "authority_granted": False,
+        })
+    except Exception as exc:
+        raise HighAssuranceProfileDenied("EVIDENCE_WRITE_FAILED") from exc
+    return HighAssuranceCandidateFailure(
+        failure_id, tenant_id, profile_id, candidate_id, environment,
+        failed_at, reason, evidence_ref,
+    )
+
+
+def select_high_assurance_failover(
+    profile: HighAssuranceAuthorizationProfile,
+    failed_admission: HighAssuranceModelAdmission,
+    failure: HighAssuranceCandidateFailure,
+    candidates: tuple[ApprovedModelCandidate, ...],
+    *, tenant_id: str, data_classification: str, now_epoch: int,
+    audit: Callable[[str, dict[str, Any]], None],
+) -> HighAssuranceFailoverDecision:
+    """Select one approved same-or-higher equivalent; never invoke it."""
+    if (
+        not isinstance(profile, HighAssuranceAuthorizationProfile)
+        or not isinstance(failed_admission, HighAssuranceModelAdmission)
+        or not isinstance(failure, HighAssuranceCandidateFailure)
+        or not callable(audit)
+        or not isinstance(candidates, tuple) or not candidates or len(candidates) > 128
+        or any(not isinstance(item, ApprovedModelCandidate) for item in candidates)
+        or len({item.candidate_id for item in candidates}) != len(candidates)
+    ):
+        raise HighAssuranceProfileDenied("FAILOVER_INVALID")
+    if (
+        profile.tenant_id != tenant_id or failed_admission.tenant_id != tenant_id
+        or failure.tenant_id != tenant_id
+    ):
+        raise HighAssuranceProfileDenied("TENANT_MISMATCH")
+    if (
+        failure.profile_id != profile.profile_id
+        or failed_admission.profile_id != profile.profile_id
+        or failure.candidate_id != failed_admission.candidate_id
+        or failure.environment != profile.environment
+        or failed_admission.environment != profile.environment
+    ):
+        raise HighAssuranceProfileDenied("FAILURE_BINDING_MISMATCH")
+    if (
+        failure.source_trust != "CALLER_SUPPLIED_UNTRUSTED"
+        or failure.mode != "DRY_RUN" or failure.authority_granted is not False
+        or failed_admission.mode != "DRY_RUN"
+        or failed_admission.deployment != "DISABLED"
+        or failed_admission.invocation_authorized is not False
+        or failed_admission.authority_granted is not False
+    ):
+        raise HighAssuranceProfileDenied("FAILOVER_AUTHORITY_INVALID")
+    if not isinstance(now_epoch, int) or isinstance(now_epoch, bool) or not profile.valid_from_epoch <= now_epoch < profile.valid_until_epoch or failure.failed_at_epoch > now_epoch:
+        raise HighAssuranceProfileDenied("PROFILE_OR_FAILURE_STALE")
+    if data_classification not in profile.data_classifications or data_classification != failed_admission.data_classification:
+        raise HighAssuranceProfileDenied("DATA_CLASSIFICATION_MISMATCH")
+    if profile.offline_required and profile.environment != "OFFLINE":
+        raise HighAssuranceProfileDenied("OFFLINE_ENVIRONMENT_MISMATCH")
+    minimum = AssuranceTier[failed_admission.candidate_assurance_tier]
+    eligible = tuple(
+        item for item in candidates
+        if item.candidate_id != failed_admission.candidate_id
+        and item.approved and item.available and item.tenant_id == tenant_id
+        and item.environment.upper() == profile.environment
+        and item.assurance_tier >= minimum
+        and data_classification in item.allowed_data_classifications
+        and _EVID_REF.fullmatch(item.registry_evidence_reference) is not None
+        and _EVID_REF.fullmatch(item.registry_evidence_reference).group(1) == tenant_id
+    )
+    if not eligible:
+        raise HighAssuranceProfileDenied(NO_APPROVED_MODEL_AVAILABLE)
+    selected = min(eligible, key=lambda item: (item.estimated_cost_microunits, int(item.assurance_tier), item.candidate_id))
+    try:
+        audit("high_assurance_failover_selected", {
+            "failure_id": failure.failure_id, "profile_id": profile.profile_id,
+            "tenant_id": tenant_id, "failed_candidate_id": failed_admission.candidate_id,
+            "selected_candidate_id": selected.candidate_id,
+            "provider": selected.provider, "model_id": selected.model_id,
+            "environment": profile.environment,
+            "assurance_tier": selected.assurance_tier.name,
+            "reason": failure.reason, "mode": "DRY_RUN",
+            "deployment": "DISABLED", "invocation_authorized": False,
+            "authority_granted": False,
+        })
+    except Exception as exc:
+        raise HighAssuranceProfileDenied("EVIDENCE_WRITE_FAILED") from exc
+    return HighAssuranceFailoverDecision(
+        failure.failure_id, profile.profile_id, tenant_id,
+        failed_admission.candidate_id, selected.candidate_id, selected.provider,
+        selected.model_id, profile.environment, selected.assurance_tier.name,
+        failure.reason,
     )
