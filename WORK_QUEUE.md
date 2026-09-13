@@ -20,6 +20,24 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 
 Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical implementation is not new work. FWQ-0008 VALIDATED preserves a provenance caveat, not a request to rebuild or automatically repeat review. FWQ-0012–0016 are reconciled DONE from existing implementation and recorded proof.
 
+### FW-SAAS-002 — Caller-supplied SaaS observation normalization
+- Requirement: FW-SAAS immutable tenant-bound metadata boundary
+- State: REVIEW
+- Priority: P0
+- Dependencies: FW-SAAS-001
+- Approval: Jeff authorized the ordered FW-SAAS phase using small bounded candidates.
+- Description: Normalize strict caller-supplied SaaS posture/security metadata into an immutable Evidence-first observation without provider or response access.
+- Target path: swarm/saas_security.py
+- Allowed paths: swarm/saas_security.py, tests/test_saas_security.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_saas_security.py
+- Acceptance criteria:
+  - strict providers, observation types, exact indicators, references, bounds, time, and tenant binding fail closed;
+  - immutable observations are untrusted, DRY_RUN, DETECT_ONLY, and deterministically order indicators;
+  - canonical Evidence succeeds before return and excludes application, principal, and target references;
+  - no provider API, OAuth exchange, token/credential access, network, SaaS mutation, containment, remediation, deployment, or response authority is added.
+- Expected validation: focused Linux proof, exact independent read-only review, then full suite and Product Integrity once after approval.
+- Security considerations: fixture references and indicators remain caller-supplied untrusted facts and cannot grant identity or provider authority.
+
 ### FW-SAAS-001 — SaaS security ownership and fixture inventory
 - Requirement: FW-SAAS canonical ownership and bounded implementation route
 - State: DONE
