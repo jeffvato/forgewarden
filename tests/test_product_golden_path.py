@@ -84,6 +84,7 @@ def test_current_commit_cross_family_product_golden_path(tmp_path: Path) -> None
     context = PolicyContext(TENANT, agent_ref, "endpoint.isolate.request", "endpoint/golden-1", "ISOLATE_ENDPOINT", "FW-GOLDEN-v1")
     policy = DeterministicPolicy((PolicyRule(TENANT, context.capability, context.resource, context.action_class, context.policy_version),))
     assert policy.evaluate(context).allowed
+    assert not policy.evaluate(replace(context, policy_version="FW-GOLDEN-v2")).allowed
     with pytest.raises(PolicyInvariantError):
         validate_safety_evidence({"mode": "LIVE", "deployment": "DISABLED", "kill_switch": "ENGAGED", "mutation_allowed": False}, require_kill_switch=True)
 
@@ -106,6 +107,14 @@ def test_current_commit_cross_family_product_golden_path(tmp_path: Path) -> None
             lease_id=ticket.lease_id, capability=context.capability,
             resource=context.resource, action_class=context.action_class,
             policy_version=context.policy_version, now=151,
+        )
+    expired = tickets.issue(replace(ticket, ticket_id="ticket-golden-expired", signature="", consumed_at=None))
+    with pytest.raises(ActionTicketError, match="not currently valid"):
+        tickets.validate_and_consume(
+            expired.ticket_id, tenant_id=TENANT, subject_agent_id=agent_ref,
+            lease_id=expired.lease_id, capability=context.capability,
+            resource=context.resource, action_class=context.action_class,
+            policy_version=context.policy_version, now=301,
         )
 
     evidence_path = tmp_path / "canonical-evidence.jsonl"
@@ -148,6 +157,8 @@ def test_current_commit_cross_family_product_golden_path(tmp_path: Path) -> None
     assert security_event.agent_ref == agent_ref and security_event.decision == "DENIED"
     with pytest.raises(AIThreatClassificationError, match="admission"):
         monitor.observe(_lifecycle(), binding)
+    with pytest.raises(AIThreatClassificationError, match="admission"):
+        monitor.observe(_lifecycle(), replace(binding, event_id="fw-event/tenant-other/lifecycle-2"))
     finding = DeterministicAIThreatClassifier(TENANT, lambda event, fact: emitted.append((event, fact))).classify(
         security_event, finding_id=f"fw-finding/{TENANT}/secret-1",
     )
@@ -160,6 +171,11 @@ def test_current_commit_cross_family_product_golden_path(tmp_path: Path) -> None
         finding, security_event, facts, story_id="story-golden-1",
         ai_incident_id="incident-ai-golden", domain_incident_id="incident-endpoint-golden",
     )
+    with pytest.raises(AIThreatClassificationError, match="chronology or replay"):
+        AICrossDomainCorrelator(TENANT, lambda *_args: None).correlate(
+            finding, security_event, (facts[0], facts[0], facts[2]), story_id="story-golden-duplicate",
+            ai_incident_id="incident-ai-duplicate", domain_incident_id="incident-endpoint-duplicate",
+        )
     proposal = AIContainmentProposalRegistry(TENANT, lambda event, fact: emitted.append((event, fact))).propose(
         finding, story, proposal_id=f"fw-proposal/{TENANT}/golden-1",
         target_ref=f"fw-resource/{TENANT}/agent", blast_radius=1,
@@ -172,6 +188,19 @@ def test_current_commit_cross_family_product_golden_path(tmp_path: Path) -> None
         evidence_references=(f"fw-evid/{TENANT}/story/1",),
         created_at_epoch=200, lease_expires_at_epoch=500,
     )
+    with pytest.raises(AIThreatClassificationError, match="policy bounds"):
+        AIContainmentProposalRegistry(TENANT, lambda *_args: None).propose(
+            finding, story, proposal_id=f"fw-proposal/{TENANT}/golden-invalid",
+            target_ref=f"fw-resource/{TENANT}/agent", blast_radius=0,
+            policy_decision_ref=f"fw-policy/{TENANT}/golden-1",
+            capability_lease_ref=f"fw-lease/{TENANT}/golden-1",
+            action_ticket_ref=f"fw-action/{TENANT}/golden-1",
+            approval_ref=f"fw-approval/{TENANT}/golden-1",
+            checkpoint_ref=f"fw-checkpoint/{TENANT}/golden-1",
+            rollback_ref=f"fw-rollback/{TENANT}/golden-1",
+            evidence_references=(f"fw-evid/{TENANT}/story/1",),
+            created_at_epoch=200, lease_expires_at_epoch=500,
+        )
     ai_view = project_ai_security(
         tenant_id=TENANT, events=(security_event,), findings=(finding,),
         stories=(story,), proposals=(proposal,),
@@ -209,6 +238,12 @@ def test_current_commit_cross_family_product_golden_path(tmp_path: Path) -> None
     assert capability["view"]["live_enabled"] is False
     assert capability["view"]["production_ready"] is False
     assert capability["safety"]["mutation_allowed"] is False
+    assert {
+        "fw_id_registered", "endpoint_event_admitted", "ai_endpoint_attribution_admitted",
+        "ai_security_event_admitted", "ai_threat_finding_admitted",
+        "soc_attack_story_projected", "ai_containment_proposal_recorded",
+        "FW_REC_RESUME_ADMISSION",
+    }.issubset({item[0] for item in emitted})
 
     summary = {
         "schema_version": 1,
