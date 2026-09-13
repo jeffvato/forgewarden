@@ -41,7 +41,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-ASM-002 — Caller-supplied external-asset observation
 - Requirement: FW-ASM immutable tenant-bound metadata boundary
-- State: READY
+- State: REVIEW
 - Priority: P0
 - Dependencies: FW-ASM-001
 - Approval: Jeff authorized the ordered FW-ASM phase using small bounded candidates.
