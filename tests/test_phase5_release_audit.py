@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from swarm.phase5_release_audit import ReleaseAudit
+from swarm.phase5_release_audit import HistoryReleaseAudit, ReleaseAudit
 
 
 class Phase5ReleaseAuditTests(unittest.TestCase):
@@ -157,6 +157,80 @@ class Phase5ReleaseAuditTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(result.stdout, "")
             self.assertTrue(json.loads(output.read_text(encoding="utf-8"))["clean"])
+
+
+class Phase5HistoryReleaseAuditTests(unittest.TestCase):
+    @staticmethod
+    def git(root: Path, *args: str) -> str:
+        result = subprocess.run(["git", "-C", str(root), *args], capture_output=True, text=True)
+        if result.returncode:
+            raise AssertionError(result.stderr)
+        return result.stdout.strip()
+
+    def repository(self, root: Path) -> str:
+        self.git(root, "init", "-b", "main")
+        self.git(root, "config", "user.name", "Synthetic Reviewer")
+        self.git(root, "config", "user.email", "reviewer@example.invalid")
+        (root / "README.md").write_text("Synthetic release fixture\n", encoding="utf-8")
+        self.git(root, "add", "README.md")
+        self.git(root, "commit", "-m", "initial")
+        return self.git(root, "rev-parse", "HEAD")
+
+    def test_reachable_removed_secret_ref_tag_and_metadata_are_sanitized(self):
+        from jsonschema import Draft202012Validator
+
+        with tempfile.TemporaryDirectory(prefix="phase5-history-") as temp:
+            root = Path(temp)
+            head = self.repository(root)
+            self.git(root, "switch", "-c", "historical-fixture")
+            self.git(root, "config", "user.email", "reviewer@private.invalid")
+            fixture = root / "fixtures" / "removed.txt"
+            fixture.parent.mkdir()
+            matched_value = "synthetic-" + "fixture-material"
+            fixture.write_text(f'token = "{matched_value}"\n', encoding="utf-8")
+            self.git(root, "add", "fixtures/removed.txt")
+            self.git(root, "commit", "-m", "historical fixture")
+            first_commit = self.git(root, "rev-parse", "HEAD")
+            self.git(root, "tag", "retained-history")
+            self.git(root, "switch", "main")
+
+            audit = HistoryReleaseAudit(root)
+            result = audit.scan(expected_head=head, strategy="PRESERVE_HISTORY")
+            schema_root = Path(__file__).resolve().parents[1]
+            schema = json.loads(
+                (schema_root / "schemas/phase5-release-audit-result.schema.json").read_text())
+            Draft202012Validator(schema).validate(result)
+            secret = next(item for item in result["findings"]
+                          if item["category"] == "credential_material")
+            self.assertEqual((secret["scope"], secret["first_commit"]), ("HISTORY_ONLY", first_commit))
+            self.assertEqual(result["disposition"], "DENIED")
+            self.assertFalse(result["matched_values_included"])
+            self.assertNotIn(matched_value, json.dumps(result))
+            self.assertIn("identifying_git_identity",
+                          {item["category"] for item in result["findings"]})
+
+            sanitized = audit.scan(expected_head=head, strategy="SANITIZED_SINGLE_COMMIT")
+            self.assertEqual(sanitized["disposition"], "CANDIDATE_PROOF_REQUIRED")
+            self.assertTrue(sanitized["candidate_proof_required"])
+            self.assertEqual(result["ref_set_sha256"], sanitized["ref_set_sha256"])
+            self.assertEqual(result["policy_sha256"], sanitized["policy_sha256"])
+
+    def test_exact_head_git_and_path_failures_are_closed(self):
+        with tempfile.TemporaryDirectory(prefix="phase5-drift-") as temp:
+            root = Path(temp)
+            old_head = self.repository(root)
+            (root / "README.md").write_text("Changed fixture\n", encoding="utf-8")
+            self.git(root, "add", "README.md")
+            self.git(root, "commit", "-m", "drift")
+            with self.assertRaisesRegex(ValueError, "exact candidate"):
+                HistoryReleaseAudit(root).scan(expected_head=old_head, strategy="PRESERVE_HISTORY")
+        with tempfile.TemporaryDirectory(prefix="phase5-not-git-") as temp:
+            with self.assertRaisesRegex(ValueError, "Git operation failed"):
+                HistoryReleaseAudit(Path(temp)).scan(
+                    expected_head="0" * 40, strategy="PRESERVE_HISTORY")
+        for unsafe in ("../escape", "/absolute"):
+            with self.assertRaisesRegex(ValueError, "unsafe repository path"):
+                HistoryReleaseAudit._path(unsafe)
 
 
 if __name__ == "__main__":
