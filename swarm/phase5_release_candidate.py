@@ -19,6 +19,37 @@ _READINESS_SCHEMA = _ROOT / "schemas/phase5-release-readiness.schema.json"
 _EXPORT_POLICY = _ROOT / "config/phase5-public-export.yaml"
 _EXPORT_SCHEMA = _ROOT / "schemas/phase5-public-export.schema.json"
 _SHA = re.compile(r"^[0-9a-f]{40}(?:[0-9a-f]{24})?$")
+_TEXT_SUFFIXES = frozenset({".css", ".html", ".js", ".json", ".md", ".py", ".txt", ".yaml", ".yml"})
+_MEDIA_SUFFIXES = frozenset({
+    ".avif", ".eot", ".gif", ".ico", ".jpeg", ".jpg", ".mp3", ".mp4",
+    ".ogg", ".otf", ".pdf", ".png", ".svg", ".ttf", ".wav", ".webm", ".webp", ".woff", ".woff2",
+})
+_PROHIBITED_PARTS = frozenset({
+    ".git", ".github", ".integration-runtime", ".pytest_cache", ".swarm",
+    ".swarm-state", "__pycache__", "config", "evidence", "reviews", "tests",
+})
+_PROHIBITED_NAME_MARKERS = (
+    "audit", "credential", "evidence", "history", "integrity", "private", "review", "secret",
+)
+_CONTENT_PATTERNS = (
+    ("personal_identity", re.compile(
+        rb"(?i)\b(author|owner|personal[-_ ]?name|user[-_ ]?name)\s*[:=]\s*['\"]?[a-z][a-z ._-]{4,}")),
+    ("personal_email", re.compile(rb"(?i)\b[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9-]+(?:\.[a-z0-9-]+)+\b")),
+    ("personal_home_path", re.compile(rb"(?i)(/home/[a-z0-9._-]+/|[a-z]:\\users\\[a-z0-9._-]+\\|/Users/[a-z0-9._-]+/)")),
+    ("cloud_identifier", re.compile(
+        rb"(?i)\b(?:azure[-_ ]?(?:tenant|subscription|client|registry|resource|deployment)(?:[-_ ]?(?:id|name))?|(?:tenant|subscription|client|registry|resource|deployment)[-_ ]?(?:id|name))\s*[:=]\s*['\"]?(?![A-Z-]*DEMO-)[a-z0-9][a-z0-9._:/-]{5,}")),
+    ("internal_url_or_host", re.compile(
+        rb"(?i)https?://(?:localhost|127\.0\.0\.1|10(?:\.\d{1,3}){3}|192\.168(?:\.\d{1,3}){2}|172\.(?:1[6-9]|2\d|3[01])(?:\.\d{1,3}){2}|[a-z0-9.-]+\.internal)(?=[:/\s]|$)")),
+    ("machine_fingerprint", re.compile(
+        rb"(?i)\b(machine[-_ ]?id|host[-_ ]?name|device[-_ ]?serial)\s*[:=]\s*['\"]?[a-z0-9][a-z0-9._-]{5,}")),
+    ("historical_commit", re.compile(rb"(?i)(?<![0-9a-f])[0-9a-f]{40}(?:[0-9a-f]{24})?(?![0-9a-f])")),
+    ("internal_record_identifier", re.compile(
+        rb"(?i)\b(job|evidence|provider[-_ ]?session)[-_ ]?id\s*[:=]\s*['\"]?(?![A-Z-]*DEMO-)[a-z0-9][a-z0-9._:-]{5,}")),
+    ("credential_shaped_content", re.compile(
+        rb"(?i)(-----BEGIN [A-Z ]*PRIVATE KEY-----|\b(api[-_ ]?key|password|secret|token)\s*[:=]\s*(?:['\"][^'\"]{12,}['\"]|[a-z0-9][a-z0-9._/-]{11,}))")),
+    ("customer_endpoint_identifier", re.compile(
+        rb"(?i)\b(customer|tenant|endpoint)[-_ ]?id\s*[:=]\s*['\"]?(?![A-Z-]*DEMO-)[a-z0-9][a-z0-9._:-]{4,}")),
+)
 
 
 def _read_yaml(path: Path) -> dict[str, Any]:
@@ -80,8 +111,19 @@ def _normalize_allowlist(values: object, limits: dict[str, int]) -> list[str]:
         if folded in seen:
             raise ValueError("public-export allowlist contains a duplicate path")
         seen.add(folded)
+        _validate_public_path(path)
         normalized.append(value)
     return sorted(normalized)
+
+
+def _validate_public_path(path: PurePosixPath) -> None:
+    lowered_parts = {part.casefold() for part in path.parts}
+    lowered_name = path.name.casefold()
+    if (_PROHIBITED_PARTS.intersection(lowered_parts)
+            or any(marker in lowered_name for marker in _PROHIBITED_NAME_MARKERS)
+            or path.suffix.casefold() in _MEDIA_SUFFIXES
+            or path.suffix.casefold() not in _TEXT_SUFFIXES):
+        raise ValueError("allowlisted path belongs to a prohibited export class")
 
 
 def _source_root(source: Path) -> Path:
@@ -170,14 +212,28 @@ def _read_source_file(source: Path, relative: str, commit: str, max_bytes: int) 
         data.decode("utf-8")
     except UnicodeDecodeError as exc:
         raise ValueError("allowlisted source must be UTF-8 text") from exc
+    _validate_public_content(data)
     return data
 
 
+def _validate_public_content(data: bytes) -> None:
+    if any(byte < 32 and byte not in {9, 10, 13} for byte in data):
+        raise ValueError("allowlisted source contains control data")
+    for category, pattern in _CONTENT_PATTERNS:
+        if pattern.search(data):
+            raise ValueError(f"allowlisted source contains prohibited {category}")
+
+
 def _policy_sha256(profile: dict[str, Any], policy: dict[str, Any]) -> str:
-    payload = json.dumps(
-        {"profile": profile, "export_policy": policy},
-        sort_keys=True, separators=(",", ":"),
-    ).encode()
+    controls = {
+        "profile": profile, "export_policy": policy,
+        "prohibited_parts": sorted(_PROHIBITED_PARTS),
+        "prohibited_name_markers": _PROHIBITED_NAME_MARKERS,
+        "text_suffixes": sorted(_TEXT_SUFFIXES), "media_suffixes": sorted(_MEDIA_SUFFIXES),
+        "content_patterns": [(name, pattern.pattern.decode("ascii"))
+                             for name, pattern in _CONTENT_PATTERNS],
+    }
+    payload = json.dumps(controls, sort_keys=True, separators=(",", ":")).encode()
     return hashlib.sha256(payload).hexdigest()
 
 
@@ -201,6 +257,7 @@ def build_release_candidate(
         raise ValueError("public-export source commit does not match the expected commit")
 
     destination_root.mkdir(mode=0o700)
+    captured: dict[str, bytes] = {}
     try:
         total_bytes = 0
         files = []
@@ -210,6 +267,7 @@ def build_release_candidate(
             total_bytes += len(data)
             if total_bytes > policy["limits"]["max_total_bytes"]:
                 raise ValueError("public-export aggregate byte budget exceeded")
+            captured[relative] = data
             target = destination_root.joinpath(*PurePosixPath(relative).parts)
             target.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
             with target.open("xb") as handle:
@@ -221,6 +279,11 @@ def build_release_candidate(
 
         if _head(source_root) != expected_source_commit:
             raise ValueError("public-export source commit drifted during construction")
+        for relative, before in captured.items():
+            if _read_source_file(
+                    source_root, relative, expected_source_commit,
+                    policy["limits"]["max_file_bytes"]) != before:
+                raise ValueError("allowlisted source drifted during construction")
         manifest: dict[str, object] = {
             "schema_version": "1", "track": track, "publication": "DISABLED",
             "source_commit": expected_source_commit,

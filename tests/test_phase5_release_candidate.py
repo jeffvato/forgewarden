@@ -3,12 +3,15 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 import yaml
 from jsonschema import Draft202012Validator
 
+import swarm.phase5_release_candidate as candidate_module
 from swarm.phase5_release_candidate import (
     _head, _load_contract, _normalize_allowlist, _tracked_blob,
+    _validate_public_content, _validate_public_path,
     build_release_candidate,
 )
 
@@ -41,6 +44,17 @@ class Phase5PublicExportPolicyTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 _normalize_allowlist(unsafe, policy["limits"])
 
+    def test_policy_drift_is_rejected_by_the_exact_schema(self):
+        policy = yaml.safe_load(
+            (ROOT / "config/phase5-public-export.yaml").read_text(encoding="utf-8"))
+        policy["publication"] = "ENABLED"
+        with tempfile.TemporaryDirectory(prefix="phase5-policy-drift-") as temp:
+            changed = Path(temp) / "policy.yaml"
+            changed.write_text(yaml.safe_dump(policy), encoding="utf-8")
+            with mock.patch.object(candidate_module, "_EXPORT_POLICY", changed):
+                with self.assertRaises(Exception):
+                    _load_contract("PUBLIC_SDK")
+
 
 class Phase5ReleaseCandidateTests(unittest.TestCase):
     @classmethod
@@ -72,6 +86,15 @@ class Phase5ReleaseCandidateTests(unittest.TestCase):
                 self.assertFalse((destination / "WORK_QUEUE.md").exists())
         self.assertEqual(before, {path: (ROOT / path).read_bytes() for path in before})
 
+        with tempfile.TemporaryDirectory(prefix="phase5-repeat-") as temp:
+            first = build_release_candidate(
+                ROOT, Path(temp) / "one", track="PUBLIC_SDK",
+                expected_source_commit=self.head)
+            second = build_release_candidate(
+                ROOT, Path(temp) / "two", track="PUBLIC_SDK",
+                expected_source_commit=self.head)
+            self.assertEqual(first, second)
+
     def test_existing_destination_private_track_and_wrong_commit_fail_closed(self):
         with tempfile.TemporaryDirectory(prefix="phase5-public-denial-") as temp:
             parent = Path(temp)
@@ -90,6 +113,28 @@ class Phase5ReleaseCandidateTests(unittest.TestCase):
                     expected_source_commit="0" * 40)
             self.assertFalse((parent / "private").exists())
             self.assertFalse((parent / "drift").exists())
+
+    def test_identifier_credential_and_control_content_is_rejected_without_echo(self):
+        samples = (
+            b'owner="Personal Person"\n', b'user@example.invalid\n', b'/home/example/private\n',
+            b'tenant_id="private-tenant-01"\n', b'http://host.internal/private\n',
+            b'machine_id="machine-private-01"\n', b'a' * 40 + b'\n',
+            b'job_id="private-job-01"\n', b'api_key="synthetic-long-secret"\n',
+            b'endpoint_id="private-endpoint-01"\n', b'safe\x00control\n',
+        )
+        for sample in samples:
+            with self.subTest(kind=sample[:12]), self.assertRaisesRegex(ValueError, "prohibited|control") as error:
+                _validate_public_content(sample)
+            self.assertNotIn(sample.decode("utf-8", errors="ignore").strip(), str(error.exception))
+        _validate_public_content(b'tenant_id="TENANT-DEMO-01"\njob_id="JOB-DEMO-01"\n')
+
+    def test_private_generated_review_and_unproven_media_paths_are_rejected(self):
+        for path in (
+            ".git/config", ".swarm-state/run.json", "tests/test_sdk.py",
+            "docs/reviewer-result.json", "docs/private-evidence.json", "assets/logo.png",
+        ):
+            with self.subTest(path=path), self.assertRaisesRegex(ValueError, "prohibited"):
+                _validate_public_path(Path(path))
 
 
 if __name__ == "__main__":

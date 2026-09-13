@@ -52,3 +52,19 @@ commit. AI, CI, schema data, and tests cannot approve or enable publication.
 This admission milestone creates no license, notice, SBOM, dependency lock,
 sanitized export, public SDK, demo package, repository, artifact, legal opinion,
 or publication workflow. It performs no dependency lookup or license decision.
+
+## Local allowlisted candidate
+
+FWQ-0081 adds a local disposable candidate builder for the exact `PUBLIC_SDK`
+and `SOURCE_AVAILABLE_DEMO` allowlists. The SDK track contains the existing
+add-on SDK contract; the demo track contains the existing Mission Control UI
+and deterministic demo provider. The builder binds regular tracked files to an
+expected source commit, scans each included byte for prohibited identifiers and
+credential-shaped data, applies file and byte budgets, and emits a normalized
+digest manifest with `publication: DISABLED`. It copies no unlisted file, Git
+history, ref, private Core, review, Evidence, generated state, or unproven media.
+
+The candidate is not a repository and the builder cannot select a license,
+initialize Git, add a remote, use a network/provider/credential, publish,
+deploy, change visibility, or grant authority. A later release controller and
+explicit human gates must independently authorize any release operation.
