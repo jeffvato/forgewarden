@@ -22,7 +22,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-SAAS-004 — FW-SOC/FW-AID correlation references
 - Requirement: FW-SAAS canonical cross-domain reference binding
-- State: IN_PROGRESS
+- State: DONE
 - Priority: P0
 - Dependencies: FW-SAAS-003
 - Approval: Jeff authorized the ordered FW-SAAS phase using small bounded candidates.
@@ -37,6 +37,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no incident store, AI detector, provider API, OAuth/token/credential access, network, SaaS mutation, containment, remediation, deployment, or response authority is added.
 - Expected validation: focused Linux proof, exact independent read-only review, then full suite and Product Integrity once after approval.
 - Security considerations: correlation references remain untrusted advisory links and cannot create or authorize incident, identity, SaaS, or response state.
+- Completion evidence: initial candidate `f66e1d92b0fc4bf9bfb3309529446dc13e71bebc` passed focused 25 and exact AnythingLLM/Qwen returned APPROVE/LOW with two missing direct Evidence-reference boundary tests. Repair `a2b0691298999ab1dfb6650f8ecf468046742f35` added exactly duplicate and over-cap cases, passed focused 27, and exact AnythingLLM/Qwen job `phase2a-a2b0691298999ab1dfb6650f` returned APPROVE/LOW with no blockers or missing tests. Full 1744 passed/1 skipped. The first integrity invocation correctly rejected generated untracked review evidence; after isolating those outputs, the clean Product Integrity run passed fresh full 1744/1 and Golden Path 27 with every hard check and only pre-existing dependency YELLOW. Evidence: `docs/fw-saas-004-*.json`.
 
 ### FW-SAAS-003 — Deterministic SaaS posture and threat classification
 - Requirement: FW-SAAS exact indicator evaluation

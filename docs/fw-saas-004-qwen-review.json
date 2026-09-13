@@ -1,0 +1,34 @@
+{
+  "adjudication": null,
+  "candidate_commit": "f66e1d92b0fc4bf9bfb3309529446dc13e71bebc",
+  "deployment": "DISABLED",
+  "job_id": "phase2a-f66e1d92b0fc4bf9bfb33095",
+  "kill_switch": "ENGAGED",
+  "mutation_allowed": false,
+  "reviews": [
+    {
+      "provider": "ANYTHINGLLM",
+      "result": {
+        "blocking_findings": [],
+        "job_id": "phase2a-f66e1d92b0fc4bf9bfb33095",
+        "non_blocking_notes": [
+          "The regex `_TENANT_REF` allows forward slashes in the final segment, which might be overly permissive for a simple ID, but it is consistent with the provided acceptance criteria for bounded references.",
+          "The `audit` function is called with a dictionary containing lists (converted from tuples), which is standard for JSON serialization but worth noting for strict typing consumers."
+        ],
+        "proposed_rules": [
+          "Add unit tests for `evidence_refs` containing duplicates and exceeding the maximum length to ensure fail-closed behavior for all validation branches."
+        ],
+        "reasoning_summary": "The candidate patch correctly implements the FW-SAAS-004 requirement to bind SaaS correlation references. The `bind_saas_correlation_references` function strictly validates the input `SaaSFinding` to ensure it is in a `DETECT_ONLY`/`DRY_RUN` state with `UNTRUSTED_DATA` trust, preventing any mutation or response authority. It enforces tenant binding for all references (incident, finding, evidence) using a strict regex `_TENANT_REF` that matches the expected `fw-<kind>/<tenant>/<id>` format. Cross-tenant references and malformed kinds are correctly denied with `SaaSObservationDenied`. The evidence audit is performed before the result is returned, and it correctly records `response_executed: False` and `deployment: DISABLED`. The code does not introduce any network calls, credential access, or state mutations beyond the immutable dataclass return. The provided tests cover the happy path, cross-tenant rejection, malformed reference rejection, finding revalidation, and evidence failure. The logic is sound, boundaries are respected, and no regressions are observed in the existing code paths. The missing tests for duplicate/evidence limit are minor edge cases that do not block approval as the core validation logic is robust.",
+        "reviewed_commit": "f66e1d92b0fc4bf9bfb3309529446dc13e71bebc",
+        "risk": "LOW",
+        "tests_missing": [
+          "Missing test for `evidence_refs` containing duplicates (should fail closed due to `tuple(sorted(set(...))) != evidence_refs` check).",
+          "Missing test for `evidence_refs` exceeding `MAX_SAAS_CORRELATION_EVIDENCE_REFS`."
+        ],
+        "verdict": "APPROVE"
+      },
+      "state": "REVIEW_RETURNED"
+    }
+  ],
+  "state": "REVIEW_REQUIRED"
+}
