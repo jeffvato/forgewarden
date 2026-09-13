@@ -61,7 +61,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-DSPM-004 — Canonical data-security reference binding
 - Requirement: FW-DSPM owner-system composition
-- State: REVIEW
+- State: DONE
 - Priority: P0
 - Dependencies: FW-DSPM-003
 - Approval: Jeff authorized the ordered FW-DSPM phase through the continuing heartbeat.
@@ -70,10 +70,11 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 - Allowed paths: swarm/data_security.py, tests/test_data_security.py, WORK_QUEUE.md, SWARM_STATUS.md
 - Test command: python3 -m pytest -q tests/test_data_security.py
 - Acceptance criteria: exact tenant/source/reference bindings and Evidence order fail closed; references remain advisory and establish no owner state, data access, trust, or authority.
+- Completion evidence: exact candidate `470a5722cafbf4c16d9b308d41c0f48ad5424222`. Focused validation passed 49 tests and the full suite passed 1991 with 1 skipped. Exact AnythingLLM/Qwen job `phase2a-470a5722cafbf4c16d9b308d` returned APPROVE/LOW with no blockers or missing tests. Product Integrity passed every hard check and the Golden Path, with only the pre-existing `tzdata` dependency YELLOW. Evidence: `docs/fw-dspm-004-qwen-review.json`, `docs/fw-dspm-004-integrity.json`.
 
 ### FW-DSPM-005 — Inert Action Ticket-bound DLP proposal
 - Requirement: FW-DSPM bounded non-executing response intent
-- State: BLOCKED
+- State: READY
 - Priority: P0
 - Dependencies: FW-DSPM-004
 - Approval: Jeff authorized the ordered FW-DSPM phase through the continuing heartbeat.
