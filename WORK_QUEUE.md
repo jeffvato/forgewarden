@@ -22,7 +22,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-SUPPLY-003 — Vulnerability and provenance classification
 - Requirement: FW-SUPPLY exact supplied-fact evaluation
-- State: IN_PROGRESS
+- State: DONE
 - Priority: P0
 - Dependencies: FW-SUPPLY-002
 - Approval: Jeff authorized the ordered FW-SUPPLY phase using small bounded candidates.
@@ -37,6 +37,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no feed/repository/registry/package/build access, model decision, install, block, signing, publishing, deployment, remediation, or response authority is added.
 - Expected validation: focused Linux proof, exact independent read-only review, then full suite and Product Integrity once after approval.
 - Security considerations: caller-supplied facts and computed risk remain advisory and cannot authorize package or release action.
+- Completion evidence: exact candidate `be592c686b1c7b111c3972a3667ee52b111cdd4c`; focused 23 passed. AnythingLLM was unavailable, then exact Claude job `phase2a-be592c686b1c7b111c3972a3` returned APPROVE/LOW with no blockers or missing tests. Full 1780 passed/1 skipped; Product Integrity fresh full 1780/1 and Golden Path 23 passed with every hard check and only pre-existing dependency YELLOW. Evidence: `docs/fw-supply-003-*.json`.
 
 ### FW-SUPPLY-002 — Caller-supplied component and provenance observation
 - Requirement: FW-SUPPLY immutable tenant-bound metadata boundary

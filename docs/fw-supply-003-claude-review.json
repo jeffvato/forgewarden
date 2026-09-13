@@ -1,0 +1,26 @@
+{
+  "adjudication": null,
+  "candidate_commit": "be592c686b1c7b111c3972a3667ee52b111cdd4c",
+  "deployment": "DISABLED",
+  "job_id": "phase2a-be592c686b1c7b111c3972a3",
+  "kill_switch": "ENGAGED",
+  "mutation_allowed": false,
+  "reviews": [
+    {
+      "provider": "CLAUDE",
+      "result": {
+        "blocking_findings": [],
+        "job_id": "phase2a-be592c686b1c7b111c3972a3",
+        "non_blocking_notes": [],
+        "proposed_rules": [],
+        "reasoning_summary": "FW-SUPPLY-003 classification function validates inputs strictly: sorted unique bounded indicators (1-16), rejects contradictory/unknown/duplicate/empty/excessive/cross-tenant/malformed/authority-shaped inputs via closed-form validation. Deterministic risk mapping (CRITICAL/HIGH/MEDIUM/LOW) and fixed recommendations enforce exact sorted indicators \u2192 outcome contract. Audit records response_executed=False and deployment=DISABLED before return; fails closed on evidence write. No external feed, repository, registry, package, build, model, install, block, sign, publish, deploy, remediate, or response authority. Narrow patch reuses existing _reference validation and _ECOSYSTEMS/_PACKAGE/_VERSION/_SHA256 regex. Test coverage validates all risk levels, indicator combinations, rejection cases, tenant/authority/evidence validation. Advisory-only output via frozen dataclass defaults.",
+        "reviewed_commit": "be592c686b1c7b111c3972a3667ee52b111cdd4c",
+        "risk": "LOW",
+        "tests_missing": [],
+        "verdict": "APPROVE"
+      },
+      "state": "APPROVED"
+    }
+  ],
+  "state": "APPROVED"
+}
