@@ -91,3 +91,30 @@ Customer Root gates remain pending. The result includes only file, manifest,
 policy, and one-way source-binding digests, never the private source commit.
 Network, package installation, provider, credential, Git-remote, publication,
 deployment, and authority operations remain absent.
+
+
+## Reproducible local repository candidate
+
+FWQ-0083 materializes an exact FWQ-0081 candidate only after the FWQ-0082
+offline provenance facts and their caller-supplied digests validate. The
+controller writes the unchanged candidate files and public manifest plus one
+canonical `FORGEWARDEN-PROVENANCE.json` document into a new local directory.
+It initializes a fresh SHA-1 Git object database, stages only those files, and
+uses Git plumbing with fixed ForgeWarden release-controller identity, timestamp,
+branch, and message metadata to create one reproducible parentless commit.
+
+The verifier requires exactly `refs/heads/main`, one reachable root commit,
+the expected tree and worktree path sets, clean status, no extra or unreachable
+objects, and no hooks, alternates, remotes, tags, inherited refs, local identity,
+or credential configuration. Git runs with system/global configuration disabled
+and a constant environment; only a small command allowlist and bounded output,
+runtime, and command count are accepted. The same inputs must produce the same
+tree and root commit. Any candidate drift, binding mismatch, existing or unsafe
+destination, link/special file, extra path/object/ref, budget failure, or Git
+failure removes the partial output and fails closed.
+
+This result remains a disposable local repository candidate. Its files retain
+`NOASSERTION` license status, all legal and Customer Root gates remain
+pending, and publication and production readiness remain disabled. The
+controller has no remote creation, network, provider, credential, package,
+visibility, publication, deployment, or authority capability.

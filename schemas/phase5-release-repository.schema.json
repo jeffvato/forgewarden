@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ForgeWarden Phase 5 Local Release Repository Policy",
+  "const": {
+    "schema_version": "1",
+    "publication": "DISABLED",
+    "format": "FORGEWARDEN_RELEASE_REPOSITORY_V1",
+    "source_manifest_name": "FORGEWARDEN-PUBLIC-MANIFEST.json",
+    "provenance_name": "FORGEWARDEN-PROVENANCE.json",
+    "branch": "main",
+    "object_format": "sha1",
+    "author_name": "ForgeWarden Release Controller",
+    "author_email": "release-controller@forgewarden.invalid",
+    "author_date": "2000-01-01T00:00:00+00:00",
+    "committer_name": "ForgeWarden Release Controller",
+    "committer_email": "release-controller@forgewarden.invalid",
+    "committer_date": "2000-01-01T00:00:00+00:00",
+    "commit_message": "ForgeWarden sanitized release candidate",
+    "license_concluded": "NOASSERTION",
+    "license_declared": "NOASSERTION",
+    "legal_status": "PENDING",
+    "production_ready": false,
+    "limits": {
+      "max_files": 10,
+      "max_file_bytes": 524288,
+      "max_total_bytes": 1048576,
+      "max_git_output_bytes": 1048576,
+      "max_git_commands": 32,
+      "max_path_bytes": 240
+    },
+    "required_pending_gates": [
+      "legal_review",
+      "chain_of_title_review",
+      "trademark_media_review",
+      "dependency_sbom_review",
+      "reproducible_build_review",
+      "clean_export_ci_review",
+      "customer_root_release_approval"
+    ],
+    "required_denials": [
+      "EXISTING_OR_UNSAFE_DESTINATION",
+      "SOURCE_OR_PROVENANCE_MISMATCH",
+      "TAMPERED_OR_EXTRA_FILE",
+      "LINK_OR_SPECIAL_FILE",
+      "INHERITED_HISTORY_OR_OBJECT",
+      "EXTRA_REF_TAG_OR_REMOTE",
+      "HOOK_OR_ALTERNATE",
+      "ENVIRONMENT_DERIVED_IDENTITY",
+      "RAW_PRIVATE_SOURCE_COMMIT",
+      "SECRET_OR_IDENTIFIER_CONTENT",
+      "LICENSE_OR_READINESS_CLAIM",
+      "NETWORK_OR_PUBLICATION",
+      "AUTHORITY"
+    ]
+  }
+}
