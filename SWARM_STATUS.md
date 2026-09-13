@@ -1,5 +1,7 @@
 # ForgeWarden Swarm Status
 
+- 2026-09-12: FW-UX-011 accepted at candidate `415730f10a309b27ac940f8631f1eaeb892a027d`: Mission Control now exposes bounded canonical Approved Model Registry and MCP Gateway catalog facts with explicit CANONICAL/EMPTY/UNAVAILABLE states and no routing, invocation, lease, tool, credential, or deployment authority. Focused proof passed 101 Python tests plus the Node frontend contract; exact Claude review returned APPROVE/LOW with no blockers or missing tests; full suite and fresh integrity suite passed 1637 tests with 1 skipped and all 4 Golden Paths passing. Health remains YELLOW only for pre-existing `tzdata`. FW-UX-012 is next.
+
 ## Current state
 
 - Active phase: ForgeWarden Core

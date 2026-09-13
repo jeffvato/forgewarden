@@ -1394,7 +1394,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-UX-011 — Canonical Model Broker and MCP activity provider
 - Requirement: Mission Control incremental backend integration
-- State: REVIEW
+- State: DONE
 - Priority: P0
 - Dependencies: FW-UX-010, FW-HARNESS-016, and FW-MCP-05
 - Approval: Jeff authorized the mapped Mission Control backend integration sequence; this unit may expose existing sanitized local read-only Model Broker and MCP Gateway projections only.
@@ -1411,6 +1411,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no model invocation/routing mutation, MCP discovery/mutation/tool execution, credential resolution, policy evaluation, approval, response, recovery execution, network transport, or deployment authority is added.
 - Expected validation: focused provider/frontend tests, exact Claude read-only review, then full suite/integrity once after approval.
 - Security considerations: Model Broker and MCP Gateway remain authoritative; the UI receives immutable explanatory facts and no execution callback.
+- Completion evidence: exact candidate `415730f10a309b27ac940f8631f1eaeb892a027d`; focused proof passed 101 Python tests plus the Node frontend contract; exact Claude review `phase2a-415730f10a309b27ac940f86` returned APPROVE/LOW with no blockers or missing tests; full suite passed 1637/1; Product Integrity fresh full passed 1637/1 with all hard checks and 4 Golden Paths passing, YELLOW only for pre-existing `tzdata`.
 
 ### FW-REC-002 — Durable recovery checkpoint persistence and reconstruction
 - Requirement: FW-REC persistent recovery metadata
