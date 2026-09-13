@@ -12,6 +12,7 @@ from swarm.attack_surface import (
     classify_attack_surface_observation,
     normalize_attack_surface_observation,
     propose_attack_surface_risk_reduction,
+    run_attack_surface_dry_run_lifecycle,
 )
 
 
@@ -375,3 +376,56 @@ def test_attack_surface_risk_reduction_proposal_denies_expired_ticket():
         propose_attack_surface_risk_reduction(
             reference_binding(), **proposal_kwargs(now=200),
         )
+
+
+def attack_surface_lifecycle(*, audit=lambda *_args: None, fixture_overrides=None, **overrides):
+    values = {
+        "fixture": fixture(**(fixture_overrides or {})), "tenant_id": "tenant-a",
+        "now_epoch": 150, "exploitability_state": "CONFIRMED_EXPLOITABLE",
+        "forgotten_asset": False, "network_ref": "fw-network/tenant-a/exposure-1",
+        "vulnerability_refs": ("fw-vuln/tenant-a/cve-1",),
+        "catalog_ref": "fw-catalog/tenant-a/trusted-1",
+        "signature_ref": "fw-signature/tenant-a/cert-1",
+        "soc_incident_ref": "fw-incident/tenant-a/asm-1",
+        "evidence_refs": ("fw-evid/tenant-a/asm-1",),
+        "tickets": tickets(), "ticket_id": "ticket-1",
+        "target_ref": "fw-exposure/tenant-a/site-1",
+        "policy_decision_ref": "fw-policy/tenant-a/decision-1",
+        "subject_agent_id": "agent-1", "lease_id": "lease-1",
+        "policy_version": "policy-v1", "kill_switch_state": "ENGAGED",
+        "audit": audit,
+    }
+    values.update(overrides)
+    return run_attack_surface_dry_run_lifecycle(**values)
+
+
+def test_attack_surface_lifecycle_preserves_stage_order_and_no_authority():
+    evidence = []
+    lifecycle = attack_surface_lifecycle(audit=lambda *items: evidence.append(items))
+    assert [item[0] for item in evidence] == [
+        "attack_surface_observation_normalized",
+        "attack_surface_observation_classified",
+        "attack_surface_references_bound",
+        "attack_surface_risk_reduction_proposed",
+    ]
+    assert len({
+        lifecycle.observation.event_id, lifecycle.finding.event_id,
+        lifecycle.binding.event_id, lifecycle.proposal.event_id,
+    }) == 1
+    assert lifecycle.mode == "DRY_RUN" and lifecycle.deployment == "DISABLED"
+    assert lifecycle.kill_switch == "ENGAGED"
+    assert lifecycle.authority_granted is False and lifecycle.response_executed is False
+
+
+def test_attack_surface_lifecycle_stops_before_proposal_for_lower_risk():
+    evidence = []
+    with pytest.raises(AttackSurfaceObservationDenied, match="PROPOSAL_SOURCE_INVALID"):
+        attack_surface_lifecycle(
+            audit=lambda *items: evidence.append(items),
+            exploitability_state="NOT_EXPLOITABLE",
+        )
+    assert [item[0] for item in evidence] == [
+        "attack_surface_observation_normalized",
+        "attack_surface_observation_classified",
+        "attack_surface_references_bound",
+    ]

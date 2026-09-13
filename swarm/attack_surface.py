@@ -138,6 +138,19 @@ class AttackSurfaceRiskReductionProposal:
     response_executed: bool = False
 
 
+@dataclass(frozen=True)
+class AttackSurfaceDryRunLifecycle:
+    observation: AttackSurfaceObservation
+    finding: AttackSurfaceFinding
+    binding: AttackSurfaceReferenceBinding
+    proposal: AttackSurfaceRiskReductionProposal
+    mode: str = "DRY_RUN"
+    deployment: str = "DISABLED"
+    kill_switch: str = "ENGAGED"
+    authority_granted: bool = False
+    response_executed: bool = False
+
+
 def normalize_attack_surface_observation(
     fixture: Mapping[str, Any], *, tenant_id: str, now_epoch: int,
     audit: Callable[[str, dict[str, Any]], None],
@@ -397,3 +410,38 @@ def propose_attack_surface_risk_reduction(
         binding.event_id, binding.tenant_id, target_ref, policy_decision_ref,
         ticket_id, binding.risk,
     )
+
+
+def run_attack_surface_dry_run_lifecycle(
+    fixture: Mapping[str, Any], *, tenant_id: str, now_epoch: int,
+    exploitability_state: str, forgotten_asset: bool, network_ref: str,
+    vulnerability_refs: tuple[str, ...], catalog_ref: str, signature_ref: str,
+    soc_incident_ref: str, evidence_refs: tuple[str, ...],
+    tickets: ActionTicketRegistry, ticket_id: str, target_ref: str,
+    policy_decision_ref: str, subject_agent_id: str, lease_id: str,
+    policy_version: str, kill_switch_state: str,
+    audit: Callable[[str, dict[str, Any]], None],
+) -> AttackSurfaceDryRunLifecycle:
+    """Compose accepted FW-ASM stages without adding discovery or response."""
+    observation = normalize_attack_surface_observation(
+        fixture, tenant_id=tenant_id, now_epoch=now_epoch, audit=audit,
+    )
+    finding = classify_attack_surface_observation(
+        observation, tenant_id=tenant_id,
+        exploitability_state=exploitability_state,
+        forgotten_asset=forgotten_asset, audit=audit,
+    )
+    binding = bind_attack_surface_references(
+        finding, tenant_id=tenant_id, network_ref=network_ref,
+        vulnerability_refs=vulnerability_refs, catalog_ref=catalog_ref,
+        signature_ref=signature_ref, soc_incident_ref=soc_incident_ref,
+        evidence_refs=evidence_refs, audit=audit,
+    )
+    proposal = propose_attack_surface_risk_reduction(
+        binding, tickets=tickets, ticket_id=ticket_id, target_ref=target_ref,
+        policy_decision_ref=policy_decision_ref,
+        subject_agent_id=subject_agent_id, lease_id=lease_id,
+        policy_version=policy_version, now=now_epoch,
+        kill_switch_state=kill_switch_state, audit=audit,
+    )
+    return AttackSurfaceDryRunLifecycle(observation, finding, binding, proposal)
