@@ -146,6 +146,7 @@ def test_exact_profile_and_registry_candidate_admit_metadata_without_invocation(
     ({}, {"available": False}, {}, "MODEL_NOT_APPROVED_OR_AVAILABLE"),
     ({"authorization_state": "PENDING", "ato_reference": None, "fedramp_state": "IN_PROCESS", "dod_impact_level": "NOT_APPLICABLE"}, {}, {}, "PROFILE_NOT_AUTHORIZED"),
     ({}, {}, {"now_epoch": 200}, "PROFILE_STALE"),
+    ({}, {}, {"now_epoch": True}, "PROFILE_STALE"),
 ])
 def test_model_admission_denies_mismatch_downgrade_stale_or_unapproved(profile_changes, candidate_changes, call_changes, reason):
     with pytest.raises(HighAssuranceProfileDenied, match=reason):
@@ -158,3 +159,14 @@ def test_model_admission_denies_forged_profile_authority_and_evidence_failure():
         admission(forged)
     with pytest.raises(HighAssuranceProfileDenied, match="EVIDENCE_WRITE_FAILED"):
         admission(audit=lambda *_: (_ for _ in ()).throw(OSError("offline")))
+
+
+@pytest.mark.parametrize("profile_changes,candidate_changes,reason", [
+    ({"evidence_ref": "fw-evid/tenant-b/gov/profile"}, {}, "EVIDENCE_REF_INVALID"),
+    ({"ato_reference": "fw-authorization/tenant-b/ato"}, {}, "ATO_REFERENCE_INVALID"),
+    ({}, {"registry_evidence_reference": "fw-evid/tenant-b/model/candidate"}, "REGISTRY_EVIDENCE_REF_INVALID"),
+])
+def test_model_admission_revalidates_forged_or_cross_tenant_evidence_references(profile_changes, candidate_changes, reason):
+    forged_profile = replace(admitted_profile(), **profile_changes)
+    with pytest.raises(HighAssuranceProfileDenied, match=reason):
+        admission(forged_profile, candidate(**candidate_changes))

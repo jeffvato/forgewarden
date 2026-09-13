@@ -211,6 +211,14 @@ def admit_high_assurance_model(
         raise HighAssuranceProfileDenied("TENANT_INVALID")
     if profile.tenant_id != tenant_id or candidate.tenant_id != tenant_id:
         raise HighAssuranceProfileDenied("TENANT_MISMATCH")
+    _tenant_ref(profile.profile_id, _PROFILE, tenant_id, "PROFILE_ID_INVALID")
+    profile_evidence_ref = _tenant_ref(
+        profile.evidence_ref, _EVID_REF, tenant_id, "EVIDENCE_REF_INVALID",
+    )
+    registry_evidence_ref = _tenant_ref(
+        candidate.registry_evidence_reference, _EVID_REF, tenant_id,
+        "REGISTRY_EVIDENCE_REF_INVALID",
+    )
     expected_boundary = _tenant_ref(
         security_boundary, _BOUNDARY, tenant_id, "SECURITY_BOUNDARY_INVALID",
     )
@@ -231,6 +239,7 @@ def admit_high_assurance_model(
         raise HighAssuranceProfileDenied("PROFILE_STALE")
     if profile.authorization_state != "EVIDENCE_BOUND" or profile.ato_reference is None:
         raise HighAssuranceProfileDenied("PROFILE_NOT_AUTHORIZED")
+    _tenant_ref(profile.ato_reference, _AUTH_REF, tenant_id, "ATO_REFERENCE_INVALID")
     required_tier = AssuranceTier[profile.minimum_assurance_tier]
     if candidate.assurance_tier < required_tier:
         raise HighAssuranceProfileDenied("ASSURANCE_DOWNGRADE_DENIED")
@@ -247,8 +256,8 @@ def admit_high_assurance_model(
             "required_assurance_tier": required_tier.name,
             "candidate_assurance_tier": candidate.assurance_tier.name,
             "authorization_state": profile.authorization_state,
-            "profile_evidence_ref": profile.evidence_ref,
-            "registry_evidence_ref": candidate.registry_evidence_reference,
+            "profile_evidence_ref": profile_evidence_ref,
+            "registry_evidence_ref": registry_evidence_ref,
             "mode": "DRY_RUN", "deployment": "DISABLED",
             "invocation_authorized": False, "authority_granted": False,
             "opaque_router_consulted": False,
@@ -259,6 +268,6 @@ def admit_high_assurance_model(
         profile.profile_id, tenant_id, expected_boundary, candidate.candidate_id,
         candidate.provider, candidate.model_id, environment, data_classification,
         required_tier.name, candidate.assurance_tier.name,
-        profile.authorization_state, profile.evidence_ref,
-        candidate.registry_evidence_reference,
+        profile.authorization_state, profile_evidence_ref,
+        registry_evidence_ref,
     )
