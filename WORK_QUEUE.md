@@ -1774,7 +1774,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FWQ-0084 — Offline clean-export CI and standalone-track proof
 - Requirement: Phase 5 clean-export CI and standalone public-candidate assurance
-- State: READY
+- State: DONE
 - Priority: P0
 - Dependencies: FWQ-0083
 - Approval: Jeff approved the public assurance plan. Local offline validation of disposable sanitized repositories is authorized; external CI, repository creation, visibility change, license selection, and publication remain disabled.
@@ -1791,6 +1791,27 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - create no external workflow/runner, Git remote, fetch/pull/push, CI secret, package installation, provider/billing access, network/listener, visibility change, publication, deployment, or authority grant.
 - Expected validation: one focused Linux proof, exact independent read-only review, then one full suite and Product Integrity Gate after approval.
 - Security considerations: this is local regression evidence for future clean-export CI only. Legal, chain-of-title, license, trademark/media, public visibility, and Customer Root release approval remain pending.
+- Completion evidence: implementation `c7733b34978b60ab8218bfa9e77205e72167b0a7`; exact repaired candidate `e863240a87a02a022ae41bba43e61b79f78642b3`. Focused validation passed 40 tests after correcting the SDK assertions to the canonical exported contract and adding the three denial proofs requested by review. Qwen approved the policy/schema/docs component on the first candidate but later requests failed closed upstream. On the repaired exact SHA, authorized Claude fallback jobs `phase2a-627b0c34b30884bab28bdec4` and `phase2a-5d3c583a3e42a24ad1d53fba` covered policy/schema/docs and the complete controller/tests; both returned APPROVE/LOW with no blockers or missing tests. Full validation passed 2229/1. Product Integrity passed every hard check, 15 integrity tests, and the 40-test release Golden Path; only pre-existing `tzdata` remains YELLOW. Both sanitized tracks validate from committed content in an isolated constant environment with fixed allowlisted commands, exact Git/result/provenance binding, digest-only evidence, and no repository mutation, private Core dependence, credentials, network, package installation, external CI, publication, deployment, or authority.
+
+### FWQ-0085 — Deterministic local release-assurance decision packet
+- Requirement: Phase 5 aggregate technical assurance and human-gate handoff
+- State: READY
+- Priority: P0
+- Dependencies: FWQ-0084
+- Approval: Jeff approved the public assurance plan. A local fail-closed technical decision packet is authorized; license selection, legal clearance, repository creation, visibility change, publication, and Customer Root release authorization remain human-controlled and disabled.
+- Description: Aggregate the exact history-audit, sanitized export, dependency provenance, reproducible repository, and offline CI facts for both tracks into one bounded deterministic handoff that can only report technical proof and pending human gates.
+- Target path: swarm/phase5_release_gate.py
+- Allowed paths: swarm/phase5_release_gate.py, config/phase5-release-gate.yaml, schemas/phase5-release-gate.schema.json, tests/test_phase5_release_gate.py, docs/phase5-release-readiness.md, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_phase5_release_gate.py tests/test_phase5_release_ci.py tests/test_phase5_release_repository.py tests/test_phase5_release_provenance.py tests/test_phase5_release_candidate.py
+- Acceptance criteria:
+  - consume only exact schema-valid results for the accepted Phase 5 history audit and both PUBLIC_SDK and SOURCE_AVAILABLE_DEMO pipelines through FWQ-0084;
+  - require exact cross-stage track, source-binding, manifest, provenance, root, tree, file-count, command-plan, safety, license, legal, publication, and production-readiness agreement;
+  - emit one bounded deterministic digest-only decision packet with technical assurance VERIFIED and final disposition BLOCKED_PENDING_HUMAN_GATES;
+  - enumerate license, chain-of-title/legal, trademark/media, dependency-review, public-visibility, and Customer Root release gates without satisfying, waiving, approving, or mutating them;
+  - reject missing/duplicate/cross-track/stale/tampered/secret-bearing inputs, conflicting digests, stronger readiness claims, hidden approvals, unknown gates, unsafe facts, and any attempt to produce publishable or deployment-authorizing output;
+  - create no repository, remote, release, workflow, credential, provider/billing access, network operation, license choice, approval, visibility change, publication, deployment, or authority grant.
+- Expected validation: one focused Linux proof, exact independent read-only review, then one full suite and Product Integrity Gate after approval.
+- Security considerations: the output is a local technical handoff only. It must remain blocked until every named human-controlled gate is separately satisfied through its canonical owner.
 
 
 ### FW-API-001 — Canonical tenant-bound read-only request admission
