@@ -25,6 +25,9 @@ _SERVICES = frozenset({"API", "DATABASE", "DNS", "HTTP", "REMOTE_ACCESS", "VPN"}
 _PROTOCOLS = frozenset({"DNS", "HTTP", "HTTPS", "RDP", "SSH", "TCP", "TLS", "UDP", "VPN"})
 _OWNERSHIP = frozenset({"KNOWN", "UNKNOWN"})
 _VISIBILITY = frozenset({"PUBLIC", "RESTRICTED", "UNEXPECTED"})
+_EXPLOITABILITY = frozenset({
+    "CONFIRMED_EXPLOITABLE", "NOT_EXPLOITABLE", "POTENTIALLY_EXPLOITABLE", "UNKNOWN",
+})
 _REQUIRED = frozenset({
     "event_id", "tenant_id", "observed_at_epoch", "asset_type", "asset_ref",
     "exposure_ref", "service", "protocol", "port", "ownership_state",
@@ -68,6 +71,24 @@ class AttackSurfaceObservation:
     trust: str = "UNTRUSTED_DATA"
     mode: str = "DRY_RUN"
     action: str = "DETECT_ONLY"
+    authority_granted: bool = False
+
+
+@dataclass(frozen=True)
+class AttackSurfaceFinding:
+    event_id: str
+    tenant_id: str
+    asset_ref: str
+    exposure_ref: str
+    visibility_state: str
+    ownership_state: str
+    exploitability_state: str
+    forgotten_asset: bool
+    risk: str
+    recommendations: tuple[str, ...]
+    trust: str = "UNTRUSTED_DATA"
+    mode: str = "DRY_RUN"
+    action: str = "ADVISE_ONLY"
     authority_granted: bool = False
 
 
@@ -130,4 +151,68 @@ def normalize_attack_surface_observation(
     return AttackSurfaceObservation(
         event_id, tenant_id, observed, asset_type, asset_ref, exposure_ref,
         service, protocol, port, ownership, visibility, evidence_ref,
+    )
+
+
+def classify_attack_surface_observation(
+    observation: AttackSurfaceObservation, *, tenant_id: str,
+    exploitability_state: str, forgotten_asset: bool,
+    audit: Callable[[str, dict[str, Any]], None],
+) -> AttackSurfaceFinding:
+    """Classify admitted caller-supplied facts without discovery or model input."""
+    if not isinstance(observation, AttackSurfaceObservation) or not callable(audit):
+        raise AttackSurfaceObservationDenied("OBSERVATION_INVALID")
+    if not isinstance(tenant_id, str) or not _TENANT.fullmatch(tenant_id):
+        raise AttackSurfaceObservationDenied("TENANT_INVALID")
+    if observation.tenant_id != tenant_id:
+        raise AttackSurfaceObservationDenied("TENANT_MISMATCH")
+    if (
+        observation.trust != "UNTRUSTED_DATA" or observation.mode != "DRY_RUN"
+        or observation.action != "DETECT_ONLY"
+        or observation.authority_granted is not False
+    ):
+        raise AttackSurfaceObservationDenied("OBSERVATION_AUTHORITY_INVALID")
+    if exploitability_state not in _EXPLOITABILITY:
+        raise AttackSurfaceObservationDenied("EXPLOITABILITY_INVALID")
+    if not isinstance(forgotten_asset, bool):
+        raise AttackSurfaceObservationDenied("FORGOTTEN_ASSET_INVALID")
+    if forgotten_asset and observation.ownership_state == "KNOWN":
+        raise AttackSurfaceObservationDenied("FACTS_CONTRADICTORY")
+    exposed = observation.visibility_state in {"PUBLIC", "UNEXPECTED"}
+    if exposed and exploitability_state == "CONFIRMED_EXPLOITABLE":
+        risk = "CRITICAL"
+    elif exposed and (
+        exploitability_state == "POTENTIALLY_EXPLOITABLE"
+        or observation.ownership_state == "UNKNOWN" or forgotten_asset
+    ):
+        risk = "HIGH"
+    elif exposed or exploitability_state in {"CONFIRMED_EXPLOITABLE", "POTENTIALLY_EXPLOITABLE"}:
+        risk = "MEDIUM"
+    else:
+        risk = "LOW"
+    recommendations = (
+        ("WARN", "PROPOSE_RISK_REDUCTION")
+        if risk in {"HIGH", "CRITICAL"} else ("WARN",)
+    )
+    try:
+        audit("attack_surface_observation_classified", {
+            "event_id": observation.event_id, "tenant_id": tenant_id,
+            "asset_ref": observation.asset_ref,
+            "visibility_state": observation.visibility_state,
+            "ownership_state": observation.ownership_state,
+            "exploitability_state": exploitability_state,
+            "forgotten_asset": forgotten_asset, "risk": risk,
+            "recommendations": recommendations,
+            "evidence_ref": observation.evidence_ref,
+            "trust": "UNTRUSTED_DATA", "mode": "DRY_RUN",
+            "action": "ADVISE_ONLY", "deployment": "DISABLED",
+            "response_executed": False, "authority_granted": False,
+        })
+    except Exception as exc:
+        raise AttackSurfaceObservationDenied("EVIDENCE_WRITE_FAILED") from exc
+    return AttackSurfaceFinding(
+        observation.event_id, tenant_id, observation.asset_ref,
+        observation.exposure_ref, observation.visibility_state,
+        observation.ownership_state, exploitability_state, forgotten_asset,
+        risk, recommendations,
     )

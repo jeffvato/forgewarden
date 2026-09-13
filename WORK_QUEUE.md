@@ -54,7 +54,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-ASM-003 — Exposure and exploitability classification
 - Requirement: FW-ASM exact supplied-fact evaluation
-- State: READY
+- State: REVIEW
 - Priority: P0
 - Dependencies: FW-ASM-002
 - Approval: Jeff authorized the ordered FW-ASM phase using small bounded candidates.

@@ -2,7 +2,12 @@ from dataclasses import FrozenInstanceError
 
 import pytest
 
-from swarm.attack_surface import AttackSurfaceObservationDenied, normalize_attack_surface_observation
+from swarm.attack_surface import (
+    AttackSurfaceObservation,
+    AttackSurfaceObservationDenied,
+    classify_attack_surface_observation,
+    normalize_attack_surface_observation,
+)
 
 
 def fixture(**overrides):
@@ -102,4 +107,68 @@ def test_attack_surface_observation_rejects_non_json_fixture_value():
         normalize_attack_surface_observation(
             fixture(service={"HTTP"}), tenant_id="tenant-a", now_epoch=150,
             audit=lambda *_args: None,
+        )
+
+
+def observation(**overrides):
+    values = fixture(**overrides)
+    return normalize_attack_surface_observation(
+        values, tenant_id=values["tenant_id"], now_epoch=150,
+        audit=lambda *_args: None,
+    )
+
+
+@pytest.mark.parametrize("visibility,ownership,exploitability,forgotten,risk,recommendations", [
+    ("PUBLIC", "KNOWN", "CONFIRMED_EXPLOITABLE", False, "CRITICAL", ("WARN", "PROPOSE_RISK_REDUCTION")),
+    ("UNEXPECTED", "UNKNOWN", "UNKNOWN", True, "HIGH", ("WARN", "PROPOSE_RISK_REDUCTION")),
+    ("PUBLIC", "KNOWN", "NOT_EXPLOITABLE", False, "MEDIUM", ("WARN",)),
+    ("RESTRICTED", "KNOWN", "NOT_EXPLOITABLE", False, "LOW", ("WARN",)),
+])
+def test_attack_surface_classification_is_deterministic_and_advisory(
+    visibility, ownership, exploitability, forgotten, risk, recommendations,
+):
+    evidence = []
+    value = classify_attack_surface_observation(
+        observation(visibility_state=visibility, ownership_state=ownership),
+        tenant_id="tenant-a", exploitability_state=exploitability,
+        forgotten_asset=forgotten, audit=lambda *args: evidence.append(args),
+    )
+    assert value.risk == risk and value.recommendations == recommendations
+    assert value.action == "ADVISE_ONLY" and value.authority_granted is False
+    assert evidence[0][1]["deployment"] == "DISABLED"
+    assert evidence[0][1]["response_executed"] is False
+
+
+@pytest.mark.parametrize("kwargs,reason", [
+    ({"tenant_id": "tenant-b", "exploitability_state": "UNKNOWN", "forgotten_asset": False}, "TENANT_MISMATCH"),
+    ({"tenant_id": "tenant-a", "exploitability_state": "EXPLOIT_NOW", "forgotten_asset": False}, "EXPLOITABILITY_INVALID"),
+    ({"tenant_id": "tenant-a", "exploitability_state": "UNKNOWN", "forgotten_asset": 1}, "FORGOTTEN_ASSET_INVALID"),
+    ({"tenant_id": "tenant-a", "exploitability_state": "UNKNOWN", "forgotten_asset": True}, "FACTS_CONTRADICTORY"),
+])
+def test_attack_surface_classification_denies_invalid_cross_tenant_or_contradictory_facts(kwargs, reason):
+    with pytest.raises(AttackSurfaceObservationDenied, match=reason):
+        classify_attack_surface_observation(
+            observation(), audit=lambda *_args: None, **kwargs,
+        )
+
+
+def test_attack_surface_classification_denies_authority_shape_and_evidence_failure():
+    admitted = observation()
+    forged = AttackSurfaceObservation(
+        admitted.event_id, admitted.tenant_id, admitted.observed_at_epoch,
+        admitted.asset_type, admitted.asset_ref, admitted.exposure_ref,
+        admitted.service, admitted.protocol, admitted.port,
+        admitted.ownership_state, admitted.visibility_state, admitted.evidence_ref,
+        authority_granted=True,
+    )
+    with pytest.raises(AttackSurfaceObservationDenied, match="OBSERVATION_AUTHORITY_INVALID"):
+        classify_attack_surface_observation(
+            forged, tenant_id="tenant-a", exploitability_state="UNKNOWN",
+            forgotten_asset=False, audit=lambda *_args: None,
+        )
+    with pytest.raises(AttackSurfaceObservationDenied, match="EVIDENCE_WRITE_FAILED"):
+        classify_attack_surface_observation(
+            admitted, tenant_id="tenant-a", exploitability_state="UNKNOWN",
+            forgotten_asset=False,
+            audit=lambda *_args: (_ for _ in ()).throw(RuntimeError("offline")),
         )
