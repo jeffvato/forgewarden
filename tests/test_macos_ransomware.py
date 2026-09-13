@@ -45,3 +45,22 @@ def test_macos_fixtures_reuse_canonical_ransomware_evaluator():
         "endpoint_events_batch_admitted", "ransomware_activity_evaluated",
     ]
     assert evidence[-1][1]["deployment"] == "DISABLED"
+
+
+def test_benign_macos_fixture_batch_does_not_create_a_finding():
+    evidence = []
+    store = NormalizedEventStore(lambda *args: evidence.append(args))
+    observations = ingest_macos_batch(
+        store,
+        [_record("m1", 100, "WRITE"), _record("m2", 101, "WRITE")],
+        tenant_id="tenant-a", device_id="mac-1", now_epoch=150,
+    )
+    assert evaluate_ransomware_activity(
+        observations, tenant_id="tenant-a", device_id="mac-1",
+        audit=lambda *args: evidence.append(args),
+    ) is None
+    assert [item[0] for item in evidence] == [
+        "endpoint_events_batch_admitted", "ransomware_activity_evaluated",
+    ]
+    assert evidence[-1][1]["confidence"] == "NONE"
+    assert evidence[-1][1]["recommendations"] == []

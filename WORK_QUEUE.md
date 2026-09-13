@@ -22,7 +22,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-RANSOM-06 — macOS canonical-event compatibility proof
 - Requirement: FW-RANSOM cross-platform normalized-event reuse
-- State: REVIEW
+- State: REPAIR
 - Priority: P0
 - Dependencies: FW-ENDPOINT-MACOS-01, FW-RANSOM-05
 - Approval: Jeff authorized FW-ENDPOINT/FW-RANSOM continuation as small bounded candidates.
