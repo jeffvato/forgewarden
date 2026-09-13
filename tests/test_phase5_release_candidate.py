@@ -35,6 +35,8 @@ class Phase5PublicExportPolicyTests(unittest.TestCase):
             self.assertTrue(track["allowlist"])
         self.assertIn("PRIVATE_CORE", policy["required_denials"])
         self.assertIn("UNLISTED_FILES", policy["required_denials"])
+        self.assertTrue(all(not path.startswith("swarm/")
+                            for path in policy["tracks"]["PUBLIC_SDK"]["allowlist"]))
 
     def test_export_admission_helpers_bind_policy_paths_and_git(self):
         _, policy, paths = _load_contract("PUBLIC_SDK")
@@ -203,7 +205,7 @@ class Phase5ReleaseCandidateTests(unittest.TestCase):
             ("empty", allowlist[0], b""),
             ("oversize", allowlist[0], b"x" * (self.policy["limits"]["max_file_bytes"] + 1)),
             ("credential", allowlist[0], b'api_key="synthetic-long-secret"\n'),
-            ("aggregate", None, b"x" * 300000),
+            ("aggregate", None, b"x" * 400000),
         )
         for name, selected, content in cases:
             with self.subTest(name=name), tempfile.TemporaryDirectory(

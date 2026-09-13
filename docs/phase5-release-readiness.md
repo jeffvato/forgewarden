@@ -57,7 +57,8 @@ or publication workflow. It performs no dependency lookup or license decision.
 
 FWQ-0081 adds a local disposable candidate builder for the exact `PUBLIC_SDK`
 and `SOURCE_AVAILABLE_DEMO` allowlists. The SDK track contains the existing
-add-on SDK contract; the demo track contains the existing Mission Control UI
+add-on SDK documentation and schema contract without its private Core dependency
+chain; the demo track contains the existing Mission Control UI
 and deterministic demo provider. The builder binds regular tracked files to an
 expected source commit, scans each included byte for prohibited identifiers and
 credential-shaped data, applies file and byte budgets, and emits a normalized

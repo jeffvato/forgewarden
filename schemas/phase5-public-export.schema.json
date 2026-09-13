@@ -10,7 +10,7 @@
     "limits": {
       "max_files": 8,
       "max_file_bytes": 524288,
-      "max_total_bytes": 1048576,
+      "max_total_bytes": 786432,
       "max_manifest_bytes": 65536,
       "max_path_bytes": 240
     },
@@ -20,9 +20,7 @@
         "includes_private_core": false,
         "allowlist": [
           "docs/add-on-sdk.md",
-          "schemas/addon-manifest.schema.json",
-          "swarm/addon_sdk.py",
-          "swarm/addons.py"
+          "schemas/addon-manifest.schema.json"
         ]
       },
       "SOURCE_AVAILABLE_DEMO": {
