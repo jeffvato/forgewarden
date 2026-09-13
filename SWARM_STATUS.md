@@ -1,5 +1,7 @@
 # ForgeWarden Swarm Status
 
+- 2026-09-13: FW-ASM-003 is in bounded test-only repair after AnythingLLM was unavailable and exact Claude review identified two missing input-boundary proofs for non-observation and non-callable Evidence sink values. Runtime logic and authority are unchanged.
+
 - 2026-09-13: FW-ASM-003 is in focused validation. Exact admitted exposure, ownership, exploitability, and forgotten-asset facts produce deterministic advisory risk; contradictory, cross-tenant, malformed, authority-shaped, and Evidence-failing inputs deny. No model decision, discovery, exploit, response, or deployment authority is added.
 
 - 2026-09-13: FW-ASM-002 accepted at implementation `ab8ad675e95bec0be73ec0d3f24bd804638bef14` and test-only repair `6eb438b94d2173bc7846a70e8e6af55fb6481cf3`. Immutable Evidence-first caller-supplied external-asset observations enforce strict tenant, canonical owner-reference, time, type, service, protocol, port, ownership, visibility, shape, and size bounds. Qwen approved the repair at LOW risk but put an optional hardening note in `tests_missing`, so the gate refused it; exact Claude fallback returned APPROVE/LOW with no blockers or missing tests. Focused 21 and full 1896/1 passed. Product Integrity passed every hard check and Golden Path 21, with only the pre-existing `tzdata` dependency YELLOW. No discovery, scan, connection, query, mutation, deployment, or response authority was added. FW-ASM-003 exact supplied-fact classification is next.

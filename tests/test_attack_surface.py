@@ -172,3 +172,21 @@ def test_attack_surface_classification_denies_authority_shape_and_evidence_failu
             forgotten_asset=False,
             audit=lambda *_args: (_ for _ in ()).throw(RuntimeError("offline")),
         )
+
+
+@pytest.mark.parametrize("invalid", [None, {}, "observation", 1])
+def test_attack_surface_classification_denies_non_observation_input(invalid):
+    with pytest.raises(AttackSurfaceObservationDenied, match="OBSERVATION_INVALID"):
+        classify_attack_surface_observation(
+            invalid, tenant_id="tenant-a", exploitability_state="UNKNOWN",
+            forgotten_asset=False, audit=lambda *_args: None,
+        )
+
+
+@pytest.mark.parametrize("invalid", [None, 1, "audit"])
+def test_attack_surface_classification_denies_non_callable_audit(invalid):
+    with pytest.raises(AttackSurfaceObservationDenied, match="OBSERVATION_INVALID"):
+        classify_attack_surface_observation(
+            observation(), tenant_id="tenant-a", exploitability_state="UNKNOWN",
+            forgotten_asset=False, audit=invalid,
+        )
