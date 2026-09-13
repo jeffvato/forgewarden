@@ -1,0 +1,35 @@
+{
+  "adjudication": null,
+  "candidate_commit": "513d3b4bf451b88d93cce2bc1499a187a6757eed",
+  "deployment": "DISABLED",
+  "job_id": "phase2a-513d3b4bf451b88d93cce2bc",
+  "kill_switch": "ENGAGED",
+  "mutation_allowed": false,
+  "reviews": [
+    {
+      "provider": "CLAUDE",
+      "result": {
+        "blocking_findings": [],
+        "job_id": "phase2a-513d3b4bf451b88d93cce2bc",
+        "non_blocking_notes": [
+          "BrowserEmailFinding constructor attributes (recommendations, mode, action) not visible in patch; test assertions assume these properties exist on the returned object. Pattern is consistent with existing classify_dangerous_delivery usage, suggesting design handles these as class properties or defaults. Verification requires running test suite."
+        ],
+        "proposed_rules": [
+          {
+            "description": "OAuth consent classification must process only the normalized OAUTH_CONSENT_ABUSE indicator as Evidence-first HIGH/WARN without performing OAuth, token, provider, browser, mailbox, network, response, or deployment operations.",
+            "examples": [
+              "classify_oauth_consent_abuse validates tenant and untrusted-observation boundaries via _validated_observation, marks data as UNTRUSTED_DATA, locks mode/action/response/deployment to DRY_RUN/DETECT_ONLY/False/DISABLED, excludes sender and URLs from audit Evidence, and returns deterministic finding."
+            ]
+          }
+        ],
+        "reasoning_summary": "FW-BME-04 correctly implements deterministic OAuth-consent-abuse classification meeting all stated requirements. The new classify_oauth_consent_abuse() function exhibits proper Evidence-first pattern: calls _validated_observation for tenant/authority revalidation, checks only for exact OAUTH_CONSENT_ABUSE indicator, audits before returning, excludes sender/URL from evidence record, and returns hardcoded HIGH confidence with WARN recommendation. Mode, action, response, and deployment are locked to DRY_RUN, DETECT_ONLY, False, and DISABLED respectively\u2014all hardcoded for determinism. No OAuth exchange, provider call, token access, browser/mailbox/network operation, containment, remediation, deployment, or policy/response authority is added. Boundaries are maintained: observation validated against expected tenant via existing _validated_observation() with untrusted-data trust level explicitly recorded. The patch is narrow (4 files: status, queue, implementation, tests) with comprehensive boundary testing: test 1 verifies exact positive case with evidence minimization; test 2 validates benign/tenant-mismatch/authority-invalid/evidence-failure rejection paths. No syntax errors, no prohibited side effects, pattern reuse appropriate.",
+        "reviewed_commit": "513d3b4bf451b88d93cce2bc1499a187a6757eed",
+        "risk": "LOW",
+        "tests_missing": [],
+        "verdict": "APPROVE"
+      },
+      "state": "APPROVED"
+    }
+  ],
+  "state": "APPROVED"
+}

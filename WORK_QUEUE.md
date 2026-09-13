@@ -22,7 +22,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-BME-04 — Deterministic OAuth-consent abuse classification
 - Requirement: FW-BME risky OAuth consent signal
-- State: REVIEW
+- State: DONE
 - Priority: P0
 - Dependencies: FW-BME-03
 - Approval: Jeff authorized FW-BME continuation after FW-ENDPOINT/FW-RANSOM using small bounded candidates.
@@ -37,6 +37,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no OAuth exchange, provider call, token access/revocation, browser/mailbox/network operation, containment, remediation, deployment, or response authority is added.
 - Expected validation: focused Linux proof, exact independent read-only review, then one full suite and Product Integrity run after approval.
 - Security considerations: caller-supplied consent indicators remain untrusted facts and cannot authorize identity or provider action.
+- Completion evidence: exact candidate `513d3b4bf451b88d93cce2bc1499a187a6757eed`; focused 30 passed. AnythingLLM was unavailable, then exact Claude job `phase2a-513d3b4bf451b88d93cce2bc` returned APPROVE/LOW with no blockers or missing tests. Full 1717 passed/1 skipped; Product Integrity fresh full 1717/1 and Golden Path 30 passed with every hard check and only the pre-existing `tzdata` dependency YELLOW. Evidence: `docs/fw-bme-04-qwen-review.json`, `docs/fw-bme-04-claude-review.json`, `docs/fw-bme-04-integrity.json`.
 
 ### FW-RANSOM-06 — macOS canonical-event compatibility proof
 - Requirement: FW-RANSOM cross-platform normalized-event reuse
