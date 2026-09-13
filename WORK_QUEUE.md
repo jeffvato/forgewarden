@@ -20,6 +20,84 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 
 Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical implementation is not new work. FWQ-0008 VALIDATED preserves a provenance caveat, not a request to rebuild or automatically repeat review. FWQ-0012–0016 are reconciled DONE from existing implementation and recorded proof.
 
+### FW-NET-001 — Network security ownership and bounded route
+- Requirement: FW-NET canonical ownership inventory
+- State: REVIEW
+- Priority: P0
+- Dependencies: FW-SUPPLY-006, FW-ENDPOINT, FW-ID, FW-EVID, FW-AID
+- Approval: Jeff authorized the ordered FW-NET phase through the continuing heartbeat.
+- Description: Map existing endpoint-network, ransomware, AI-agent, Identity, policy, Evidence, SOC, and Mission Control owners and define the first genuinely missing bounded network contract.
+- Target path: docs/fw-net-inventory.md
+- Allowed paths: docs/fw-net-inventory.md, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: git diff --check HEAD^ HEAD and deterministic repository/source/test/evidence inventory
+- Acceptance criteria:
+  - existing Endpoint/NormalizedEventStore, FW-RANSOM, FW-AID, FW-ID/FW-KEYS, policy/Action Ticket, FW-EVID, FW-SOC, and Mission Control owners are reused;
+  - substantive FW-NET-002 through FW-NET-006 IDs and dependencies are explicit without claiming implementation;
+  - the first runtime gap is an immutable tenant-bound caller-supplied network metadata contract;
+  - no packet capture, live sensor/listener, DNS/DHCP/TLS query, host scan, socket, infrastructure access, credential use, route/firewall/NAC/segmentation change, containment, remediation, deployment, or response authority is added.
+- Expected validation: deterministic inventory, `git diff --check`, and exact independent read-only review; no product suite or Product Integrity rerun for documentation-only architecture.
+- Security considerations: roadmap and queue metadata cannot authorize network observation or response.
+
+### FW-NET-002 — Caller-supplied network observation
+- Requirement: FW-NET immutable tenant-bound metadata boundary
+- State: READY
+- Priority: P0
+- Dependencies: FW-NET-001
+- Approval: Jeff authorized the ordered FW-NET phase using small bounded candidates.
+- Description: Normalize strict caller-supplied tenant, device, source, destination, protocol, port, direction, indicator, time, and canonical-reference metadata.
+- Target path: swarm/network_security.py
+- Allowed paths: swarm/network_security.py, tests/test_network_security.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_network_security.py
+- Acceptance criteria: immutable, bounded, untrusted DRY_RUN/DETECT_ONLY metadata is Evidence-first and fail-closed; no content, credential, packet, socket, sensor, query, scan, mutation, or response authority is added.
+
+### FW-NET-003 — Network anomaly and threat classification
+- Requirement: FW-NET exact supplied-fact evaluation
+- State: BLOCKED
+- Priority: P0
+- Dependencies: FW-NET-002
+- Approval: Jeff authorized the ordered FW-NET phase using small bounded candidates.
+- Description: Deterministically classify exact caller-supplied scan, lateral-movement, command-and-control, credential-abuse, and exfiltration indicators.
+- Target path: swarm/network_security.py
+- Allowed paths: swarm/network_security.py, tests/test_network_security.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_network_security.py
+- Acceptance criteria: bounded exact indicators produce advisory risk; malformed, contradictory, cross-tenant, or authority-shaped facts deny; no model decision or response executor is added.
+
+### FW-NET-004 — Canonical cross-domain reference binding
+- Requirement: FW-NET owner composition
+- State: BLOCKED
+- Priority: P0
+- Dependencies: FW-NET-003
+- Approval: Jeff authorized the ordered FW-NET phase using small bounded candidates.
+- Description: Bind exact network findings to canonical Endpoint, FW-AID, FW-SOC, Identity, and FW-EVID references without duplicating their state.
+- Target path: swarm/network_security.py
+- Allowed paths: swarm/network_security.py, tests/test_network_security.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_network_security.py
+- Acceptance criteria: exact tenant/source/reference bindings and Evidence order fail closed; references remain advisory and establish no authority.
+
+### FW-NET-005 — Inert Action Ticket-bound containment proposal
+- Requirement: FW-NET bounded non-executing response intent
+- State: BLOCKED
+- Priority: P0
+- Dependencies: FW-NET-004
+- Approval: Jeff authorized the ordered FW-NET phase using small bounded candidates.
+- Description: Convert an exact high-confidence network binding into an Evidence-first inert proposal through existing policy and single-use Action Ticket controls.
+- Target path: swarm/network_security.py
+- Allowed paths: swarm/network_security.py, tests/test_network_security.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_network_security.py tests/test_action_ticket.py
+- Acceptance criteria: engaged kill switch, exact policy/target/ticket binding, and Evidence are mandatory; output is PROPOSE_ONLY and cannot alter any network resource.
+
+### FW-NET-006 — Integrated lifecycle and Mission Control projection
+- Requirement: FW-NET accepted-stage composition and operator visibility
+- State: BLOCKED
+- Priority: P0
+- Dependencies: FW-NET-005
+- Approval: Jeff authorized the ordered FW-NET phase using small bounded candidates.
+- Description: Compose accepted observation, classification, owner-reference, and inert-proposal stages and expose sanitized canonical or explicitly simulated facts through Mission Control.
+- Target paths: swarm/network_security.py, swarm/mission_control.py
+- Allowed paths: swarm/network_security.py, swarm/mission_control.py, tests/test_network_security.py, tests/test_mission_control.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_network_security.py tests/test_mission_control.py tests/test_action_ticket.py
+- Acceptance criteria: one deterministic lifecycle preserves exact ordering and bindings; lower-risk/failure paths stop early; visibility owns no state, callbacks, tickets, or response authority.
+
 ### FW-SUPPLY-006 — Integrated lifecycle and Mission Control projection
 - Requirement: FW-SUPPLY accepted-stage composition and operator visibility
 - State: DONE
