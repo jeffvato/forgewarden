@@ -5,6 +5,8 @@ import pytest
 from swarm.attack_surface import (
     AttackSurfaceObservation,
     AttackSurfaceObservationDenied,
+    AttackSurfaceFinding,
+    bind_attack_surface_references,
     classify_attack_surface_observation,
     normalize_attack_surface_observation,
 )
@@ -189,4 +191,74 @@ def test_attack_surface_classification_denies_non_callable_audit(invalid):
         classify_attack_surface_observation(
             observation(), tenant_id="tenant-a", exploitability_state="UNKNOWN",
             forgotten_asset=False, audit=invalid,
+        )
+
+
+def finding(**observation_overrides):
+    return classify_attack_surface_observation(
+        observation(**observation_overrides), tenant_id="tenant-a",
+        exploitability_state="CONFIRMED_EXPLOITABLE", forgotten_asset=False,
+        audit=lambda *_args: None,
+    )
+
+
+def binding_kwargs(**overrides):
+    values = {
+        "tenant_id": "tenant-a", "network_ref": "fw-network/tenant-a/exposure-1",
+        "vulnerability_refs": ("fw-vuln/tenant-a/cve-1",),
+        "catalog_ref": "fw-catalog/tenant-a/trusted-1",
+        "signature_ref": "fw-signature/tenant-a/cert-1",
+        "soc_incident_ref": "fw-incident/tenant-a/asm-1",
+        "evidence_refs": ("fw-evid/tenant-a/asm-1",),
+    }
+    values.update(overrides)
+    return values
+
+
+def test_attack_surface_reference_binding_reuses_canonical_owners_evidence_first():
+    evidence = []
+    value = bind_attack_surface_references(
+        finding(), **binding_kwargs(), audit=lambda *args: evidence.append(args),
+    )
+    assert value.asset_ref == "fw-asset/tenant-a/site-1"
+    assert value.network_ref == "fw-network/tenant-a/exposure-1"
+    assert value.vulnerability_refs == ("fw-vuln/tenant-a/cve-1",)
+    assert value.action == "CORRELATE_ONLY" and value.authority_granted is False
+    assert evidence[0][1]["deployment"] == "DISABLED"
+    assert evidence[0][1]["response_executed"] is False
+
+
+@pytest.mark.parametrize("changes,reason", [
+    ({"tenant_id": "tenant-b"}, "TENANT_MISMATCH"),
+    ({"network_ref": "fw-network/tenant-b/exposure-1"}, "NETWORK_REF_INVALID"),
+    ({"vulnerability_refs": ("fw-vuln/tenant-b/cve-1",)}, "VULNERABILITY_REFS_INVALID"),
+    ({"vulnerability_refs": ("fw-vuln/tenant-a/cve-1", "fw-vuln/tenant-a/cve-1")}, "VULNERABILITY_REFS_INVALID"),
+    ({"catalog_ref": "fw-catalog/tenant-b/trusted-1"}, "CERTIFICATE_REF_INVALID"),
+    ({"signature_ref": "fw-catalog/tenant-a/cert-1"}, "CERTIFICATE_REF_INVALID"),
+    ({"soc_incident_ref": "fw-incident/tenant-b/asm-1"}, "SOC_INCIDENT_REF_INVALID"),
+    ({"evidence_refs": ("fw-vuln/tenant-a/cve-1",)}, "EVIDENCE_REFS_INVALID"),
+])
+def test_attack_surface_reference_binding_denies_invalid_or_cross_tenant_refs(changes, reason):
+    with pytest.raises(AttackSurfaceObservationDenied, match=reason):
+        bind_attack_surface_references(
+            finding(), **binding_kwargs(**changes), audit=lambda *_args: None,
+        )
+
+
+def test_attack_surface_reference_binding_denies_forged_finding_and_evidence_failure():
+    source = finding()
+    forged = AttackSurfaceFinding(
+        source.event_id, source.tenant_id, source.asset_ref, source.exposure_ref,
+        source.visibility_state, source.ownership_state,
+        source.exploitability_state, source.forgotten_asset, source.risk,
+        source.recommendations, authority_granted=True,
+    )
+    with pytest.raises(AttackSurfaceObservationDenied, match="FINDING_INVALID"):
+        bind_attack_surface_references(
+            forged, **binding_kwargs(), audit=lambda *_args: None,
+        )
+    with pytest.raises(AttackSurfaceObservationDenied, match="EVIDENCE_WRITE_FAILED"):
+        bind_attack_surface_references(
+            source, **binding_kwargs(),
+            audit=lambda *_args: (_ for _ in ()).throw(RuntimeError("offline")),
         )

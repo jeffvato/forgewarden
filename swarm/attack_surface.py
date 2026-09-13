@@ -12,10 +12,15 @@ from typing import Any, Callable, Mapping
 
 
 MAX_ASM_FIXTURE_BYTES = 32 * 1024
+MAX_ASM_OWNER_REFS = 16
 _TEXT = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:/@+-]{0,255}$")
 _TENANT = re.compile(r"^[a-z][a-z0-9_.-]{0,127}$")
 _OWNER_REF = re.compile(
     r"^fw-(asset|exposure|evid)/([a-z][a-z0-9_.-]{0,127})/[a-z][a-z0-9_.:/+-]{0,191}$"
+)
+_CANONICAL_REF = re.compile(
+    r"^fw-(network|vuln|catalog|signature|incident|evid)/"
+    r"([a-z][a-z0-9_.-]{0,127})/[a-z][a-z0-9_.:/+-]{0,191}$"
 )
 _ASSET_TYPES = frozenset({
     "API", "CLOUD_RESOURCE", "DATABASE", "DEVELOPMENT_SYSTEM", "DOMAIN",
@@ -89,6 +94,25 @@ class AttackSurfaceFinding:
     trust: str = "UNTRUSTED_DATA"
     mode: str = "DRY_RUN"
     action: str = "ADVISE_ONLY"
+    authority_granted: bool = False
+
+
+@dataclass(frozen=True)
+class AttackSurfaceReferenceBinding:
+    event_id: str
+    tenant_id: str
+    asset_ref: str
+    exposure_ref: str
+    risk: str
+    network_ref: str
+    vulnerability_refs: tuple[str, ...]
+    catalog_ref: str
+    signature_ref: str
+    soc_incident_ref: str
+    evidence_refs: tuple[str, ...]
+    trust: str = "UNTRUSTED_DATA"
+    mode: str = "DRY_RUN"
+    action: str = "CORRELATE_ONLY"
     authority_granted: bool = False
 
 
@@ -215,4 +239,76 @@ def classify_attack_surface_observation(
         observation.exposure_ref, observation.visibility_state,
         observation.ownership_state, exploitability_state, forgotten_asset,
         risk, recommendations,
+    )
+
+
+def bind_attack_surface_references(
+    finding: AttackSurfaceFinding, *, tenant_id: str, network_ref: str,
+    vulnerability_refs: tuple[str, ...], catalog_ref: str, signature_ref: str,
+    soc_incident_ref: str, evidence_refs: tuple[str, ...],
+    audit: Callable[[str, dict[str, Any]], None],
+) -> AttackSurfaceReferenceBinding:
+    """Bind canonical owner references without creating owner state or trust."""
+    if not isinstance(finding, AttackSurfaceFinding) or not callable(audit):
+        raise AttackSurfaceObservationDenied("FINDING_INVALID")
+    if not isinstance(tenant_id, str) or not _TENANT.fullmatch(tenant_id):
+        raise AttackSurfaceObservationDenied("TENANT_INVALID")
+    if finding.tenant_id != tenant_id:
+        raise AttackSurfaceObservationDenied("TENANT_MISMATCH")
+    expected_recommendations = (
+        ("WARN", "PROPOSE_RISK_REDUCTION")
+        if finding.risk in {"HIGH", "CRITICAL"} else ("WARN",)
+    )
+    if (
+        finding.risk not in {"LOW", "MEDIUM", "HIGH", "CRITICAL"}
+        or finding.recommendations != expected_recommendations
+        or finding.trust != "UNTRUSTED_DATA" or finding.mode != "DRY_RUN"
+        or finding.action != "ADVISE_ONLY"
+        or finding.authority_granted is not False
+    ):
+        raise AttackSurfaceObservationDenied("FINDING_INVALID")
+    asset_ref = _owner_ref(finding.asset_ref, "asset", tenant_id, "ASSET_REF")
+    exposure_ref = _owner_ref(finding.exposure_ref, "exposure", tenant_id, "EXPOSURE_REF")
+    scalar_refs = (
+        (network_ref, "network", "NETWORK_REF_INVALID"),
+        (catalog_ref, "catalog", "CERTIFICATE_REF_INVALID"),
+        (signature_ref, "signature", "CERTIFICATE_REF_INVALID"),
+        (soc_incident_ref, "incident", "SOC_INCIDENT_REF_INVALID"),
+    )
+    for value, kind, reason in scalar_refs:
+        match = _CANONICAL_REF.fullmatch(value) if isinstance(value, str) else None
+        if match is None or match.group(1) != kind or match.group(2) != tenant_id:
+            raise AttackSurfaceObservationDenied(reason)
+    for values, kind, reason in (
+        (vulnerability_refs, "vuln", "VULNERABILITY_REFS_INVALID"),
+        (evidence_refs, "evid", "EVIDENCE_REFS_INVALID"),
+    ):
+        if (
+            not isinstance(values, tuple) or not 1 <= len(values) <= MAX_ASM_OWNER_REFS
+            or tuple(sorted(set(values))) != values
+        ):
+            raise AttackSurfaceObservationDenied(reason)
+        for value in values:
+            match = _CANONICAL_REF.fullmatch(value) if isinstance(value, str) else None
+            if match is None or match.group(1) != kind or match.group(2) != tenant_id:
+                raise AttackSurfaceObservationDenied(reason)
+    try:
+        audit("attack_surface_references_bound", {
+            "event_id": finding.event_id, "tenant_id": tenant_id,
+            "asset_ref": asset_ref, "exposure_ref": exposure_ref,
+            "risk": finding.risk, "network_ref": network_ref,
+            "vulnerability_refs": vulnerability_refs,
+            "catalog_ref": catalog_ref, "signature_ref": signature_ref,
+            "soc_incident_ref": soc_incident_ref,
+            "evidence_refs": evidence_refs, "trust": "UNTRUSTED_DATA",
+            "mode": "DRY_RUN", "action": "CORRELATE_ONLY",
+            "deployment": "DISABLED", "response_executed": False,
+            "authority_granted": False,
+        })
+    except Exception as exc:
+        raise AttackSurfaceObservationDenied("EVIDENCE_WRITE_FAILED") from exc
+    return AttackSurfaceReferenceBinding(
+        finding.event_id, tenant_id, asset_ref, exposure_ref, finding.risk,
+        network_ref, vulnerability_refs, catalog_ref, signature_ref,
+        soc_incident_ref, evidence_refs,
     )
