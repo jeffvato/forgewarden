@@ -9,7 +9,11 @@ from typing import Any, Callable, Mapping
 MAX_SAAS_FIXTURE_BYTES = 32 * 1024
 MAX_SAAS_REF_BYTES = 256
 MAX_SAAS_INDICATORS = 16
+MAX_SAAS_CORRELATION_EVIDENCE_REFS = 16
 _REF = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:/-]{0,255}$")
+_TENANT_REF = re.compile(
+    r"^fw-(incident|finding|evid)/([a-z][a-z0-9_.-]{0,127})/[a-z][a-z0-9_.:/-]{0,191}$"
+)
 _PROVIDERS = frozenset({"GENERIC_SAAS", "GOOGLE_WORKSPACE", "MICROSOFT_365", "SALESFORCE"})
 _OBSERVATION_TYPES = frozenset({"ACCOUNT_POSTURE", "OAUTH_APP_POSTURE", "PUBLIC_SHARING", "SIGN_IN_RISK"})
 _INDICATORS = frozenset({
@@ -68,6 +72,21 @@ class SaaSFinding:
     trust: str = "UNTRUSTED_DATA"
     mode: str = "DRY_RUN"
     action: str = "DETECT_ONLY"
+
+
+@dataclass(frozen=True)
+class SaaSCorrelationReference:
+    event_id: str
+    tenant_id: str
+    provider: str
+    confidence: str
+    signals: tuple[str, ...]
+    soc_incident_ref: str
+    aid_finding_ref: str
+    evidence_refs: tuple[str, ...]
+    trust: str = "UNTRUSTED_DATA"
+    mode: str = "DRY_RUN"
+    action: str = "CORRELATE_ONLY"
 
 
 def normalize_saas_observation(
@@ -210,3 +229,72 @@ def classify_saas_observation(
         observation.event_id, expected_tenant, observation.provider, ordered,
         confidence,
     )
+
+
+def bind_saas_correlation_references(
+    finding: SaaSFinding, *, tenant_id: str, soc_incident_ref: str,
+    aid_finding_ref: str, evidence_refs: tuple[str, ...],
+    audit: Callable[[str, dict[str, Any]], None],
+) -> SaaSCorrelationReference:
+    """Bind canonical FW-SOC/FW-AID references without creating incident state."""
+    if not isinstance(finding, SaaSFinding) or not callable(audit):
+        raise SaaSObservationDenied("FINDING_INVALID")
+    expected_tenant = _reference(tenant_id, "TENANT")
+    if finding.tenant_id != expected_tenant:
+        raise SaaSObservationDenied("TENANT_MISMATCH")
+    if (
+        finding.provider not in _PROVIDERS
+        or finding.confidence not in {"LOW", "MEDIUM", "HIGH"}
+        or finding.recommendations != ("WARN",)
+        or finding.trust != "UNTRUSTED_DATA"
+        or finding.mode != "DRY_RUN"
+        or finding.action != "DETECT_ONLY"
+        or not isinstance(finding.signals, tuple)
+        or not 1 <= len(finding.signals) <= MAX_SAAS_INDICATORS
+        or tuple(sorted(set(finding.signals))) != finding.signals
+        or any(item not in _INDICATORS for item in finding.signals)
+    ):
+        raise SaaSObservationDenied("FINDING_INVALID")
+    _reference(finding.event_id, "EVENT_ID")
+    refs = (
+        (soc_incident_ref, "incident"),
+        (aid_finding_ref, "finding"),
+    )
+    for value, kind in refs:
+        match = _TENANT_REF.fullmatch(value) if isinstance(value, str) else None
+        if match is None or match.group(1) != kind or match.group(2) != expected_tenant:
+            raise SaaSObservationDenied("CORRELATION_REF_INVALID")
+    if (
+        not isinstance(evidence_refs, tuple)
+        or not 1 <= len(evidence_refs) <= MAX_SAAS_CORRELATION_EVIDENCE_REFS
+        or tuple(sorted(set(evidence_refs))) != evidence_refs
+    ):
+        raise SaaSObservationDenied("EVIDENCE_REFS_INVALID")
+    for value in evidence_refs:
+        match = _TENANT_REF.fullmatch(value) if isinstance(value, str) else None
+        if match is None or match.group(1) != "evid" or match.group(2) != expected_tenant:
+            raise SaaSObservationDenied("EVIDENCE_REFS_INVALID")
+    result = SaaSCorrelationReference(
+        finding.event_id, expected_tenant, finding.provider,
+        finding.confidence, finding.signals, soc_incident_ref,
+        aid_finding_ref, evidence_refs,
+    )
+    try:
+        audit("saas_correlation_references_bound", {
+            "event_id": finding.event_id,
+            "tenant_id": expected_tenant,
+            "provider": finding.provider,
+            "confidence": finding.confidence,
+            "signals": list(finding.signals),
+            "soc_incident_ref": soc_incident_ref,
+            "aid_finding_ref": aid_finding_ref,
+            "evidence_refs": list(evidence_refs),
+            "trust": "UNTRUSTED_DATA",
+            "mode": "DRY_RUN",
+            "action": "CORRELATE_ONLY",
+            "response_executed": False,
+            "deployment": "DISABLED",
+        })
+    except Exception as exc:
+        raise SaaSObservationDenied("EVIDENCE_WRITE_FAILED") from exc
+    return result

@@ -2,7 +2,12 @@ from dataclasses import FrozenInstanceError, replace
 
 import pytest
 
-from swarm.saas_security import SaaSObservationDenied, classify_saas_observation, normalize_saas_observation
+from swarm.saas_security import (
+    SaaSObservationDenied,
+    bind_saas_correlation_references,
+    classify_saas_observation,
+    normalize_saas_observation,
+)
 
 
 def _fixture(**overrides):
@@ -110,4 +115,69 @@ def test_saas_classifier_revalidates_tenant_authority_shape_and_evidence():
         classify_saas_observation(
             observation, tenant_id="tenant-a",
             audit=lambda *_args: (_ for _ in ()).throw(RuntimeError("offline")),
+        )
+
+
+def _finding():
+    observation = normalize_saas_observation(
+        _fixture(), tenant_id="tenant-a", now_epoch=150, audit=lambda *_args: None,
+    )
+    return classify_saas_observation(
+        observation, tenant_id="tenant-a", audit=lambda *_args: None,
+    )
+
+
+def test_saas_correlation_binds_canonical_references_evidence_first_and_inert():
+    evidence = []
+    result = bind_saas_correlation_references(
+        _finding(), tenant_id="tenant-a",
+        soc_incident_ref="fw-incident/tenant-a/saas-1",
+        aid_finding_ref="fw-finding/tenant-a/saas-1",
+        evidence_refs=("fw-evid/tenant-a/saas-1",),
+        audit=lambda *args: evidence.append(args),
+    )
+    assert result.action == "CORRELATE_ONLY" and result.mode == "DRY_RUN"
+    assert result.soc_incident_ref == "fw-incident/tenant-a/saas-1"
+    assert result.aid_finding_ref == "fw-finding/tenant-a/saas-1"
+    assert evidence[0][1]["response_executed"] is False
+    assert evidence[0][1]["deployment"] == "DISABLED"
+
+
+@pytest.mark.parametrize("kwargs,reason", [
+    ({"tenant_id": "tenant-b"}, "TENANT_MISMATCH"),
+    ({"soc_incident_ref": "fw-incident/tenant-b/saas-1"}, "CORRELATION_REF_INVALID"),
+    ({"aid_finding_ref": "fw-incident/tenant-a/saas-1"}, "CORRELATION_REF_INVALID"),
+    ({"evidence_refs": ()}, "EVIDENCE_REFS_INVALID"),
+    ({"evidence_refs": ("fw-evid/tenant-b/saas-1",)}, "EVIDENCE_REFS_INVALID"),
+])
+def test_saas_correlation_rejects_cross_tenant_or_malformed_references(kwargs, reason):
+    values = {
+        "tenant_id": "tenant-a",
+        "soc_incident_ref": "fw-incident/tenant-a/saas-1",
+        "aid_finding_ref": "fw-finding/tenant-a/saas-1",
+        "evidence_refs": ("fw-evid/tenant-a/saas-1",),
+        "audit": lambda *_args: None,
+    }
+    values.update(kwargs)
+    with pytest.raises(SaaSObservationDenied, match=reason):
+        bind_saas_correlation_references(_finding(), **values)
+
+
+def test_saas_correlation_revalidates_finding_and_denies_evidence_failure():
+    finding = _finding()
+    values = dict(
+        tenant_id="tenant-a",
+        soc_incident_ref="fw-incident/tenant-a/saas-1",
+        aid_finding_ref="fw-finding/tenant-a/saas-1",
+        evidence_refs=("fw-evid/tenant-a/saas-1",),
+    )
+    with pytest.raises(SaaSObservationDenied, match="FINDING_INVALID"):
+        bind_saas_correlation_references(
+            replace(finding, action="RESPOND"), audit=lambda *_args: None, **values,
+        )
+    with pytest.raises(SaaSObservationDenied, match="EVIDENCE_WRITE_FAILED"):
+        bind_saas_correlation_references(
+            finding,
+            audit=lambda *_args: (_ for _ in ()).throw(RuntimeError("offline")),
+            **values,
         )
