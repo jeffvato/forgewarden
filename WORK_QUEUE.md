@@ -1731,7 +1731,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FWQ-0082 — Public-candidate dependency provenance and SBOM proof
 - Requirement: Phase 5 dependency, supply-chain, and release provenance
-- State: READY
+- State: DONE
 - Priority: P0
 - Dependencies: FWQ-0081
 - Approval: Jeff approved the public assurance plan. Offline provenance and SBOM candidate generation is authorized; license selection and publication remain disabled.
@@ -1750,6 +1750,26 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - keep legal, chain-of-title, trademark/media, dependency-review, and Customer Root release gates pending and fail closed if any output implies clearance or production readiness.
 - Expected validation: one focused Linux proof, exact independent read-only review, then one full suite and Product Integrity Gate after approval.
 - Security considerations: SBOM/provenance output is evidence for a future release decision only; it cannot select a license, waive third-party obligations, publish, deploy, or authorize access.
+- Completion evidence: raw private source-commit disclosure was removed through `67e60c4d83a904fcbe0d14a07eab4878ea1807b2` and direct-key test `d720f526efd833fc89ab85101422ac3eb3a6afd6`; exact Qwen accepted the repair at APPROVE/LOW with no blockers or missing tests. Track-closure repair `c5d247c49d5cd25c4ad1a6d33fe5bd6c06321ac7` removed the private-Core SDK example and personal operator initials, added an exact deterministic Demo-data fallback, and received exact Claude fallback APPROVE/LOW after two fail-closed AnythingLLM outages. Final provenance candidate `8f0dd24e998b034868a3b6972d93731d3a904da8` validates exact manifests/files and conservatively classifies bounded Python, Markdown, JavaScript, HTML, CSS, and JSON references offline. After two AnythingLLM outages and one bounded large-patch Claude read limit, two tool-free source chunks bound to the same exact final SHA returned Claude APPROVE/LOW with no blockers or missing tests. Focused 37, full 2209/1, and Product Integrity hard checks/15 integrity/37 provenance proofs passed; only pre-existing `tzdata` remains YELLOW. Output contains one-way source binding and exact file/manifest/policy digests, NOASSERTION licenses, pending legal/Customer Root gates, and no raw private commit or personal/cloud/operational identifier. No network, package installation, provider, credential, Git remote, publication, deployment, or authority was added.
+
+### FWQ-0083 — Reproducible sanitized single-commit repository candidate
+- Requirement: Phase 5 clean-export repository construction and reproducibility
+- State: READY
+- Priority: P0
+- Dependencies: FWQ-0082
+- Approval: Jeff approved the public assurance plan. Only a local disposable Git repository candidate is authorized; remote creation, visibility change, license selection, and publication remain disabled.
+- Description: Materialize each exact FWQ-0082-validated track as a deterministic local repository with one sanitized root commit and no inherited history or external authority.
+- Target path: swarm/phase5_release_repository.py
+- Allowed paths: swarm/phase5_release_repository.py, config/phase5-release-repository.yaml, schemas/phase5-release-repository.schema.json, tests/test_phase5_release_repository.py, docs/phase5-release-readiness.md, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_phase5_release_repository.py tests/test_phase5_release_provenance.py tests/test_phase5_release_candidate.py
+- Acceptance criteria:
+  - consume only exact FWQ-0081 candidate and FWQ-0082 provenance facts whose track, one-way source binding, manifest/policy/file digests, closure, NOASSERTION licenses, and pending gates validate;
+  - create a new local disposable repository with branch `main`, exactly one root commit, sanitized fixed release-controller identity/timestamp metadata, exact candidate files plus deterministic public manifest and provenance document, and no inherited source objects, refs, tags, remotes, hooks, alternates, credentials, or environment-derived identity;
+  - reproduce the same root commit and tree from the same exact inputs and reject tamper, extra/missing files, links/special files, unsafe paths, dirty or existing destinations, nondeterministic metadata, excessive output, raw private commit, identifiers, secrets, license/readiness claims, or cross-track content;
+  - verify the resulting repository completely offline and remove partial output on every bounded failure;
+  - perform no remote creation, fetch, pull, push, visibility change, release, package upload, credential/provider/billing access, network operation, deployment, or authority grant.
+- Expected validation: one focused Linux proof, exact independent read-only review, then one full suite and Product Integrity Gate after approval.
+- Security considerations: this milestone proves only local deterministic repository construction. Legal, chain-of-title, license, trademark/media, dependency-review, public visibility, and Customer Root publication gates remain pending.
 
 
 ### FW-API-001 — Canonical tenant-bound read-only request admission
