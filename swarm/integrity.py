@@ -6,13 +6,186 @@ declare a roadmap item Proven because a unit test happens to pass.
 from __future__ import annotations
 
 import json
+import io
 import os
 import re
 import subprocess
 import sys
+import tarfile
+import tempfile
+import hashlib
 from pathlib import Path
 from typing import Any, Iterable
 from .policy_gate import PolicyInvariantError, validate_invariant_manifest
+
+
+_CLEAN_REQUIRED_FILES = frozenset({
+    "swarm/__init__.py", "swarm/core.py", "swarm/policy_gate.py",
+    "swarm/integrity.py", "swarm/console.py", "console/index.html",
+    "console/app.js", "console/styles.css", "config/readiness.yaml",
+    "config/llm-profiles.json", "policies/risk-policy.yaml",
+    "requirements-test.txt", "scripts/run-product-golden-path.sh",
+    "tests/test_product_golden_path.py",
+})
+_CLEAN_DECLARED_DEPENDENCIES = frozenset({"cryptography", "jsonschema", "psutil", "pytest", "pyyaml", "tzdata"})
+_CLEAN_SECRET = re.compile(
+    rb"(?i)(-----BEGIN [A-Z ]*PRIVATE KEY-----|bearer\s+[A-Za-z0-9._-]{20,}|"
+    rb"sk-[A-Za-z0-9_-]{24,}|AIza[A-Za-z0-9_-]{24,}|ya29\.[A-Za-z0-9._-]{20,}|"
+    rb"(?:api[_-]?key|client[_-]?secret|access[_-]?token|password)\s*[:=]\s*[\"'][^\"']{16,}[\"'])"
+)
+_CLEAN_SHA = re.compile(r"^[0-9a-f]{40}$")
+
+
+def _clean_archive_name(name: str) -> Path:
+    """Return a safe relative archive path or fail before extraction."""
+    if not isinstance(name, str) or not name or "\\" in name:
+        raise ValueError("clean archive member name is malformed")
+    parts = Path(name).parts
+    if name.startswith("/") or any(part in {"", ".", ".."} for part in parts):
+        raise ValueError("clean archive member path is unsafe")
+    return Path(*parts)
+
+
+def validate_clean_checkout(root: Path, expected_commit: str) -> dict[str, Any]:
+    """Validate a disposable exact-commit archive without installing anything."""
+    root = root.resolve()
+    if not _CLEAN_SHA.fullmatch(expected_commit):
+        raise ValueError("clean checkout expected commit is invalid")
+    try:
+        head = subprocess.run(
+            ["git", "rev-parse", "HEAD"], cwd=root, text=True,
+            capture_output=True, timeout=10, check=True,
+        ).stdout.strip()
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise ValueError("clean checkout Git state is unavailable") from exc
+    if head != expected_commit:
+        raise ValueError("clean checkout current commit mismatch")
+    try:
+        archived = subprocess.run(
+            ["git", "archive", "--format=tar", expected_commit], cwd=root,
+            capture_output=True, timeout=30, check=True,
+        ).stdout
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise ValueError("clean checkout archive is unavailable") from exc
+    if not archived or len(archived) > 64 * 1024 * 1024:
+        raise ValueError("clean checkout archive size is invalid")
+
+    file_hashes: list[tuple[str, str]] = []
+    declared: set[str] = set()
+    with tempfile.TemporaryDirectory(prefix="forgewarden-clean-checkout-") as temporary:
+        checkout = Path(temporary).resolve()
+        try:
+            archive = tarfile.open(fileobj=io.BytesIO(archived), mode="r:")
+        except tarfile.TarError as exc:
+            raise ValueError("clean checkout archive is malformed") from exc
+        with archive:
+            members = archive.getmembers()
+            if not 1 <= len(members) <= 5000:
+                raise ValueError("clean checkout archive member count is invalid")
+            seen: set[str] = set()
+            for member in members:
+                relative = _clean_archive_name(member.name)
+                normalized = relative.as_posix()
+                if normalized in seen:
+                    raise ValueError("clean checkout archive contains duplicate paths")
+                seen.add(normalized)
+                target = checkout / relative
+                if member.isdir():
+                    target.mkdir(parents=True, exist_ok=True)
+                    continue
+                if not member.isfile() or member.issym() or member.islnk():
+                    raise ValueError("clean checkout archive contains a link or special file")
+                if member.size < 0 or member.size > 2 * 1024 * 1024:
+                    raise ValueError("clean checkout archive member size is invalid")
+                source = archive.extractfile(member)
+                if source is None:
+                    raise ValueError("clean checkout archive member is unreadable")
+                content = source.read(2 * 1024 * 1024 + 1)
+                if len(content) != member.size:
+                    raise ValueError("clean checkout archive member is truncated")
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes(content)
+                file_hashes.append((normalized, hashlib.sha256(content).hexdigest()))
+                if normalized.startswith(("swarm/", "console/", "config/", "policies/")) and _CLEAN_SECRET.search(content):
+                    raise ValueError("clean checkout contains secret-bearing packaged content")
+
+        missing = sorted(_CLEAN_REQUIRED_FILES - {name for name, _digest in file_hashes})
+        if missing:
+            raise ValueError("clean checkout is missing required tracked artifacts: " + ", ".join(missing))
+        forbidden = {".git", ".swarm-state", ".pytest_cache", "__pycache__"}
+        if any(part in forbidden for name, _digest in file_hashes for part in Path(name).parts):
+            raise ValueError("clean checkout contains developer-local or runtime state")
+
+        requirement_lines = (checkout / "requirements-test.txt").read_text(encoding="utf-8").splitlines()
+        for line in requirement_lines:
+            value = line.strip()
+            if not value or value.startswith("#"):
+                continue
+            if value.count("==") != 1:
+                raise ValueError("clean checkout dependency is not exactly pinned")
+            name, version = value.split("==")
+            if not name or not version or not re.fullmatch(r"[A-Za-z0-9_.+-]+", version):
+                raise ValueError("clean checkout dependency declaration is malformed")
+            declared.add(name.lower())
+        if not _CLEAN_DECLARED_DEPENDENCIES.issubset(declared):
+            raise ValueError("clean checkout runtime or proof dependency is undeclared")
+
+        import_script = (
+            "import json, pathlib, swarm.core, swarm.console, swarm.integrity, swarm.policy_gate; "
+            "root=pathlib.Path.cwd().resolve(); modules=(swarm.core,swarm.console,swarm.integrity,swarm.policy_gate); "
+            "assert all(pathlib.Path(m.__file__).resolve().is_relative_to(root) for m in modules); "
+            "print(json.dumps([m.__name__ for m in modules]))"
+        )
+        environment = {key: value for key, value in os.environ.items() if key != "PYTHONPATH"}
+        build = subprocess.run(
+            [sys.executable, "-m", "compileall", "-q", "swarm"], cwd=checkout,
+            env=environment, text=True, capture_output=True, timeout=60, check=False,
+        )
+        startup = subprocess.run(
+            [sys.executable, "-c", import_script], cwd=checkout,
+            env=environment, text=True, capture_output=True, timeout=30, check=False,
+        )
+        if build.returncode != 0 or startup.returncode != 0:
+            raise ValueError("clean checkout build or startup failed")
+        try:
+            import yaml
+            readiness = yaml.safe_load((checkout / "config/readiness.yaml").read_text(encoding="utf-8"))
+            profiles = json.loads((checkout / "config/llm-profiles.json").read_text(encoding="utf-8"))
+            policy = yaml.safe_load((checkout / "policies/risk-policy.yaml").read_text(encoding="utf-8"))
+        except (ImportError, OSError, ValueError, TypeError) as exc:
+            raise ValueError("clean checkout configuration failed closed") from exc
+        if (
+            not isinstance(readiness, dict) or readiness.get("mode") != "DRY_RUN"
+            or readiness.get("deployment", {}).get("enabled") is not False
+            or readiness.get("deployment", {}).get("adapter") != "DISABLED"
+            or readiness.get("deployment", {}).get("credentials") != "NOT_CONFIGURED"
+            or not isinstance(profiles, dict) or not isinstance(profiles.get("profiles"), list)
+            or not isinstance(policy, dict) or policy.get("automatic_deployment", {}).get("enabled_initially") is not False
+        ):
+            raise ValueError("clean checkout safety configuration is unsupported")
+        tree_sha256 = hashlib.sha256(
+            json.dumps(sorted(file_hashes), separators=(",", ":"), ensure_ascii=True).encode("ascii")
+        ).hexdigest()
+
+    return {
+        "schema_version": 1,
+        "proof": "CLEAN_TRACKED_COMMIT",
+        "commit": expected_commit,
+        "tree_sha256": tree_sha256,
+        "tracked_files": len(file_hashes),
+        "required_files": len(_CLEAN_REQUIRED_FILES),
+        "declared_dependencies": sorted(declared),
+        "build": "PASS",
+        "startup": "PASS",
+        "startup_modules": ["swarm.core", "swarm.console", "swarm.integrity", "swarm.policy_gate"],
+        "temporary_checkout_removed": True,
+        "mode": "DRY_RUN",
+        "deployment": "DISABLED",
+        "kill_switch": "ENGAGED",
+        "live_enabled": False,
+        "production_ready": False,
+        "authority_granted": False,
+    }
 
 
 CANONICAL_OWNERSHIP: dict[str, dict[str, Any]] = {

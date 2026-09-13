@@ -1624,7 +1624,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-INTEGRITY-006 — Clean-checkout reproducibility proof
 - Requirement: FW-INTEGRITY tracked-artifact and clean-start assurance
-- State: READY
+- State: IN_PROGRESS
 - Priority: P0
 - Dependencies: FW-INTEGRITY-005
 - Approval: Jeff authorized continued next-phase integrity work; this proof uses a disposable local archive and adds no installation or deployment authority.
