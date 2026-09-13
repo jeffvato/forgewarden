@@ -1,0 +1,34 @@
+{
+  "adjudication": null,
+  "candidate_commit": "c44d1ebd5b0d6a6ea42f61ded6641156b362c6e2",
+  "deployment": "DISABLED",
+  "job_id": "phase2a-c44d1ebd5b0d6a6ea42f61de",
+  "kill_switch": "ENGAGED",
+  "mutation_allowed": false,
+  "reviews": [
+    {
+      "provider": "ANYTHINGLLM",
+      "result": {
+        "blocking_findings": [],
+        "job_id": "phase2a-c44d1ebd5b0d6a6ea42f61de",
+        "non_blocking_notes": [
+          "The test successfully proves that macOS caller-supplied observations are ingested and evaluated by the canonical RansomGuard evaluator without adding new production logic.",
+          "Deterministic ordering is preserved, and the evidence trail correctly shows endpoint admission before ransomware evaluation.",
+          "The test correctly asserts DRY_RUN and DETECT_ONLY modes with deployment disabled, ensuring no authority or containment actions are triggered."
+        ],
+        "proposed_rules": [
+          "Ensure all future integration tests for cross-platform event compatibility include negative test cases to validate that non-malicious activity does not trigger false positives."
+        ],
+        "reasoning_summary": "The commit introduces a focused integration test (FW-RANSOM-06) that validates the compatibility of macOS caller-supplied observations with the existing canonical RansomGuard evaluator. The test confirms that events are correctly ingested, ordered deterministically, and evaluated to produce high-confidence ransomware signals. It verifies that the evidence trail maintains the required chronology (endpoint events before evaluation), and that the system remains in DRY_RUN/DETECT_ONLY mode with deployment disabled. No production logic, platform access, containment, remediation, or deployment authority is added or modified. The test is isolated to the test directory and documentation files, adhering to the allowed paths. The patch meets all acceptance criteria for a test-only integration proof.",
+        "reviewed_commit": "c44d1ebd5b0d6a6ea42f61ded6641156b362c6e2",
+        "risk": "LOW",
+        "tests_missing": [
+          "A negative test case to verify that non-ransomware macOS batches do not trigger high-confidence signals or false positives."
+        ],
+        "verdict": "APPROVE"
+      },
+      "state": "REVIEW_RETURNED"
+    }
+  ],
+  "state": "REVIEW_REQUIRED"
+}

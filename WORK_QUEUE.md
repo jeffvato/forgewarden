@@ -22,7 +22,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-RANSOM-06 — macOS canonical-event compatibility proof
 - Requirement: FW-RANSOM cross-platform normalized-event reuse
-- State: REPAIR
+- State: DONE
 - Priority: P0
 - Dependencies: FW-ENDPOINT-MACOS-01, FW-RANSOM-05
 - Approval: Jeff authorized FW-ENDPOINT/FW-RANSOM continuation as small bounded candidates.
@@ -37,6 +37,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no RansomGuard implementation, response executor, platform access, containment, remediation, recovery execution, or deployment authority is duplicated or added.
 - Expected validation: focused Linux proof, exact independent read-only review, then one full suite and Product Integrity run after approval.
 - Security considerations: this is an integration proof over caller-supplied fixtures; recommendations remain non-authoritative.
+- Completion evidence: initial candidate `c44d1ebd5b0d6a6ea42f61ded6641156b362c6e2` passed 30 focused tests; after AnythingLLM unavailability and bounded Claude turn exhaustion, AnythingLLM/Qwen returned APPROVE/LOW with one missing benign false-positive regression. Repair `dd430b5bc0816015fc565792479ceec0e892b4ef` added exactly that negative proof and passed 31 focused tests. AnythingLLM was unavailable for the repair review, so exact Claude job `phase2a-dd430b5bc0816015fc565792` returned APPROVE/LOW with no blockers or missing tests. Full 1715 passed/1 skipped; Product Integrity fresh full 1715/1, Golden Path 31 passed, all hard checks passed, and only pre-existing `tzdata` remained YELLOW. Evidence: `docs/fw-ransom-06-*.json`.
 
 ### FW-ENDPOINT-MACOS-01 — Caller-supplied macOS fixture admission
 - Requirement: FW-ENDPOINT bounded macOS normalization

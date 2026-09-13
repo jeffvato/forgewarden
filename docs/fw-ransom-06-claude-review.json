@@ -1,0 +1,16 @@
+{
+  "adjudication": null,
+  "candidate_commit": "c44d1ebd5b0d6a6ea42f61ded6641156b362c6e2",
+  "deployment": "DISABLED",
+  "job_id": "phase2a-c44d1ebd5b0d6a6ea42f61de",
+  "kill_switch": "ENGAGED",
+  "mutation_allowed": false,
+  "reviews": [
+    {
+      "error": "Claude verifier failed with exit code 1: {\"duration_api_ms\":61500,\"stop_reason\":\"tool_use\",\"session_id\":\"60dac483-003c-42a2-87be-f4359b6b43d5\",\"total_cost_usd\":0.[REDACTED],\"usage\":{\"input_tokens\":36,\"cache_creation_input_tokens\":48758,\"cache_read_input_tokens\":136488,\"output_tokens\":7259,\"output_tokens_details\":{\"thinking_tokens\":3475},\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":48758,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"not_available\",\"iterations\":[{\"input_tokens\":8,\"output_tokens\":998,\"cache_read_input_tokens\":47664,\"cache_creation_input_tokens\":1094,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":1094},\"type\":\"message\"}],\"speed\":\"standard\"},\"modelUsage\":{\"claude-haiku-4-5-20251001\":{\"inputTokens\":36,\"outputTokens\":7259,\"cacheReadInputTokens\":136488,\"cacheCreationInputTokens\":48758,\"webSearchRequests\":0,\"costUSD\":0.[REDACTED],\"contextWindow\":200000,\"maxOutputTokens\":32000,\"thinkingTokens\":3475,\"canonicalModel\":\"claude-haiku-4-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"}},\"permission_denials\":[],\"terminal_reason\":\"max_turns\",\"fast_mode_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subagent_stats\":{\"spawned\":0,\"requested\":{\"background\":0,\"foreground\":0,\"unset\":0},\"started_in_background\":0,\"max_depth\":0,\"spawned_by_subagents\":0,\"completed\":0,\"failed\":0,\"killed\":{\"parent\":0,\"user\":0,\"system\":0},\"refused\":{\"depth_limit\":0,\"concurrency_limit\":0,\"budget\":0},\"by_type\":{}},\"is_error\":true,\"num_turns\":5,\"subtype\":\"error_max_turns\",\"errors\":[\"Reached maximum number of turns (4)\"],\"type\":\"result\",\"duration_ms\":61567,\"uuid\":\"638e776a-dba7-43bf-b4e8-dfae5ffffb10\",\"queued_turn_count\":0}",
+      "provider": "CLAUDE",
+      "state": "UNAVAILABLE"
+    }
+  ],
+  "state": "REVIEW_REQUIRED"
+}

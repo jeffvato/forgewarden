@@ -1,0 +1,16 @@
+{
+  "adjudication": null,
+  "candidate_commit": "dd430b5bc0816015fc565792479ceec0e892b4ef",
+  "deployment": "DISABLED",
+  "job_id": "phase2a-dd430b5bc0816015fc565792",
+  "kill_switch": "ENGAGED",
+  "mutation_allowed": false,
+  "reviews": [
+    {
+      "error": "AnythingLLM bridge unavailable",
+      "provider": "ANYTHINGLLM",
+      "state": "UNAVAILABLE"
+    }
+  ],
+  "state": "REVIEW_REQUIRED"
+}
