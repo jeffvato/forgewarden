@@ -6,7 +6,10 @@ from pathlib import Path
 import yaml
 from jsonschema import Draft202012Validator
 
-from swarm.phase5_release_candidate import build_release_candidate
+from swarm.phase5_release_candidate import (
+    _head, _load_contract, _normalize_allowlist, _tracked_blob,
+    build_release_candidate,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -27,6 +30,15 @@ class Phase5PublicExportPolicyTests(unittest.TestCase):
             self.assertTrue(track["allowlist"])
         self.assertIn("PRIVATE_CORE", policy["required_denials"])
         self.assertIn("UNLISTED_FILES", policy["required_denials"])
+
+    def test_export_admission_helpers_bind_policy_paths_and_git(self):
+        _, policy, paths = _load_contract("PUBLIC_SDK")
+        self.assertEqual(paths, sorted(policy["tracks"]["PUBLIC_SDK"]["allowlist"]))
+        head = _head(ROOT)
+        self.assertTrue(_tracked_blob(ROOT, head, paths[0]))
+        for unsafe in (["../escape.py"], ["docs/a.md", "DOCS/A.MD"], []):
+            with self.assertRaises(ValueError):
+                _normalize_allowlist(unsafe, policy["limits"])
 
 
 class Phase5ReleaseCandidateTests(unittest.TestCase):
