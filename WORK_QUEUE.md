@@ -1688,6 +1688,46 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 - Completion evidence: accepted as three bounded exact commits: policy `503bc9578b297386de9436c8ac92284768791283`, fixed scenarios `a1bc2a0477ff52a989e0092734a7e54fc51528f3`, and isolated exact-commit runner `82d67023fd31b2424f73117940a4ffba601d0325`. Focused proof passed 38 tests. AnythingLLM/Qwen returned exact APPROVE/LOW for the policy slice with no blockers or missing tests; it then failed closed on unavailable or malformed responses, and the authorized Claude fallback returned exact APPROVE/LOW for both remaining slices with no blockers or missing tests. The final full suite passed 2169 tests with one skip. Product Integrity passed every hard check, 119/119 accepted-task traceability, 15 integrity tests, and the 38-test performance proof; only the pre-existing local `tzdata` dependency remains YELLOW. The baseline is local regression evidence only and grants no production capacity, service-level, network, process, deployment, or response authority.
 
 
+### FWQ-0080 — Public-assurance release boundary and exact-history audit
+- Requirement: Phase 5 release readiness and public assurance
+- State: DONE
+- Priority: P0
+- Dependencies: FW-INTEGRITY-008
+- Approval: Jeff approved the public assurance plan and authorized identifier stripping for the public export. Repository publication or visibility change remains a separate final approval.
+- Description: Establish the deterministic fail-closed boundary for a future sanitized public SDK/demo export while keeping ForgeWarden Core private.
+- Target path: config/phase5-release-readiness.yaml
+- Allowed paths: .github/workflows/swarm-validation.yml, config/phase5-release-readiness.yaml, schemas/phase5-release-readiness.schema.json, schemas/phase5-release-audit-result.schema.json, swarm/phase5_release_audit.py, tests/test_ci_workflows.py, tests/test_phase5_release_readiness.py, tests/test_phase5_release_audit.py, docs/public-ci-security.md, docs/phase5-release-readiness.md, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_ci_workflows.py tests/test_phase5_release_readiness.py tests/test_phase5_release_audit.py
+- Acceptance criteria:
+  - keep this repository PRIVATE_CORE with publication DISABLED and make no license, entity, OSI, legal-clearance, or production-ready claim;
+  - require any public output to use a new repository containing one sanitized commit, with no transferred source refs, tags, history, reflogs, objects, review records, or private Evidence;
+  - remove or replace personal, cloud/environment, internal-locator, historical operational, credential-fixture, customer/tenant/endpoint, and unproven-media identifiers while preserving only canonical ForgeWarden requirement/schema/API IDs and deterministic fictional demo IDs;
+  - bind a read-only reachable-history audit to exact HEAD, ref-set hash, and policy hash; emit no matched values and deny preserved-history publication on blocking findings;
+  - enforce least-privilege bounded public CI without deployment, credential persistence, cloud activation, mutation, or publication authority.
+- Expected validation: focused Linux proof, exact independent read-only review, one full suite, and Product Integrity Gate.
+- Security considerations: this milestone creates governance and read-only audit only; it cannot publish, rewrite private history, select a license, grant credentials, change visibility, deploy, or expand authority.
+- Completion evidence: exact commits `19c0363800425773031a4b8b462cbca8bad4d19a` (CI), `eef4a46df5bdec304cf989a8514c45076a84dbb5` (release profile), `4d630565c147e3d58de040e12b3521424567be48` (history audit), and `7fff4ea872bb01c2c3042fc8f82432ccc3909cf0` (failure-path repair). Qwen returned exact APPROVE/LOW with no blockers or missing tests for CI, history audit, and repair; after two fail-closed Qwen outages, authorized Claude fallback returned exact APPROVE/LOW for the release profile. Focused 27, full 2182/1, and Product Integrity hard checks/15 integrity/27 release proofs passed. Only the pre-existing `tzdata` dependency remains YELLOW. No public repository, license, SBOM, export, visibility change, history rewrite, credential, deployment, or authority was created.
+
+### FWQ-0081 — Allowlisted sanitized public-export candidate
+- Requirement: Phase 5 clean public SDK/demo candidate construction
+- State: READY
+- Priority: P0
+- Dependencies: FWQ-0080
+- Approval: Jeff approved the public assurance plan and identifier stripping. This task may create only a local disposable candidate; publication and visibility changes remain disabled.
+- Description: Replace the broad copy-based candidate builder with a deterministic allowlisted export that proves every included byte is free of prohibited identifiers, credentials, private Evidence, private history, and unproven media.
+- Target path: swarm/phase5_release_candidate.py
+- Allowed paths: swarm/phase5_release_candidate.py, config/phase5-public-export.yaml, schemas/phase5-public-export.schema.json, tests/test_phase5_release_candidate.py, docs/phase5-release-readiness.md, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_phase5_release_candidate.py tests/test_phase5_release_audit.py tests/test_phase5_release_readiness.py
+- Acceptance criteria:
+  - consume the canonical Phase 5 release profile and an exact explicit path allowlist for PUBLIC_SDK or SOURCE_AVAILABLE_DEMO without exporting PRIVATE_CORE;
+  - construct only outside the source repository, refuse existing/symlinked destinations and non-regular source files, transfer no Git metadata/refs/history, and leave the private source byte-for-byte unchanged;
+  - reject prohibited identifier classes, credential-shaped content, sensitive operational paths, private Evidence/reviews, generated state, unproven media, and any file not explicitly allowlisted instead of silently copying it;
+  - emit a bounded manifest containing only normalized relative paths, sizes, content digests, source commit, policy hash, and publication DISABLED; expose no matched values;
+  - prove deterministic repeatability, tamper/drift denial, size/file-count budgets, empty/duplicate/path-traversal denial, and cleanup on failure;
+  - create no Git remote, public repository, license decision, entitlement/billing path, credential, network call, deployment, or authority.
+- Expected validation: one focused Linux proof, exact independent read-only review, then one full suite and Product Integrity Gate after approval.
+- Security considerations: the candidate remains local and disposable; a later release controller and explicit operator approval must independently establish a new single-commit repository and any visibility change.
+
 ### FW-API-001 — Canonical tenant-bound read-only request admission
 - Requirement: FW-API versioned least-privilege API/SDK contract
 - State: DONE
