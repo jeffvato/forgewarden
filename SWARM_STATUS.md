@@ -1,5 +1,7 @@
 # ForgeWarden Swarm Status
 
+- 2026-09-13: FW-ASM-005 is in bounded test-only repair after exact AnythingLLM/Qwen APPROVE/LOW requested direct malformed-reference, missing/expired-ticket, replay, and forged-source proofs. Replay and every forged-source class were already direct in the candidate; the repair adds the remaining malformed, missing, and expiry cases without changing runtime behavior.
+
 - 2026-09-13: FW-ASM-005 is in focused validation. Exact HIGH/CRITICAL canonical bindings may consume only a matching signed single-use Action Ticket after Evidence succeeds to produce an inert DRY_RUN risk-reduction proposal. The engaged kill switch, exact target/policy/tenant/lease/capability bindings, replay denial, and no-authority output are mandatory.
 
 - 2026-09-13: FW-ASM-004 accepted at implementation `e9e642373c4ad4cc24bf88af0405260e0a5022fb` and test-only repair `11c0a42b6ea06ced07ed130e351cb1ed954f2027`. Exact findings bind only tenant-matched canonical asset, exposure, FW-NET, vulnerability, TrustedSignatureCatalog/signature, FW-SOC, and FW-EVID references. AnythingLLM was unavailable; exact Claude APPROVE/LOW requested direct reference-count boundaries, and the repair received APPROVE/LOW with no blockers or missing tests. Focused 49 and full 1924/1 passed. Product Integrity passed every hard check and Golden Path, with only the pre-existing `tzdata` dependency YELLOW. References create no owner state, trust, lookup, response, deployment, or authority. FW-ASM-005 inert Action Ticket-bound proposal is next.

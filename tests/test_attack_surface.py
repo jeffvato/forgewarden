@@ -338,7 +338,10 @@ def test_attack_surface_risk_reduction_proposal_consumes_ticket_and_never_execut
     ({"kill_switch_state": "CLEAR"}, "KILL_SWITCH_NOT_ENGAGED"),
     ({"target_ref": "fw-exposure/tenant-b/site-1"}, "PROPOSAL_REF_INVALID"),
     ({"target_ref": "fw-exposure/tenant-a/other"}, "PROPOSAL_REF_INVALID"),
+    ({"target_ref": "fw-asset/tenant-a/site-1"}, "PROPOSAL_REF_INVALID"),
     ({"policy_decision_ref": "fw-policy/tenant-b/decision-1"}, "PROPOSAL_REF_INVALID"),
+    ({"policy_decision_ref": "policy-without-prefix"}, "PROPOSAL_REF_INVALID"),
+    ({"ticket_id": "missing-ticket"}, "ACTION_TICKET_DENIED"),
     ({"subject_agent_id": "agent-2"}, "ACTION_TICKET_DENIED"),
     ({"lease_id": "lease-2"}, "ACTION_TICKET_DENIED"),
     ({"policy_version": "policy-v2"}, "ACTION_TICKET_DENIED"),
@@ -364,4 +367,11 @@ def test_attack_surface_risk_reduction_proposal_revalidates_source_and_evidence(
             reference_binding(), **proposal_kwargs(
                 audit=lambda *_args: (_ for _ in ()).throw(RuntimeError("offline")),
             ),
+        )
+
+
+def test_attack_surface_risk_reduction_proposal_denies_expired_ticket():
+    with pytest.raises(AttackSurfaceObservationDenied, match="ACTION_TICKET_DENIED"):
+        propose_attack_surface_risk_reduction(
+            reference_binding(), **proposal_kwargs(now=200),
         )
