@@ -20,6 +20,24 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 
 Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical implementation is not new work. FWQ-0008 VALIDATED preserves a provenance caveat, not a request to rebuild or automatically repeat review. FWQ-0012–0016 are reconciled DONE from existing implementation and recorded proof.
 
+### FW-SAAS-001 — SaaS security ownership and fixture inventory
+- Requirement: FW-SAAS canonical ownership and bounded implementation route
+- State: REVIEW
+- Priority: P0
+- Dependencies: FW-BME-04, FW-ID, FW-KEYS, FW-EVID, FW-SOC, FW-AID
+- Approval: Jeff authorized the ordered FW-SAAS phase after FW-BME through the continuing heartbeat.
+- Description: Map existing canonical owners, define the first missing caller-supplied SaaS observation boundary, and establish stable incremental requirements without creating provider access or a duplicate identity/evidence/incident system.
+- Target path: docs/fw-saas-inventory.md
+- Allowed paths: docs/fw-saas-inventory.md, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: git diff --check HEAD^ HEAD and deterministic repository/source/evidence inventory
+- Acceptance criteria:
+  - existing FW-ID, FW-KEYS, FW-BME, policy/Action Ticket, FW-EVID, FW-SOC, FW-AID, and Mission Control owners are reused;
+  - substantive FW-SAAS-002 through FW-SAAS-006 requirements and dependencies are explicit without claiming implementation;
+  - the first runtime milestone is a strict tenant-bound caller-supplied metadata contract;
+  - no provider API, OAuth exchange, token/credential access, network transport, SaaS mutation, containment, remediation, deployment, or response authority is added.
+- Expected validation: deterministic inventory and diff check plus exact independent read-only review; no product suite or Product Integrity rerun for documentation-only architecture.
+- Security considerations: roadmap and queue metadata cannot become provider or response authority.
+
 ### FW-BME-04 — Deterministic OAuth-consent abuse classification
 - Requirement: FW-BME risky OAuth consent signal
 - State: DONE
