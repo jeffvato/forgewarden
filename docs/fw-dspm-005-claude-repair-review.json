@@ -1,0 +1,26 @@
+{
+  "adjudication": null,
+  "candidate_commit": "c57b8c4eb15edc2d38db3ecfefdffd3ae95b197b",
+  "deployment": "DISABLED",
+  "job_id": "phase2a-c57b8c4eb15edc2d38db3ecf",
+  "kill_switch": "ENGAGED",
+  "mutation_allowed": false,
+  "reviews": [
+    {
+      "provider": "CLAUDE",
+      "result": {
+        "blocking_findings": [],
+        "job_id": "phase2a-c57b8c4eb15edc2d38db3ecf",
+        "non_blocking_notes": [],
+        "proposed_rules": [],
+        "reasoning_summary": "Test-only repair patch that adds three parameterized test cases to close documented FW-DSPM-005 denial boundaries: (1) post-expiry now=201 \u2192 ACTION_TICKET_DENIED, (2) malformed target_ref with whitespace \u2192 PROPOSAL_REF_INVALID, (3) malformed policy_decision_ref with trailing slash \u2192 PROPOSAL_REF_INVALID. All cases use the existing test function pattern, employ correct error codes, and directly address stated gaps. SWARM_STATUS and WORK_QUEUE updated to reflect REPAIR state. No runtime behavior changes. Narrow, deterministic, focused scope.",
+        "reviewed_commit": "c57b8c4eb15edc2d38db3ecfefdffd3ae95b197b",
+        "risk": "LOW",
+        "tests_missing": [],
+        "verdict": "APPROVE"
+      },
+      "state": "APPROVED"
+    }
+  ],
+  "state": "APPROVED"
+}

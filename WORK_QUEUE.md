@@ -74,7 +74,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-DSPM-005 — Inert Action Ticket-bound DLP proposal
 - Requirement: FW-DSPM bounded non-executing response intent
-- State: REPAIR
+- State: DONE
 - Priority: P0
 - Dependencies: FW-DSPM-004
 - Approval: Jeff authorized the ordered FW-DSPM phase through the continuing heartbeat.
@@ -83,10 +83,11 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 - Allowed paths: swarm/data_security.py, tests/test_data_security.py, WORK_QUEUE.md, SWARM_STATUS.md
 - Test command: python3 -m pytest -q tests/test_data_security.py tests/test_action_ticket.py
 - Acceptance criteria: engaged kill switch, exact policy/target/ticket binding, and Evidence are mandatory; output is PROPOSE_ONLY and cannot inspect, move, alter, delete, encrypt, or block data.
+- Completion evidence: implementation candidate `42f935aa056e63f95fbb11f8f0eae270f83e426a`; test-only repair `c57b8c4eb15edc2d38db3ecfefdffd3ae95b197b`. Exact AnythingLLM/Qwen APPROVE/LOW requested direct post-expiry and malformed-reference proofs; the repair closed them, but Qwen incorrectly placed narrative stating no missing tests in `tests_missing`, so the gate refused it. Exact Claude fallback job `phase2a-c57b8c4eb15edc2d38db3ecf` returned APPROVE/LOW with no blockers or missing tests. Focused validation passed 70 tests and the full suite passed 2007 with 1 skipped. Product Integrity passed every hard check and the Golden Path, with only the pre-existing `tzdata` dependency YELLOW. Evidence: `docs/fw-dspm-005-qwen-review.json`, `docs/fw-dspm-005-qwen-repair-review.json`, `docs/fw-dspm-005-claude-repair-review.json`, `docs/fw-dspm-005-integrity.json`.
 
 ### FW-DSPM-006 — Integrated lifecycle and Mission Control projection
 - Requirement: FW-DSPM accepted-stage composition and operator visibility
-- State: BLOCKED
+- State: READY
 - Priority: P0
 - Dependencies: FW-DSPM-005
 - Approval: Jeff authorized the ordered FW-DSPM phase through the continuing heartbeat.

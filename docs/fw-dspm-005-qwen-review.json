@@ -1,0 +1,34 @@
+{
+  "adjudication": null,
+  "candidate_commit": "42f935aa056e63f95fbb11f8f0eae270f83e426a",
+  "deployment": "DISABLED",
+  "job_id": "phase2a-42f935aa056e63f95fbb11f8",
+  "kill_switch": "ENGAGED",
+  "mutation_allowed": false,
+  "reviews": [
+    {
+      "provider": "ANYTHINGLLM",
+      "result": {
+        "blocking_findings": [],
+        "job_id": "phase2a-42f935aa056e63f95fbb11f8",
+        "non_blocking_notes": [
+          "The implementation correctly enforces the DRY_RUN and PROPOSE_ONLY posture by hardcoding deployment to DISABLED and authority_granted to false.",
+          "Replay protection is effectively handled by the single-use nature of the ActionTicketRegistry consume operation, which is verified by the test case attempting a second invocation."
+        ],
+        "proposed_rules": [
+          "Ensure all DLP proposal actions explicitly verify the kill switch state is ENGAGED before proceeding to ticket validation."
+        ],
+        "reasoning_summary": "The patch implements the FW-DSPM-005 candidate by introducing a DataSecurityDLPProposal dataclass and a propose_data_security_dlp function. The function strictly validates that the source binding is HIGH/CRITICAL risk, untrusted data, DRY_RUN mode, and CORRELATE_ONLY action. It enforces the kill switch must be ENGAGED and ensures the target and policy references match the canonical binding and regex patterns. The function validates the Action Ticket against the specific tenant, subject, lease, capability, and policy version before consuming it. The output is strictly a proposal with no authority granted and no response executed. The provided tests cover the success path, replay denial, and various boundary mismatches for ticket fields and reference formats. The logic aligns with the acceptance criteria for an inert, evidence-first proposal without data movement or enforcement.",
+        "reviewed_commit": "42f935aa056e63f95fbb11f8f0eae270f83e426a",
+        "risk": "LOW",
+        "tests_missing": [
+          "Test for expiry validation where now is after expires_at but before the current test's expiry boundary (now > 200)",
+          "Test for malformed target_ref or policy_decision_ref that violates the _PROPOSAL_REF regex but matches the tenant ID"
+        ],
+        "verdict": "APPROVE"
+      },
+      "state": "REVIEW_RETURNED"
+    }
+  ],
+  "state": "REVIEW_REQUIRED"
+}
