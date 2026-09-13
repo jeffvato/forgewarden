@@ -22,7 +22,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-NET-001 — Network security ownership and bounded route
 - Requirement: FW-NET canonical ownership inventory
-- State: REVIEW
+- State: DONE
 - Priority: P0
 - Dependencies: FW-SUPPLY-006, FW-ENDPOINT, FW-ID, FW-EVID, FW-AID
 - Approval: Jeff authorized the ordered FW-NET phase through the continuing heartbeat.
@@ -37,6 +37,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no packet capture, live sensor/listener, DNS/DHCP/TLS query, host scan, socket, infrastructure access, credential use, route/firewall/NAC/segmentation change, containment, remediation, deployment, or response authority is added.
 - Expected validation: deterministic inventory, `git diff --check`, and exact independent read-only review; no product suite or Product Integrity rerun for documentation-only architecture.
 - Security considerations: roadmap and queue metadata cannot authorize network observation or response.
+- Completion evidence: exact candidate `a9c30f03842c83f77ad29df123f104b8dbebb7eb`; deterministic repository/source/test ownership checks and `git diff --check` passed. Exact AnythingLLM/Qwen job `phase2a-a9c30f03842c83f77ad29df1` returned APPROVE/LOW with no blockers or missing tests. No product suite or Product Integrity rerun was required because runtime behavior did not change. Evidence: `docs/fw-net-001-qwen-review.json`.
 
 ### FW-NET-002 — Caller-supplied network observation
 - Requirement: FW-NET immutable tenant-bound metadata boundary
