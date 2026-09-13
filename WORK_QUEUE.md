@@ -80,7 +80,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-ASM-005 — Inert Action Ticket-bound risk-reduction proposal
 - Requirement: FW-ASM bounded non-executing response intent
-- State: READY
+- State: REVIEW
 - Priority: P0
 - Dependencies: FW-ASM-004
 - Approval: Jeff authorized the ordered FW-ASM phase using small bounded candidates.

@@ -10,6 +10,8 @@ import json
 import re
 from typing import Any, Callable, Mapping
 
+from .action_ticket import ActionTicketError, ActionTicketRegistry
+
 
 MAX_ASM_FIXTURE_BYTES = 32 * 1024
 MAX_ASM_OWNER_REFS = 16
@@ -21,6 +23,9 @@ _OWNER_REF = re.compile(
 _CANONICAL_REF = re.compile(
     r"^fw-(network|vuln|catalog|signature|incident|evid)/"
     r"([a-z][a-z0-9_.-]{0,127})/[a-z][a-z0-9_.:/+-]{0,191}$"
+)
+_PROPOSAL_REF = re.compile(
+    r"^fw-(exposure|policy)/([a-z][a-z0-9_.-]{0,127})/[a-z][a-z0-9_.:/+-]{0,191}$"
 )
 _ASSET_TYPES = frozenset({
     "API", "CLOUD_RESOURCE", "DATABASE", "DEVELOPMENT_SYSTEM", "DOMAIN",
@@ -114,6 +119,23 @@ class AttackSurfaceReferenceBinding:
     mode: str = "DRY_RUN"
     action: str = "CORRELATE_ONLY"
     authority_granted: bool = False
+
+
+@dataclass(frozen=True)
+class AttackSurfaceRiskReductionProposal:
+    event_id: str
+    tenant_id: str
+    target_ref: str
+    policy_decision_ref: str
+    action_ticket_ref: str
+    risk: str
+    action_class: str = "ASM_RISK_REDUCTION_PROPOSAL"
+    mode: str = "DRY_RUN"
+    deployment: str = "DISABLED"
+    kill_switch: str = "ENGAGED"
+    disposition: str = "PROPOSE_ONLY"
+    authority_granted: bool = False
+    response_executed: bool = False
 
 
 def normalize_attack_surface_observation(
@@ -311,4 +333,67 @@ def bind_attack_surface_references(
         finding.event_id, tenant_id, asset_ref, exposure_ref, finding.risk,
         network_ref, vulnerability_refs, catalog_ref, signature_ref,
         soc_incident_ref, evidence_refs,
+    )
+
+
+def propose_attack_surface_risk_reduction(
+    binding: AttackSurfaceReferenceBinding, *, tickets: ActionTicketRegistry,
+    ticket_id: str, target_ref: str, policy_decision_ref: str,
+    subject_agent_id: str, lease_id: str, policy_version: str, now: int,
+    kill_switch_state: str, audit: Callable[[str, dict[str, Any]], None],
+) -> AttackSurfaceRiskReductionProposal:
+    """Consume proposal-only authority without changing an external asset."""
+    if (
+        not isinstance(binding, AttackSurfaceReferenceBinding)
+        or not isinstance(tickets, ActionTicketRegistry) or not callable(audit)
+    ):
+        raise AttackSurfaceObservationDenied("PROPOSAL_INPUT_INVALID")
+    if (
+        binding.risk not in {"HIGH", "CRITICAL"}
+        or binding.trust != "UNTRUSTED_DATA" or binding.mode != "DRY_RUN"
+        or binding.action != "CORRELATE_ONLY"
+        or binding.authority_granted is not False
+    ):
+        raise AttackSurfaceObservationDenied("PROPOSAL_SOURCE_INVALID")
+    if kill_switch_state != "ENGAGED":
+        raise AttackSurfaceObservationDenied("KILL_SWITCH_NOT_ENGAGED")
+    target_match = _PROPOSAL_REF.fullmatch(target_ref) if isinstance(target_ref, str) else None
+    policy_match = _PROPOSAL_REF.fullmatch(policy_decision_ref) if isinstance(policy_decision_ref, str) else None
+    if (
+        target_match is None or target_match.group(1) != "exposure"
+        or policy_match is None or policy_match.group(1) != "policy"
+        or target_match.group(2) != binding.tenant_id
+        or policy_match.group(2) != binding.tenant_id
+        or target_ref != binding.exposure_ref
+    ):
+        raise AttackSurfaceObservationDenied("PROPOSAL_REF_INVALID")
+    ticket_binding = {
+        "tenant_id": binding.tenant_id, "subject_agent_id": subject_agent_id,
+        "lease_id": lease_id, "capability": "asm.risk_reduction.propose",
+        "resource": target_ref, "action_class": "ASM_RISK_REDUCTION_PROPOSAL",
+        "policy_version": policy_version, "now": now,
+    }
+    try:
+        tickets.validate(ticket_id, **ticket_binding)
+    except ActionTicketError as exc:
+        raise AttackSurfaceObservationDenied("ACTION_TICKET_DENIED") from exc
+    try:
+        audit("attack_surface_risk_reduction_proposed", {
+            "event_id": binding.event_id, "tenant_id": binding.tenant_id,
+            "target_ref": target_ref, "policy_decision_ref": policy_decision_ref,
+            "action_ticket_ref": ticket_id, "risk": binding.risk,
+            "action_class": "ASM_RISK_REDUCTION_PROPOSAL",
+            "mode": "DRY_RUN", "deployment": "DISABLED",
+            "kill_switch": "ENGAGED", "disposition": "PROPOSE_ONLY",
+            "authority_granted": False, "response_executed": False,
+        })
+    except Exception as exc:
+        raise AttackSurfaceObservationDenied("EVIDENCE_WRITE_FAILED") from exc
+    try:
+        tickets.validate_and_consume(ticket_id, **ticket_binding)
+    except ActionTicketError as exc:
+        raise AttackSurfaceObservationDenied("ACTION_TICKET_DENIED") from exc
+    return AttackSurfaceRiskReductionProposal(
+        binding.event_id, binding.tenant_id, target_ref, policy_decision_ref,
+        ticket_id, binding.risk,
     )

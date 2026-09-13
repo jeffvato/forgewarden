@@ -1,7 +1,9 @@
-from dataclasses import FrozenInstanceError
+from dataclasses import FrozenInstanceError, replace
 
 import pytest
 
+from swarm.action_ticket import ActionTicket, ActionTicketRegistry
+from swarm.asoc import HMACLeaseSigner
 from swarm.attack_surface import (
     AttackSurfaceObservation,
     AttackSurfaceObservationDenied,
@@ -9,6 +11,7 @@ from swarm.attack_surface import (
     bind_attack_surface_references,
     classify_attack_surface_observation,
     normalize_attack_surface_observation,
+    propose_attack_surface_risk_reduction,
 )
 
 
@@ -278,3 +281,87 @@ def test_attack_surface_reference_binding_enforces_reference_count_boundaries(fi
             bind_attack_surface_references(
                 finding(), **binding_kwargs(**{field: invalid}), audit=lambda *_args: None,
             )
+
+
+def reference_binding():
+    return bind_attack_surface_references(
+        finding(), **binding_kwargs(), audit=lambda *_args: None,
+    )
+
+
+def tickets(**overrides):
+    registry = ActionTicketRegistry(HMACLeaseSigner({"key-1": b"test-only-key-material"}))
+    values = {
+        "ticket_id": "ticket-1", "tenant_id": "tenant-a",
+        "subject_agent_id": "agent-1", "lease_id": "lease-1",
+        "capability": "asm.risk_reduction.propose",
+        "resource": "fw-exposure/tenant-a/site-1",
+        "action_class": "ASM_RISK_REDUCTION_PROPOSAL",
+        "issued_by": "operator-1", "approval_reference": "approval-1",
+        "policy_version": "policy-v1", "issued_at": 100, "expires_at": 200,
+        "key_reference": "key-1",
+    }
+    values.update(overrides)
+    registry.issue(ActionTicket(**values))
+    return registry
+
+
+def proposal_kwargs(**overrides):
+    values = {
+        "tickets": tickets(), "ticket_id": "ticket-1",
+        "target_ref": "fw-exposure/tenant-a/site-1",
+        "policy_decision_ref": "fw-policy/tenant-a/decision-1",
+        "subject_agent_id": "agent-1", "lease_id": "lease-1",
+        "policy_version": "policy-v1", "now": 150,
+        "kill_switch_state": "ENGAGED", "audit": lambda *_args: None,
+    }
+    values.update(overrides)
+    return values
+
+
+def test_attack_surface_risk_reduction_proposal_consumes_ticket_and_never_executes():
+    evidence = []
+    args = proposal_kwargs(audit=lambda *items: evidence.append(items))
+    value = propose_attack_surface_risk_reduction(reference_binding(), **args)
+    assert value.risk == "CRITICAL"
+    assert value.action_class == "ASM_RISK_REDUCTION_PROPOSAL"
+    assert value.disposition == "PROPOSE_ONLY"
+    assert value.mode == "DRY_RUN" and value.deployment == "DISABLED"
+    assert value.kill_switch == "ENGAGED"
+    assert value.authority_granted is False and value.response_executed is False
+    assert evidence[0][1]["response_executed"] is False
+    with pytest.raises(AttackSurfaceObservationDenied, match="ACTION_TICKET_DENIED"):
+        propose_attack_surface_risk_reduction(reference_binding(), **args)
+
+
+@pytest.mark.parametrize("changes,reason", [
+    ({"kill_switch_state": "CLEAR"}, "KILL_SWITCH_NOT_ENGAGED"),
+    ({"target_ref": "fw-exposure/tenant-b/site-1"}, "PROPOSAL_REF_INVALID"),
+    ({"target_ref": "fw-exposure/tenant-a/other"}, "PROPOSAL_REF_INVALID"),
+    ({"policy_decision_ref": "fw-policy/tenant-b/decision-1"}, "PROPOSAL_REF_INVALID"),
+    ({"subject_agent_id": "agent-2"}, "ACTION_TICKET_DENIED"),
+    ({"lease_id": "lease-2"}, "ACTION_TICKET_DENIED"),
+    ({"policy_version": "policy-v2"}, "ACTION_TICKET_DENIED"),
+])
+def test_attack_surface_risk_reduction_proposal_denies_boundary_mismatch(changes, reason):
+    with pytest.raises(AttackSurfaceObservationDenied, match=reason):
+        propose_attack_surface_risk_reduction(
+            reference_binding(), **proposal_kwargs(**changes),
+        )
+
+
+def test_attack_surface_risk_reduction_proposal_revalidates_source_and_evidence():
+    for changes in (
+        {"risk": "MEDIUM"}, {"trust": "TRUSTED"}, {"mode": "LIVE"},
+        {"action": "EXECUTE"}, {"authority_granted": True},
+    ):
+        with pytest.raises(AttackSurfaceObservationDenied, match="PROPOSAL_SOURCE_INVALID"):
+            propose_attack_surface_risk_reduction(
+                replace(reference_binding(), **changes), **proposal_kwargs(),
+            )
+    with pytest.raises(AttackSurfaceObservationDenied, match="EVIDENCE_WRITE_FAILED"):
+        propose_attack_surface_risk_reduction(
+            reference_binding(), **proposal_kwargs(
+                audit=lambda *_args: (_ for _ in ()).throw(RuntimeError("offline")),
+            ),
+        )
