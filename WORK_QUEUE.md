@@ -22,7 +22,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-ASM-001 — External attack-surface ownership and bounded route
 - Requirement: FW-ASM canonical ownership inventory
-- State: REVIEW
+- State: DONE
 - Priority: P0
 - Dependencies: FW-NET-006, FW-SAAS, FW-SUPPLY, FW-ID, FW-KEYS, FW-EVID
 - Approval: Jeff authorized the ordered FW-ASM phase through the continuing heartbeat.
@@ -37,6 +37,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no discovery, DNS resolution, scan, socket/HTTP, cloud/CMDB query, certificate retrieval, credential use, exploit, mutation, takedown, containment, remediation, deployment, or response authority is added.
 - Expected validation: deterministic inventory, `git diff --check`, and exact independent read-only review; no product suite or Product Integrity rerun for documentation-only architecture.
 - Security considerations: roadmap and queue metadata cannot authorize attack-surface discovery or response.
+- Completion evidence: exact candidate `bb2e6821e3209a5e067b878b9c9ddd39eafac43f`; deterministic repository/source/test ownership checks and `git diff --check` passed. Exact AnythingLLM/Qwen job `phase2a-bb2e6821e3209a5e067b878b` returned APPROVE/LOW with no blockers or missing tests. No product suite or Product Integrity rerun was required because runtime behavior did not change. Evidence: `docs/fw-asm-001-qwen-review.json`.
 
 ### FW-ASM-002 — Caller-supplied external-asset observation
 - Requirement: FW-ASM immutable tenant-bound metadata boundary
