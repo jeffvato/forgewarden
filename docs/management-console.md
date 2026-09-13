@@ -166,3 +166,19 @@ deployment-enabled, or kill-switch-cleared projections. It exposes no routing,
 fallback, registry mutation, model invocation, MCP discovery, lease creation,
 tool execution, credentials, network transport, policy, approval, response,
 recovery, or deployment callback.
+
+## Integrated canonical backend lifecycle
+
+The `/api/canonical-activity` endpoint composes the accepted Harness, incident,
+Evidence, policy/Action Ticket, Model Broker, and MCP provider envelopes. It
+preserves every provider's CANONICAL, EMPTY, or UNAVAILABLE state, reports a
+PARTIAL aggregate when availability is mixed, and requires every canonical
+provider to identify the same tenant. A cross-tenant mix or weakened authority
+flag discards the entire aggregate as UNAVAILABLE while Demo Mode remains a
+separately validated source.
+
+The browser client consumes this aggregate and revalidates every underlying
+provider contract before rendering. The aggregate has no callback or command
+surface; it cannot evaluate policy, consume tickets, sign Evidence, route or
+invoke models, execute MCP tools, respond, recover, mutate Git, use credentials,
+access a network, or enable deployment.

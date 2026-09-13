@@ -1,6 +1,7 @@
 """Local Forgewarden management console; plan-only by design."""
 from __future__ import annotations
 import json
+import re
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -18,6 +19,7 @@ PROFILE_PATH = ROOT / "config" / "llm-profiles.json"
 CONSOLE_ROOT = ROOT / "console"
 TASKS = ("inspect", "implement", "test", "review", "risk_audit", "documentation", "analysis")
 GLOBAL_FORBIDDEN = {"production", "deployment", "service_restart", "credentials", "databases", "remote_hosts"}
+TENANT_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$")
 
 def addon_snapshot(root: Path | None = None) -> dict[str, Any]:
     """Read the local add-on registry without enabling or executing anything."""
@@ -123,6 +125,50 @@ def model_mcp_activity_snapshot(provider: Any = None) -> dict[str, Any]:
     except (MissionControlError, RuntimeError, TypeError, ValueError):
         return {"schema_version": 1, "data_mode": "UNAVAILABLE", "data_label": "CANONICAL MODEL AND MCP ACTIVITY UNAVAILABLE", "view": None, "safety": {"mutation_allowed": False, "deployment": "DISABLED", "kill_switch": "ENGAGED", "model_invoked": False, "tool_executed": False}}
 
+def compose_canonical_activity(providers: dict[str, dict[str, Any]]) -> dict[str, Any]:
+    """Bind accepted read-only provider envelopes into one tenant-safe lifecycle view."""
+    expected = {"harness", "incident", "evidence", "policy_ticket", "model_mcp"}
+    if not isinstance(providers, dict) or set(providers) != expected:
+        raise MissionControlError("integrated provider set is incomplete")
+    tenants: set[str] = set()
+    modes: list[str] = []
+    required_false = {"incident": ("response_executed",), "evidence": ("signing_performed",), "policy_ticket": ("ticket_consumed",), "model_mcp": ("model_invoked", "tool_executed")}
+    for name in sorted(expected):
+        payload = providers[name]
+        if not isinstance(payload, dict) or payload.get("schema_version") != 1 or payload.get("data_mode") not in {"CANONICAL", "EMPTY", "UNAVAILABLE"}:
+            raise MissionControlError("integrated provider envelope is malformed")
+        safety = payload.get("safety")
+        if not isinstance(safety, dict) or safety.get("mutation_allowed") is not False or safety.get("deployment") != "DISABLED" or safety.get("kill_switch") != "ENGAGED":
+            raise MissionControlError("integrated provider safety boundary is invalid")
+        if any(safety.get(field) is not False for field in required_false.get(name, ())):
+            raise MissionControlError("integrated provider authority boundary is invalid")
+        mode, view = payload["data_mode"], payload.get("view")
+        modes.append(mode)
+        if mode == "CANONICAL":
+            if not isinstance(view, dict) or not TENANT_ID.fullmatch(view.get("tenant_id", "")):
+                raise MissionControlError("canonical provider tenant is malformed")
+            tenants.add(view["tenant_id"])
+        elif view is not None:
+            raise MissionControlError("non-canonical provider exposed state")
+    if len(tenants) > 1:
+        raise MissionControlError("integrated providers cross tenants")
+    overall = "CANONICAL" if all(mode == "CANONICAL" for mode in modes) else "EMPTY" if all(mode == "EMPTY" for mode in modes) else "UNAVAILABLE" if all(mode == "UNAVAILABLE" for mode in modes) else "PARTIAL"
+    return {"schema_version": 1, "data_mode": overall, "tenant_id": next(iter(tenants), None), "providers": providers, "safety": {"mutation_allowed": False, "deployment": "DISABLED", "kill_switch": "ENGAGED"}}
+
+def canonical_activity_snapshot(*, harness: Any = None, incident: Any = None, evidence: Any = None, policy_ticket: Any = None, model_mcp: Any = None) -> dict[str, Any]:
+    """Compose the loopback providers; any cross-provider conflict fails closed."""
+    providers = {
+        "harness": harness_activity_snapshot(harness),
+        "incident": incident_activity_snapshot(incident),
+        "evidence": canonical_evidence_activity_snapshot(evidence),
+        "policy_ticket": policy_ticket_activity_snapshot(policy_ticket),
+        "model_mcp": model_mcp_activity_snapshot(model_mcp),
+    }
+    try:
+        return compose_canonical_activity(providers)
+    except (MissionControlError, RuntimeError, TypeError, ValueError):
+        return {"schema_version": 1, "data_mode": "UNAVAILABLE", "tenant_id": None, "providers": None, "safety": {"mutation_allowed": False, "deployment": "DISABLED", "kill_switch": "ENGAGED"}}
+
 def load_profiles(path: Path = PROFILE_PATH) -> list[dict[str, Any]]:
     from .core import read_restricted_bytes, SwarmError
     try:
@@ -202,6 +248,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         if route == "/api/canonical-evidence-activity": self._json(HTTPStatus.OK, canonical_evidence_activity_snapshot(self.evidence_view_provider)); return
         if route == "/api/policy-ticket-activity": self._json(HTTPStatus.OK, policy_ticket_activity_snapshot(self.policy_ticket_view_provider)); return
         if route == "/api/model-mcp-activity": self._json(HTTPStatus.OK, model_mcp_activity_snapshot(self.model_mcp_view_provider)); return
+        if route == "/api/canonical-activity": self._json(HTTPStatus.OK, canonical_activity_snapshot(harness=self.harness_view_provider, incident=self.incident_view_provider, evidence=self.evidence_view_provider, policy_ticket=self.policy_ticket_view_provider, model_mcp=self.model_mcp_view_provider)); return
         assets = {"/":("index.html","text/html; charset=utf-8"),"/styles.css":("styles.css","text/css; charset=utf-8"),"/app.js":("app.js","text/javascript; charset=utf-8")}
         if route not in assets: self._json(HTTPStatus.NOT_FOUND, {"error":"not found"}); return
         filename, content_type = assets[route]

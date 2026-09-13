@@ -1413,6 +1413,25 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 - Security considerations: Model Broker and MCP Gateway remain authoritative; the UI receives immutable explanatory facts and no execution callback.
 - Completion evidence: exact candidate `415730f10a309b27ac940f8631f1eaeb892a027d`; focused proof passed 101 Python tests plus the Node frontend contract; exact Claude review `phase2a-415730f10a309b27ac940f86` returned APPROVE/LOW with no blockers or missing tests; full suite passed 1637/1; Product Integrity fresh full passed 1637/1 with all hard checks and 4 Golden Paths passing, YELLOW only for pre-existing `tzdata`.
 
+### FW-UX-012 — Integrated canonical backend lifecycle proof
+- Requirement: Mission Control incremental backend integration
+- State: REVIEW
+- Priority: P0
+- Dependencies: FW-UX-007 through FW-UX-011
+- Approval: Jeff authorized completion of the mapped Mission Control backend integration sequence and its integrated lifecycle proof.
+- Description: Prove that the loopback Mission Control client can consume the canonical Harness, incident, Evidence, policy/Action Ticket, Model Broker, and MCP projections together while preserving one tenant, honest per-provider availability, Demo separation, and fixed read-only safety state.
+- Target path: tests/test_mission_control_lifecycle.py
+- Allowed paths: swarm/console.py, console/app.js, tests/test_console.py, tests/test_console_frontend.js, tests/test_mission_control_lifecycle.py, docs/management-console.md, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_mission_control_lifecycle.py tests/test_console.py && node --test tests/test_console_frontend.js
+- Acceptance criteria:
+  - compose only the accepted canonical provider contracts; do not create a competing incident, Evidence, policy, ticket, model, MCP, or Harness schema;
+  - canonical activity presented together is bound to exactly one tenant, while EMPTY and UNAVAILABLE providers remain explicit and do not contaminate canonical or Demo state;
+  - a cross-tenant provider mix, malformed safety state, provider substitution, secret-bearing data, cleared kill switch, enabled deployment, mutation, model invocation, ticket consumption, signing, response, or tool execution fails closed;
+  - deterministic provider loss degrades only to an honest unavailable/read-only state and never fabricates live data or falls back to Demo as canonical;
+  - the integrated view exposes no execution, routing, Git, credential, policy, approval, response, recovery, network, or deployment callback.
+- Expected validation: one focused Linux lifecycle proof, exact independent read-only review, then one full suite and Product Integrity Gate after approval.
+- Security considerations: integration validates and displays canonical facts only; canonical subsystem owners and deterministic enforcement remain authoritative.
+
 ### FW-REC-002 — Durable recovery checkpoint persistence and reconstruction
 - Requirement: FW-REC persistent recovery metadata
 - State: DONE
