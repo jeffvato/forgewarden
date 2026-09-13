@@ -902,7 +902,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-API-001 — Canonical tenant-bound read-only request admission
 - Requirement: FW-API versioned least-privilege API/SDK contract
-- State: READY
+- State: REVIEW
 - Priority: P0
 - Dependencies: FW-INTEGRITY-002, FW-ID-005, FW-EVID-006, FWQ-0075, and FWQ-0007
 - Approval: Jeff explicitly activated FW-API after the bounded Core completion/dependency audit; caller-supplied local contract work is authorized without listener or transport activation.

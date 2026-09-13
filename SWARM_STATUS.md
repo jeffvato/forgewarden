@@ -1,5 +1,7 @@
 # ForgeWarden Swarm Status
 
+- 2026-09-12: FW-API-001 candidate prepared: canonical immutable tenant-bound read-only request admission now consumes existing FW-ID, deterministic policy, signed lease, and FW-EVID interfaces; malformed, stale, replayed, cross-tenant, unknown/inactive identity, missing/expired/mismatched lease, unsafe runtime, mutation, secret-bearing, and Evidence failure paths deny before any handler/model/tool invocation. Focused Linux proof passed 99 tests and git diff check passed. Exact independent review is next.
+
 - 2026-09-12: FW-INTEGRITY-002 Core completion/dependency audit accepted at `c16987e2751525c811872e5893113b86799b1bc7`: all existing executable queue work is reconciled as DONE except the intentionally VALIDATED FWQ-0008 provenance caveat; bounded DRY_RUN implementations and production limitations are explicit; FW-API is confirmed as the first genuine missing canonical family. Deterministic source/queue inspection and `git diff --check` passed; exact Claude review returned APPROVE/LOW with no blockers or missing tests. No product validation was rerun for the documentation-only audit. FW-API-001 is now READY.
 
 - 2026-09-12: FW-UX-012 accepted at candidate `9a46f0ddb68fa374c09101ff56a234153c8ba127`: the loopback Mission Control client now consumes one tenant-bound aggregate of canonical Harness, incident, Evidence, policy/Action Ticket, Model Broker, and MCP provider facts with honest canonical/partial/empty/unavailable states and no execution callbacks. Focused proof passed 19 Python tests plus the Node frontend contract; exact Claude retry returned APPROVE/LOW with no blockers or missing tests after earlier Claude/AnythingLLM availability failures; full and fresh integrity suites passed 1641 tests with 1 skipped and all 4 Golden Paths passing. Health remains YELLOW only for pre-existing `tzdata`. The next step is one bounded Core completion/dependency audit.
@@ -9,8 +11,8 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: FW-UX-010 accepted; Mission Control now explains canonical deterministic policy and exactly bound Action Ticket state without control authority.
-- Next task: FW-UX-011 canonical Model Broker and MCP activity provider.
+- Current focus: FW-API-001 exact candidate review.
+- Next task: FW-API-001 exact independent review, then acceptance gates.
 - Harness role: permanent ForgeWarden Core subsystem and default controller for ForgeWarden's own development; one governed architecture serves both roles under D-023.
 - Worker transport direction: registered local CLIs and explicitly approved API-backed workers; API keys are resolved only through FW-KEYS secret handles inside trusted adapters and never enter model context or lifecycle evidence.
 - Provider authentication direction: deterministic OpenAI, Anthropic, and Google/Gemini profiles with provider-specific official OAuth where available and approved API-key classes otherwise; Gemini CLI is registered as `agy` for read-only roles, FW-ID owns delegated identity, and FW-KEYS owns all credential material.
