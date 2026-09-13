@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "proof": "FW-INTEGRITY-008",
+  "scenarios": [
+    {"scenario_id": "identity_policy", "iterations": 1000, "max_wall_ms": 5000, "max_peak_kib": 32768, "timeout_seconds": 15, "max_output_bytes": 4096, "max_processes": 1},
+    {"scenario_id": "evidence_hash", "iterations": 2000, "max_wall_ms": 5000, "max_peak_kib": 32768, "timeout_seconds": 15, "max_output_bytes": 4096, "max_processes": 1},
+    {"scenario_id": "model_routing", "iterations": 1000, "max_wall_ms": 5000, "max_peak_kib": 32768, "timeout_seconds": 15, "max_output_bytes": 4096, "max_processes": 1},
+    {"scenario_id": "normalized_event", "iterations": 1000, "max_wall_ms": 5000, "max_peak_kib": 32768, "timeout_seconds": 15, "max_output_bytes": 4096, "max_processes": 1},
+    {"scenario_id": "mission_control_projection", "iterations": 200, "max_wall_ms": 5000, "max_peak_kib": 32768, "timeout_seconds": 15, "max_output_bytes": 4096, "max_processes": 1}
+  ]
+}

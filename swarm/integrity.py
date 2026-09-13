@@ -302,6 +302,52 @@ def run_mutation_resistance_proof(root: Path, expected_commit: str) -> dict[str,
     }
 
 
+_PERFORMANCE_SCENARIOS = (
+    "identity_policy", "evidence_hash", "model_routing",
+    "normalized_event", "mission_control_projection",
+)
+_PERFORMANCE_POLICY_FIELDS = frozenset({
+    "scenario_id", "iterations", "max_wall_ms", "max_peak_kib",
+    "timeout_seconds", "max_output_bytes", "max_processes",
+})
+
+
+def validate_performance_policy(value: Any) -> tuple[dict[str, int | str], ...]:
+    """Validate the tracked conservative policy without accepting commands."""
+    if not isinstance(value, dict) or set(value) != {"schema_version", "proof", "scenarios"}:
+        raise ValueError("performance policy field set is invalid")
+    if value["schema_version"] != 1 or value["proof"] != "FW-INTEGRITY-008":
+        raise ValueError("performance policy identity is invalid")
+    scenarios = value["scenarios"]
+    if not isinstance(scenarios, list) or len(scenarios) != len(_PERFORMANCE_SCENARIOS):
+        raise ValueError("performance policy scenarios are incomplete")
+    normalized: list[dict[str, int | str]] = []
+    for item in scenarios:
+        if not isinstance(item, dict) or set(item) != _PERFORMANCE_POLICY_FIELDS:
+            raise ValueError("performance scenario policy is malformed")
+        scenario_id = item["scenario_id"]
+        if scenario_id not in _PERFORMANCE_SCENARIOS:
+            raise ValueError("performance scenario is unsupported")
+        bounds = {
+            "iterations": (10, 10_000),
+            "max_wall_ms": (100, 10_000),
+            "max_peak_kib": (1024, 131_072),
+            "timeout_seconds": (1, 30),
+            "max_output_bytes": (256, 8192),
+        }
+        for field, (minimum, maximum) in bounds.items():
+            number = item[field]
+            if not isinstance(number, int) or isinstance(number, bool) or not minimum <= number <= maximum:
+                raise ValueError("performance scenario threshold is unsafe")
+        if item["max_processes"] != 1 or isinstance(item["max_processes"], bool):
+            raise ValueError("performance scenario process bound is unsafe")
+        normalized.append(dict(item))
+    ids = tuple(item["scenario_id"] for item in normalized)
+    if ids != _PERFORMANCE_SCENARIOS or len(set(ids)) != len(ids):
+        raise ValueError("performance scenarios must be complete, unique, and ordered")
+    return tuple(normalized)
+
+
 def _clean_archive_name(name: str) -> Path:
     """Return a safe relative archive path or fail before extraction."""
     if not isinstance(name, str) or not name or "\\" in name:
