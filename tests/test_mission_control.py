@@ -501,3 +501,16 @@ def test_attack_surface_projection_labels_demo_and_rejects_tamper_or_secret():
     )
     with pytest.raises(MissionControlError, match="secret-bearing"):
         project_attack_surface(secret, tenant_id="tenant-a")
+
+
+def test_attack_surface_projection_rejects_invalid_type_mode_and_excessive_value():
+    with pytest.raises(MissionControlError, match="malformed"):
+        project_attack_surface(None, tenant_id="tenant-a")
+    lifecycle = attack_surface_lifecycle()
+    with pytest.raises(MissionControlError, match="binding"):
+        project_attack_surface(lifecycle, tenant_id="tenant-a", data_mode="UNKNOWN")
+    excessive = replace(
+        lifecycle, binding=replace(lifecycle.binding, network_ref="x" * 1001),
+    )
+    with pytest.raises(MissionControlError, match="excessive"):
+        project_attack_surface(excessive, tenant_id="tenant-a")

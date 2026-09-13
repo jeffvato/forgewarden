@@ -1,5 +1,7 @@
 # ForgeWarden Swarm Status
 
+- 2026-09-13: FW-ASM-006 is in bounded test-only repair after exact AnythingLLM/Qwen APPROVE/LOW requested direct Mission Control invalid-type, invalid-mode, and excessive-value denial proofs. Runtime lifecycle and projection behavior are unchanged.
+
 - 2026-09-13: FW-ASM-006 is in focused validation. One deterministic lifecycle composes accepted observation, classification, canonical owner binding, and inert proposal stages; Mission Control exposes sanitized canonical or explicitly simulated facts without callbacks or authority. Lower-risk and invalid stages stop early.
 
 - 2026-09-13: FW-ASM-005 accepted at implementation `c7beba4efe72e8cd1263cb365df7e3dc19361f2e` and test-only repair `22aab2585521921bc58ef36e290b1990f87dc232`. Exact HIGH/CRITICAL canonical bindings may consume only a matching signed single-use Action Ticket after Evidence succeeds to produce an inert DRY_RUN risk-reduction proposal. Exact AnythingLLM/Qwen review requested remaining denial proofs; the repair closed them and received APPROVE/LOW with no blockers or missing tests. Focused 67 and full 1937/1 passed. Product Integrity passed every hard check and Golden Path, with only the pre-existing `tzdata` dependency YELLOW. The engaged kill switch, exact target/policy/tenant/lease/capability bindings, replay denial, and no-authority output remain mandatory. No asset or external-service mutation, deployment, containment, remediation, or response executor was added. FW-ASM-006 lifecycle and Mission Control projection is next.
