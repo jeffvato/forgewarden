@@ -8,7 +8,7 @@ from swarm.harness_models import ApprovedModelCandidate
 from swarm.harness_risk import AssuranceTier
 from swarm.mcp_gateway import MCPGatewaySafetyState, MCPToolCatalogEntry
 from swarm.harness_worker import WorkerRegistration, WorkerRole, WorkerTransport
-from swarm.mission_control import MissionControlError, ModelMCPActivity, PolicyTicketActivity, project_ai_security, project_attack_surface, project_mission_control, project_network_security, project_saas_security, project_supply_chain, serialize_evidence_activity, serialize_harness_activity, serialize_incident_activity, serialize_model_mcp_activity, serialize_policy_ticket_activity
+from swarm.mission_control import MissionControlError, ModelMCPActivity, PolicyTicketActivity, project_ai_security, project_attack_surface, project_data_security, project_mission_control, project_network_security, project_saas_security, project_supply_chain, serialize_evidence_activity, serialize_harness_activity, serialize_incident_activity, serialize_model_mcp_activity, serialize_policy_ticket_activity
 from swarm.action_ticket import ActionTicket
 from swarm.policy_gate import PolicyContext, PolicyDecision
 from swarm.evidence import EvidenceRecord, evidence_record_sha256, validate_evidence_envelope
@@ -20,6 +20,7 @@ from tests.test_saas_security import saas_lifecycle
 from tests.test_supply_chain import supply_lifecycle
 from tests.test_network_security import network_lifecycle
 from tests.test_attack_surface import attack_surface_lifecycle
+from tests.test_data_security import data_security_lifecycle
 
 
 def task(task_id="FWQ-0001", status=TaskStatus.READY, **changes):
@@ -514,3 +515,52 @@ def test_attack_surface_projection_rejects_invalid_type_mode_and_excessive_value
     )
     with pytest.raises(MissionControlError, match="excessive"):
         project_attack_surface(excessive, tenant_id="tenant-a")
+
+
+def test_data_security_projection_exposes_lifecycle_without_authority():
+    lifecycle = data_security_lifecycle()
+    view = project_data_security(lifecycle, tenant_id="tenant-a")
+    assert view.event_id == "dspm-1" and view.risk == "HIGH"
+    assert view.data_asset_ref == "fw-data/tenant-a/customer-records"
+    assert view.owner_identity_ref == "fw-id/tenant-a.data-owner"
+    assert view.proposal_action == "DSPM_DLP_PROPOSAL"
+    assert view.proposal_state == "PROPOSE_ONLY"
+    assert view.kill_switch == "ENGAGED" and view.deployment == "DISABLED"
+    assert view.mutation_allowed is False and view.response_executed is False
+    assert not hasattr(view, "execute") and not hasattr(view, "approve")
+
+
+def test_data_security_projection_labels_demo_and_rejects_tamper_or_secret():
+    lifecycle = data_security_lifecycle()
+    assert project_data_security(
+        lifecycle, tenant_id="tenant-a", data_mode="DEMO",
+    ).data_label == "DEMO / SIMULATED DATA"
+    for invalid in (
+        replace(lifecycle, kill_switch="CLEARED"),
+        replace(lifecycle, binding=replace(lifecycle.binding, risk="CRITICAL")),
+        replace(lifecycle, proposal=replace(lifecycle.proposal, event_id="dspm-2")),
+    ):
+        with pytest.raises(MissionControlError, match="binding"):
+            project_data_security(invalid, tenant_id="tenant-a")
+    with pytest.raises(MissionControlError, match="binding"):
+        project_data_security(lifecycle, tenant_id="tenant-b")
+    secret = replace(
+        lifecycle,
+        binding=replace(lifecycle.binding, policy_decision_ref="api_key=secret"),
+        proposal=replace(lifecycle.proposal, policy_decision_ref="api_key=secret"),
+    )
+    with pytest.raises(MissionControlError, match="secret-bearing"):
+        project_data_security(secret, tenant_id="tenant-a")
+
+
+def test_data_security_projection_rejects_invalid_type_mode_and_excessive_value():
+    with pytest.raises(MissionControlError, match="malformed"):
+        project_data_security(None, tenant_id="tenant-a")
+    lifecycle = data_security_lifecycle()
+    with pytest.raises(MissionControlError, match="binding"):
+        project_data_security(lifecycle, tenant_id="tenant-a", data_mode="UNKNOWN")
+    excessive = replace(
+        lifecycle, binding=replace(lifecycle.binding, saas_ref="x" * 1001),
+    )
+    with pytest.raises(MissionControlError, match="excessive"):
+        project_data_security(excessive, tenant_id="tenant-a")

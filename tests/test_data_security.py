@@ -4,7 +4,7 @@ import pytest
 
 from swarm.action_ticket import ActionTicket, ActionTicketRegistry
 from swarm.asoc import HMACLeaseSigner
-from swarm.data_security import DataSecurityObservationDenied, bind_data_security_references, classify_data_security_observation, normalize_data_security_observation, propose_data_security_dlp
+from swarm.data_security import DataSecurityObservationDenied, bind_data_security_references, classify_data_security_observation, normalize_data_security_observation, propose_data_security_dlp, run_data_security_dry_run_lifecycle
 
 
 def fixture(**overrides):
@@ -335,3 +335,55 @@ def test_data_security_dlp_proposal_revalidates_source_and_evidence():
                 audit=lambda *_args: (_ for _ in ()).throw(RuntimeError("offline")),
             ),
         )
+
+
+def data_security_lifecycle(*, audit=lambda *_args: None, fixture_overrides=None, **overrides):
+    values = {
+        "fixture": fixture(**(fixture_overrides or {"policy_state": "VIOLATION"})),
+        "tenant_id": "tenant-a", "now_epoch": 150,
+        "saas_ref": "fw-saas/tenant-a/storage-1",
+        "supply_ref": "fw-component/tenant-a/repository-1",
+        "ai_workflow_ref": "fw-workflow/tenant-a/agent-task-1",
+        "policy_decision_ref": "fw-policy/tenant-a/dspm-1",
+        "soc_incident_ref": "fw-incident/tenant-a/dspm-1",
+        "evidence_refs": ("fw-evid/tenant-a/dspm-1",),
+        "tickets": tickets(), "ticket_id": "ticket-1",
+        "target_ref": "fw-data/tenant-a/customer-records",
+        "subject_agent_id": "agent-1", "lease_id": "lease-1",
+        "policy_version": "policy-v1", "kill_switch_state": "ENGAGED",
+        "audit": audit,
+    }
+    values.update(overrides)
+    return run_data_security_dry_run_lifecycle(**values)
+
+
+def test_data_security_lifecycle_preserves_stage_order_and_no_authority():
+    evidence = []
+    lifecycle = data_security_lifecycle(audit=lambda *items: evidence.append(items))
+    assert [item[0] for item in evidence] == [
+        "data_security_observation_normalized",
+        "data_security_observation_classified",
+        "data_security_references_bound",
+        "data_security_dlp_proposed",
+    ]
+    assert len({
+        lifecycle.observation.event_id, lifecycle.finding.event_id,
+        lifecycle.binding.event_id, lifecycle.proposal.event_id,
+    }) == 1
+    assert lifecycle.mode == "DRY_RUN" and lifecycle.deployment == "DISABLED"
+    assert lifecycle.kill_switch == "ENGAGED"
+    assert lifecycle.authority_granted is False and lifecycle.response_executed is False
+
+
+def test_data_security_lifecycle_stops_before_proposal_for_lower_risk():
+    evidence = []
+    with pytest.raises(DataSecurityObservationDenied, match="PROPOSAL_SOURCE_INVALID"):
+        data_security_lifecycle(
+            audit=lambda *items: evidence.append(items),
+            fixture_overrides={"classification": "PUBLIC", "copy_count": 0},
+        )
+    assert [item[0] for item in evidence] == [
+        "data_security_observation_normalized",
+        "data_security_observation_classified",
+        "data_security_references_bound",
+    ]

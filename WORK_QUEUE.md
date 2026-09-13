@@ -87,7 +87,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-DSPM-006 — Integrated lifecycle and Mission Control projection
 - Requirement: FW-DSPM accepted-stage composition and operator visibility
-- State: READY
+- State: REVIEW
 - Priority: P0
 - Dependencies: FW-DSPM-005
 - Approval: Jeff authorized the ordered FW-DSPM phase through the continuing heartbeat.

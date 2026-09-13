@@ -24,6 +24,7 @@ from .saas_security import SaaSDryRunLifecycle
 from .supply_chain import SupplyChainDryRunLifecycle
 from .network_security import NetworkDryRunLifecycle
 from .attack_surface import AttackSurfaceDryRunLifecycle
+from .data_security import DataSecurityDryRunLifecycle
 
 
 _TENANT = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$")
@@ -855,6 +856,106 @@ def project_attack_surface(
         proposal.disposition, proposal.target_ref, proposal.policy_decision_ref,
         proposal.action_ticket_ref, data_mode,
         "DEMO / SIMULATED DATA" if data_mode == "DEMO" else "CANONICAL READ-ONLY ATTACK-SURFACE LIFECYCLE",
+    )
+
+
+@dataclass(frozen=True)
+class DataSecurityMissionView:
+    schema_version: int
+    tenant_id: str
+    event_id: str
+    data_asset_ref: str
+    location_asset_ref: str
+    owner_identity_ref: str
+    classification: str
+    location_class: str
+    access_path: str
+    copy_count: int
+    encryption_state: str
+    ai_access_state: str
+    policy_state: str
+    risk: str
+    signals: tuple[str, ...]
+    saas_ref: str
+    supply_ref: str
+    ai_workflow_ref: str
+    soc_incident_ref: str
+    evidence_refs: tuple[str, ...]
+    proposal_action: str
+    proposal_state: str
+    target_ref: str
+    policy_decision_ref: str
+    action_ticket_ref: str
+    data_mode: str = "CANONICAL"
+    data_label: str = "CANONICAL READ-ONLY DATA-SECURITY LIFECYCLE"
+    kill_switch: str = "ENGAGED"
+    deployment: str = "DISABLED"
+    mutation_allowed: bool = False
+    response_executed: bool = False
+
+
+def project_data_security(
+    lifecycle: DataSecurityDryRunLifecycle, *, tenant_id: str,
+    data_mode: str = "CANONICAL",
+) -> DataSecurityMissionView:
+    """Project one canonical FW-DSPM lifecycle without content or authority."""
+    if not isinstance(lifecycle, DataSecurityDryRunLifecycle) or not _TENANT.fullmatch(tenant_id):
+        raise MissionControlError("data-security lifecycle malformed")
+    observation, finding = lifecycle.observation, lifecycle.finding
+    binding, proposal = lifecycle.binding, lifecycle.proposal
+    if (
+        data_mode not in {"CANONICAL", "DEMO"}
+        or lifecycle.mode != "DRY_RUN" or lifecycle.deployment != "DISABLED"
+        or lifecycle.kill_switch != "ENGAGED" or lifecycle.authority_granted
+        or lifecycle.response_executed
+        or any(item.tenant_id != tenant_id for item in (observation, finding, binding, proposal))
+        or len({item.event_id for item in (observation, finding, binding, proposal)}) != 1
+        or finding.data_asset_ref != observation.data_asset_ref
+        or finding.location_asset_ref != observation.location_asset_ref
+        or finding.owner_identity_ref != observation.owner_identity_ref
+        or finding.location_class != observation.location_class
+        or finding.classification != observation.classification
+        or binding.data_asset_ref != finding.data_asset_ref
+        or binding.location_asset_ref != finding.location_asset_ref
+        or binding.owner_identity_ref != finding.owner_identity_ref
+        or binding.risk != finding.risk
+        or proposal.target_ref != binding.data_asset_ref or proposal.risk != binding.risk
+        or proposal.policy_decision_ref != binding.policy_decision_ref
+        or observation.mode != "DRY_RUN" or observation.action != "DETECT_ONLY"
+        or observation.authority_granted
+        or finding.mode != "DRY_RUN" or finding.action != "ADVISE_ONLY"
+        or finding.authority_granted
+        or binding.mode != "DRY_RUN" or binding.action != "CORRELATE_ONLY"
+        or binding.authority_granted
+        or proposal.mode != "DRY_RUN" or proposal.disposition != "PROPOSE_ONLY"
+        or proposal.deployment != "DISABLED" or proposal.kill_switch != "ENGAGED"
+        or proposal.authority_granted or proposal.response_executed
+    ):
+        raise MissionControlError("data-security lifecycle binding or authority invalid")
+    visible = (
+        observation.event_id, observation.data_asset_ref,
+        observation.location_asset_ref, observation.owner_identity_ref,
+        observation.classification, observation.location_class,
+        observation.access_path, observation.encryption_state,
+        observation.ai_access_state, observation.policy_state, *finding.signals,
+        binding.saas_ref, binding.supply_ref, binding.ai_workflow_ref,
+        binding.soc_incident_ref, *binding.evidence_refs, proposal.target_ref,
+        proposal.policy_decision_ref, proposal.action_ticket_ref,
+    )
+    if any(not isinstance(value, str) or len(value.encode()) > 1000 or _SECRET.search(value) for value in visible):
+        raise MissionControlError("data-security lifecycle secret-bearing or excessive")
+    return DataSecurityMissionView(
+        1, tenant_id, observation.event_id, observation.data_asset_ref,
+        observation.location_asset_ref, observation.owner_identity_ref,
+        observation.classification, observation.location_class,
+        observation.access_path, observation.copy_count,
+        observation.encryption_state, observation.ai_access_state,
+        observation.policy_state, finding.risk, finding.signals,
+        binding.saas_ref, binding.supply_ref, binding.ai_workflow_ref,
+        binding.soc_incident_ref, binding.evidence_refs, proposal.action_class,
+        proposal.disposition, proposal.target_ref, proposal.policy_decision_ref,
+        proposal.action_ticket_ref, data_mode,
+        "DEMO / SIMULATED DATA" if data_mode == "DEMO" else "CANONICAL READ-ONLY DATA-SECURITY LIFECYCLE",
     )
 
 
