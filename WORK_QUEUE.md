@@ -988,6 +988,26 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 - Completion evidence: exact candidate `f0cf0e53a04a51e3700cfaacff5590b98a2d78f9`; focused 36 passed; exact AnythingLLM/Qwen review `phase2a-f0cf0e53a04a51e3700cfaac` returned APPROVE/LOW with no blockers or missing tests; full 1696 passed/1 skipped; Product Integrity fresh full and Golden Path each passed 1696/1 with all hard checks passing and YELLOW only for the pre-existing `tzdata` dependency.
 
+
+### FW-OPS-004 — Local restart continuity lifecycle proof
+- Requirement: FW-OPS integration with FW-REC, FW-EVID, Mission Control, and Product Integrity
+- State: REVIEW
+- Priority: P0
+- Dependencies: FW-OPS-003, FW-REC-003, FW-EVID-006, FW-UX-012, and FW-INTEGRITY-001
+- Approval: Jeff authorized completion of the bounded FW-OPS family; local metadata persistence and read-only projection are permitted without recovery execution.
+- Description: Prove canonical health and capacity metadata through private FW-REC checkpoint persistence/reconstruction, Evidence-first resume admission, and a tenant-bound Mission Control continuity view; record the exact bounded product status.
+- Target path: tests/test_operations_continuity.py
+- Allowed paths: swarm/mission_control.py, swarm/integrity.py, tests/test_operations_continuity.py, tests/test_integrity.py, docs/fw-ops-inventory.md, docs/fw-integrity-functionality-map.md, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_operations_continuity.py tests/test_operations_capacity.py tests/test_operations.py tests/test_recovery.py tests/test_mission_control.py tests/test_integrity.py
+- Acceptance criteria:
+  - canonical operational health and capacity Evidence references remain exact and same-tenant across an atomic private checkpoint write and restart reconstruction;
+  - the existing FW-REC owner produces the resume/block/rollback-proposal decision and Mission Control exposes it without executing recovery;
+  - corrupt checkpoint, stale chronology, substituted tenant/Evidence/safety/status, malformed commit, and authority-bearing facts fail closed;
+  - Mission Control output is immutable DRY_RUN, disabled-deployment, read-only status with no callback or queue/service/process/recovery/rollback authority;
+  - Product Integrity records FW-OPS Proven only within the explicit local caller-supplied metadata boundary and documents live operations limitations.
+- Expected validation: focused Linux lifecycle proof, exact independent read-only review, then one full suite and Product Integrity Gate after approval.
+- Security considerations: FW-OPS consumes FW-REC and FW-EVID decisions; it does not own recovery, Evidence, policy, deployment, or operational execution.
+
 ### FW-UX-001 — Mission Control showcase foundation
 - Requirement: FW-UX Mission Control and honest Demo Mode
 - State: DONE

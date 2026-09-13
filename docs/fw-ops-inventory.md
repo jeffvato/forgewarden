@@ -96,3 +96,19 @@ Substituted tenant/Evidence/safety facts, duplicate or reordered samples,
 stale/future windows, replay, malformed bounds, Evidence failure, and foreign
 Evidence references deny. Evidence failure does not consume the assessment ID,
 allowing a bounded trusted retry.
+
+
+## FW-OPS-004 implemented lifecycle boundary
+
+The integrated local proof carries a canonical health projection and bounded
+capacity assessment through the existing private atomic FW-REC checkpoint
+persistence and reconstruction path. The reconstructed checkpoint receives an
+Evidence-first resume admission, and Mission Control binds those exact
+tenant/safety/Evidence/commit facts into an immutable operations continuity
+view.
+
+Corrupt checkpoint data, tenant substitution, unsafe projection state, invalid
+Evidence references, stale chronology, and model-supplied status substitution
+deny. The Mission Control view reports the deterministic resume decision but
+cannot execute it. Product Integrity records FW-OPS Proven only within this
+caller-supplied local DRY_RUN boundary.

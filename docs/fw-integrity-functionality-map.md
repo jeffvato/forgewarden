@@ -14,6 +14,7 @@ This summary is intentionally conservative:
 | FW-REC | Proven | `swarm.recovery` | Checkpoint, reconstruction, and exact resume admission | Metadata-only DRY_RUN; no recovery execution |
 | FW-COMP | Proven | `swarm.compliance` | Mapping, canonical Evidence admission, and bounded assessment lifecycle | In-memory metadata-only DRY_RUN; no certification, attestation, reporting, or control execution |
 | FW-AID | Proven | `swarm.ai_agent_defense`, `swarm.normalized_events`, `swarm.mission_control` | Fixture-only Harness and endpoint attribution through detection, correlation, proposal, Evidence, and Mission Control | Caller-supplied DRY_RUN metadata only; no live sensors, enforcement, containment execution, recovery execution, or deployment |
+| FW-OPS | Proven | `swarm.operations`, `swarm.operations_capacity`, `swarm.mission_control` | Health and capacity Evidence through checkpoint reconstruction, resume admission, and read-only continuity projection | Caller-supplied local DRY_RUN metadata; no live telemetry, HA/DR coordination, service/process control, retention movement, rollback execution, or deployment |
 | FW-INTEGRITY | Implemented | `swarm.integrity` | Baseline Core path | Dependency lock, clean-build packaging, and broader end-to-end paths remain |
 
 FW-AID now has a concrete canonical owner and integrated fixture-only proof. FW-SOC remains partially implemented.

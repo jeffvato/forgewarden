@@ -17,10 +17,14 @@ from .policy_gate import PolicyContext, PolicyDecision, PolicyInvariantError
 from .harness_models import ApprovedModelCandidate, HarnessModelError
 from .mcp_gateway import MCPGatewayError, MCPGatewaySafetyState, MCPToolCatalogEntry
 from .soc import SOCAttackStoryProjection, SOCDryRunLifecycle, SOCIncidentProjection, SOCIncidentTimeline, SOCPlaybookProposal, SOCPlaybookStep, SOCTimelineEntry
+from .operations import OperationalHealthProjection
+from .operations_capacity import CapacityAssessment
+from .recovery import ResumeAdmission, ResumeAdmissionDecision
 
 
 _TENANT = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$")
 _SHA = re.compile(r"^[0-9a-fA-F]{40,64}$")
+_OPS_EVIDENCE = re.compile(r"^fw-evid/([a-z][a-z0-9_.-]{0,127})/[a-z][a-z0-9_.:/-]{0,191}$")
 _SECRET = re.compile(r"(?i)(bearer\s+\S+|sk-[A-Za-z0-9_-]{8,}|AIza[A-Za-z0-9_-]{8,}|ya29\.[A-Za-z0-9._-]{8,}|api[_-]?key\s*[:=]|access[_-]?token\s*[:=]|client[_-]?secret\s*[:=])")
 
 
@@ -516,3 +520,92 @@ def project_ai_security(*,tenant_id:str,events:tuple[AIWorkloadSecurityEvent,...
         rows.append(AIAgentSecurityView(event.event_id,event.agent_ref,event.model_ref,event.task_ref,event.session_ref,event.capability_lease_ref,event.action_ticket_ref,finding.threat_class,finding.severity,finding.confidence,event.anomaly_indicators,event.decision,event.tool_category,event.mcp_server_ref,story.projection.story_id,story.projection.incident_ids,evidence,proposal.proposal_id if proposal else None,proposal.action_class if proposal else None,"PROPOSE_ONLY" if proposal else "NONE"))
     if set(finding_by_event)!=set(item.event_id for item in events) or set(story_by_event)!=set(item.event_id for item in events) or any(key not in {item.projection.story_id for item in stories} for key in proposal_by_story): raise MissionControlError("AI Security orphan fact")
     return AISecurityMissionView(1,tenant_id,data_mode,"DEMO / SIMULATED DATA" if data_mode=="DEMO" else "CANONICAL READ-ONLY DATA",tuple(rows),kill_switch)
+
+
+@dataclass(frozen=True)
+class OperationsContinuityView:
+    """Read-only FW-OPS/FW-REC status for Mission Control."""
+
+    schema_version: int
+    tenant_id: str
+    health: str
+    pressure: str
+    resume_decision: str
+    checkpoint_id: str
+    current_commit: str
+    health_evidence_reference: str
+    capacity_evidence_reference: str
+    observed_at_epoch: int
+    mode: str = "DRY_RUN"
+    deployment: str = "DISABLED"
+    mutation_allowed: bool = False
+    recovery_executed: bool = False
+    authority_granted: bool = False
+
+
+def project_operations_continuity(
+    health: OperationalHealthProjection,
+    capacity: CapacityAssessment,
+    admission: ResumeAdmission,
+    *,
+    tenant_id: str,
+) -> OperationsContinuityView:
+    """Bind canonical operations and resume facts without executing recovery."""
+    if (
+        not isinstance(health, OperationalHealthProjection)
+        or not isinstance(capacity, CapacityAssessment)
+        or not isinstance(admission, ResumeAdmission)
+        or not _TENANT.fullmatch(tenant_id)
+        or health.tenant_id != tenant_id
+        or capacity.tenant_id != tenant_id
+        or admission.tenant_id != tenant_id
+    ):
+        raise MissionControlError("operations continuity facts are malformed or cross-tenant")
+    if (
+        health.mode != capacity.mode
+        or health.mode != admission.mode
+        or health.mode != "DRY_RUN"
+        or health.deployment != capacity.deployment
+        or health.deployment != admission.deployment
+        or health.deployment != "DISABLED"
+        or health.action != "OBSERVE_ONLY"
+        or capacity.action != "OBSERVE_ONLY"
+        or health.authority_granted
+        or capacity.authority_granted
+        or admission.authority_granted
+        or health.recovery_invoked
+        or capacity.recovery_invoked
+        or capacity.throttle_executed
+    ):
+        raise MissionControlError("operations continuity safety state is invalid")
+    health_evidence = _OPS_EVIDENCE.fullmatch(health.evidence_reference) if isinstance(health.evidence_reference, str) else None
+    capacity_evidence = _OPS_EVIDENCE.fullmatch(capacity.evidence_reference) if isinstance(capacity.evidence_reference, str) else None
+    if (
+        health.health not in {"HEALTHY", "DEGRADED", "UNHEALTHY"}
+        or capacity.pressure not in {"NORMAL", "ELEVATED", "SUSTAINED", "CRITICAL"}
+        or not isinstance(health.assessed_at_epoch, int)
+        or isinstance(health.assessed_at_epoch, bool)
+        or not isinstance(capacity.assessed_at_epoch, int)
+        or isinstance(capacity.assessed_at_epoch, bool)
+        or capacity.assessed_at_epoch < health.assessed_at_epoch
+        or health_evidence is None
+        or health_evidence.group(1) != tenant_id
+        or capacity_evidence is None
+        or capacity_evidence.group(1) != tenant_id
+        or not admission.checkpoint_id.startswith(f"fw-rec/{tenant_id}/")
+        or not _SHA.fullmatch(admission.current_commit)
+        or not isinstance(admission.decision, ResumeAdmissionDecision)
+    ):
+        raise MissionControlError("operations continuity binding is invalid")
+    return OperationsContinuityView(
+        1,
+        tenant_id,
+        health.health,
+        capacity.pressure,
+        admission.decision.value,
+        admission.checkpoint_id,
+        admission.current_commit,
+        health.evidence_reference,
+        capacity.evidence_reference,
+        capacity.assessed_at_epoch,
+    )
