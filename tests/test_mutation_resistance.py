@@ -1,15 +1,20 @@
 import dataclasses
+import io
 import json
 import subprocess
+import tarfile
+import tempfile
 from pathlib import Path
 
 import pytest
 
+import swarm.integrity as integrity
 from swarm.integrity import (
     INVARIANT_MUTATIONS,
     InvariantMutation,
     _MutationProcessResult,
     _apply_invariant_mutation,
+    _extract_mutation_archive,
     _validate_mutation_manifest,
     _validated_mutation_result,
     run_mutation_resistance_proof,
@@ -90,6 +95,45 @@ def test_mutation_target_must_be_present_exactly_once(tmp_path):
     target.write_text("DENY\nDENY\n", encoding="utf-8")
     with pytest.raises(ValueError, match="exactly once"):
         _apply_invariant_mutation(tmp_path, mutation)
+
+
+@pytest.mark.parametrize("kind,match", [("symlink", "link or special"), ("unsafe", "unsafe"), ("large", "size")])
+def test_mutation_archive_rejects_links_unsafe_paths_and_large_members(tmp_path, kind, match):
+    payload = io.BytesIO()
+    with tarfile.open(fileobj=payload, mode="w:") as archive:
+        member = tarfile.TarInfo("swarm/value.py")
+        content = b"value = 1\n"
+        if kind == "symlink":
+            member.type = tarfile.SYMTYPE
+            member.linkname = "../outside"
+            member.size = 0
+            archive.addfile(member)
+        elif kind == "unsafe":
+            member.name = "../outside.py"
+            member.size = len(content)
+            archive.addfile(member, io.BytesIO(content))
+        else:
+            content = b"x" * (2 * 1024 * 1024 + 1)
+            member.size = len(content)
+            archive.addfile(member, io.BytesIO(content))
+    with pytest.raises(ValueError, match=match):
+        _extract_mutation_archive(payload.getvalue(), tmp_path / "checkout")
+
+
+def test_disposable_checkout_is_removed_when_mutation_application_fails(monkeypatch):
+    temporary_root = Path(tempfile.gettempdir())
+    before = {path.resolve() for path in temporary_root.glob("forgewarden-invariant-mutant-*")}
+
+    def fail(*_args):
+        raise ValueError("synthetic mutation failure")
+
+    monkeypatch.setattr(integrity, "_apply_invariant_mutation", fail)
+    with pytest.raises(ValueError, match="synthetic mutation failure"):
+        integrity.run_mutation_resistance_proof(ROOT, head())
+    after = {path.resolve() for path in temporary_root.glob("forgewarden-invariant-mutant-*")}
+    assert after == before
+
+
 @pytest.mark.parametrize(
     "result,match",
     [
