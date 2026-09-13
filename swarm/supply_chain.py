@@ -14,6 +14,9 @@ _REF = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:/@+-]{0,255}$")
 _PACKAGE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.@/+-]{0,255}$")
 _VERSION = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.+-]{0,127}$")
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
+_TENANT_REF = re.compile(
+    r"^fw-(vuln|catalog|signature|evid)/([a-z][a-z0-9_.-]{0,127})/[a-z][a-z0-9_.:/+-]{0,191}$"
+)
 _ECOSYSTEMS = frozenset({"CONTAINER", "GENERIC", "MAVEN", "NPM", "NUGET", "PYPI"})
 _INDICATORS = frozenset({
     "DEPENDENCY_CONFUSION", "DIGEST_MISMATCH", "KNOWN_EXPLOITED",
@@ -73,6 +76,22 @@ class SupplyChainFinding:
     trust: str = "UNTRUSTED_DATA"
     mode: str = "DRY_RUN"
     action: str = "DETECT_ONLY"
+
+
+@dataclass(frozen=True)
+class SupplyChainReferenceBinding:
+    event_id: str
+    tenant_id: str
+    component_ref: str
+    risk: str
+    indicators: tuple[str, ...]
+    vulnerability_refs: tuple[str, ...]
+    catalog_ref: str
+    signature_ref: str
+    evidence_refs: tuple[str, ...]
+    trust: str = "UNTRUSTED_DATA"
+    mode: str = "DRY_RUN"
+    action: str = "CORRELATE_ONLY"
 
 
 def normalize_supply_chain_observation(
@@ -212,4 +231,73 @@ def classify_supply_chain_observation(
     return SupplyChainFinding(
         observation.event_id, expected_tenant, observation.component_ref,
         observation.ecosystem, indicators, risk, recommendations,
+    )
+
+
+def bind_supply_chain_references(
+    finding: SupplyChainFinding, *, tenant_id: str,
+    vulnerability_refs: tuple[str, ...], catalog_ref: str,
+    signature_ref: str, evidence_refs: tuple[str, ...],
+    audit: Callable[[str, dict[str, Any]], None],
+) -> SupplyChainReferenceBinding:
+    """Bind existing canonical owners without creating a competing registry."""
+    if not isinstance(finding, SupplyChainFinding) or not callable(audit):
+        raise SupplyChainObservationDenied("FINDING_INVALID")
+    expected_tenant = _reference(tenant_id, "TENANT")
+    if finding.tenant_id != expected_tenant:
+        raise SupplyChainObservationDenied("TENANT_MISMATCH")
+    if (
+        finding.risk not in {"LOW", "MEDIUM", "HIGH", "CRITICAL"}
+        or finding.trust != "UNTRUSTED_DATA"
+        or finding.mode != "DRY_RUN"
+        or finding.action != "DETECT_ONLY"
+        or not isinstance(finding.indicators, tuple)
+        or not 1 <= len(finding.indicators) <= MAX_SUPPLY_INDICATORS
+        or tuple(sorted(set(finding.indicators))) != finding.indicators
+        or any(item not in _INDICATORS for item in finding.indicators)
+    ):
+        raise SupplyChainObservationDenied("FINDING_INVALID")
+    _reference(finding.event_id, "EVENT_ID")
+    _reference(finding.component_ref, "COMPONENT_REF")
+    groups = (
+        (vulnerability_refs, "vuln", "VULNERABILITY_REFS"),
+        (evidence_refs, "evid", "EVIDENCE_REFS"),
+    )
+    for values, kind, field in groups:
+        if (
+            not isinstance(values, tuple) or not 1 <= len(values) <= 16
+            or tuple(sorted(set(values))) != values
+        ):
+            raise SupplyChainObservationDenied(f"{field}_INVALID")
+        for value in values:
+            match = _TENANT_REF.fullmatch(value) if isinstance(value, str) else None
+            if match is None or match.group(1) != kind or match.group(2) != expected_tenant:
+                raise SupplyChainObservationDenied(f"{field}_INVALID")
+    for value, kind in ((catalog_ref, "catalog"), (signature_ref, "signature")):
+        match = _TENANT_REF.fullmatch(value) if isinstance(value, str) else None
+        if match is None or match.group(1) != kind or match.group(2) != expected_tenant:
+            raise SupplyChainObservationDenied("OWNER_REF_INVALID")
+    try:
+        audit("supply_chain_references_bound", {
+            "event_id": finding.event_id,
+            "tenant_id": expected_tenant,
+            "component_ref": finding.component_ref,
+            "risk": finding.risk,
+            "indicators": list(finding.indicators),
+            "vulnerability_refs": list(vulnerability_refs),
+            "catalog_ref": catalog_ref,
+            "signature_ref": signature_ref,
+            "evidence_refs": list(evidence_refs),
+            "trust": "UNTRUSTED_DATA",
+            "mode": "DRY_RUN",
+            "action": "CORRELATE_ONLY",
+            "response_executed": False,
+            "deployment": "DISABLED",
+        })
+    except Exception as exc:
+        raise SupplyChainObservationDenied("EVIDENCE_WRITE_FAILED") from exc
+    return SupplyChainReferenceBinding(
+        finding.event_id, expected_tenant, finding.component_ref, finding.risk,
+        finding.indicators, vulnerability_refs, catalog_ref, signature_ref,
+        evidence_refs,
     )

@@ -2,7 +2,7 @@ from dataclasses import FrozenInstanceError, replace
 
 import pytest
 
-from swarm.supply_chain import SupplyChainObservationDenied, classify_supply_chain_observation, normalize_supply_chain_observation
+from swarm.supply_chain import SupplyChainObservationDenied, bind_supply_chain_references, classify_supply_chain_observation, normalize_supply_chain_observation
 
 
 def fixture(**overrides):
@@ -124,4 +124,66 @@ def test_supply_classifier_revalidates_tenant_authority_and_evidence():
         classify_supply_chain_observation(
             value, tenant_id="tenant-a", indicators=("KNOWN_VULNERABILITY",),
             audit=lambda *_args: (_ for _ in ()).throw(RuntimeError("offline")),
+        )
+
+
+def finding():
+    return classify_supply_chain_observation(
+        observation(), tenant_id="tenant-a", indicators=("KNOWN_EXPLOITED",),
+        audit=lambda *_args: None,
+    )
+
+
+def binding_args(**overrides):
+    values = dict(
+        tenant_id="tenant-a",
+        vulnerability_refs=("fw-vuln/tenant-a/osv-1",),
+        catalog_ref="fw-catalog/tenant-a/addon-1",
+        signature_ref="fw-signature/tenant-a/publisher-1",
+        evidence_refs=("fw-evid/tenant-a/supply-1",),
+        audit=lambda *_args: None,
+    )
+    values.update(overrides)
+    return values
+
+
+def test_supply_reference_binding_is_immutable_evidence_first_and_inert():
+    evidence = []
+    value = bind_supply_chain_references(
+        finding(), **binding_args(audit=lambda *args: evidence.append(args)),
+    )
+    assert value.risk == "CRITICAL"
+    assert value.vulnerability_refs == ("fw-vuln/tenant-a/osv-1",)
+    assert value.action == "CORRELATE_ONLY" and value.mode == "DRY_RUN"
+    assert evidence[0][1]["response_executed"] is False
+    assert evidence[0][1]["deployment"] == "DISABLED"
+    with pytest.raises(FrozenInstanceError):
+        value.risk = "LOW"
+
+
+@pytest.mark.parametrize("overrides,reason", [
+    ({"tenant_id": "tenant-b"}, "TENANT_MISMATCH"),
+    ({"vulnerability_refs": ()}, "VULNERABILITY_REFS_INVALID"),
+    ({"vulnerability_refs": ("fw-vuln/tenant-b/osv-1",)}, "VULNERABILITY_REFS_INVALID"),
+    ({"vulnerability_refs": ("fw-vuln/tenant-a/osv-1", "fw-vuln/tenant-a/osv-1")}, "VULNERABILITY_REFS_INVALID"),
+    ({"catalog_ref": "fw-signature/tenant-a/addon-1"}, "OWNER_REF_INVALID"),
+    ({"signature_ref": "fw-signature/tenant-b/publisher-1"}, "OWNER_REF_INVALID"),
+    ({"evidence_refs": ()}, "EVIDENCE_REFS_INVALID"),
+    ({"evidence_refs": tuple(f"fw-evid/tenant-a/{index}" for index in range(17))}, "EVIDENCE_REFS_INVALID"),
+])
+def test_supply_reference_binding_rejects_malformed_cross_tenant_or_replay(overrides, reason):
+    with pytest.raises(SupplyChainObservationDenied, match=reason):
+        bind_supply_chain_references(finding(), **binding_args(**overrides))
+
+
+def test_supply_reference_binding_revalidates_finding_and_evidence():
+    with pytest.raises(SupplyChainObservationDenied, match="FINDING_INVALID"):
+        bind_supply_chain_references(
+            replace(finding(), action="BLOCK"), **binding_args(),
+        )
+    with pytest.raises(SupplyChainObservationDenied, match="EVIDENCE_WRITE_FAILED"):
+        bind_supply_chain_references(
+            finding(), **binding_args(
+                audit=lambda *_args: (_ for _ in ()).throw(RuntimeError("offline")),
+            ),
         )
