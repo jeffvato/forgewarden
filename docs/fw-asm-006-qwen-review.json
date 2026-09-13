@@ -1,0 +1,36 @@
+{
+  "adjudication": null,
+  "candidate_commit": "100ab24c2e642f7162e3b7aca0a265b66d849787",
+  "deployment": "DISABLED",
+  "job_id": "phase2a-100ab24c2e642f7162e3b7ac",
+  "kill_switch": "ENGAGED",
+  "mutation_allowed": false,
+  "reviews": [
+    {
+      "provider": "ANYTHINGLLM",
+      "result": {
+        "blocking_findings": [],
+        "job_id": "phase2a-100ab24c2e642f7162e3b7ac",
+        "non_blocking_notes": [
+          "The `project_attack_surface` function correctly validates the integrity of the lifecycle object, ensuring tenant, event, and asset bindings match across all stages before projection.",
+          "Secret detection is applied to all exposed string fields in the `visible` tuple, which effectively prevents data leakage of sensitive references.",
+          "The `AttackSurfaceMissionView` is immutable and explicitly lacks authority fields or methods, adhering to the read-only Mission Control requirement."
+        ],
+        "proposed_rules": [
+          "Ensure all Mission Control projections validate the type of the input lifecycle object and reject non-conforming instances with a clear error message."
+        ],
+        "reasoning_summary": "The commit successfully implements the FW-ASM-006 lifecycle composition and Mission Control projection. The `run_attack_surface_dry_run_lifecycle` function correctly chains the observation, classification, binding, and proposal stages, preserving determinism and ordering as verified by the audit trail tests. The `project_attack_surface` function enforces strict binding consistency (tenant, event, asset, risk) and authority constraints (no deployment, kill switch engaged, no authority granted) before exposing sanitized data. The projection correctly labels data as CANONICAL or DEMO and rejects secret-bearing or tampered inputs. Focused tests confirm the lifecycle preserves stage order and stops early for lower-risk paths. No blocking issues were found; minor test gaps regarding input validation edge cases do not impact the core safety and correctness of the implementation.",
+        "reviewed_commit": "100ab24c2e642f7162e3b7aca0a265b66d849787",
+        "risk": "LOW",
+        "tests_missing": [
+          "Test for invalid lifecycle object type (e.g., passing a non-AttackSurfaceDryRunLifecycle instance to project_attack_surface).",
+          "Test for excessive string length in projection fields (verifying the 1000-byte limit enforcement in Mission Control).",
+          "Test for invalid data_mode values (e.g., passing 'UNKNOWN' to project_attack_surface)."
+        ],
+        "verdict": "APPROVE"
+      },
+      "state": "REVIEW_RETURNED"
+    }
+  ],
+  "state": "REVIEW_REQUIRED"
+}
