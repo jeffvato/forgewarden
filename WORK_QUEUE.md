@@ -1331,7 +1331,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-UX-008 — Canonical incident and attack-story provider
 - Requirement: Mission Control incremental backend integration
-- State: REVIEW
+- State: DONE
 - Priority: P0
 - Dependencies: FW-UX-007, FW-SOC-03, and FW-AID-010
 - Approval: Jeff authorized the mapped Mission Control backend integration sequence; this unit may expose existing sanitized local read-only FW-SOC lifecycle projections only.
@@ -1348,6 +1348,27 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no incident mutation, Evidence mutation, policy evaluation, approval, Action Ticket issuance, response, recovery execution, network transport, credentials, model invocation, or deployment authority is added.
 - Expected validation: focused provider/frontend tests, exact AnythingLLM/Qwen read-only review, then full suite/integrity once after approval.
 - Security considerations: canonical FW-SOC remains authoritative; the view receives immutable reference facts and no controller callback.
+- Completion evidence: backend candidate `7155354fcf77eca6cb998a8b1d6627da8880c61b` received exact AnythingLLM/Qwen APPROVE/LOW with no blockers or missing tests; repaired frontend candidate `63a34baad213a29ac38fe4413d54d8b6154dce22` received a schema-validated exact AnythingLLM/Qwen approval through job `phase2a-63a34baad213a29ac38fe441` after adding all requested unavailable-mode, collection-boundary, recovery-fallback, and XSS tests. Focused proof passed 88 Python tests plus the Node frontend contract; full 1622 passed/1 skipped; Product Integrity fresh full 1622 passed/1 skipped with all hard checks and 4 Golden Paths passing, YELLOW only for pre-existing `tzdata`.
+
+### FW-UX-009 — Canonical Evidence activity provider
+- Requirement: Mission Control incremental backend integration
+- State: READY
+- Priority: P0
+- Dependencies: FW-UX-008 and FW-EVID-006
+- Approval: Jeff authorized the mapped Mission Control backend integration sequence; this unit may expose existing sanitized local read-only FW-EVID projections only.
+- Description: Add one bounded canonical provider for tenant-bound Evidence lifecycle references and verification state while retaining the separate deterministic Demo Provider and making unavailable or unverified state explicit.
+- Target path: swarm/mission_control.py
+- Allowed paths: swarm/mission_control.py, swarm/console.py, console/app.js, console/index.html, tests/test_console.py, tests/test_mission_control.py, tests/test_console_frontend.js, docs/management-console.md, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_mission_control.py tests/test_console.py tests/test_evidence.py && node --test tests/test_console_frontend.js
+- Acceptance criteria:
+  - the provider consumes canonical FW-EVID envelopes, ledger/chain projections, and bounded references instead of creating another Evidence store;
+  - output is tenant-scoped, reference-only, secret-filtered, read-only, bounded, and explicitly labeled CANONICAL, EMPTY, or UNAVAILABLE;
+  - hashes, chain position, signature status, related incident, and Action Ticket references retain canonical bindings without asserting verification not present in source state;
+  - malformed, cross-tenant, replayed, secret-bearing, authority-expanding, deployment-enabled, or kill-switch-cleared state fails closed without contaminating Demo data;
+  - Mission Control distinguishes canonical verified, canonical unverified, empty, unavailable, and simulated Evidence states honestly;
+  - no Evidence mutation, signing, key access, policy evaluation, approval, Action Ticket issuance, response, recovery execution, network transport, credentials, model invocation, or deployment authority is added.
+- Expected validation: focused provider/frontend tests, exact AnythingLLM/Qwen read-only review, then full suite/integrity once after approval.
+- Security considerations: FW-EVID remains authoritative; Mission Control receives immutable bounded projections and no append, sign, verify, repair, or delete callback.
 
 ### FW-REC-002 — Durable recovery checkpoint persistence and reconstruction
 - Requirement: FW-REC persistent recovery metadata
