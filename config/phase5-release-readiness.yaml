@@ -1,6 +1,96 @@
 release_id: forgewarden_public_release_v1
+profile_version: 2
 status: PLANNING_ONLY
 publication: DISABLED
+
+current_repository:
+  visibility: PRIVATE
+  classification: PRIVATE_CORE
+  public_export_from_current_history: PROHIBITED
+
+history_strategy: SANITIZED_SINGLE_COMMIT
+
+public_export_repository:
+  creation: NEW_REPOSITORY
+  initial_history: SINGLE_COMMIT
+  source_references: PROHIBITED
+
+legal_decisions:
+  rights_holding_entity: UNSELECTED
+  public_sdk_license: UNSELECTED
+  source_available_demo_license: UNSELECTED
+  trademark_and_media_policy: UNSELECTED
+  license_claims_authorized: false
+
+required_identifier_sanitization:
+  - personal_names_removed
+  - usernames_removed
+  - email_addresses_removed
+  - home_paths_removed
+  - cloud_tenant_ids_removed
+  - cloud_subscription_ids_removed
+  - cloud_client_ids_removed
+  - cloud_registry_ids_removed
+  - cloud_resource_and_deployment_ids_removed
+  - internal_urls_and_hosts_removed
+  - machine_fingerprints_removed
+  - historical_commit_ids_removed
+  - internal_job_evidence_and_provider_session_ids_removed
+  - credential_shaped_fixtures_removed
+  - customer_tenant_and_endpoint_examples_removed
+  - unproven_asset_metadata_and_assets_removed
+
+public_identifier_exceptions:
+  - CANONICAL_FORGEWARDEN_REQUIREMENT_IDS
+  - CANONICAL_FORGEWARDEN_SCHEMA_IDS
+  - CANONICAL_FORGEWARDEN_API_IDS
+  - DETERMINISTIC_FICTIONAL_DEMO_IDS
+
+tracks:
+  - track: PUBLIC_SDK
+    repository_visibility: PUBLIC_CANDIDATE
+    distribution_class: PUBLIC_SDK_CANDIDATE
+    source_scope: EXPLICIT_ALLOWLIST_ONLY
+    includes_private_core: false
+    osi_open_source_claim: false
+    license: UNSELECTED
+    publication: DISABLED
+  - track: SOURCE_AVAILABLE_DEMO
+    repository_visibility: PUBLIC_CANDIDATE
+    distribution_class: SOURCE_AVAILABLE_CANDIDATE
+    source_scope: EXPLICIT_ALLOWLIST_ONLY
+    includes_private_core: false
+    osi_open_source_claim: false
+    license: UNSELECTED
+    publication: DISABLED
+  - track: PRIVATE_CORE
+    repository_visibility: PRIVATE
+    distribution_class: PRIVATE_PROPRIETARY
+    source_scope: CURRENT_REPOSITORY
+    includes_private_core: true
+    osi_open_source_claim: false
+    license: UNSELECTED
+    publication: DISABLED
+
+required_owner_gates:
+  - chain_of_title_verified
+  - contributor_rights_verified
+  - rights_holding_entity_selected
+  - track_license_selected
+  - trademark_clearance_verified
+  - media_provenance_verified
+
+required_provenance_gates:
+  - direct_dependency_manifest_verified
+  - transitive_dependency_lock_verified
+  - artifact_hashes_verified
+  - third_party_notices_verified
+  - sbom_verified
+  - container_base_digest_verified
+  - tracked_secret_audit_passed
+  - full_history_secret_audit_passed
+  - private_evidence_excluded
+
 required_cleanups:
   - remove_usernames_and_home_paths
   - remove_credentials_and_private_audits
@@ -9,8 +99,19 @@ required_cleanups:
   - pin_dependencies_and_lockfiles
   - provide_install_validate_update_rollback_uninstall
   - add_declared_environment_ci
+
 required_reviews:
   - security_review
   - licensing_review
+  - chain_of_title_review
+  - trademark_media_review
+  - dependency_sbom_review
+  - secret_history_review
   - reproducible_build_review
   - documentation_review
+  - clean_export_ci_review
+
+required_approval_gates:
+  - legal_approval_recorded
+  - customer_root_release_approval_recorded
+  - exact_export_commit_recorded
