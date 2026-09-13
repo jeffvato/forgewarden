@@ -1,0 +1,30 @@
+{
+  "adjudication": null,
+  "candidate_commit": "25ebaee63969b870ba323081d3ba7f7bc9163d0b",
+  "deployment": "DISABLED",
+  "job_id": "phase2a-25ebaee63969b870ba323081",
+  "kill_switch": "ENGAGED",
+  "mutation_allowed": false,
+  "reviews": [
+    {
+      "provider": "CLAUDE",
+      "result": {
+        "blocking_findings": [],
+        "job_id": "phase2a-25ebaee63969b870ba323081",
+        "non_blocking_notes": [
+          "Evidence audit explicitly includes deployment=DISABLED to reinforce no authority boundary",
+          "Regex patterns intentionally permissive for untrusted caller metadata; validation occurs at type and boundary level",
+          "Type confusion test correctly validates bool subclass rejection via isinstance checks"
+        ],
+        "proposed_rules": [],
+        "reasoning_summary": "Commit 25ebaee implements FW-SUPPLY-002 normalization contract with deterministic fail-closed validation of caller-supplied component metadata: exact ecosystem, package/version, lowercase SHA-256, time, tenant, and size bounds enforced via regex and type checks; immutable frozen output with hardcoded untrusted/dry_run/detect_only mode; evidence recorded before return with sensitive fields (package_name, version, source/provenance) explicitly excluded per acceptance criteria; no authority beyond caller-supplied observation validation; comprehensive test coverage validates all acceptance criteria including evidence minimization and boundary enforcement. Patch is narrow, new code only, no regression risk.",
+        "reviewed_commit": "25ebaee63969b870ba323081d3ba7f7bc9163d0b",
+        "risk": "LOW",
+        "tests_missing": [],
+        "verdict": "APPROVE"
+      },
+      "state": "APPROVED"
+    }
+  ],
+  "state": "APPROVED"
+}

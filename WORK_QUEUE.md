@@ -22,7 +22,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-SUPPLY-002 — Caller-supplied component and provenance observation
 - Requirement: FW-SUPPLY immutable tenant-bound metadata boundary
-- State: IN_PROGRESS
+- State: DONE
 - Priority: P0
 - Dependencies: FW-SUPPLY-001
 - Approval: Jeff authorized the ordered FW-SUPPLY phase using small bounded candidates.
@@ -37,6 +37,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no repository, registry, feed, package-manager, CI/build/cloud access, credential use, install, publish, signing, deployment, remediation, or response authority is added.
 - Expected validation: focused Linux proof, exact independent read-only review, then full suite and Product Integrity once after approval.
 - Security considerations: all component and provenance facts remain caller-supplied untrusted metadata and cannot authorize supply-chain operations.
+- Completion evidence: exact candidate `25ebaee63969b870ba323081d3ba7f7bc9163d0b`; focused 11 passed. AnythingLLM was unavailable, then exact Claude job `phase2a-25ebaee63969b870ba323081` returned APPROVE/LOW with no blockers or missing tests. Full 1768 passed/1 skipped; Product Integrity fresh full 1768/1 and Golden Path 11 passed with every hard check and only pre-existing dependency YELLOW. Evidence: `docs/fw-supply-002-*.json`.
 
 ### FW-SUPPLY-001 — Software supply-chain ownership and bounded route
 - Requirement: FW-SUPPLY canonical ownership inventory
