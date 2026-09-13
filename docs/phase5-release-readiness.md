@@ -62,7 +62,9 @@ chain; the demo track contains the existing Mission Control UI
 and deterministic demo provider. The builder binds regular tracked files to an
 expected source commit, scans each included byte for prohibited identifiers and
 credential-shaped data, applies file and byte budgets, and emits a normalized
-digest manifest with `publication: DISABLED`. It copies no unlisted file, Git
+digest manifest with `publication: DISABLED`. The public manifest contains a
+domain-separated one-way source binding instead of the private repository's raw
+historical commit identifier. It copies no unlisted file, Git
 history, ref, private Core, review, Evidence, generated state, or unproven media.
 
 The candidate is not a repository and the builder cannot select a license,

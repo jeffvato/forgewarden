@@ -1737,10 +1737,11 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 - Approval: Jeff approved the public assurance plan. Offline provenance and SBOM candidate generation is authorized; license selection and publication remain disabled.
 - Description: Prove the exact sanitized SDK/demo candidate dependency closure and generate bounded machine-readable provenance/SBOM candidates without making a license or production claim.
 - Target path: swarm/phase5_release_provenance.py
-- Allowed paths: swarm/phase5_release_provenance.py, config/phase5-release-provenance.yaml, schemas/phase5-release-provenance.schema.json, tests/test_phase5_release_provenance.py, docs/phase5-release-readiness.md, WORK_QUEUE.md, SWARM_STATUS.md
+- Allowed paths: swarm/phase5_release_candidate.py, swarm/phase5_release_provenance.py, config/phase5-release-provenance.yaml, schemas/phase5-release-provenance.schema.json, tests/test_phase5_release_candidate.py, tests/test_phase5_release_provenance.py, docs/phase5-release-readiness.md, WORK_QUEUE.md, SWARM_STATUS.md
 - Test command: python3 -m pytest -q tests/test_phase5_release_provenance.py tests/test_phase5_release_candidate.py
 - Acceptance criteria:
   - consume only an exact FWQ-0081 candidate manifest whose source commit, track, policy hash, file paths, sizes, and digests validate;
+  - replace the public manifest's raw private source-commit identifier with a domain-separated one-way binding that remains verifiable by the trusted caller;
   - deterministically classify every shipped code import/reference as standard-library, local included file, declared third-party component, or denied unresolved dependency;
   - reject undeclared, ranged, mutable, remote, URL-loaded, private-Core, cross-track, unlicensed/unknown-origin, duplicate, tampered, excessive, or secret-bearing dependency facts;
   - emit bounded SPDX-compatible or equivalent candidate metadata with publication DISABLED, license fields NOASSERTION while legal decisions remain unselected, exact file/component digests, provenance source, and no personal/cloud/operational identifiers;

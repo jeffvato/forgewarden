@@ -12,7 +12,7 @@ from jsonschema import Draft202012Validator, ValidationError
 import swarm.phase5_release_candidate as candidate_module
 from swarm.phase5_release_candidate import (
     _head, _load_contract, _normalize_allowlist, _tracked_blob,
-    _validate_public_content, _validate_public_path,
+    _source_binding_sha256, _validate_public_content, _validate_public_path,
     build_release_candidate,
 )
 
@@ -100,8 +100,9 @@ class Phase5ReleaseCandidateTests(unittest.TestCase):
                 destination = parent / track_name
                 result = build_release_candidate(
                     ROOT, destination, track=track_name, expected_source_commit=self.head)
-                self.assertEqual((result["publication"], result["source_commit"]),
-                                 ("DISABLED", self.head))
+                self.assertEqual(result["publication"], "DISABLED")
+                self.assertEqual(result["source_binding_sha256"],
+                                 _source_binding_sha256(self.head, result["policy_sha256"]))
                 self.assertFalse(result["matched_values_included"])
                 self.assertEqual([item["path"] for item in result["files"]],
                                  sorted(track["allowlist"]))
@@ -110,10 +111,13 @@ class Phase5ReleaseCandidateTests(unittest.TestCase):
                 self.assertFalse((destination / ".git").exists())
                 self.assertFalse((destination / "WORK_QUEUE.md").exists())
                 self.assertEqual(set(result), {
-                    "schema_version", "track", "publication", "source_commit",
+                    "schema_version", "track", "publication", "source_binding_sha256",
                     "policy_sha256", "matched_values_included", "file_count",
                     "total_bytes", "files",
                 })
+                manifest_text = (destination / self.policy["manifest_name"]).read_text(
+                    encoding="utf-8")
+                self.assertNotIn(self.head, manifest_text)
                 for item in result["files"]:
                     data = (destination / item["path"]).read_bytes()
                     self.assertEqual((item["size"], item["sha256"]),

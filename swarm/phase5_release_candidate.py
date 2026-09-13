@@ -237,6 +237,14 @@ def _policy_sha256(profile: dict[str, Any], policy: dict[str, Any]) -> str:
     return hashlib.sha256(payload).hexdigest()
 
 
+def _source_binding_sha256(source_commit: str, policy_sha256: str) -> str:
+    """Bind private source state without publishing its historical commit ID."""
+    if not _SHA.fullmatch(source_commit) or not re.fullmatch(r"[0-9a-f]{64}", policy_sha256):
+        raise ValueError("public-export source binding input is invalid")
+    payload = f"FORGEWARDEN_PUBLIC_SOURCE_BINDING_V1\0{source_commit}\0{policy_sha256}".encode()
+    return hashlib.sha256(payload).hexdigest()
+
+
 def _cleanup(destination: Path) -> None:
     if destination.is_symlink():
         destination.unlink()
@@ -284,10 +292,12 @@ def build_release_candidate(
                     source_root, relative, expected_source_commit,
                     policy["limits"]["max_file_bytes"]) != before:
                 raise ValueError("allowlisted source drifted during construction")
+        policy_sha256 = _policy_sha256(profile, policy)
         manifest: dict[str, object] = {
             "schema_version": "1", "track": track, "publication": "DISABLED",
-            "source_commit": expected_source_commit,
-            "policy_sha256": _policy_sha256(profile, policy),
+            "source_binding_sha256": _source_binding_sha256(
+                expected_source_commit, policy_sha256),
+            "policy_sha256": policy_sha256,
             "matched_values_included": False, "file_count": len(files),
             "total_bytes": total_bytes, "files": files,
         }
