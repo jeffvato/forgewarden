@@ -1,4 +1,5 @@
 from dataclasses import replace
+from pathlib import Path
 
 import pytest
 
@@ -8,7 +9,8 @@ from swarm.harness_models import ApprovedModelCandidate
 from swarm.harness_risk import AssuranceTier
 from swarm.mcp_gateway import MCPGatewaySafetyState, MCPToolCatalogEntry
 from swarm.harness_worker import WorkerRegistration, WorkerRole, WorkerTransport
-from swarm.mission_control import MissionControlError, ModelMCPActivity, PolicyTicketActivity, project_ai_security, project_attack_surface, project_data_security, project_high_assurance, project_mission_control, project_network_security, project_saas_security, project_supply_chain, serialize_evidence_activity, serialize_harness_activity, serialize_incident_activity, serialize_model_mcp_activity, serialize_policy_ticket_activity
+from swarm.mission_control import MissionControlError, ModelMCPActivity, PolicyTicketActivity, project_ai_security, project_attack_surface, project_data_security, project_high_assurance, project_mission_control, project_network_security, project_saas_security, project_supply_chain, serialize_capability_status, serialize_evidence_activity, serialize_harness_activity, serialize_incident_activity, serialize_model_mcp_activity, serialize_policy_ticket_activity
+from swarm.integrity import FUNCTIONALITY_MAP, audit_completed_requirement_work
 from tests.test_high_assurance import admission as gov_admission, admitted_profile as gov_profile, candidate as gov_candidate, failure_fixture as gov_failure_fixture, profile as gov_profile_fixture
 from swarm.high_assurance import bind_high_assurance_evidence, run_high_assurance_dry_run_lifecycle
 from swarm.action_ticket import ActionTicket
@@ -36,6 +38,49 @@ def task(task_id="FWQ-0001", status=TaskStatus.READY, **changes):
 
 def worker():
     return WorkerRegistration("codex-cli", "openai", "gpt-approved", WorkerTransport.CLI, (WorkerRole.CODE_WRITER,), True, executable="codex")
+
+
+def test_capability_status_projects_bounded_canonical_reality():
+    root = Path(__file__).parents[1]
+    payload = serialize_capability_status(FUNCTIONALITY_MAP, audit_completed_requirement_work(root))
+    assert payload["data_mode"] == "CANONICAL"
+    assert payload["data_label"] == "CANONICAL PRODUCT STATUS · BOUNDED PROOF"
+    assert payload["view"]["accepted_tasks"] == payload["view"]["traceable_tasks"]
+    assert payload["view"]["accepted_families"] == 22
+    assert payload["view"]["mapped_families"] == 24
+    assert len(payload["view"]["capabilities"]) == 24
+    assert all(item["operating_mode"] == "DRY_RUN" for item in payload["view"]["capabilities"])
+    assert all(item["live_enabled"] is False and item["production_ready"] is False for item in payload["view"]["capabilities"])
+    assert payload["safety"] == {"mutation_allowed": False, "deployment": "DISABLED", "kill_switch": "ENGAGED", "live_enabled": False, "production_ready": False}
+
+
+@pytest.mark.parametrize("field,value", [
+    ("live_enabled", True),
+    ("production_ready", True),
+    ("operating_mode", "LIVE"),
+    ("limitations", "api_key=do-not-project"),
+])
+def test_capability_status_denies_unsafe_or_secret_bearing_source(field, value):
+    root = Path(__file__).parents[1]
+    reality = audit_completed_requirement_work(root)
+    changed = tuple(dict(item) for item in FUNCTIONALITY_MAP)
+    changed[0][field] = value
+    with pytest.raises(MissionControlError, match="capability status source|secret-bearing"):
+        serialize_capability_status(changed, reality)
+
+
+def test_capability_status_denies_duplicate_missing_and_untraceable_sources():
+    root = Path(__file__).parents[1]
+    reality = audit_completed_requirement_work(root)
+    duplicate = FUNCTIONALITY_MAP + (dict(FUNCTIONALITY_MAP[0]),)
+    with pytest.raises(MissionControlError, match="capability status source"):
+        serialize_capability_status(duplicate, reality)
+    missing = tuple(item for item in FUNCTIONALITY_MAP if item["requirement_id"] != "FW-ID")
+    with pytest.raises(MissionControlError, match="capability status source"):
+        serialize_capability_status(missing, reality)
+    malformed_reality = {**reality, "summary": {**reality["summary"], "unsupported": 1}}
+    with pytest.raises(MissionControlError, match="traceability summary"):
+        serialize_capability_status(FUNCTIONALITY_MAP, malformed_reality)
 
 
 def project(tasks=None, **changes):

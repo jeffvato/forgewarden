@@ -26,6 +26,7 @@ from .network_security import NetworkDryRunLifecycle
 from .attack_surface import AttackSurfaceDryRunLifecycle
 from .data_security import DataSecurityDryRunLifecycle
 from .high_assurance import HighAssuranceEvidenceBinding
+from .integrity import validate_functionality_map
 
 
 _TENANT = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$")
@@ -36,6 +37,75 @@ _SECRET = re.compile(r"(?i)(bearer\s+\S+|sk-[A-Za-z0-9_-]{8,}|AIza[A-Za-z0-9_-]{
 
 class MissionControlError(ValueError):
     """Canonical harness state cannot be projected safely."""
+
+
+def serialize_capability_status(
+    functionality: tuple[dict[str, Any], ...],
+    reality: dict[str, Any],
+) -> dict[str, Any]:
+    """Project canonical product proof without implying live authority."""
+    base = {
+        "schema_version": 1,
+        "safety": {
+            "mutation_allowed": False,
+            "deployment": "DISABLED",
+            "kill_switch": "ENGAGED",
+            "live_enabled": False,
+            "production_ready": False,
+        },
+    }
+    try:
+        validation = validate_functionality_map(reality, functionality)
+    except (KeyError, TypeError, ValueError) as exc:
+        raise MissionControlError("capability status source is malformed or unsupported") from exc
+    summary = reality.get("summary")
+    if (
+        not isinstance(summary, dict)
+        or set(("accepted", "traceable", "unsupported", "accepted_families")) - set(summary)
+        or not all(isinstance(summary[key], int) and summary[key] >= 0 for key in ("accepted", "traceable", "unsupported", "accepted_families"))
+        or summary["accepted"] != summary["traceable"]
+        or summary["unsupported"] != 0
+        or summary["accepted_families"] != validation["accepted_family_count"]
+        or not 1 <= len(functionality) <= 64
+    ):
+        raise MissionControlError("capability status traceability summary is invalid")
+    capabilities = []
+    visible: list[str] = []
+    for item in sorted(functionality, key=lambda value: value["requirement_id"]):
+        projected = {
+            "family_id": item["requirement_id"],
+            "proof_state": item["state"],
+            "proof_status": item["proof_status"],
+            "implementation_status": item["implementation_status"],
+            "integration_status": item["integration_status"],
+            "demo_available": item["demo_available"],
+            "operating_mode": item["operating_mode"],
+            "live_enabled": item["live_enabled"],
+            "production_ready": item["production_ready"],
+            "limitations": item["limitations"],
+        }
+        visible.extend(value for value in projected.values() if isinstance(value, str))
+        capabilities.append(projected)
+    if any(len(value.encode()) > 1024 or _SECRET.search(value) for value in visible):
+        raise MissionControlError("capability status is secret-bearing or excessive")
+    return {
+        **base,
+        "data_mode": "CANONICAL",
+        "data_label": "CANONICAL PRODUCT STATUS · BOUNDED PROOF",
+        "view": {
+            "accepted_tasks": summary["accepted"],
+            "traceable_tasks": summary["traceable"],
+            "accepted_families": validation["accepted_family_count"],
+            "mapped_families": validation["mapped_family_count"],
+            "capabilities": capabilities,
+            "operating_mode": "DRY_RUN",
+            "live_enabled": False,
+            "production_ready": False,
+            "mutation_allowed": False,
+            "deployment": "DISABLED",
+            "kill_switch": "ENGAGED",
+        },
+    }
 
 
 @dataclass(frozen=True)

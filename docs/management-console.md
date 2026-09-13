@@ -182,3 +182,19 @@ provider contract before rendering. The aggregate has no callback or command
 surface; it cannot evaluate policy, consume tickets, sign Evidence, route or
 invoke models, execute MCP tools, respond, recover, mutate Git, use credentials,
 access a network, or enable deployment.
+
+## Canonical capability reality provider
+
+The independent `/api/capability-status` endpoint reads the validated
+FW-INTEGRITY functionality map and accepted-work traceability summary. It
+projects one bounded row per mapped family with proof, implementation,
+integration, Demo availability, operating mode, live state, production
+readiness, and concrete limitations. The Mission Control home screen labels
+this source `CANONICAL PRODUCT STATUS · BOUNDED PROOF`; the scenario cards
+remain separately labeled Demo data.
+
+The server and browser both reject malformed, duplicate, missing-family,
+secret-bearing, live-enabled, deployment-enabled, production-ready, mutating,
+or kill-switch-cleared data. Provider failure becomes an explicit UNAVAILABLE
+state. This status surface has no Git, test, model, policy, approval, credential,
+mutation, response, recovery, network, or deployment callback.

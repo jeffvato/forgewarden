@@ -76,7 +76,10 @@ records. Every record explicitly reports bounded proof, implementation,
 integration, Demo availability, DRY_RUN operation, live-disabled state,
 production-not-ready state, and concrete limitations.
 
-FW-UX-013 is the next bounded milestone. It will expose this validated status
-through a read-only Mission Control provider. A later Golden Path must execute
-representative cross-family behavior at the current exact commit instead of
-relying on recorded historical test counts.
+FW-UX-013 consumes this result through a bounded read-only Mission Control
+provider. The provider repeats the validation at the server boundary and the
+browser independently checks the projected contract. Bounded proof is shown
+separately from Demo availability, live state, and production readiness; no
+status value grants authority or invokes a product subsystem. A later Golden
+Path must execute representative cross-family behavior at the current exact
+commit instead of relying on recorded historical test counts.

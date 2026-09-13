@@ -1580,7 +1580,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-UX-013 — Canonical capability reality projection
 - Requirement: FW-UX truthful Mission Control product-status integration
-- State: READY
+- State: IN_PROGRESS
 - Priority: P0
 - Dependencies: FW-INTEGRITY-004 and FW-UX-012
 - Approval: Jeff authorized Mission Control integration after the capability reality audit; read-only status projection is within that scope.
