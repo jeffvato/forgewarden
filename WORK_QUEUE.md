@@ -1646,7 +1646,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-INTEGRITY-007 — Critical invariant mutation-resistance proof
 - Requirement: FW-INTEGRITY security-test effectiveness
-- State: IN_PROGRESS
+- State: DONE
 - Priority: P0
 - Dependencies: FW-INTEGRITY-005 and FW-INTEGRITY-006
 - Approval: Jeff authorized continued next-phase integrity work; bounded mutation proof in disposable archives is within the existing test authority.
@@ -1663,6 +1663,28 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - add no mutation engine dependency, package installation, network/provider access, service/sensor execution, response/recovery action, repository mutation, deployment, or authority.
 - Expected validation: one focused Linux mutation-resistance proof, exact independent read-only review, then one full suite and Product Integrity Gate after approval.
 - Security considerations: mutations are fixed test inputs applied only to temporary tracked-file copies; they cannot reach production source or authorize an action.
+- Completion evidence: implementation candidate `f8609b718507990009711f49f9459d3940727402` and test repair `fb4fcb4afbe9abe483825384509a306965b12855`; focused proof first passed 16 tests, then 20 after direct archive-boundary and exception-cleanup coverage. Eight fixed mutants across seven critical invariants were killed with no raw output retained or repository mutation. Exact Qwen review `phase2a-fb4fcb4afbe9abe483825388` returned APPROVE/LOW with no blockers or missing tests after bounded retries corrected false missing-context findings. The first full run passed 2130 tests with one unrelated desktop-bridge child-reaping race; its isolated retry passed, then the justified fresh full suite passed 2131/1. Product Integrity passed every hard check, 119/119 accepted-task traceability, 15 integrity tests, and the 20-test mutation proof; only pre-existing local `tzdata` remains YELLOW.
+
+
+### FW-INTEGRITY-008 — Bounded control-plane performance baseline
+- Requirement: FW-INTEGRITY performance and resource regression assurance
+- State: READY
+- Priority: P0
+- Dependencies: FW-INTEGRITY-005, FW-INTEGRITY-006, and FW-INTEGRITY-007
+- Approval: Jeff authorized continued next-phase integrity work; bounded local measurement of existing pure control-plane paths is within current test authority.
+- Description: Establish a conservative exact-commit latency and memory baseline for representative deterministic ForgeWarden control-plane operations so catastrophic regressions fail before product claims advance.
+- Target path: tests/test_performance_baseline.py
+- Allowed paths: tests/test_performance_baseline.py, scripts/run-performance-baseline.sh, swarm/integrity.py, config/integrity-performance.json, docs/fw-integrity-performance.md, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: bash scripts/run-performance-baseline.sh
+- Acceptance criteria:
+  - use a versioned tracked policy with deliberately conservative per-scenario iteration, wall-time, peak-memory, process, and output ceilings;
+  - exercise representative existing pure deterministic identity/policy, Evidence hashing, model-routing, normalized-event, and Mission Control projection paths without changing their canonical owners;
+  - run each scenario in a bounded local child process against one exact commit, with ambient provider/network credentials removed and no shell command construction;
+  - fail closed on missing/duplicate scenarios, unsafe policy, commit mismatch, timeout, crash, excessive output, secret-bearing output, threshold breach, or source commit change;
+  - emit a bounded exact-commit PASS/FAIL summary that distinguishes local regression evidence from production capacity, scale, or service-level claims;
+  - add no benchmark framework dependency, package installation, network/provider access, service/sensor execution, response/recovery action, deployment, or authority.
+- Expected validation: one focused Linux performance proof, exact independent read-only review, then one full suite and Product Integrity Gate after approval.
+- Security considerations: this measures existing pure local control functions only; thresholds are test policy and cannot grant runtime capacity, execution, deployment, or production authority.
 
 ### FW-API-001 — Canonical tenant-bound read-only request admission
 - Requirement: FW-API versioned least-privilege API/SDK contract

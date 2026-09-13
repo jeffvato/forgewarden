@@ -33,3 +33,15 @@ is not exhaustive mutation testing, formal verification, production readiness,
 or permission to modify policy. It installs no mutation engine or dependency,
 uses no provider or network access, starts no service or sensor, executes no
 response or recovery, and cannot deploy or alter ForgeWarden authority.
+
+## Accepted proof
+
+Implementation candidate `f8609b718507990009711f49f9459d3940727402` and
+test repair `fb4fcb4afbe9abe483825384509a306965b12855` passed the
+20-test focused proof and killed all eight defined mutants. Exact Qwen review
+returned APPROVE/LOW with no blockers or missing tests. The justified fresh full
+suite passed 2131 tests with one skip after an unrelated desktop-bridge
+child-reaping race passed its isolated retry. Product Integrity passed every
+hard check, 119/119 accepted-task traceability, 15 integrity tests, and this
+20-test proof. The sole YELLOW finding remains the pre-existing local `tzdata`
+environment mismatch.
