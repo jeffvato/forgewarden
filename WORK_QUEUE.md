@@ -20,6 +20,24 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 
 Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical implementation is not new work. FWQ-0008 VALIDATED preserves a provenance caveat, not a request to rebuild or automatically repeat review. FWQ-0012–0016 are reconciled DONE from existing implementation and recorded proof.
 
+### FW-ENDPOINT-14 — Endpoint and RansomGuard continuation inventory
+- Requirement: FW-ENDPOINT/FW-RANSOM continuation ownership and next-platform admission
+- State: REVIEW
+- Priority: P0
+- Dependencies: FW-ENDPOINT-13, FW-ENDPOINT-ANDROID-02, FW-RANSOM-05, FW-OPS-004
+- Approval: Jeff authorized continued implementation through FW-ENDPOINT/FW-RANSOM after FW-OPS and directed small review candidates suitable for AnythingLLM/Qwen under Groq limits.
+- Description: Reconcile accepted endpoint and RansomGuard controls against the roadmap, preserve their canonical owners, and identify the first genuinely new bounded platform gap without replaying completed milestones.
+- Target path: docs/fw-endpoint-ransom-continuation.md
+- Allowed paths: docs/fw-endpoint-ransom-continuation.md, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: git diff --check HEAD^ HEAD and deterministic source/test/evidence inventory inspection
+- Acceptance criteria:
+  - accepted Windows/Linux and Android fixture paths, NormalizedEventStore lifecycle controls, and FW-RANSOM-01 through FW-RANSOM-05 are explicitly reused rather than rebuilt;
+  - the first new gap and its canonical dependencies are named with a stable substantive requirement ID;
+  - live sensors, services, hooks, platform access, transport, credentials, containment, remediation, recovery execution, deployment, and kill-switch changes remain outside authority;
+  - the exact documentation-only candidate receives independent read-only review with no claim of new runtime behavior.
+- Expected validation: deterministic source/test/evidence mapping, diff check, and exact independent read-only review; no product suite or Product Integrity rerun because runtime behavior is unchanged.
+- Security considerations: roadmap admission cannot grant endpoint or response authority, and reviewer/provider substitution cannot weaken exact-commit acceptance.
+
 ### FWQ-0079 — Self-hosted canonical development harness activation
 - Requirement: FW-HARNESS-014 self-hosted engineering execution
 - State: DONE
