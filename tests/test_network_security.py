@@ -2,7 +2,9 @@ from dataclasses import FrozenInstanceError, replace
 
 import pytest
 
-from swarm.network_security import NetworkObservationDenied, bind_network_references, classify_network_observation, normalize_network_observation
+from swarm.action_ticket import ActionTicket, ActionTicketRegistry
+from swarm.asoc import HMACLeaseSigner
+from swarm.network_security import NetworkObservationDenied, bind_network_references, classify_network_observation, normalize_network_observation, propose_network_containment
 
 
 def fixture(**overrides):
@@ -270,3 +272,81 @@ def test_network_reference_binding_accepts_medium_warn_only_finding():
 def test_network_reference_binding_rejects_forged_finding_authority(changes):
     with pytest.raises(NetworkObservationDenied, match="FINDING_INVALID"):
         bind_network_references(replace(finding(), **changes), **binding_args())
+
+
+def reference_binding():
+    return bind_network_references(finding(), **binding_args())
+
+
+def tickets(**overrides):
+    registry = ActionTicketRegistry(HMACLeaseSigner({"key-1": b"test-only-key-material"}))
+    values = dict(
+        ticket_id="ticket-1", tenant_id="tenant-a", subject_agent_id="agent-1",
+        lease_id="lease-1", capability="network.containment.propose",
+        resource="fw-network/tenant-a/segment-1",
+        action_class="NETWORK_CONTAINMENT_PROPOSAL", issued_by="operator-1",
+        approval_reference="approval-1", policy_version="policy-v1",
+        issued_at=100, expires_at=200, key_reference="key-1",
+    )
+    values.update(overrides)
+    registry.issue(ActionTicket(**values))
+    return registry
+
+
+def proposal_args(**overrides):
+    values = dict(
+        tickets=tickets(), ticket_id="ticket-1",
+        target_ref="fw-network/tenant-a/segment-1",
+        policy_decision_ref="fw-policy/tenant-a/decision-1",
+        subject_agent_id="agent-1", lease_id="lease-1",
+        policy_version="policy-v1", now=150, kill_switch_state="ENGAGED",
+        audit=lambda *_args: None,
+    )
+    values.update(overrides)
+    return values
+
+
+def test_network_containment_proposal_consumes_ticket_and_never_executes():
+    evidence = []
+    args = proposal_args(audit=lambda *items: evidence.append(items))
+    proposal = propose_network_containment(reference_binding(), **args)
+    assert proposal.risk == "HIGH"
+    assert proposal.action_class == "NETWORK_CONTAINMENT_PROPOSAL"
+    assert proposal.disposition == "PROPOSE_ONLY"
+    assert proposal.mode == "DRY_RUN" and proposal.deployment == "DISABLED"
+    assert proposal.kill_switch == "ENGAGED"
+    assert proposal.authority_granted is False and proposal.response_executed is False
+    assert evidence[0][1]["response_executed"] is False
+    with pytest.raises(NetworkObservationDenied, match="ACTION_TICKET_DENIED"):
+        propose_network_containment(reference_binding(), **args)
+
+
+@pytest.mark.parametrize("overrides,reason", [
+    ({"kill_switch_state": "CLEAR"}, "KILL_SWITCH_NOT_ENGAGED"),
+    ({"target_ref": "fw-network/tenant-b/segment-1"}, "PROPOSAL_REF_INVALID"),
+    ({"target_ref": "network-without-prefix"}, "PROPOSAL_REF_INVALID"),
+    ({"policy_decision_ref": "fw-policy/tenant-b/decision-1"}, "PROPOSAL_REF_INVALID"),
+    ({"subject_agent_id": "agent-2"}, "ACTION_TICKET_DENIED"),
+    ({"lease_id": "lease-2"}, "ACTION_TICKET_DENIED"),
+    ({"policy_version": "policy-v2"}, "ACTION_TICKET_DENIED"),
+])
+def test_network_containment_proposal_rejects_boundary_mismatch(overrides, reason):
+    with pytest.raises(NetworkObservationDenied, match=reason):
+        propose_network_containment(reference_binding(), **proposal_args(**overrides))
+
+
+def test_network_containment_proposal_revalidates_source_and_evidence():
+    for changes in (
+        {"risk": "MEDIUM"}, {"trust": "TRUSTED"}, {"mode": "LIVE"},
+        {"action": "BLOCK"}, {"authority_granted": True},
+    ):
+        with pytest.raises(NetworkObservationDenied, match="PROPOSAL_SOURCE_INVALID"):
+            propose_network_containment(
+                replace(reference_binding(), **changes), **proposal_args(),
+            )
+    with pytest.raises(NetworkObservationDenied, match="EVIDENCE_WRITE_FAILED"):
+        propose_network_containment(
+            reference_binding(), **proposal_args(
+                audit=lambda *_args: (_ for _ in ()).throw(RuntimeError("offline")),
+            ),
+        )

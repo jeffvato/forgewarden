@@ -80,7 +80,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-NET-005 — Inert Action Ticket-bound containment proposal
 - Requirement: FW-NET bounded non-executing response intent
-- State: READY
+- State: REVIEW
 - Priority: P0
 - Dependencies: FW-NET-004
 - Approval: Jeff authorized the ordered FW-NET phase using small bounded candidates.

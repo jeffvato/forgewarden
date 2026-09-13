@@ -10,6 +10,8 @@ import json
 import re
 from typing import Any, Callable, Mapping
 
+from .action_ticket import ActionTicketError, ActionTicketRegistry
+
 
 MAX_NETWORK_FIXTURE_BYTES = 32 * 1024
 MAX_NETWORK_INDICATORS = 16
@@ -23,6 +25,9 @@ _CORRELATION_REF = re.compile(
     r"^fw-(endpoint|finding|incident|evid)/([a-z][a-z0-9_.-]{0,127})/[a-z][a-z0-9_.:/+-]{0,191}$"
 )
 _IDENTITY_REF = re.compile(r"^fw-id/([a-z][a-z0-9_.-]{0,127})\.([a-z][a-z0-9_.-]{0,126})$")
+_PROPOSAL_REF = re.compile(
+    r"^fw-(network|policy)/([a-z][a-z0-9_.-]{0,127})/[a-z][a-z0-9_.:/+-]{0,191}$"
+)
 _PROTOCOLS = frozenset({
     "DHCP", "DNS", "HTTP", "HTTPS", "KERBEROS", "LDAP", "RDP", "SMB",
     "SSH", "TCP", "TLS", "UDP", "VPN", "WIFI",
@@ -109,6 +114,23 @@ class NetworkReferenceBinding:
     mode: str = "DRY_RUN"
     action: str = "CORRELATE_ONLY"
     authority_granted: bool = False
+
+
+@dataclass(frozen=True)
+class NetworkContainmentProposal:
+    event_id: str
+    tenant_id: str
+    target_ref: str
+    policy_decision_ref: str
+    action_ticket_ref: str
+    risk: str
+    action_class: str = "NETWORK_CONTAINMENT_PROPOSAL"
+    mode: str = "DRY_RUN"
+    deployment: str = "DISABLED"
+    kill_switch: str = "ENGAGED"
+    disposition: str = "PROPOSE_ONLY"
+    authority_granted: bool = False
+    response_executed: bool = False
 
 
 def normalize_network_observation(
@@ -326,3 +348,76 @@ def bind_network_references(
     except Exception as exc:
         raise NetworkObservationDenied("EVIDENCE_WRITE_FAILED") from exc
     return result
+
+
+def propose_network_containment(
+    binding: NetworkReferenceBinding, *, tickets: ActionTicketRegistry,
+    ticket_id: str, target_ref: str, policy_decision_ref: str,
+    subject_agent_id: str, lease_id: str, policy_version: str, now: int,
+    kill_switch_state: str, audit: Callable[[str, dict[str, Any]], None],
+) -> NetworkContainmentProposal:
+    """Consume proposal-only authority without changing a network resource."""
+    if (
+        not isinstance(binding, NetworkReferenceBinding)
+        or not isinstance(tickets, ActionTicketRegistry)
+        or not callable(audit)
+    ):
+        raise NetworkObservationDenied("PROPOSAL_INPUT_INVALID")
+    if (
+        binding.risk not in {"HIGH", "CRITICAL"}
+        or binding.trust != "UNTRUSTED_DATA" or binding.mode != "DRY_RUN"
+        or binding.action != "CORRELATE_ONLY"
+        or binding.authority_granted is not False
+    ):
+        raise NetworkObservationDenied("PROPOSAL_SOURCE_INVALID")
+    if kill_switch_state != "ENGAGED":
+        raise NetworkObservationDenied("KILL_SWITCH_NOT_ENGAGED")
+    target_match = _PROPOSAL_REF.fullmatch(target_ref) if isinstance(target_ref, str) else None
+    policy_match = _PROPOSAL_REF.fullmatch(policy_decision_ref) if isinstance(policy_decision_ref, str) else None
+    if (
+        target_match is None or target_match.group(1) != "network"
+        or policy_match is None or policy_match.group(1) != "policy"
+        or target_match.group(2) != binding.tenant_id
+        or policy_match.group(2) != binding.tenant_id
+    ):
+        raise NetworkObservationDenied("PROPOSAL_REF_INVALID")
+    ticket_binding = {
+        "tenant_id": binding.tenant_id,
+        "subject_agent_id": subject_agent_id,
+        "lease_id": lease_id,
+        "capability": "network.containment.propose",
+        "resource": target_ref,
+        "action_class": "NETWORK_CONTAINMENT_PROPOSAL",
+        "policy_version": policy_version,
+        "now": now,
+    }
+    try:
+        tickets.validate(ticket_id, **ticket_binding)
+    except ActionTicketError as exc:
+        raise NetworkObservationDenied("ACTION_TICKET_DENIED") from exc
+    try:
+        audit("network_containment_proposed", {
+            "event_id": binding.event_id,
+            "tenant_id": binding.tenant_id,
+            "target_ref": target_ref,
+            "policy_decision_ref": policy_decision_ref,
+            "action_ticket_ref": ticket_id,
+            "risk": binding.risk,
+            "action_class": "NETWORK_CONTAINMENT_PROPOSAL",
+            "mode": "DRY_RUN",
+            "deployment": "DISABLED",
+            "kill_switch": "ENGAGED",
+            "disposition": "PROPOSE_ONLY",
+            "authority_granted": False,
+            "response_executed": False,
+        })
+    except Exception as exc:
+        raise NetworkObservationDenied("EVIDENCE_WRITE_FAILED") from exc
+    try:
+        tickets.validate_and_consume(ticket_id, **ticket_binding)
+    except ActionTicketError as exc:
+        raise NetworkObservationDenied("ACTION_TICKET_DENIED") from exc
+    return NetworkContainmentProposal(
+        binding.event_id, binding.tenant_id, target_ref,
+        policy_decision_ref, ticket_id, binding.risk,
+    )
