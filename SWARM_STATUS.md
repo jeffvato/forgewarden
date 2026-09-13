@@ -1,5 +1,7 @@
 # ForgeWarden Swarm Status
 
+- 2026-09-13: FW-DSPM-002 is in bounded test-only repair after exact AnythingLLM/Qwen APPROVE/LOW requested direct oversized-fixture, non-Mapping fixture, and non-callable Evidence sink proofs. Runtime behavior and authority are unchanged.
+
 - 2026-09-13: FW-DSPM-002 is in focused validation. The candidate admits only exact bounded caller-supplied tenant-bound data-posture metadata and writes minimized Evidence before returning immutable DRY_RUN/DETECT_ONLY state. It accepts no content or credentials and performs no discovery, query, data movement, DLP enforcement, mutation, deployment, or response.
 
 - 2026-09-13: FW-DSPM-001 accepted at candidate `67bdf048500cdf3f2a2b3ae04141f0c1a9d330ae`. The ownership inventory reuses canonical FW-ENDPOINT/FW-ID, browser/email/FW-AID, FW-SAAS, FW-SUPPLY, FW-HARNESS, FW-KEYS, policy/Action Ticket, FW-SOC, FW-EVID, and Mission Control owners and defines substantive FW-DSPM-002 through FW-DSPM-006 milestones. Deterministic inventory and `git diff --check` passed; exact AnythingLLM/Qwen returned APPROVE/LOW with no blockers or missing tests. No product suite or Product Integrity rerun was required for this documentation-only milestone. No content discovery/access, credential use, query, data movement, DLP enforcement, mutation, deployment, or response authority was added. FW-DSPM-002 caller-supplied posture metadata is next.

@@ -95,3 +95,27 @@ def test_data_security_observation_denies_invalid_expected_boundary(tenant_id, n
             fixture(), tenant_id=tenant_id, now_epoch=now_epoch,
             audit=lambda *_args: None,
         )
+
+
+@pytest.mark.parametrize("invalid", [None, [], "fixture"])
+def test_data_security_observation_denies_non_mapping_fixture(invalid):
+    with pytest.raises(DataSecurityObservationDenied, match="FIXTURE_INVALID"):
+        normalize_data_security_observation(
+            invalid, tenant_id="tenant-a", now_epoch=150, audit=lambda *_args: None,
+        )
+
+
+@pytest.mark.parametrize("invalid", [None, 1, "audit"])
+def test_data_security_observation_denies_non_callable_audit(invalid):
+    with pytest.raises(DataSecurityObservationDenied, match="FIXTURE_INVALID"):
+        normalize_data_security_observation(
+            fixture(), tenant_id="tenant-a", now_epoch=150, audit=invalid,
+        )
+
+
+def test_data_security_observation_denies_oversized_fixture():
+    with pytest.raises(DataSecurityObservationDenied, match="FIXTURE_INVALID"):
+        normalize_data_security_observation(
+            fixture(event_id="x" * 32768), tenant_id="tenant-a", now_epoch=150,
+            audit=lambda *_args: None,
+        )
