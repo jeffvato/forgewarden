@@ -1,0 +1,36 @@
+{
+  "adjudication": null,
+  "candidate_commit": "6aac57d824a75448baff969b4d03d917070157fc",
+  "deployment": "DISABLED",
+  "job_id": "phase2a-6aac57d824a75448baff969b",
+  "kill_switch": "ENGAGED",
+  "mutation_allowed": false,
+  "reviews": [
+    {
+      "provider": "CLAUDE",
+      "result": {
+        "blocking_findings": [],
+        "job_id": "phase2a-6aac57d824a75448baff969b",
+        "non_blocking_notes": [
+          "Empty indicators list passes validation; intent (allow or reject) not clarified by tests",
+          "Port boundary values (0, 65535) lack explicit test coverage; only out-of-range tested",
+          "now_epoch parameter assumes non-negative input; no defensive validation",
+          "Owner-reference validation tested only via cross-tenant mismatches, not format violations"
+        ],
+        "proposed_rules": [],
+        "reasoning_summary": "FW-NET-002 candidate implements immutable bounded caller-supplied network metadata validation with strict tenant isolation and evidence-first ordering. Frozen dataclass, hardcoded DRY_RUN/DETECT_ONLY, and authority_granted=False prevent unauthorized mutation or network operations. Evidence is written before return, excludes sensitive values (source/destination/indicators), and fails closed on write errors. Tenant mismatch, cross-tenant owner-references, enum validation, bounds checking, and type confusion (bool-as-int) are all tested. No sockets, packets, queries, or response authority in scope. Deterministic checks pass; 16 focused tests validate core security properties. Non-blocking gaps exist around empty indicators semantics and port boundary testing, but core logic is sound and meets all stated requirements.",
+        "reviewed_commit": "6aac57d824a75448baff969b4d03d917070157fc",
+        "risk": "LOW",
+        "tests_missing": [
+          "Port boundary cases (port=0, port=65535)",
+          "Negative or None values for now_epoch",
+          "Malformed owner-reference strings (invalid regex pattern)",
+          "Empty indicators list clarity (is empty valid?)"
+        ],
+        "verdict": "APPROVE"
+      },
+      "state": "REVIEW_RETURNED"
+    }
+  ],
+  "state": "REVIEW_REQUIRED"
+}

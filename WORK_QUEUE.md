@@ -41,7 +41,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-NET-002 — Caller-supplied network observation
 - Requirement: FW-NET immutable tenant-bound metadata boundary
-- State: REPAIR
+- State: DONE
 - Priority: P0
 - Dependencies: FW-NET-001
 - Approval: Jeff authorized the ordered FW-NET phase using small bounded candidates.
@@ -50,10 +50,11 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 - Allowed paths: swarm/network_security.py, tests/test_network_security.py, WORK_QUEUE.md, SWARM_STATUS.md
 - Test command: python3 -m pytest -q tests/test_network_security.py
 - Acceptance criteria: immutable, bounded, untrusted DRY_RUN/DETECT_ONLY metadata is Evidence-first and fail-closed; no content, credential, packet, socket, sensor, query, scan, mutation, or response authority is added.
+- Completion evidence: initial candidate `6aac57d824a75448baff969b4d03d917070157fc` passed focused 15. AnythingLLM returned invalid JSON and was rejected; exact Claude returned APPROVE/LOW but listed four direct boundary proofs as missing. Test-only repair `225c4722bb4437db43feffd3e7645874ef2337f1` closed valid port endpoints, explicitly valid empty indicators, invalid current time, and malformed owner-reference coverage, then passed focused 23. Exact AnythingLLM/Qwen repair review returned APPROVE/LOW with no blockers or missing tests. Full 1829 passed/1 skipped; Product Integrity fresh full 1829/1 and Golden Path 23 passed with every hard check and only pre-existing dependency YELLOW. Evidence: `docs/fw-net-002-*.json`.
 
 ### FW-NET-003 — Network anomaly and threat classification
 - Requirement: FW-NET exact supplied-fact evaluation
-- State: BLOCKED
+- State: READY
 - Priority: P0
 - Dependencies: FW-NET-002
 - Approval: Jeff authorized the ordered FW-NET phase using small bounded candidates.

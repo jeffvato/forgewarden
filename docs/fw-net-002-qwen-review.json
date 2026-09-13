@@ -1,0 +1,16 @@
+{
+  "adjudication": null,
+  "candidate_commit": "6aac57d824a75448baff969b4d03d917070157fc",
+  "deployment": "DISABLED",
+  "job_id": "phase2a-6aac57d824a75448baff969b",
+  "kill_switch": "ENGAGED",
+  "mutation_allowed": false,
+  "reviews": [
+    {
+      "error": "AnythingLLM returned invalid JSON",
+      "provider": "ANYTHINGLLM",
+      "state": "UNAVAILABLE"
+    }
+  ],
+  "state": "REVIEW_REQUIRED"
+}
