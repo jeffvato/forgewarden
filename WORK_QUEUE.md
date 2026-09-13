@@ -1602,7 +1602,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-INTEGRITY-005 — Executable cross-family product Golden Path
 - Requirement: FW-INTEGRITY representative current-commit behavioral proof
-- State: IN_PROGRESS
+- State: DONE
 - Priority: P0
 - Dependencies: FW-INTEGRITY-004 and FW-UX-013
 - Approval: Jeff authorized continuation into the next phase; this bounded proof executes existing caller-supplied DRY_RUN interfaces without adding live authority.
@@ -1619,6 +1619,28 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - add no sensor, provider call, credential resolution, network/process hook, response/recovery execution, Git mutation, deployment, or new authority.
 - Expected validation: one focused Linux Golden Path, exact independent read-only review, then one full suite and Product Integrity Gate after approval.
 - Security considerations: the proof consumes local fixture interfaces only and cannot authorize, execute, contain, restore, deploy, or certify production readiness.
+- Completion evidence: implementation candidate `a98389ad3a5cd8db87c7e3fe26a6bbe9547168d5`; its exact AnythingLLM/Qwen review returned APPROVE/LOW but named five required denial proofs, so acceptance remained closed. Test-only repair `dae73927e946bd7d9c057e2058ac3751d8a6bf9b` added direct wrong-policy, expired-ticket, invalid-monitor-binding, correlation-replay, invalid-blast-radius, and Evidence-event assertions; exact repair job `phase2a-dae73927e946bd7d9c057e20` returned APPROVE/LOW with no blockers or missing tests. The standalone Golden Path passed after implementation and repair. Full suite passed 2102/1; Product Integrity passed every hard check, 117/117 accepted-task traceability, 15 integrity tests, and the new 1-test exact-current-commit product Golden Path. Only pre-existing `tzdata` remains YELLOW.
+
+
+### FW-INTEGRITY-006 — Clean-checkout reproducibility proof
+- Requirement: FW-INTEGRITY tracked-artifact and clean-start assurance
+- State: READY
+- Priority: P0
+- Dependencies: FW-INTEGRITY-005
+- Approval: Jeff authorized continued next-phase integrity work; this proof uses a disposable local archive and adds no installation or deployment authority.
+- Description: Prove that the tracked exact commit contains the files and dependency declarations needed for a clean local build/startup and bounded product proof, without relying on untracked workspace state.
+- Target path: tests/test_clean_checkout.py
+- Allowed paths: tests/test_clean_checkout.py, scripts/run-clean-checkout-proof.sh, swarm/integrity.py, docs/fw-integrity-clean-checkout.md, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: bash scripts/run-clean-checkout-proof.sh
+- Acceptance criteria:
+  - construct a disposable archive from the exact tracked commit without copying untracked files, credentials, runtime state, or developer-local configuration;
+  - verify required package, configuration, invariant, console, Golden Path, and test entrypoints are present and import/compile from the archive;
+  - prove the clean archive starts only in DRY_RUN with deployment disabled and no live provider, listener, sensor, mutation, response, recovery, or credential activation;
+  - fail closed on missing tracked artifacts, unsafe archive paths, symlinks, secret-bearing packaged files, undeclared runtime dependencies, or current-commit mismatch;
+  - emit a bounded deterministic exact-commit manifest and delete only its own disposable archive after validation;
+  - add no installer, package publication, dependency installation, network access, service control, Git mutation, deployment, or production-readiness claim.
+- Expected validation: one focused Linux clean-checkout proof, exact independent read-only review, then one full suite and Product Integrity Gate after approval.
+- Security considerations: archive inspection is read-only against Git and uses a temporary directory; it cannot install, publish, execute product responses, or modify repository history.
 
 ### FW-API-001 — Canonical tenant-bound read-only request admission
 - Requirement: FW-API versioned least-privilege API/SDK contract

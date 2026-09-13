@@ -32,3 +32,17 @@ Run the proof with:
 ```text
 bash scripts/run-product-golden-path.sh
 ```
+
+## Accepted proof
+
+Implementation candidate `a98389ad3a5cd8db87c7e3fe26a6bbe9547168d5`
+passed the standalone path. Its exact Qwen review returned APPROVE/LOW while
+requesting five direct denial cases, so the gate remained closed. Test-only
+repair `dae73927e946bd7d9c057e2058ac3751d8a6bf9b` added those cases and received
+exact APPROVE/LOW with no blockers or missing tests.
+
+At the repair commit, the full suite passed 2102 tests with one skip. Product
+Integrity passed every hard check, 117/117 accepted-task traceability, 15
+focused integrity tests, and this one-test current-commit Golden Path. The only
+YELLOW finding remains the pre-existing local `tzdata` dependency report. This
+is repository-local proof and does not claim live or production readiness.
