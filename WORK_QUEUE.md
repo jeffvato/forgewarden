@@ -93,7 +93,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-NET-006 — Integrated lifecycle and Mission Control projection
 - Requirement: FW-NET accepted-stage composition and operator visibility
-- State: READY
+- State: REVIEW
 - Priority: P0
 - Dependencies: FW-NET-005
 - Approval: Jeff authorized the ordered FW-NET phase using small bounded candidates.

@@ -133,6 +133,19 @@ class NetworkContainmentProposal:
     response_executed: bool = False
 
 
+@dataclass(frozen=True)
+class NetworkDryRunLifecycle:
+    observation: NetworkObservation
+    finding: NetworkThreatFinding
+    binding: NetworkReferenceBinding
+    proposal: NetworkContainmentProposal
+    mode: str = "DRY_RUN"
+    deployment: str = "DISABLED"
+    kill_switch: str = "ENGAGED"
+    authority_granted: bool = False
+    response_executed: bool = False
+
+
 def normalize_network_observation(
     fixture: Mapping[str, Any], *, tenant_id: str, now_epoch: int,
     audit: Callable[[str, dict[str, Any]], None],
@@ -421,3 +434,34 @@ def propose_network_containment(
         binding.event_id, binding.tenant_id, target_ref,
         policy_decision_ref, ticket_id, binding.risk,
     )
+
+
+def run_network_dry_run_lifecycle(
+    fixture: Mapping[str, Any], *, tenant_id: str, now_epoch: int,
+    endpoint_event_ref: str, aid_finding_ref: str, soc_incident_ref: str,
+    identity_ref: str, evidence_refs: tuple[str, ...],
+    tickets: ActionTicketRegistry, ticket_id: str, target_ref: str,
+    policy_decision_ref: str, subject_agent_id: str, lease_id: str,
+    policy_version: str, kill_switch_state: str,
+    audit: Callable[[str, dict[str, Any]], None],
+) -> NetworkDryRunLifecycle:
+    """Compose accepted FW-NET stages without adding execution authority."""
+    observation = normalize_network_observation(
+        fixture, tenant_id=tenant_id, now_epoch=now_epoch, audit=audit,
+    )
+    finding = classify_network_observation(
+        observation, tenant_id=tenant_id, audit=audit,
+    )
+    binding = bind_network_references(
+        finding, tenant_id=tenant_id, endpoint_event_ref=endpoint_event_ref,
+        aid_finding_ref=aid_finding_ref, soc_incident_ref=soc_incident_ref,
+        identity_ref=identity_ref, evidence_refs=evidence_refs, audit=audit,
+    )
+    proposal = propose_network_containment(
+        binding, tickets=tickets, ticket_id=ticket_id, target_ref=target_ref,
+        policy_decision_ref=policy_decision_ref,
+        subject_agent_id=subject_agent_id, lease_id=lease_id,
+        policy_version=policy_version, now=now_epoch,
+        kill_switch_state=kill_switch_state, audit=audit,
+    )
+    return NetworkDryRunLifecycle(observation, finding, binding, proposal)

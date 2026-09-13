@@ -8,7 +8,7 @@ from swarm.harness_models import ApprovedModelCandidate
 from swarm.harness_risk import AssuranceTier
 from swarm.mcp_gateway import MCPGatewaySafetyState, MCPToolCatalogEntry
 from swarm.harness_worker import WorkerRegistration, WorkerRole, WorkerTransport
-from swarm.mission_control import MissionControlError, ModelMCPActivity, PolicyTicketActivity, project_ai_security, project_mission_control, project_saas_security, project_supply_chain, serialize_evidence_activity, serialize_harness_activity, serialize_incident_activity, serialize_model_mcp_activity, serialize_policy_ticket_activity
+from swarm.mission_control import MissionControlError, ModelMCPActivity, PolicyTicketActivity, project_ai_security, project_mission_control, project_network_security, project_saas_security, project_supply_chain, serialize_evidence_activity, serialize_harness_activity, serialize_incident_activity, serialize_model_mcp_activity, serialize_policy_ticket_activity
 from swarm.action_ticket import ActionTicket
 from swarm.policy_gate import PolicyContext, PolicyDecision
 from swarm.evidence import EvidenceRecord, evidence_record_sha256, validate_evidence_envelope
@@ -18,6 +18,7 @@ from swarm.ai_agent_defense import AICrossDomainCorrelator, AIContainmentProposa
 from swarm.soc import project_soc_dry_run_lifecycle
 from tests.test_saas_security import saas_lifecycle
 from tests.test_supply_chain import supply_lifecycle
+from tests.test_network_security import network_lifecycle
 
 
 def task(task_id="FWQ-0001", status=TaskStatus.READY, **changes):
@@ -417,3 +418,37 @@ def test_supply_chain_projection_labels_demo_and_rejects_tamper_or_secret():
     )
     with pytest.raises(MissionControlError, match="secret-bearing"):
         project_supply_chain(secret, tenant_id="tenant-a")
+
+
+def test_network_security_projection_exposes_lifecycle_without_authority():
+    lifecycle = network_lifecycle()
+    view = project_network_security(lifecycle, tenant_id="tenant-a")
+    assert view.event_id == "network-1" and view.risk == "HIGH"
+    assert view.endpoint_event_ref == "fw-endpoint/tenant-a/network-1"
+    assert view.proposal_action == "NETWORK_CONTAINMENT_PROPOSAL"
+    assert view.proposal_state == "PROPOSE_ONLY"
+    assert view.kill_switch == "ENGAGED" and view.deployment == "DISABLED"
+    assert view.mutation_allowed is False and view.response_executed is False
+    assert not hasattr(view, "execute") and not hasattr(view, "approve")
+
+
+def test_network_security_projection_labels_demo_and_rejects_tamper_or_secret():
+    lifecycle = network_lifecycle()
+    assert project_network_security(
+        lifecycle, tenant_id="tenant-a", data_mode="DEMO",
+    ).data_label == "DEMO / SIMULATED DATA"
+    for invalid in (
+        replace(lifecycle, kill_switch="CLEARED"),
+        replace(lifecycle, proposal=replace(lifecycle.proposal, event_id="network-2")),
+        replace(lifecycle, binding=replace(lifecycle.binding, risk="CRITICAL")),
+    ):
+        with pytest.raises(MissionControlError, match="binding"):
+            project_network_security(invalid, tenant_id="tenant-a")
+    with pytest.raises(MissionControlError, match="binding"):
+        project_network_security(lifecycle, tenant_id="tenant-b")
+    secret = replace(
+        lifecycle,
+        proposal=replace(lifecycle.proposal, policy_decision_ref="api_key=secret"),
+    )
+    with pytest.raises(MissionControlError, match="secret-bearing"):
+        project_network_security(secret, tenant_id="tenant-a")

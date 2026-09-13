@@ -22,6 +22,7 @@ from .operations_capacity import CapacityAssessment
 from .recovery import ResumeAdmission, ResumeAdmissionDecision
 from .saas_security import SaaSDryRunLifecycle
 from .supply_chain import SupplyChainDryRunLifecycle
+from .network_security import NetworkDryRunLifecycle
 
 
 _TENANT = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$")
@@ -671,6 +672,94 @@ def project_supply_chain(
         proposal.target_ref, proposal.policy_decision_ref,
         proposal.action_ticket_ref, data_mode,
         "DEMO / SIMULATED DATA" if data_mode == "DEMO" else "CANONICAL READ-ONLY SUPPLY-CHAIN LIFECYCLE",
+    )
+
+
+@dataclass(frozen=True)
+class NetworkSecurityMissionView:
+    schema_version: int
+    tenant_id: str
+    event_id: str
+    device_ref: str
+    source_ref: str
+    destination_ref: str
+    protocol: str
+    port: int
+    direction: str
+    risk: str
+    indicators: tuple[str, ...]
+    endpoint_event_ref: str
+    aid_finding_ref: str
+    soc_incident_ref: str
+    identity_ref: str
+    evidence_refs: tuple[str, ...]
+    proposal_action: str
+    proposal_state: str
+    target_ref: str
+    policy_decision_ref: str
+    action_ticket_ref: str
+    data_mode: str = "CANONICAL"
+    data_label: str = "CANONICAL READ-ONLY NETWORK LIFECYCLE"
+    kill_switch: str = "ENGAGED"
+    deployment: str = "DISABLED"
+    mutation_allowed: bool = False
+    response_executed: bool = False
+
+
+def project_network_security(
+    lifecycle: NetworkDryRunLifecycle, *, tenant_id: str,
+    data_mode: str = "CANONICAL",
+) -> NetworkSecurityMissionView:
+    """Project one canonical FW-NET lifecycle without control callbacks."""
+    if not isinstance(lifecycle, NetworkDryRunLifecycle) or not _TENANT.fullmatch(tenant_id):
+        raise MissionControlError("network lifecycle malformed")
+    observation, finding = lifecycle.observation, lifecycle.finding
+    binding, proposal = lifecycle.binding, lifecycle.proposal
+    if (
+        data_mode not in {"CANONICAL", "DEMO"}
+        or lifecycle.mode != "DRY_RUN" or lifecycle.deployment != "DISABLED"
+        or lifecycle.kill_switch != "ENGAGED" or lifecycle.authority_granted
+        or lifecycle.response_executed
+        or any(item.tenant_id != tenant_id for item in (observation, finding, binding, proposal))
+        or len({item.event_id for item in (observation, finding, binding, proposal)}) != 1
+        or finding.device_ref != observation.device_ref
+        or finding.protocol != observation.protocol or finding.direction != observation.direction
+        or finding.indicators != observation.indicators
+        or binding.device_ref != finding.device_ref or binding.risk != finding.risk
+        or binding.indicators != finding.indicators
+        or binding.endpoint_event_ref != f"fw-endpoint/{tenant_id}/{observation.event_id}"
+        or proposal.risk != binding.risk
+        or observation.mode != "DRY_RUN" or observation.action != "DETECT_ONLY"
+        or observation.authority_granted
+        or finding.mode != "DRY_RUN" or finding.action != "DETECT_ONLY"
+        or finding.authority_granted
+        or binding.mode != "DRY_RUN" or binding.action != "CORRELATE_ONLY"
+        or binding.authority_granted
+        or proposal.mode != "DRY_RUN" or proposal.disposition != "PROPOSE_ONLY"
+        or proposal.deployment != "DISABLED" or proposal.kill_switch != "ENGAGED"
+        or proposal.authority_granted or proposal.response_executed
+    ):
+        raise MissionControlError("network lifecycle binding or authority invalid")
+    visible = (
+        observation.event_id, observation.device_ref, observation.source_ref,
+        observation.destination_ref, observation.protocol, observation.direction,
+        *finding.indicators, binding.endpoint_event_ref, binding.aid_finding_ref,
+        binding.soc_incident_ref, binding.identity_ref, *binding.evidence_refs,
+        proposal.target_ref, proposal.policy_decision_ref,
+        proposal.action_ticket_ref,
+    )
+    if any(not isinstance(value, str) or len(value.encode()) > 1000 or _SECRET.search(value) for value in visible):
+        raise MissionControlError("network lifecycle secret-bearing or excessive")
+    return NetworkSecurityMissionView(
+        1, tenant_id, observation.event_id, observation.device_ref,
+        observation.source_ref, observation.destination_ref,
+        observation.protocol, observation.port, observation.direction,
+        finding.risk, finding.indicators, binding.endpoint_event_ref,
+        binding.aid_finding_ref, binding.soc_incident_ref,
+        binding.identity_ref, binding.evidence_refs, proposal.action_class,
+        proposal.disposition, proposal.target_ref, proposal.policy_decision_ref,
+        proposal.action_ticket_ref, data_mode,
+        "DEMO / SIMULATED DATA" if data_mode == "DEMO" else "CANONICAL READ-ONLY NETWORK LIFECYCLE",
     )
 
 

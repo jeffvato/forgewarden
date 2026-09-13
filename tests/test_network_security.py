@@ -4,7 +4,7 @@ import pytest
 
 from swarm.action_ticket import ActionTicket, ActionTicketRegistry
 from swarm.asoc import HMACLeaseSigner
-from swarm.network_security import NetworkObservationDenied, bind_network_references, classify_network_observation, normalize_network_observation, propose_network_containment
+from swarm.network_security import NetworkObservationDenied, bind_network_references, classify_network_observation, normalize_network_observation, propose_network_containment, run_network_dry_run_lifecycle
 
 
 def fixture(**overrides):
@@ -350,3 +350,48 @@ def test_network_containment_proposal_revalidates_source_and_evidence():
                 audit=lambda *_args: (_ for _ in ()).throw(RuntimeError("offline")),
             ),
         )
+
+
+def network_lifecycle(*, audit=lambda *_args: None, fixture_overrides=None):
+    return run_network_dry_run_lifecycle(
+        fixture(**(fixture_overrides or {"indicators": ["UNAUTHORIZED_EGRESS"]})),
+        tenant_id="tenant-a", now_epoch=150,
+        endpoint_event_ref="fw-endpoint/tenant-a/network-1",
+        aid_finding_ref="fw-finding/tenant-a/aid-egress-1",
+        soc_incident_ref="fw-incident/tenant-a/incident-1",
+        identity_ref="fw-id/tenant-a.network-controller",
+        evidence_refs=("fw-evid/tenant-a/network-1",), tickets=tickets(),
+        ticket_id="ticket-1", target_ref="fw-network/tenant-a/segment-1",
+        policy_decision_ref="fw-policy/tenant-a/decision-1",
+        subject_agent_id="agent-1", lease_id="lease-1",
+        policy_version="policy-v1", kill_switch_state="ENGAGED", audit=audit,
+    )
+
+
+def test_network_integrated_lifecycle_preserves_stage_order_and_no_authority():
+    evidence = []
+    lifecycle = network_lifecycle(audit=lambda *items: evidence.append(items))
+    assert [item[0] for item in evidence] == [
+        "network_observation_normalized", "network_threat_classified",
+        "network_references_bound", "network_containment_proposed",
+    ]
+    assert len({
+        lifecycle.observation.event_id, lifecycle.finding.event_id,
+        lifecycle.binding.event_id, lifecycle.proposal.event_id,
+    }) == 1
+    assert lifecycle.mode == "DRY_RUN" and lifecycle.deployment == "DISABLED"
+    assert lifecycle.kill_switch == "ENGAGED"
+    assert lifecycle.authority_granted is False and lifecycle.response_executed is False
+
+
+def test_network_integrated_lifecycle_stops_before_proposal_for_medium_risk():
+    evidence = []
+    with pytest.raises(NetworkObservationDenied, match="PROPOSAL_SOURCE_INVALID"):
+        network_lifecycle(
+            fixture_overrides={"indicators": ["NETWORK_PROBE"]},
+            audit=lambda *items: evidence.append(items),
+        )
+    assert [item[0] for item in evidence] == [
+        "network_observation_normalized", "network_threat_classified",
+        "network_references_bound",
+    ]
