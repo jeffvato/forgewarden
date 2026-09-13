@@ -2,7 +2,9 @@ from dataclasses import FrozenInstanceError, replace
 
 import pytest
 
-from swarm.supply_chain import SupplyChainObservationDenied, bind_supply_chain_references, classify_supply_chain_observation, normalize_supply_chain_observation
+from swarm.action_ticket import ActionTicket, ActionTicketRegistry
+from swarm.asoc import HMACLeaseSigner
+from swarm.supply_chain import SupplyChainObservationDenied, bind_supply_chain_references, classify_supply_chain_observation, normalize_supply_chain_observation, propose_supply_chain_block
 
 
 def fixture(**overrides):
@@ -187,6 +189,84 @@ def test_supply_reference_binding_revalidates_finding_and_evidence():
     with pytest.raises(SupplyChainObservationDenied, match="EVIDENCE_WRITE_FAILED"):
         bind_supply_chain_references(
             finding(), **binding_args(
+                audit=lambda *_args: (_ for _ in ()).throw(RuntimeError("offline")),
+            ),
+        )
+
+
+def reference_binding():
+    return bind_supply_chain_references(finding(), **binding_args())
+
+
+def tickets(**overrides):
+    registry = ActionTicketRegistry(HMACLeaseSigner({"key-1": b"test-only-key-material"}))
+    values = dict(
+        ticket_id="ticket-1", tenant_id="tenant-a", subject_agent_id="agent-1",
+        lease_id="lease-1", capability="supply.component.block.propose",
+        resource="fw-component/tenant-a/requests",
+        action_class="BLOCK_COMPONENT_PROPOSAL", issued_by="operator-1",
+        approval_reference="approval-1", policy_version="policy-v1",
+        issued_at=100, expires_at=200, key_reference="key-1",
+    )
+    values.update(overrides)
+    registry.issue(ActionTicket(**values))
+    return registry
+
+
+def proposal_args(**overrides):
+    values = dict(
+        tickets=tickets(), ticket_id="ticket-1",
+        target_ref="fw-component/tenant-a/requests",
+        policy_decision_ref="fw-policy/tenant-a/decision-1",
+        subject_agent_id="agent-1", lease_id="lease-1",
+        policy_version="policy-v1", now=150, kill_switch_state="ENGAGED",
+        audit=lambda *_args: None,
+    )
+    values.update(overrides)
+    return values
+
+
+def test_supply_block_proposal_consumes_ticket_and_never_executes():
+    evidence = []
+    args = proposal_args(audit=lambda *items: evidence.append(items))
+    proposal = propose_supply_chain_block(reference_binding(), **args)
+    assert proposal.risk == "CRITICAL"
+    assert proposal.action_class == "BLOCK_COMPONENT_PROPOSAL"
+    assert proposal.disposition == "PROPOSE_ONLY"
+    assert proposal.mode == "DRY_RUN" and proposal.deployment == "DISABLED"
+    assert proposal.kill_switch == "ENGAGED"
+    assert proposal.authority_granted is False and proposal.response_executed is False
+    assert evidence[0][1]["response_executed"] is False
+    with pytest.raises(SupplyChainObservationDenied, match="ACTION_TICKET_DENIED"):
+        propose_supply_chain_block(reference_binding(), **args)
+
+
+@pytest.mark.parametrize("overrides,reason", [
+    ({"kill_switch_state": "CLEAR"}, "KILL_SWITCH_NOT_ENGAGED"),
+    ({"target_ref": "fw-component/tenant-b/requests"}, "PROPOSAL_REF_INVALID"),
+    ({"target_ref": "component-without-prefix"}, "PROPOSAL_REF_INVALID"),
+    ({"policy_decision_ref": "fw-policy/tenant-b/decision-1"}, "PROPOSAL_REF_INVALID"),
+    ({"policy_decision_ref": "policy-without-prefix"}, "PROPOSAL_REF_INVALID"),
+    ({"subject_agent_id": "agent-2"}, "ACTION_TICKET_DENIED"),
+    ({"policy_version": "policy-v2"}, "ACTION_TICKET_DENIED"),
+])
+def test_supply_block_proposal_rejects_boundary_mismatch(overrides, reason):
+    with pytest.raises(SupplyChainObservationDenied, match=reason):
+        propose_supply_chain_block(reference_binding(), **proposal_args(**overrides))
+
+
+def test_supply_block_proposal_revalidates_source_and_evidence():
+    for changes in (
+        {"risk": "MEDIUM"}, {"trust": "TRUSTED"},
+        {"mode": "EXECUTE"}, {"action": "BLOCK"},
+    ):
+        with pytest.raises(SupplyChainObservationDenied, match="PROPOSAL_SOURCE_INVALID"):
+            propose_supply_chain_block(
+                replace(reference_binding(), **changes), **proposal_args(),
+            )
+    with pytest.raises(SupplyChainObservationDenied, match="EVIDENCE_WRITE_FAILED"):
+        propose_supply_chain_block(
+            reference_binding(), **proposal_args(
                 audit=lambda *_args: (_ for _ in ()).throw(RuntimeError("offline")),
             ),
         )

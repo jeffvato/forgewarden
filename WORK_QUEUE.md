@@ -20,6 +20,25 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 
 Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical implementation is not new work. FWQ-0008 VALIDATED preserves a provenance caveat, not a request to rebuild or automatically repeat review. FWQ-0012–0016 are reconciled DONE from existing implementation and recorded proof.
 
+### FW-SUPPLY-005 — Inert Action Ticket-bound component block proposal
+- Requirement: FW-SUPPLY bounded non-executing response intent
+- State: IN_PROGRESS
+- Priority: P0
+- Dependencies: FW-SUPPLY-004
+- Approval: Jeff authorized the ordered FW-SUPPLY phase using small bounded candidates.
+- Description: Convert an exact HIGH/CRITICAL canonical owner-chain binding into an Evidence-first component-block proposal through the existing single-use Action Ticket boundary.
+- Target path: swarm/supply_chain.py
+- Allowed paths: swarm/supply_chain.py, tests/test_supply_chain.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_supply_chain.py tests/test_action_ticket.py
+- Acceptance criteria:
+  - only exact HIGH/CRITICAL untrusted DRY_RUN/CORRELATE_ONLY input produces the fixed component-block proposal class;
+  - tenant-matched component target and policy-decision references, engaged kill switch, and exact signed single-use Action Ticket binding are mandatory;
+  - Evidence succeeds before ticket consumption and output; replay, mismatch, invalid source/reference, Evidence failure, or cleared kill switch fails closed;
+  - immutable output remains DRY_RUN/PROPOSE_ONLY with deployment disabled and authority/response false;
+  - no package block, install, deletion, registry/feed/build access, signing, publication, deployment, remediation, rollback, quarantine, or response executor is added.
+- Expected validation: focused Linux proof, exact independent read-only review, then full suite and Product Integrity once after approval.
+- Security considerations: a valid proposal records bounded intent only and cannot change a component, catalog, repository, build, release, or runtime.
+
 ### FW-SUPPLY-004 — Canonical owner reference binding
 - Requirement: FW-SUPPLY vulnerability/catalog/signature/Evidence composition
 - State: DONE

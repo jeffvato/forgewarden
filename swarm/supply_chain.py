@@ -6,6 +6,8 @@ import json
 import re
 from typing import Any, Callable, Mapping
 
+from .action_ticket import ActionTicketError, ActionTicketRegistry
+
 
 MAX_SUPPLY_FIXTURE_BYTES = 32 * 1024
 MAX_SUPPLY_TEXT_BYTES = 256
@@ -15,7 +17,7 @@ _PACKAGE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.@/+-]{0,255}$")
 _VERSION = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.+-]{0,127}$")
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 _TENANT_REF = re.compile(
-    r"^fw-(vuln|catalog|signature|evid)/([a-z][a-z0-9_.-]{0,127})/[a-z][a-z0-9_.:/+-]{0,191}$"
+    r"^fw-(vuln|catalog|signature|evid|component|policy)/([a-z][a-z0-9_.-]{0,127})/[a-z][a-z0-9_.:/+-]{0,191}$"
 )
 _ECOSYSTEMS = frozenset({"CONTAINER", "GENERIC", "MAVEN", "NPM", "NUGET", "PYPI"})
 _INDICATORS = frozenset({
@@ -92,6 +94,24 @@ class SupplyChainReferenceBinding:
     trust: str = "UNTRUSTED_DATA"
     mode: str = "DRY_RUN"
     action: str = "CORRELATE_ONLY"
+
+
+@dataclass(frozen=True)
+class SupplyChainBlockProposal:
+    event_id: str
+    tenant_id: str
+    component_ref: str
+    target_ref: str
+    policy_decision_ref: str
+    action_ticket_ref: str
+    risk: str
+    action_class: str = "BLOCK_COMPONENT_PROPOSAL"
+    mode: str = "DRY_RUN"
+    deployment: str = "DISABLED"
+    kill_switch: str = "ENGAGED"
+    disposition: str = "PROPOSE_ONLY"
+    authority_granted: bool = False
+    response_executed: bool = False
 
 
 def normalize_supply_chain_observation(
@@ -300,4 +320,79 @@ def bind_supply_chain_references(
         finding.event_id, expected_tenant, finding.component_ref, finding.risk,
         finding.indicators, vulnerability_refs, catalog_ref, signature_ref,
         evidence_refs,
+    )
+
+
+def propose_supply_chain_block(
+    binding: SupplyChainReferenceBinding, *, tickets: ActionTicketRegistry,
+    ticket_id: str, target_ref: str, policy_decision_ref: str,
+    subject_agent_id: str, lease_id: str, policy_version: str, now: int,
+    kill_switch_state: str, audit: Callable[[str, dict[str, Any]], None],
+) -> SupplyChainBlockProposal:
+    """Consume proposal-only authority without blocking or changing a component."""
+    if (
+        not isinstance(binding, SupplyChainReferenceBinding)
+        or not isinstance(tickets, ActionTicketRegistry)
+        or not callable(audit)
+    ):
+        raise SupplyChainObservationDenied("PROPOSAL_INPUT_INVALID")
+    expected_tenant = _reference(binding.tenant_id, "TENANT")
+    if (
+        binding.risk not in {"HIGH", "CRITICAL"}
+        or binding.trust != "UNTRUSTED_DATA"
+        or binding.mode != "DRY_RUN"
+        or binding.action != "CORRELATE_ONLY"
+    ):
+        raise SupplyChainObservationDenied("PROPOSAL_SOURCE_INVALID")
+    if kill_switch_state != "ENGAGED":
+        raise SupplyChainObservationDenied("KILL_SWITCH_NOT_ENGAGED")
+    target_match = _TENANT_REF.fullmatch(target_ref) if isinstance(target_ref, str) else None
+    policy_match = _TENANT_REF.fullmatch(policy_decision_ref) if isinstance(policy_decision_ref, str) else None
+    if (
+        target_match is None or target_match.group(1) != "component"
+        or policy_match is None or policy_match.group(1) != "policy"
+        or target_match.group(2) != expected_tenant
+        or policy_match.group(2) != expected_tenant
+    ):
+        raise SupplyChainObservationDenied("PROPOSAL_REF_INVALID")
+    ticket_binding = {
+        "tenant_id": expected_tenant,
+        "subject_agent_id": subject_agent_id,
+        "lease_id": lease_id,
+        "capability": "supply.component.block.propose",
+        "resource": target_ref,
+        "action_class": "BLOCK_COMPONENT_PROPOSAL",
+        "policy_version": policy_version,
+        "now": now,
+    }
+    try:
+        tickets.validate(ticket_id, **ticket_binding)
+    except ActionTicketError as exc:
+        raise SupplyChainObservationDenied("ACTION_TICKET_DENIED") from exc
+    try:
+        audit("supply_chain_block_proposed", {
+            "event_id": binding.event_id,
+            "tenant_id": expected_tenant,
+            "component_ref": binding.component_ref,
+            "target_ref": target_ref,
+            "policy_decision_ref": policy_decision_ref,
+            "action_ticket_ref": ticket_id,
+            "risk": binding.risk,
+            "action_class": "BLOCK_COMPONENT_PROPOSAL",
+            "mode": "DRY_RUN",
+            "deployment": "DISABLED",
+            "kill_switch": "ENGAGED",
+            "disposition": "PROPOSE_ONLY",
+            "authority_granted": False,
+            "response_executed": False,
+        })
+    except Exception as exc:
+        raise SupplyChainObservationDenied("EVIDENCE_WRITE_FAILED") from exc
+    try:
+        tickets.validate_and_consume(ticket_id, **ticket_binding)
+    except ActionTicketError as exc:
+        raise SupplyChainObservationDenied("ACTION_TICKET_DENIED") from exc
+    return SupplyChainBlockProposal(
+        binding.event_id, expected_tenant, binding.component_ref, target_ref,
+        policy_decision_ref, ticket_id, binding.risk,
     )
