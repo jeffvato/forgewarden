@@ -1,0 +1,36 @@
+{
+  "adjudication": null,
+  "candidate_commit": "d2f843352edd5dc93dc26344c091cf9e2c7dae61",
+  "deployment": "DISABLED",
+  "job_id": "phase2a-d2f843352edd5dc93dc26344",
+  "kill_switch": "ENGAGED",
+  "mutation_allowed": false,
+  "reviews": [
+    {
+      "provider": "ANYTHINGLLM",
+      "result": {
+        "blocking_findings": [],
+        "job_id": "phase2a-d2f843352edd5dc93dc26344",
+        "non_blocking_notes": [
+          "The `HighAssuranceModelAdmission` dataclass is frozen, ensuring immutability of the admission result.",
+          "The function `admit_high_assurance_model` correctly validates all required conditions including tenant, boundary, environment, data classification, profile validity, evidence-bound authorization, candidate approval/availability, and assurance tier match.",
+          "The audit log is written with all necessary metadata, including `opaque_router_consulted: False`, ensuring no opaque routing occurs.",
+          "The function raises `HighAssuranceProfileDenied` with specific reasons for each failure case, providing clear error handling."
+        ],
+        "proposed_rules": [
+          "Ensure all evidence references (`profile.evidence_ref`, `candidate.registry_evidence_reference`) are validated for format and existence before admission."
+        ],
+        "reasoning_summary": "The patch implements the `admit_high_assurance_model` function, which composes the accepted immutable high-assurance profile with the existing `ApprovedModelCandidate`. The function strictly enforces all admission criteria: tenant, security boundary, environment, data classification, profile validity, EVIDENCE_BOUND authorization metadata, candidate approval/availability, and same-or-higher assurance match. It ensures that the output remains in DRY_RUN mode with deployment disabled, `invocation_authorized` false, and `authority_granted` false. No model/provider call or credential resolution is performed. The provided tests cover the main success case and various failure scenarios, including mismatch, downgrade, stale profile, forged authority, and evidence failure. The code is deterministic and aligns with the acceptance criteria for FW-GOV-003.",
+        "reviewed_commit": "d2f843352edd5dc93dc26344c091cf9e2c7dae61",
+        "risk": "LOW",
+        "tests_missing": [
+          "Test for `now_epoch` being a boolean value (though `isinstance(now_epoch, bool)` check exists, no explicit test case is provided for it).",
+          "Test for `profile.evidence_ref` or `candidate.registry_evidence_reference` being invalid or missing, though the code assumes they are present and valid."
+        ],
+        "verdict": "APPROVE"
+      },
+      "state": "REVIEW_RETURNED"
+    }
+  ],
+  "state": "REVIEW_REQUIRED"
+}

@@ -1,0 +1,32 @@
+{
+  "adjudication": null,
+  "candidate_commit": "7abf65dcfc131397ee1bac39137f496f5511a83d",
+  "deployment": "DISABLED",
+  "job_id": "phase2a-7abf65dcfc131397ee1bac39",
+  "kill_switch": "ENGAGED",
+  "mutation_allowed": false,
+  "reviews": [
+    {
+      "provider": "ANYTHINGLLM",
+      "result": {
+        "blocking_findings": [],
+        "job_id": "phase2a-7abf65dcfc131397ee1bac39",
+        "non_blocking_notes": [
+          "The patch correctly revalidates profile, ATO, and registry evidence references as tenant-bound canonical references during admission.",
+          "The bool-time denial for 'now_epoch' is properly tested and implemented, addressing the prior review's requirement for direct bool-time testing.",
+          "The use of validated references in the output and signature ensures no unvalidated data leaks into the DRY_RUN output or authorization logic."
+        ],
+        "proposed_rules": [
+          "Require all tenant-bound evidence references to be validated against the canonical tenant ID before admission."
+        ],
+        "reasoning_summary": "The patch successfully implements the FW-GOV-003 repair by enforcing tenant-bound validation for all critical evidence references (profile, ATO, registry). It directly addresses the prior review's requirements by adding specific tests for forged/cross-tenant references and bool-time denials. The logic changes are minimal and focused, ensuring that only exact, valid, and tenant-matched references are admitted. The DRY_RUN output now uses the validated reference variables, maintaining immutability and security. No blocking issues were found, and the risk is low given the strict validation and comprehensive test coverage.",
+        "reviewed_commit": "7abf65dcfc131397ee1bac39137f496f5511a83d",
+        "risk": "LOW",
+        "tests_missing": [],
+        "verdict": "APPROVE"
+      },
+      "state": "APPROVED"
+    }
+  ],
+  "state": "APPROVED"
+}

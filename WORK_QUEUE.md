@@ -48,7 +48,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-GOV-003 — Deterministic model authorization admission
 - Requirement: FW-GOV profile and Approved Model Registry composition
-- State: READY
+- State: DONE
 - Priority: P0
 - Dependencies: FW-GOV-002, FW-HARNESS
 - Approval: Jeff authorized the ordered FW-GOV phase through the continuing heartbeat.
@@ -57,10 +57,11 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 - Allowed paths: swarm/high_assurance.py, tests/test_high_assurance.py, WORK_QUEUE.md, SWARM_STATUS.md
 - Test command: python3 -m pytest -q tests/test_high_assurance.py tests/test_harness_models.py
 - Acceptance criteria: deterministic metadata-only admission fails closed on mismatch or downgrade and grants no invocation/deployment authority; no opaque router LLM is consulted.
+- Completion evidence: implementation candidate `d2f843352edd5dc93dc26344c091cf9e2c7dae61`; exact repair candidate `7abf65dcfc131397ee1bac39137f496f5511a83d`. Exact AnythingLLM/Qwen review requested direct boolean-time and tenant-bound Evidence-reference proofs; the repair revalidates profile, ATO, and registry Evidence references at admission and closed every requested test. Exact repair job `phase2a-7abf65dcfc131397ee1bac39` returned APPROVE/LOW with no blockers or missing tests. Focused validation passed 80; full validation and Product Integrity each passed 2060 tests with 1 skipped; focused Golden Path passed 80. Every hard check passed, with YELLOW only for pre-existing `tzdata`. Evidence: `docs/fw-gov-003-qwen-review.json`, `docs/fw-gov-003-qwen-repair-review.json`, `docs/fw-gov-003-integrity.json`.
 
 ### FW-GOV-004 — Sovereign/offline and approved-equivalent failover
 - Requirement: FW-GOV provider-failure and environment continuity policy
-- State: BLOCKED
+- State: READY
 - Priority: P0
 - Dependencies: FW-GOV-003
 - Approval: Jeff authorized the ordered FW-GOV phase through the continuing heartbeat.
