@@ -34,3 +34,17 @@ Run it with:
 ```text
 bash scripts/run-clean-checkout-proof.sh
 ```
+
+## Accepted proof
+
+Exact candidate `6033b3bfc5f592197b7cd3a7f619b78da1135b62`
+passed nine focused tests and received exact Qwen APPROVE/LOW with no blockers
+or missing tests. The full suite passed 2111 tests with one skip. Product
+Integrity passed every hard check, 118/118 accepted-task traceability, 15
+integrity tests, and this nine-test clean-checkout proof at the candidate.
+
+The accepted manifest covered 563 tracked regular files, 14 required
+entrypoints, six exactly pinned proof dependencies, archive-local compilation
+and import, safety configuration, and disposal of the temporary checkout. The
+remaining `tzdata` YELLOW describes the current host environment; the tracked
+pin is present, but this proof deliberately does not install dependencies.

@@ -1624,7 +1624,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-INTEGRITY-006 — Clean-checkout reproducibility proof
 - Requirement: FW-INTEGRITY tracked-artifact and clean-start assurance
-- State: IN_PROGRESS
+- State: DONE
 - Priority: P0
 - Dependencies: FW-INTEGRITY-005
 - Approval: Jeff authorized continued next-phase integrity work; this proof uses a disposable local archive and adds no installation or deployment authority.
@@ -1641,6 +1641,28 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - add no installer, package publication, dependency installation, network access, service control, Git mutation, deployment, or production-readiness claim.
 - Expected validation: one focused Linux clean-checkout proof, exact independent read-only review, then one full suite and Product Integrity Gate after approval.
 - Security considerations: archive inspection is read-only against Git and uses a temporary directory; it cannot install, publish, execute product responses, or modify repository history.
+- Completion evidence: exact candidate `6033b3bfc5f592197b7cd3a7f619b78da1135b62`; focused clean-checkout proof passed 9 tests; exact AnythingLLM/Qwen job `phase2a-6033b3bfc5f592197b7cd3a7` returned APPROVE/LOW with no blockers or missing tests. Full suite passed 2111/1. Product Integrity passed every hard check, 118/118 accepted-task traceability, 15 integrity tests, and the 9-test clean tracked-commit proof at the exact candidate; only pre-existing local `tzdata` remains YELLOW. The manifest covered 563 tracked regular files, 14 required entrypoints, six pinned dependencies, archive-local compile/import, safety configuration, secret/link/path denial, and disposable-checkout cleanup.
+
+
+### FW-INTEGRITY-007 — Critical invariant mutation-resistance proof
+- Requirement: FW-INTEGRITY security-test effectiveness
+- State: READY
+- Priority: P0
+- Dependencies: FW-INTEGRITY-005 and FW-INTEGRITY-006
+- Approval: Jeff authorized continued next-phase integrity work; bounded mutation proof in disposable archives is within the existing test authority.
+- Description: Demonstrate that targeted security tests detect deliberate local mutations to critical deterministic invariants instead of merely passing the unchanged implementation.
+- Target path: tests/test_mutation_resistance.py
+- Allowed paths: tests/test_mutation_resistance.py, scripts/run-mutation-resistance-proof.sh, swarm/integrity.py, docs/fw-integrity-mutation-resistance.md, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: bash scripts/run-mutation-resistance-proof.sh
+- Acceptance criteria:
+  - define a bounded manifest of exact, unique source/config mutations covering AI self-authority, tenant isolation, Evidence immutability, independent review, model assurance downgrade, MCP/tool authority, kill-switch, and deployment safeguards;
+  - apply each mutation only inside a function-owned disposable exact-commit checkout and never to the repository working tree or Git history;
+  - run the smallest existing deterministic test selection that owns each invariant and require every mutant to be killed by a non-zero test result with bounded sanitized output;
+  - fail closed when a mutation target is absent/ambiguous, a test times out, a mutant survives, output is excessive/secret-bearing, or the exact source commit changes;
+  - emit a bounded deterministic exact-commit summary with mutation IDs, owners, test commands, and kill results, then remove each disposable checkout;
+  - add no mutation engine dependency, package installation, network/provider access, service/sensor execution, response/recovery action, repository mutation, deployment, or authority.
+- Expected validation: one focused Linux mutation-resistance proof, exact independent read-only review, then one full suite and Product Integrity Gate after approval.
+- Security considerations: mutations are fixed test inputs applied only to temporary tracked-file copies; they cannot reach production source or authorize an action.
 
 ### FW-API-001 — Canonical tenant-bound read-only request admission
 - Requirement: FW-API versioned least-privilege API/SDK contract
