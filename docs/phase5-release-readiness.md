@@ -118,3 +118,30 @@ This result remains a disposable local repository candidate. Its files retain
 pending, and publication and production readiness remain disabled. The
 controller has no remote creation, network, provider, credential, package,
 visibility, publication, deployment, or authority capability.
+
+
+## Offline clean-export CI proof
+
+FWQ-0084 consumes only the exact result of the FWQ-0083 repository builder.
+It independently verifies the one-root-commit repository, fixed controller
+metadata, complete reachable object set, exact refs/tree/worktree, manifest and
+provenance digests, dependency closure, pending gates, and fail-closed license
+and publication facts before running a check.
+
+Each track has an exact policy-defined check list mapped to fixed command
+arguments in the trusted controller. Commands run without a shell in a minimal
+constant environment with no ambient identity, credential, proxy, or Python
+path. Runtime lookup uses a fixed local search path; command count, duration,
+and output are bounded. Python runs isolated with bytecode disabled. The SDK
+check parses its shipped JSON Schema and documentation. The Demo check loads
+the shipped provider by exact path and requires its snapshot to equal the
+bundled deterministic Demo data, while Node performs syntax validation without
+executing the browser application. The controller verifies the repository again
+afterward and rejects any content or provenance drift.
+
+The deterministic result binds the public root/tree, source binding, manifest,
+provenance, repository-result, and command-plan digests. It records only logical
+runtime names and result digests, not local paths, raw command output, private
+source commits, environment values, or credentials. This remains local
+regression evidence. It creates no external CI runner, remote, network access,
+package installation, license decision, publication, deployment, or authority.
