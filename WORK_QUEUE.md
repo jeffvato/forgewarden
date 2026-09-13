@@ -1373,7 +1373,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-UX-010 — Canonical policy and Action Ticket provider
 - Requirement: Mission Control incremental backend integration
-- State: READY
+- State: REVIEW
 - Priority: P0
 - Dependencies: FW-UX-009, FW-ROOT deterministic policy, and canonical Action Tickets
 - Approval: Jeff authorized the mapped Mission Control backend integration sequence; this unit may expose existing sanitized local read-only policy-decision and Action Ticket projections only.

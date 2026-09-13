@@ -5,7 +5,9 @@ import pytest
 from swarm.harness_context import BudgetAdmission, BudgetUsage
 from swarm.harness_task import HarnessTask, TaskStatus
 from swarm.harness_worker import WorkerRegistration, WorkerRole, WorkerTransport
-from swarm.mission_control import MissionControlError, project_ai_security, project_mission_control, serialize_evidence_activity, serialize_harness_activity, serialize_incident_activity
+from swarm.mission_control import MissionControlError, PolicyTicketActivity, project_ai_security, project_mission_control, serialize_evidence_activity, serialize_harness_activity, serialize_incident_activity, serialize_policy_ticket_activity
+from swarm.action_ticket import ActionTicket
+from swarm.policy_gate import PolicyContext, PolicyDecision
 from swarm.evidence import EvidenceRecord, evidence_record_sha256, validate_evidence_envelope
 from tests.test_fw_aid import classified_source, cross_fact, proposal_args
 from tests.test_soc import incident, timeline_entry, playbook_step, mutating_step
@@ -229,6 +231,44 @@ def test_evidence_activity_rejects_malformed_and_unbounded_inputs():
         serialize_evidence_activity([evidence_record()])
     with pytest.raises(MissionControlError, match="excessive"):
         serialize_evidence_activity(tuple(evidence_record(evidence_id=f"fw-evid/tenant-a/task/{index:04d}") for index in range(257)))
+
+
+def policy_ticket_activity(*, allowed=True, ticket=True, now=150):
+    context = PolicyContext("tenant-a", "agent-a", "endpoint.isolate.request", "endpoint-1", "ISOLATE_ENDPOINT", "policy-v1")
+    value = ActionTicket("ticket-1", "tenant-a", "agent-a", "lease-1", "endpoint.isolate.request", "endpoint-1", "ISOLATE_ENDPOINT", "root-operator", "approval-1", "policy-v1", 100, 200, "fw-keys/ticket", "signed-value") if ticket else None
+    return PolicyTicketActivity(context, PolicyDecision(allowed, "RULE_MATCH" if allowed else "RULE_NOT_FOUND"), value, now)
+
+
+def test_policy_ticket_activity_serializes_allow_deny_and_empty_without_authority():
+    allowed = serialize_policy_ticket_activity(policy_ticket_activity())
+    assert allowed["data_mode"] == "CANONICAL" and allowed["view"]["decision"] == "ALLOW"
+    assert allowed["view"]["ticket"]["signature_status"] == "PRESENT_NOT_VERIFIED"
+    assert allowed["view"]["ticket"]["usage_status"] == "UNCONSUMED"
+    assert allowed["safety"]["ticket_consumed"] is False
+    denied = serialize_policy_ticket_activity(policy_ticket_activity(allowed=False, ticket=False))
+    assert denied["view"]["decision"] == "DENY" and denied["view"]["ticket"] is None
+    assert serialize_policy_ticket_activity(None)["data_mode"] == "EMPTY"
+
+
+@pytest.mark.parametrize("change,match", [
+    ({"kill_switch": "CLEARED"}, "unsafe"), ({"deployment": "ENABLED"}, "unsafe"),
+    ({"mutation_allowed": True}, "unsafe"), ({"observed_at_epoch": 200}, "expiry"),
+])
+def test_policy_ticket_activity_rejects_unsafe_or_expired_state(change, match):
+    with pytest.raises(MissionControlError, match=match):
+        serialize_policy_ticket_activity(replace(policy_ticket_activity(), **change))
+
+
+def test_policy_ticket_activity_rejects_missing_mismatched_consumed_or_denied_ticket():
+    with pytest.raises(MissionControlError, match="requires"):
+        serialize_policy_ticket_activity(policy_ticket_activity(ticket=False))
+    value = policy_ticket_activity()
+    with pytest.raises(MissionControlError, match="binding"):
+        serialize_policy_ticket_activity(replace(value, ticket=replace(value.ticket, tenant_id="tenant-b")))
+    with pytest.raises(MissionControlError, match="usage"):
+        serialize_policy_ticket_activity(replace(value, ticket=replace(value.ticket, consumed_at=160)))
+    with pytest.raises(MissionControlError, match="denied"):
+        serialize_policy_ticket_activity(replace(value, decision=PolicyDecision(False, "RULE_NOT_FOUND")))
 
 
 def ai_bundle():

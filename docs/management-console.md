@@ -134,3 +134,18 @@ Missing providers return `EMPTY`; rejected or unavailable providers return
 no Evidence append, sign, key, policy, approval, export, repair, or deletion
 callback, and DRY_RUN, disabled deployment, and the engaged kill switch remain
 mandatory.
+
+## Canonical policy and Action Ticket provider
+
+The `/api/policy-ticket-activity` endpoint projects one existing deterministic
+`PolicyContext` and `PolicyDecision` with its exactly bound `ActionTicket` when
+the decision allows work. Denials cannot carry tickets. Allowed projections
+require a signed, unconsumed, unexpired ticket whose tenant, subject, lease,
+capability, resource, action class, and policy version match the decision
+context. Signature material is never returned; the view reports only
+`PRESENT_NOT_VERIFIED` because Mission Control does not own key access or
+signature verification.
+
+The provider returns explicit `CANONICAL`, `EMPTY`, and `UNAVAILABLE` states.
+It exposes explanatory facts only and contains no policy evaluator, approval,
+ticket issue/consume/revoke, key, response, recovery, or deployment callback.

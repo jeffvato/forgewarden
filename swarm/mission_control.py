@@ -12,6 +12,8 @@ from .normalized_events import AIWorkloadSecurityEvent
 from .ai_agent_defense import AIAttackStory, AIContainmentProposal, AIThreatFinding
 from .asoc import MUTATING_ACTIONS, READ_ONLY_ACTIONS
 from .evidence import EvidenceContractError, EvidenceEnvelope, EvidenceRecord, evidence_record_sha256, validate_evidence_envelope
+from .action_ticket import ActionTicket, ActionTicketError
+from .policy_gate import PolicyContext, PolicyDecision, PolicyInvariantError
 from .soc import SOCAttackStoryProjection, SOCDryRunLifecycle, SOCIncidentProjection, SOCIncidentTimeline, SOCPlaybookProposal, SOCPlaybookStep, SOCTimelineEntry
 
 
@@ -59,6 +61,85 @@ class MissionControlView:
     kill_switch: str
     deployment: str = "DISABLED"
     mutation_allowed: bool = False
+
+
+@dataclass(frozen=True)
+class PolicyTicketActivity:
+    """Read-only binding of one canonical policy result to an optional ticket."""
+
+    context: PolicyContext
+    decision: PolicyDecision
+    ticket: ActionTicket | None
+    observed_at_epoch: int
+    kill_switch: str = "ENGAGED"
+    deployment: str = "DISABLED"
+    mutation_allowed: bool = False
+
+
+def serialize_policy_ticket_activity(activity: PolicyTicketActivity | None) -> dict[str, Any]:
+    """Explain canonical policy/ticket facts without evaluating or consuming them."""
+    base = {"schema_version": 1, "safety": {"mutation_allowed": False, "deployment": "DISABLED", "kill_switch": "ENGAGED", "ticket_consumed": False}}
+    if activity is None:
+        return {**base, "data_mode": "EMPTY", "data_label": "NO CANONICAL POLICY OR TICKET ACTIVITY", "view": None}
+    if (
+        not isinstance(activity, PolicyTicketActivity)
+        or not isinstance(activity.context, PolicyContext)
+        or not isinstance(activity.decision, PolicyDecision)
+        or not isinstance(activity.observed_at_epoch, int)
+        or isinstance(activity.observed_at_epoch, bool)
+        or activity.observed_at_epoch < 0
+        or activity.kill_switch != "ENGAGED"
+        or activity.deployment != "DISABLED"
+        or activity.mutation_allowed
+    ):
+        raise MissionControlError("policy and ticket activity is malformed or unsafe")
+    context, decision, ticket = activity.context, activity.decision, activity.ticket
+    try:
+        if PolicyContext(**asdict(context)) != context or PolicyDecision(**asdict(decision)) != decision:
+            raise MissionControlError("policy activity canonical reconstruction failed")
+        if ticket is not None and ActionTicket(**asdict(ticket)) != ticket:
+            raise MissionControlError("Action Ticket canonical reconstruction failed")
+    except (ActionTicketError, PolicyInvariantError, TypeError) as exc:
+        raise MissionControlError("policy or Action Ticket activity is invalid") from exc
+    visible = (context.tenant_id, context.subject_agent_id, context.capability, context.resource, context.action_class, context.policy_version, decision.reason)
+    if any(len(value.encode()) > 1000 or _SECRET.search(value) for value in visible):
+        raise MissionControlError("policy and ticket activity is secret-bearing or excessive")
+    ticket_view = None
+    if decision.allowed:
+        if not isinstance(ticket, ActionTicket):
+            raise MissionControlError("allowed policy activity requires a canonical Action Ticket")
+        if (
+            ticket.tenant_id != context.tenant_id
+            or ticket.subject_agent_id != context.subject_agent_id
+            or ticket.capability != context.capability
+            or ticket.resource != context.resource
+            or ticket.action_class != context.action_class
+            or ticket.policy_version != context.policy_version
+            or not ticket.signature
+            or ticket.consumed_at is not None
+            or not ticket.issued_at <= activity.observed_at_epoch < ticket.expires_at
+        ):
+            raise MissionControlError("Action Ticket binding, signature presence, expiry, or usage state is invalid")
+        ticket_text = (ticket.ticket_id, ticket.lease_id, ticket.issued_by, ticket.approval_reference, ticket.key_reference, ticket.signature)
+        if any(len(value.encode()) > 1000 or _SECRET.search(value) for value in ticket_text):
+            raise MissionControlError("Action Ticket activity is secret-bearing or excessive")
+        ticket_view = {
+            "ticket_id": ticket.ticket_id, "tenant_id": ticket.tenant_id, "subject_agent_id": ticket.subject_agent_id,
+            "lease_id": ticket.lease_id, "capability": ticket.capability, "resource": ticket.resource,
+            "action_class": ticket.action_class, "issued_by": ticket.issued_by, "approval_reference": ticket.approval_reference,
+            "policy_version": ticket.policy_version, "issued_at": ticket.issued_at, "expires_at": ticket.expires_at,
+            "key_reference": ticket.key_reference, "signature_status": "PRESENT_NOT_VERIFIED", "usage_status": "UNCONSUMED",
+        }
+    elif ticket is not None:
+        raise MissionControlError("denied policy activity cannot expose an Action Ticket")
+    return {
+        **base, "data_mode": "CANONICAL", "data_label": "CANONICAL READ-ONLY POLICY AND ACTION TICKET",
+        "view": {"tenant_id": context.tenant_id, "subject_agent_id": context.subject_agent_id, "capability": context.capability,
+                 "resource": context.resource, "action_class": context.action_class, "policy_version": context.policy_version,
+                 "decision": "ALLOW" if decision.allowed else "DENY", "reason": decision.reason,
+                 "observed_at_epoch": activity.observed_at_epoch, "ticket": ticket_view,
+                 "mutation_allowed": False, "deployment": "DISABLED", "kill_switch": "ENGAGED", "ticket_consumed": False},
+    }
 
 
 def serialize_harness_activity(view: MissionControlView | None) -> dict[str, Any]:

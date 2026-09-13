@@ -8,7 +8,7 @@ import threading
 import subprocess
 from http import HTTPStatus
 from http.server import ThreadingHTTPServer
-from swarm.console import addon_audit_snapshot, addon_snapshot, approval_snapshot, canonical_evidence_activity_snapshot, dispatch_plan, evidence_snapshot, harness_activity_snapshot, incident_activity_snapshot, installation_snapshot, job_detail, jobs_snapshot, load_profiles, ConsoleHandler
+from swarm.console import addon_audit_snapshot, addon_snapshot, approval_snapshot, canonical_evidence_activity_snapshot, dispatch_plan, evidence_snapshot, harness_activity_snapshot, incident_activity_snapshot, installation_snapshot, job_detail, jobs_snapshot, load_profiles, policy_ticket_activity_snapshot, ConsoleHandler
 from swarm.core import SwarmError
 from swarm.mission_control_demo import DEMO_SCENARIO_ID, mission_control_demo_snapshot
 
@@ -28,6 +28,12 @@ class ConsoleTests(unittest.TestCase):
         unavailable = canonical_evidence_activity_snapshot(lambda: (_ for _ in ()).throw(RuntimeError("offline")))
         self.assertEqual(unavailable["data_mode"], "UNAVAILABLE")
         self.assertFalse(unavailable["safety"]["signing_performed"])
+
+    def test_policy_ticket_provider_has_honest_empty_and_unavailable_states(self):
+        self.assertEqual(policy_ticket_activity_snapshot()["data_mode"], "EMPTY")
+        unavailable = policy_ticket_activity_snapshot(lambda: (_ for _ in ()).throw(RuntimeError("offline")))
+        self.assertEqual(unavailable["data_mode"], "UNAVAILABLE")
+        self.assertFalse(unavailable["safety"]["ticket_consumed"])
 
     def test_frontend_contract_and_rendering_boundaries(self):
         root = Path(__file__).parents[1]
@@ -210,6 +216,12 @@ class ConsoleTests(unittest.TestCase):
             canonical_evidence = json.loads(resp.read().decode())
             self.assertEqual(canonical_evidence["data_mode"], "EMPTY")
             self.assertFalse(canonical_evidence["safety"]["signing_performed"])
+            conn.request("GET", "/api/policy-ticket-activity")
+            resp = conn.getresponse()
+            self.assertEqual(resp.status, HTTPStatus.OK)
+            policy_ticket = json.loads(resp.read().decode())
+            self.assertEqual(policy_ticket["data_mode"], "EMPTY")
+            self.assertFalse(policy_ticket["safety"]["ticket_consumed"])
             conn.request("GET", "/api/jobs/not%20a%20job")
             resp = conn.getresponse()
             self.assertEqual(resp.status, HTTPStatus.BAD_REQUEST)
