@@ -564,3 +564,19 @@ def test_data_security_projection_rejects_invalid_type_mode_and_excessive_value(
     )
     with pytest.raises(MissionControlError, match="excessive"):
         project_data_security(excessive, tenant_id="tenant-a")
+
+
+def test_data_security_projection_directly_denies_event_risk_and_mode_drift():
+    lifecycle = data_security_lifecycle()
+    with pytest.raises(MissionControlError, match="binding"):
+        project_data_security(
+            replace(lifecycle, finding=replace(lifecycle.finding, event_id="dspm-2")),
+            tenant_id="tenant-a",
+        )
+    with pytest.raises(MissionControlError, match="binding"):
+        project_data_security(
+            replace(lifecycle, binding=replace(lifecycle.binding, risk="CRITICAL")),
+            tenant_id="tenant-a",
+        )
+    with pytest.raises(MissionControlError, match="binding"):
+        project_data_security(lifecycle, tenant_id="tenant-a", data_mode="UNKNOWN")
