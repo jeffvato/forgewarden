@@ -1754,7 +1754,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FWQ-0083 — Reproducible sanitized single-commit repository candidate
 - Requirement: Phase 5 clean-export repository construction and reproducibility
-- State: READY
+- State: DONE
 - Priority: P0
 - Dependencies: FWQ-0082
 - Approval: Jeff approved the public assurance plan. Only a local disposable Git repository candidate is authorized; remote creation, visibility change, license selection, and publication remain disabled.
@@ -1770,6 +1770,27 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - perform no remote creation, fetch, pull, push, visibility change, release, package upload, credential/provider/billing access, network operation, deployment, or authority grant.
 - Expected validation: one focused Linux proof, exact independent read-only review, then one full suite and Product Integrity Gate after approval.
 - Security considerations: this milestone proves only local deterministic repository construction. Legal, chain-of-title, license, trademark/media, dependency-review, public visibility, and Customer Root publication gates remain pending.
+- Completion evidence: exact candidate `69550dd083cb8e5a6fbffe51d776d9e4032fc20f`. Three bounded tool-free AnythingLLM/Qwen source chunks, each bound to that same full SHA, covered policy/schema/docs (`phase2a-a52be51051cfa2c855da1cfc`), the complete controller (`phase2a-691f1280ca5ef9c00fc1476c`), and the complete adversarial tests (`phase2a-7f954904056d4c2961517dbb`); every result was APPROVE/LOW with no blockers or missing tests. One transient fail-closed bridge outage on the third chunk cleared on its single bounded retry. Focused validation passed 30 tests after one fixture-only candidate-directory repair. The full suite passed 2219/1. Product Integrity passed every hard check, 15 integrity tests, and the 30-test release Golden Path; only the pre-existing `tzdata` dependency remains YELLOW. Both tracks produce the same root/tree from the same exact inputs with one parentless `main` commit, fixed sanitized controller metadata, complete reachable-only object sets, and no inherited refs, tags, remotes, hooks, alternates, environment identity, raw private commit, credential, network, publication, deployment, or authority.
+
+### FWQ-0084 — Offline clean-export CI and standalone-track proof
+- Requirement: Phase 5 clean-export CI and standalone public-candidate assurance
+- State: READY
+- Priority: P0
+- Dependencies: FWQ-0083
+- Approval: Jeff approved the public assurance plan. Local offline validation of disposable sanitized repositories is authorized; external CI, repository creation, visibility change, license selection, and publication remain disabled.
+- Description: Execute fixed track-specific validation inside exact FWQ-0083 repositories to prove the SDK and Demo candidates stand alone without private Core, ambient credentials, network, package installation, or generated-state dependence.
+- Target path: swarm/phase5_release_ci.py
+- Allowed paths: swarm/phase5_release_ci.py, config/phase5-release-ci.yaml, schemas/phase5-release-ci.schema.json, tests/test_phase5_release_ci.py, docs/phase5-release-readiness.md, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_phase5_release_ci.py tests/test_phase5_release_repository.py tests/test_phase5_release_provenance.py tests/test_phase5_release_candidate.py
+- Acceptance criteria:
+  - consume only an exact verified FWQ-0083 local repository result whose track, root commit, tree, source binding, manifest, provenance, license, pending gates, and safety facts validate;
+  - run a fixed allowlisted, shell-free, credential-free, network-free command plan in an isolated constant environment against the committed sanitized tree only;
+  - prove PUBLIC_SDK documentation/schema closure and SOURCE_AVAILABLE_DEMO Python/JavaScript syntax, deterministic Demo-data equivalence, and private-Core-independent startup checks without writing generated state into the candidate;
+  - emit bounded deterministic command/result evidence bound to the exact public root/tree and reject dirty state, tamper, extra objects/refs/files, unknown commands, output overflow, timeout, missing runtimes, private imports, network/remote requests, environment dependence, or cross-track execution;
+  - clean every owned disposable output on success and failure and leave the exact repository byte/content state unchanged;
+  - create no external workflow/runner, Git remote, fetch/pull/push, CI secret, package installation, provider/billing access, network/listener, visibility change, publication, deployment, or authority grant.
+- Expected validation: one focused Linux proof, exact independent read-only review, then one full suite and Product Integrity Gate after approval.
+- Security considerations: this is local regression evidence for future clean-export CI only. Legal, chain-of-title, license, trademark/media, public visibility, and Customer Root release approval remain pending.
 
 
 ### FW-API-001 — Canonical tenant-bound read-only request admission
