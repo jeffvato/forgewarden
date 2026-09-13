@@ -4,6 +4,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from swarm.phase5_release_audit import _LIMITS, HistoryReleaseAudit, ReleaseAudit
 
@@ -215,13 +216,62 @@ class Phase5HistoryReleaseAuditTests(unittest.TestCase):
             self.assertEqual(result["ref_set_sha256"], sanitized["ref_set_sha256"])
             self.assertEqual(result["policy_sha256"], sanitized["policy_sha256"])
 
-    def test_aggregate_blob_budget_exhaustion_fails_closed_before_git_read(self):
+    def test_content_batches_split_in_stable_object_order(self):
         blob_size = _LIMITS["blob_bytes"]
-        count = _LIMITS["total_blob_bytes"] // blob_size + 1
-        sizes = {f"{index:040x}": blob_size for index in range(count)}
-        with tempfile.TemporaryDirectory(prefix="phase5-aggregate-budget-") as temp:
+        object_ids = [f"{index:040x}" for index in range(1, 6)]
+        sizes = {oid: blob_size for oid in reversed(object_ids)}
+        with tempfile.TemporaryDirectory(prefix="phase5-batch-order-") as temp:
+            audit = HistoryReleaseAudit(Path(temp))
+            calls = []
+            audit._read_blob_batch = lambda batch: calls.append(list(batch)) or {}
+            list(audit._content_batches(sizes))
+        self.assertEqual(calls, [object_ids[:4], object_ids[4:]])
+
+    def test_per_batch_and_overall_blob_ceilings_fail_closed(self):
+        blob_size = _LIMITS["blob_bytes"]
+        batch_count = _LIMITS["batch_blob_bytes"] // blob_size + 1
+        batch = {f"{index:040x}": blob_size for index in range(batch_count)}
+        total_count = _LIMITS["total_blob_bytes"] // blob_size + 1
+        total = {f"{index:040x}": blob_size for index in range(total_count)}
+        with tempfile.TemporaryDirectory(prefix="phase5-blob-ceilings-") as temp:
+            audit = HistoryReleaseAudit(Path(temp))
+            with self.assertRaisesRegex(ValueError, "blob batch budget exceeded"):
+                audit._read_blob_batch(batch)
             with self.assertRaisesRegex(ValueError, "aggregate blob budget exceeded"):
-                HistoryReleaseAudit(Path(temp))._contents(sizes)
+                list(audit._content_batches(total))
+
+    def test_malformed_blob_data_in_later_batch_fails_closed(self):
+        first, second = "1" * 40, "2" * 40
+        valid = f"{first} blob 3\nabc\n".encode()
+        responses = iter((valid, b"unexpected-line\n"))
+        with tempfile.TemporaryDirectory(prefix="phase5-malformed-batch-") as temp:
+            audit = HistoryReleaseAudit(Path(temp))
+            audit._git = lambda *args, **kwargs: next(responses)
+            with patch.dict(_LIMITS, {"blob_bytes": 4, "batch_blob_bytes": 4,
+                                      "total_blob_bytes": 10}):
+                batches = audit._content_batches({second: 3, first: 3})
+                self.assertEqual(next(batches), {first: b"abc"})
+                with self.assertRaisesRegex(ValueError, "malformed blob data"):
+                    next(batches)
+
+    def test_repo_above_old_aggregate_limit_scans_in_bounded_batches(self):
+        with tempfile.TemporaryDirectory(prefix="phase5-batched-repo-") as temp:
+            root = Path(temp)
+            self.repository(root)
+            payloads = root / "payloads"
+            payloads.mkdir()
+            for index in range(33):
+                with (payloads / f"blob-{index:02d}.bin").open("wb") as handle:
+                    handle.seek(1024 * 1024)
+                    handle.write(bytes((index,)))
+            self.git(root, "add", "payloads")
+            self.git(root, "commit", "-m", "batched synthetic blobs")
+            head = self.git(root, "rev-parse", "HEAD")
+            result = HistoryReleaseAudit(root).scan(
+                expected_head=head, strategy="PRESERVE_HISTORY")
+            self.assertGreaterEqual(result["blobs_scanned"], 33)
+            self.assertEqual(result["blocking_finding_count"], 0)
+            self.assertFalse(result["matched_values_included"])
 
     def test_malformed_git_line_fails_closed(self):
         with tempfile.TemporaryDirectory(prefix="phase5-malformed-git-") as temp:

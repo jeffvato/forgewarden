@@ -104,7 +104,8 @@ _SHA = re.compile(r"^[0-9a-f]{40,64}$")
 _REF = re.compile(r"^refs/[A-Za-z0-9._/@+-]+$")
 _LIMITS = {
     "refs": 256, "commits": 5000, "objects": 10000, "blob_bytes": 2 * 1024 * 1024,
-    "total_blob_bytes": 32 * 1024 * 1024, "findings": 512, "git_output": 40 * 1024 * 1024,
+    "batch_blob_bytes": 8 * 1024 * 1024, "total_blob_bytes": 256 * 1024 * 1024,
+    "findings": 512, "git_output": 40 * 1024 * 1024,
 }
 _STRATEGIES = frozenset({"PRESERVE_HISTORY", "SANITIZED_SINGLE_COMMIT"})
 _SANITIZED_IDENTIFIERS = {
@@ -193,20 +194,30 @@ class HistoryReleaseAudit:
         digest = hashlib.sha256(json.dumps(refs, separators=(",", ":")).encode()).hexdigest()
         return refs, digest
 
-    def _contents(self, sizes: dict[str, int]) -> dict[str, bytes]:
-        selected = [oid for oid, size in sorted(sizes.items()) if size <= _LIMITS["blob_bytes"]]
-        if sum(sizes[oid] for oid in selected) > _LIMITS["total_blob_bytes"]:
-            raise ValueError("history audit aggregate blob budget exceeded")
-        if not selected:
+    def _read_blob_batch(self, sizes: dict[str, int]) -> dict[str, bytes]:
+        batch_bytes = sum(sizes.values())
+        if any(size < 0 or size > _LIMITS["blob_bytes"] for size in sizes.values()):
+            raise ValueError("history audit received invalid blob size")
+        if batch_bytes > _LIMITS["batch_blob_bytes"]:
+            raise ValueError("history audit blob batch budget exceeded")
+        if not sizes:
             return {}
+        selected = sorted(sizes)
         raw = self._git("cat-file", "--batch", stdin=("\n".join(selected) + "\n").encode())
+        if len(raw) > _LIMITS["batch_blob_bytes"] + len(selected) * 96:
+            raise ValueError("history audit blob batch output budget exceeded")
         contents, offset = {}, 0
         for oid in selected:
             newline = raw.find(b"\n", offset)
             header = raw[offset:newline].decode().split(" ") if newline >= 0 else []
             if len(header) != 3 or header[:2] != [oid, "blob"]:
                 raise ValueError("history audit received malformed blob data")
-            size = int(header[2])
+            try:
+                size = int(header[2])
+            except ValueError as exc:
+                raise ValueError("history audit received malformed blob data") from exc
+            if size != sizes[oid]:
+                raise ValueError("history audit received malformed blob data")
             start, end = newline + 1, newline + 1 + size
             if end >= len(raw) or raw[end:end + 1] != b"\n":
                 raise ValueError("history audit received malformed blob data")
@@ -214,6 +225,23 @@ class HistoryReleaseAudit:
         if offset != len(raw):
             raise ValueError("history audit received malformed blob data")
         return contents
+
+    def _content_batches(self, sizes: dict[str, int]):
+        if any(size < 0 for size in sizes.values()):
+            raise ValueError("history audit received invalid blob size")
+        selected = [(oid, size) for oid, size in sorted(sizes.items())
+                    if size <= _LIMITS["blob_bytes"]]
+        if sum(size for _, size in selected) > _LIMITS["total_blob_bytes"]:
+            raise ValueError("history audit aggregate blob budget exceeded")
+        batch, batch_bytes = {}, 0
+        for oid, size in selected:
+            if batch and batch_bytes + size > _LIMITS["batch_blob_bytes"]:
+                yield self._read_blob_batch(batch)
+                batch, batch_bytes = {}, 0
+            batch[oid] = size
+            batch_bytes += size
+        if batch:
+            yield self._read_blob_batch(batch)
 
     def _first_commit(self, oid: str, path: str) -> str:
         commits = self._git(
@@ -260,7 +288,13 @@ class HistoryReleaseAudit:
         path_object_ids = {oid for oid, _ in paths}
         if set(sizes) - path_object_ids:
             raise ValueError("history audit found an unbound reachable blob")
-        contents = self._contents(sizes)
+        matched_content: dict[str, list[tuple[str, str]]] = {}
+        for content_batch in self._content_batches(sizes):
+            for oid, content in content_batch.items():
+                matched_content[oid] = [
+                    (name, severity) for name, severity, pattern in _HISTORY_PATTERNS
+                    if pattern.search(content)
+                ]
 
         current = set()
         for line in self._git("ls-tree", "-r", "--full-tree", "HEAD").decode().splitlines():
@@ -289,10 +323,8 @@ class HistoryReleaseAudit:
             if oid not in sizes:
                 continue
             categories = ([("oversize_blob", "BLOCKING")]
-                          if sizes[oid] > _LIMITS["blob_bytes"] else [
-                              (name, severity) for name, severity, pattern in _HISTORY_PATTERNS
-                              if pattern.search(contents[oid])
-                          ])
+                          if sizes[oid] > _LIMITS["blob_bytes"]
+                          else list(matched_content[oid]))
             if _SENSITIVE_PATH.search(path):
                 categories.append(("sensitive_operational_path", "BLOCKING"))
             for category, severity in categories:
