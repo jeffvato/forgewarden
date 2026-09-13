@@ -93,7 +93,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-NET-006 — Integrated lifecycle and Mission Control projection
 - Requirement: FW-NET accepted-stage composition and operator visibility
-- State: REPAIR
+- State: DONE
 - Priority: P0
 - Dependencies: FW-NET-005
 - Approval: Jeff authorized the ordered FW-NET phase using small bounded candidates.
@@ -102,6 +102,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 - Allowed paths: swarm/network_security.py, swarm/mission_control.py, tests/test_network_security.py, tests/test_mission_control.py, WORK_QUEUE.md, SWARM_STATUS.md
 - Test command: python3 -m pytest -q tests/test_network_security.py tests/test_mission_control.py tests/test_action_ticket.py
 - Acceptance criteria: one deterministic lifecycle preserves exact ordering and bindings; lower-risk/failure paths stop early; visibility owns no state, callbacks, tickets, or response authority.
+- Completion evidence: initial candidate `35ced75ff53d180e123b27db9199e5325a69d437` passed focused 116. Exact AnythingLLM/Qwen returned APPROVE/LOW but requested direct cross-tenant Endpoint and excessive Evidence projection proofs. Test-only repair `afff90a8ffec4e32a953dbd25f3020e2f5b84555` closed both and passed focused 116; exact AnythingLLM/Qwen repair review returned APPROVE/LOW with no blockers or missing tests. Full 1875 passed/1 skipped; Product Integrity fresh full 1875/1 and Golden Path 116 passed with every hard check and only pre-existing dependency YELLOW. Evidence: `docs/fw-net-006-*.json`.
 
 ### FW-SUPPLY-006 — Integrated lifecycle and Mission Control projection
 - Requirement: FW-SUPPLY accepted-stage composition and operator visibility
