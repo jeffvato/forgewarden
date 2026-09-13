@@ -118,3 +118,19 @@ canonical provider state separately. A malformed or unavailable Harness view is
 discarded without contaminating Demo Mode. The provider exposes no controller,
 scheduler, Git, approval, review, model, credential, recovery, response, or
 deployment callback.
+
+## Canonical Evidence activity provider
+
+The independent `/api/canonical-evidence-activity` endpoint accepts only
+already-admitted immutable FW-EVID records. It recomputes each envelope digest
+and previous-record link, enforces one tenant and bounded reference metadata,
+and exposes no raw payload. Mission Control labels local digest and chain
+validation separately from signature status. The canonical envelope currently
+contains no signature field, so the view reports `SIGNATURE NOT_PRESENT`
+instead of implying that cryptographic signing occurred.
+
+Missing providers return `EMPTY`; rejected or unavailable providers return
+`UNAVAILABLE` without replacing deterministic Demo data. The console receives
+no Evidence append, sign, key, policy, approval, export, repair, or deletion
+callback, and DRY_RUN, disabled deployment, and the engaged kill switch remain
+mandatory.

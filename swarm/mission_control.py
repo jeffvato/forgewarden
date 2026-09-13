@@ -11,6 +11,7 @@ from .harness_worker import WorkerRegistration
 from .normalized_events import AIWorkloadSecurityEvent
 from .ai_agent_defense import AIAttackStory, AIContainmentProposal, AIThreatFinding
 from .asoc import MUTATING_ACTIONS, READ_ONLY_ACTIONS
+from .evidence import EvidenceContractError, EvidenceEnvelope, EvidenceRecord, evidence_record_sha256, validate_evidence_envelope
 from .soc import SOCAttackStoryProjection, SOCDryRunLifecycle, SOCIncidentProjection, SOCIncidentTimeline, SOCPlaybookProposal, SOCPlaybookStep, SOCTimelineEntry
 
 
@@ -234,6 +235,63 @@ def serialize_incident_activity(lifecycle: SOCDryRunLifecycle | None) -> dict[st
             "kill_switch": "ENGAGED",
             "response_executed": False,
         },
+    }
+
+
+def serialize_evidence_activity(records: tuple[EvidenceRecord, ...] | None) -> dict[str, Any]:
+    """Project an already-admitted FW-EVID chain without append or signing authority."""
+    base = {"schema_version": 1, "safety": {"mutation_allowed": False, "deployment": "DISABLED", "kill_switch": "ENGAGED", "signing_performed": False}}
+    if records is None or records == ():
+        return {**base, "data_mode": "EMPTY", "data_label": "NO CANONICAL EVIDENCE ACTIVITY", "view": None}
+    if not isinstance(records, tuple) or not 1 <= len(records) <= 256 or not all(isinstance(item, EvidenceRecord) for item in records):
+        raise MissionControlError("Evidence activity projection is malformed or excessive")
+    tenant_id = records[0].envelope.tenant_id
+    if not _TENANT.fullmatch(tenant_id):
+        raise MissionControlError("Evidence activity tenant is malformed")
+    previous: str | None = None
+    evidence_ids: set[str] = set()
+    record_hashes: set[str] = set()
+    projected: list[dict[str, Any]] = []
+    for position, record in enumerate(records, start=1):
+        envelope = record.envelope
+        try:
+            validated = validate_evidence_envelope(asdict(envelope)) if isinstance(envelope, EvidenceEnvelope) else None
+        except EvidenceContractError as exc:
+            raise MissionControlError("Evidence activity envelope is invalid or secret-bearing") from exc
+        if (
+            validated != envelope
+            or envelope.tenant_id != tenant_id
+            or envelope.actor_tenant_id != tenant_id
+            or envelope.subject_tenant_id != tenant_id
+            or envelope.previous_record_sha256 != previous
+            or record.record_sha256 != evidence_record_sha256(envelope)
+            or envelope.evidence_id in evidence_ids
+            or record.record_sha256 in record_hashes
+            or envelope.mode != "DRY_RUN"
+            or envelope.deployment != "DISABLED"
+            or envelope.authority_granted
+        ):
+            raise MissionControlError("Evidence activity chain or authority binding is invalid")
+        visible = (envelope.evidence_id, envelope.event_type, envelope.actor_ref, envelope.subject_ref, envelope.payload_schema_id, envelope.correlation_id or "", *envelope.evidence_references)
+        if any(len(value.encode()) > 1000 or _SECRET.search(value) for value in visible):
+            raise MissionControlError("Evidence activity is secret-bearing or excessive")
+        projected.append({
+            "position": position, "evidence_id": envelope.evidence_id, "occurred_at": envelope.occurred_at,
+            "event_type": envelope.event_type, "actor_ref": envelope.actor_ref, "subject_ref": envelope.subject_ref,
+            "classification": envelope.classification, "payload_schema_id": envelope.payload_schema_id,
+            "payload_sha256": envelope.payload_sha256, "record_sha256": record.record_sha256,
+            "previous_record_sha256": envelope.previous_record_sha256, "correlation_id": envelope.correlation_id,
+            "evidence_references": envelope.evidence_references,
+        })
+        evidence_ids.add(envelope.evidence_id)
+        record_hashes.add(record.record_sha256)
+        previous = record.record_sha256
+    return {
+        **base, "data_mode": "CANONICAL", "data_label": "CANONICAL FW-EVID · DIGEST AND CHAIN VALIDATED",
+        "view": {"tenant_id": tenant_id, "record_count": len(projected), "head_record_sha256": previous,
+                 "chain_status": "DIGEST_AND_CHAIN_VALIDATED", "signature_status": "NOT_PRESENT",
+                 "verification_scope": "LOCAL_CANONICAL_ENVELOPE_AND_CHAIN", "records": tuple(projected),
+                 "mutation_allowed": False, "deployment": "DISABLED", "kill_switch": "ENGAGED", "signing_performed": False},
     }
 
 

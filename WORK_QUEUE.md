@@ -1352,7 +1352,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-UX-009 — Canonical Evidence activity provider
 - Requirement: Mission Control incremental backend integration
-- State: READY
+- State: REVIEW
 - Priority: P0
 - Dependencies: FW-UX-008 and FW-EVID-006
 - Approval: Jeff authorized the mapped Mission Control backend integration sequence; this unit may expose existing sanitized local read-only FW-EVID projections only.

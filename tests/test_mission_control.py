@@ -5,7 +5,8 @@ import pytest
 from swarm.harness_context import BudgetAdmission, BudgetUsage
 from swarm.harness_task import HarnessTask, TaskStatus
 from swarm.harness_worker import WorkerRegistration, WorkerRole, WorkerTransport
-from swarm.mission_control import MissionControlError, project_ai_security, project_mission_control, serialize_harness_activity, serialize_incident_activity
+from swarm.mission_control import MissionControlError, project_ai_security, project_mission_control, serialize_evidence_activity, serialize_harness_activity, serialize_incident_activity
+from swarm.evidence import EvidenceRecord, evidence_record_sha256, validate_evidence_envelope
 from tests.test_fw_aid import classified_source, cross_fact, proposal_args
 from tests.test_soc import incident, timeline_entry, playbook_step, mutating_step
 from swarm.ai_agent_defense import AICrossDomainCorrelator, AIContainmentProposalRegistry
@@ -176,6 +177,58 @@ def test_incident_activity_revalidates_tenant_safety_secrets_and_dependencies():
         serialize_incident_activity(replace(lifecycle, playbook=replace(lifecycle.playbook, steps=(lifecycle.playbook.steps[0], bad_step))))
     with pytest.raises(MissionControlError, match="binding"):
         serialize_incident_activity(replace(lifecycle, timeline=object()))
+
+
+def evidence_record(*, evidence_id="fw-evid/tenant-a/task/0001", previous=None, tenant="tenant-a", actor_ref="fw-id/tenant-a/worker"):
+    envelope = validate_evidence_envelope({
+        "schema_version": "1", "evidence_id": evidence_id, "tenant_id": tenant,
+        "event_type": "task.completed", "actor_ref": actor_ref, "actor_tenant_id": tenant,
+        "subject_ref": f"fw-task/{tenant}/fw-ux-009", "subject_tenant_id": tenant,
+        "occurred_at": "2026-09-12T18:00:00Z", "classification": "INTERNAL",
+        "payload_schema_id": "fw-schema/harness/task-v1", "payload_sha256": "a" * 64,
+        "previous_record_sha256": previous, "correlation_id": f"fw-corr/{tenant}/fw-ux-009",
+        "evidence_references": (), "mode": "DRY_RUN", "deployment": "DISABLED", "authority_granted": False,
+    })
+    return EvidenceRecord(envelope, evidence_record_sha256(envelope))
+
+
+def test_evidence_activity_projects_validated_chain_without_signing_authority():
+    first = evidence_record()
+    second = evidence_record(evidence_id="fw-evid/tenant-a/task/0002", previous=first.record_sha256)
+    payload = serialize_evidence_activity((first, second))
+    assert payload["data_mode"] == "CANONICAL"
+    assert payload["view"]["record_count"] == 2
+    assert payload["view"]["head_record_sha256"] == second.record_sha256
+    assert payload["view"]["chain_status"] == "DIGEST_AND_CHAIN_VALIDATED"
+    assert payload["view"]["signature_status"] == "NOT_PRESENT"
+    assert payload["safety"]["signing_performed"] is False
+    assert serialize_evidence_activity(None)["data_mode"] == "EMPTY"
+    assert serialize_evidence_activity(())["data_mode"] == "EMPTY"
+
+
+def test_evidence_activity_fails_closed_for_tamper_replay_cross_tenant_and_secrets():
+    first = evidence_record()
+    with pytest.raises(MissionControlError, match="chain"):
+        serialize_evidence_activity((EvidenceRecord(first.envelope, "b" * 64),))
+    with pytest.raises(MissionControlError, match="chain"):
+        serialize_evidence_activity((first, first))
+    foreign = evidence_record(evidence_id="fw-evid/tenant-b/task/0002", previous=first.record_sha256, tenant="tenant-b", actor_ref="fw-id/tenant-b/worker")
+    with pytest.raises(MissionControlError, match="chain"):
+        serialize_evidence_activity((first, foreign))
+    forged = object.__new__(type(first.envelope))
+    for name in first.envelope.__dataclass_fields__:
+        object.__setattr__(forged, name, getattr(first.envelope, name))
+    object.__setattr__(forged, "actor_ref", "api_key=secret-value")
+    forged_record = EvidenceRecord(forged, evidence_record_sha256(forged))
+    with pytest.raises(MissionControlError, match="secret-bearing"):
+        serialize_evidence_activity((forged_record,))
+
+
+def test_evidence_activity_rejects_malformed_and_unbounded_inputs():
+    with pytest.raises(MissionControlError, match="malformed"):
+        serialize_evidence_activity([evidence_record()])
+    with pytest.raises(MissionControlError, match="excessive"):
+        serialize_evidence_activity(tuple(evidence_record(evidence_id=f"fw-evid/tenant-a/task/{index:04d}") for index in range(257)))
 
 
 def ai_bundle():

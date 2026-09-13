@@ -11,7 +11,7 @@ from .phase2a import safety_status, workflow_status
 from .addons import AddonManager, AddonManifestError
 from .desktop_bridge import job_status as bridge_job_status, recent_audit
 from .mission_control_demo import mission_control_demo_snapshot
-from .mission_control import MissionControlError, serialize_harness_activity, serialize_incident_activity
+from .mission_control import MissionControlError, serialize_evidence_activity, serialize_harness_activity, serialize_incident_activity
 
 ROOT = Path(__file__).resolve().parents[1]
 PROFILE_PATH = ROOT / "config" / "llm-profiles.json"
@@ -96,6 +96,15 @@ def incident_activity_snapshot(provider: Any = None) -> dict[str, Any]:
     except (MissionControlError, RuntimeError, TypeError, ValueError):
         return {"schema_version": 1, "data_mode": "UNAVAILABLE", "data_label": "CANONICAL INCIDENT ACTIVITY UNAVAILABLE", "view": None, "safety": {"mutation_allowed": False, "deployment": "DISABLED", "kill_switch": "ENGAGED", "response_executed": False}}
 
+def canonical_evidence_activity_snapshot(provider: Any = None) -> dict[str, Any]:
+    """Return canonical FW-EVID facts or an explicit fail-closed availability state."""
+    if provider is None:
+        return serialize_evidence_activity(None)
+    try:
+        return serialize_evidence_activity(provider())
+    except (MissionControlError, RuntimeError, TypeError, ValueError):
+        return {"schema_version": 1, "data_mode": "UNAVAILABLE", "data_label": "CANONICAL EVIDENCE ACTIVITY UNAVAILABLE", "view": None, "safety": {"mutation_allowed": False, "deployment": "DISABLED", "kill_switch": "ENGAGED", "signing_performed": False}}
+
 def load_profiles(path: Path = PROFILE_PATH) -> list[dict[str, Any]]:
     from .core import read_restricted_bytes, SwarmError
     try:
@@ -136,6 +145,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
     server_version = "ForgewardenConsole/0.1"
     harness_view_provider = staticmethod(lambda: None)
     incident_view_provider = staticmethod(lambda: None)
+    evidence_view_provider = staticmethod(lambda: None)
     def _send(self, status: int, payload: bytes, content_type: str) -> None:
         self.send_response(status); self.send_header("Content-Type", content_type); self.send_header("Content-Length", str(len(payload))); self.send_header("Cache-Control", "no-store"); self.end_headers(); self.wfile.write(payload)
     def _json(self, status: int, payload: Any) -> None:
@@ -169,6 +179,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         if route == "/api/mission-control": self._json(HTTPStatus.OK, mission_control_demo_snapshot()); return
         if route == "/api/harness-activity": self._json(HTTPStatus.OK, harness_activity_snapshot(self.harness_view_provider)); return
         if route == "/api/incident-activity": self._json(HTTPStatus.OK, incident_activity_snapshot(self.incident_view_provider)); return
+        if route == "/api/canonical-evidence-activity": self._json(HTTPStatus.OK, canonical_evidence_activity_snapshot(self.evidence_view_provider)); return
         assets = {"/":("index.html","text/html; charset=utf-8"),"/styles.css":("styles.css","text/css; charset=utf-8"),"/app.js":("app.js","text/javascript; charset=utf-8")}
         if route not in assets: self._json(HTTPStatus.NOT_FOUND, {"error":"not found"}); return
         filename, content_type = assets[route]
