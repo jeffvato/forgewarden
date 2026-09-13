@@ -22,7 +22,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-DSPM-001 — Data security posture ownership and bounded route
 - Requirement: FW-DSPM canonical ownership inventory
-- State: REVIEW
+- State: DONE
 - Priority: P0
 - Dependencies: FW-ASM-006, FW-ID, FW-EVID, FW-SOC
 - Approval: Jeff authorized the ordered FW-DSPM phase through the continuing heartbeat.
@@ -31,10 +31,11 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 - Allowed paths: docs/fw-dspm-inventory.md, WORK_QUEUE.md, SWARM_STATUS.md
 - Test command: git diff --check HEAD^ HEAD and deterministic repository/source/test/evidence inventory
 - Acceptance criteria: canonical owners and a bounded substantive implementation route are explicit; the first missing contract is caller-supplied tenant-bound data-posture metadata; no discovery, content access, credential use, data movement, DLP enforcement, mutation, deployment, or response authority is added.
+- Completion evidence: exact candidate `67bdf048500cdf3f2a2b3ae04141f0c1a9d330ae`; deterministic ownership inventory and `git diff --check` passed. Exact AnythingLLM/Qwen job `phase2a-67bdf048500cdf3f2a2b3ae0` returned APPROVE/LOW with no blockers or missing tests. No product suite or Product Integrity rerun was required because runtime behavior did not change. Evidence: `docs/fw-dspm-001-qwen-review.json`.
 
 ### FW-DSPM-002 — Caller-supplied data-posture observation
 - Requirement: FW-DSPM immutable tenant-bound metadata boundary
-- State: BLOCKED
+- State: READY
 - Priority: P0
 - Dependencies: FW-DSPM-001
 - Approval: Jeff authorized the ordered FW-DSPM phase through the continuing heartbeat.
