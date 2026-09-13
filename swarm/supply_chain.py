@@ -9,11 +9,17 @@ from typing import Any, Callable, Mapping
 
 MAX_SUPPLY_FIXTURE_BYTES = 32 * 1024
 MAX_SUPPLY_TEXT_BYTES = 256
+MAX_SUPPLY_INDICATORS = 16
 _REF = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:/@+-]{0,255}$")
 _PACKAGE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.@/+-]{0,255}$")
 _VERSION = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.+-]{0,127}$")
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 _ECOSYSTEMS = frozenset({"CONTAINER", "GENERIC", "MAVEN", "NPM", "NUGET", "PYPI"})
+_INDICATORS = frozenset({
+    "DEPENDENCY_CONFUSION", "DIGEST_MISMATCH", "KNOWN_EXPLOITED",
+    "KNOWN_VULNERABILITY", "TYPOSQUAT", "UNTRUSTED_PUBLISHER",
+    "UNVERIFIED_PROVENANCE", "VERIFIED_PROVENANCE",
+})
 _REQUIRED = frozenset({
     "event_id", "tenant_id", "observed_at_epoch", "component_ref",
     "ecosystem", "package_name", "version", "artifact_sha256",
@@ -50,6 +56,20 @@ class SupplyChainObservation:
     source_ref: str
     provenance_ref: str
     evidence_ref: str
+    trust: str = "UNTRUSTED_DATA"
+    mode: str = "DRY_RUN"
+    action: str = "DETECT_ONLY"
+
+
+@dataclass(frozen=True)
+class SupplyChainFinding:
+    event_id: str
+    tenant_id: str
+    component_ref: str
+    ecosystem: str
+    indicators: tuple[str, ...]
+    risk: str
+    recommendations: tuple[str, ...]
     trust: str = "UNTRUSTED_DATA"
     mode: str = "DRY_RUN"
     action: str = "DETECT_ONLY"
@@ -116,4 +136,80 @@ def normalize_supply_chain_observation(
     return SupplyChainObservation(
         event_id, expected_tenant, observed, component_ref, ecosystem,
         package_name, version, digest, source_ref, provenance_ref, evidence_ref,
+    )
+
+
+def classify_supply_chain_observation(
+    observation: SupplyChainObservation, *, tenant_id: str,
+    indicators: tuple[str, ...],
+    audit: Callable[[str, dict[str, Any]], None],
+) -> SupplyChainFinding:
+    """Classify exact supplied vulnerability/provenance facts without fetching."""
+    if not isinstance(observation, SupplyChainObservation) or not callable(audit):
+        raise SupplyChainObservationDenied("OBSERVATION_INVALID")
+    expected_tenant = _reference(tenant_id, "TENANT")
+    if observation.tenant_id != expected_tenant:
+        raise SupplyChainObservationDenied("TENANT_MISMATCH")
+    if (
+        observation.trust != "UNTRUSTED_DATA"
+        or observation.mode != "DRY_RUN"
+        or observation.action != "DETECT_ONLY"
+    ):
+        raise SupplyChainObservationDenied("OBSERVATION_AUTHORITY_INVALID")
+    if (
+        observation.ecosystem not in _ECOSYSTEMS
+        or not _PACKAGE.fullmatch(observation.package_name)
+        or not _VERSION.fullmatch(observation.version)
+        or not _SHA256.fullmatch(observation.artifact_sha256)
+        or not isinstance(observation.observed_at_epoch, int)
+        or isinstance(observation.observed_at_epoch, bool)
+        or observation.observed_at_epoch < 0
+    ):
+        raise SupplyChainObservationDenied("OBSERVATION_INVALID")
+    for value, field in (
+        (observation.event_id, "EVENT_ID"),
+        (observation.component_ref, "COMPONENT_REF"),
+        (observation.source_ref, "SOURCE_REF"),
+        (observation.provenance_ref, "PROVENANCE_REF"),
+        (observation.evidence_ref, "EVIDENCE_REF"),
+    ):
+        _reference(value, field)
+    if (
+        not isinstance(indicators, tuple)
+        or not 1 <= len(indicators) <= MAX_SUPPLY_INDICATORS
+        or tuple(sorted(set(indicators))) != indicators
+        or any(item not in _INDICATORS for item in indicators)
+        or ("VERIFIED_PROVENANCE" in indicators and "UNVERIFIED_PROVENANCE" in indicators)
+    ):
+        raise SupplyChainObservationDenied("INDICATORS_INVALID")
+    facts = set(indicators)
+    if "KNOWN_EXPLOITED" in facts or "DIGEST_MISMATCH" in facts:
+        risk = "CRITICAL"
+    elif facts & {"DEPENDENCY_CONFUSION", "TYPOSQUAT", "UNTRUSTED_PUBLISHER"}:
+        risk = "HIGH"
+    elif facts & {"KNOWN_VULNERABILITY", "UNVERIFIED_PROVENANCE"}:
+        risk = "MEDIUM"
+    else:
+        risk = "LOW"
+    recommendations = ("WARN", "PROPOSE_BLOCK") if risk in {"HIGH", "CRITICAL"} else ("WARN",)
+    try:
+        audit("supply_chain_observation_classified", {
+            "event_id": observation.event_id,
+            "tenant_id": expected_tenant,
+            "component_ref": observation.component_ref,
+            "ecosystem": observation.ecosystem,
+            "indicators": list(indicators),
+            "risk": risk,
+            "recommendations": list(recommendations),
+            "trust": "UNTRUSTED_DATA",
+            "mode": "DRY_RUN",
+            "action": "DETECT_ONLY",
+            "response_executed": False,
+            "deployment": "DISABLED",
+        })
+    except Exception as exc:
+        raise SupplyChainObservationDenied("EVIDENCE_WRITE_FAILED") from exc
+    return SupplyChainFinding(
+        observation.event_id, expected_tenant, observation.component_ref,
+        observation.ecosystem, indicators, risk, recommendations,
     )

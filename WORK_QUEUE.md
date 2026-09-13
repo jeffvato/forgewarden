@@ -20,6 +20,24 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 
 Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical implementation is not new work. FWQ-0008 VALIDATED preserves a provenance caveat, not a request to rebuild or automatically repeat review. FWQ-0012–0016 are reconciled DONE from existing implementation and recorded proof.
 
+### FW-SUPPLY-003 — Vulnerability and provenance classification
+- Requirement: FW-SUPPLY exact supplied-fact evaluation
+- State: IN_PROGRESS
+- Priority: P0
+- Dependencies: FW-SUPPLY-002
+- Approval: Jeff authorized the ordered FW-SUPPLY phase using small bounded candidates.
+- Description: Revalidate a canonical component observation and classify exact caller-supplied vulnerability, exploit, digest, publisher, dependency-confusion, typosquat, and provenance facts without fetching or executing anything.
+- Target path: swarm/supply_chain.py
+- Allowed paths: swarm/supply_chain.py, tests/test_supply_chain.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_supply_chain.py
+- Acceptance criteria:
+  - exact sorted unique bounded indicators produce deterministic LOW/MEDIUM/HIGH/CRITICAL risk and fixed WARN/PROPOSE_BLOCK recommendations;
+  - contradictory provenance, unknown, duplicate, empty, excessive, cross-tenant, malformed, or authority-shaped input fails closed;
+  - Evidence succeeds before return and records response/deployment disabled;
+  - no feed/repository/registry/package/build access, model decision, install, block, signing, publishing, deployment, remediation, or response authority is added.
+- Expected validation: focused Linux proof, exact independent read-only review, then full suite and Product Integrity once after approval.
+- Security considerations: caller-supplied facts and computed risk remain advisory and cannot authorize package or release action.
+
 ### FW-SUPPLY-002 — Caller-supplied component and provenance observation
 - Requirement: FW-SUPPLY immutable tenant-bound metadata boundary
 - State: DONE

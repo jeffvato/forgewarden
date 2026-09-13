@@ -1,8 +1,8 @@
-from dataclasses import FrozenInstanceError
+from dataclasses import FrozenInstanceError, replace
 
 import pytest
 
-from swarm.supply_chain import SupplyChainObservationDenied, normalize_supply_chain_observation
+from swarm.supply_chain import SupplyChainObservationDenied, classify_supply_chain_observation, normalize_supply_chain_observation
 
 
 def fixture(**overrides):
@@ -64,5 +64,64 @@ def test_supply_observation_rejects_invalid_time_type_and_evidence_failure():
     with pytest.raises(SupplyChainObservationDenied, match="EVIDENCE_WRITE_FAILED"):
         normalize_supply_chain_observation(
             fixture(), tenant_id="tenant-a", now_epoch=150,
+            audit=lambda *_args: (_ for _ in ()).throw(RuntimeError("offline")),
+        )
+
+
+def observation():
+    return normalize_supply_chain_observation(
+        fixture(), tenant_id="tenant-a", now_epoch=150, audit=lambda *_args: None,
+    )
+
+
+@pytest.mark.parametrize("indicators,risk,recommendations", [
+    (("VERIFIED_PROVENANCE",), "LOW", ("WARN",)),
+    (("KNOWN_VULNERABILITY",), "MEDIUM", ("WARN",)),
+    (("DEPENDENCY_CONFUSION",), "HIGH", ("WARN", "PROPOSE_BLOCK")),
+    (("TYPOSQUAT", "UNVERIFIED_PROVENANCE"), "HIGH", ("WARN", "PROPOSE_BLOCK")),
+    (("DIGEST_MISMATCH",), "CRITICAL", ("WARN", "PROPOSE_BLOCK")),
+    (("KNOWN_EXPLOITED",), "CRITICAL", ("WARN", "PROPOSE_BLOCK")),
+])
+def test_supply_classifier_is_exact_deterministic_and_non_executing(indicators, risk, recommendations):
+    evidence = []
+    finding = classify_supply_chain_observation(
+        observation(), tenant_id="tenant-a", indicators=indicators,
+        audit=lambda *args: evidence.append(args),
+    )
+    assert finding.indicators == indicators and finding.risk == risk
+    assert finding.recommendations == recommendations
+    assert finding.mode == "DRY_RUN" and finding.action == "DETECT_ONLY"
+    assert evidence[0][1]["response_executed"] is False
+    assert evidence[0][1]["deployment"] == "DISABLED"
+
+
+@pytest.mark.parametrize("indicators", [
+    (), ("UNKNOWN",), ("KNOWN_EXPLOITED", "KNOWN_EXPLOITED"),
+    ("UNVERIFIED_PROVENANCE", "VERIFIED_PROVENANCE"),
+    tuple("KNOWN_VULNERABILITY" for _ in range(17)),
+])
+def test_supply_classifier_rejects_invalid_indicators(indicators):
+    with pytest.raises(SupplyChainObservationDenied, match="INDICATORS_INVALID"):
+        classify_supply_chain_observation(
+            observation(), tenant_id="tenant-a", indicators=indicators,
+            audit=lambda *_args: None,
+        )
+
+
+def test_supply_classifier_revalidates_tenant_authority_and_evidence():
+    value = observation()
+    with pytest.raises(SupplyChainObservationDenied, match="TENANT_MISMATCH"):
+        classify_supply_chain_observation(
+            value, tenant_id="tenant-b", indicators=("VERIFIED_PROVENANCE",),
+            audit=lambda *_args: None,
+        )
+    with pytest.raises(SupplyChainObservationDenied, match="OBSERVATION_AUTHORITY_INVALID"):
+        classify_supply_chain_observation(
+            replace(value, action="INSTALL"), tenant_id="tenant-a",
+            indicators=("KNOWN_VULNERABILITY",), audit=lambda *_args: None,
+        )
+    with pytest.raises(SupplyChainObservationDenied, match="EVIDENCE_WRITE_FAILED"):
+        classify_supply_chain_observation(
+            value, tenant_id="tenant-a", indicators=("KNOWN_VULNERABILITY",),
             audit=lambda *_args: (_ for _ in ()).throw(RuntimeError("offline")),
         )
