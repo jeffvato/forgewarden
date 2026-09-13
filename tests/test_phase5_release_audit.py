@@ -192,10 +192,12 @@ class Phase5HistoryReleaseAuditTests(unittest.TestCase):
             self.git(root, "add", "fixtures/removed.txt")
             self.git(root, "commit", "-m", "historical fixture")
             first_commit = self.git(root, "rev-parse", "HEAD")
+            first_blob = self.git(root, "rev-parse", "HEAD:fixtures/removed.txt")
             fixture.write_text("temporary clean revision\n", encoding="utf-8")
             self.git(root, "commit", "-am", "replace historical fixture")
-            fixture.write_text(f'token = "{matched_value}"\n', encoding="utf-8")
-            self.git(root, "commit", "-am", "repeat historical fixture")
+            second_value = "synthetic-" + "second-fixture-material"
+            fixture.write_text(f'token = "{second_value}"\n', encoding="utf-8")
+            self.git(root, "commit", "-am", "second historical fixture")
             self.git(root, "tag", "retained-history")
             self.git(root, "switch", "main")
 
@@ -207,12 +209,20 @@ class Phase5HistoryReleaseAuditTests(unittest.TestCase):
             Draft202012Validator(schema).validate(result)
             secret = next(item for item in result["findings"]
                           if item["category"] == "credential_material")
-            self.assertEqual((secret["scope"], secret["first_commit"]), ("HISTORY_ONLY", first_commit))
+            self.assertEqual(
+                (secret["scope"], secret["first_commit"], secret["blob_hash"],
+                 secret["version_count"]),
+                ("HISTORY_ONLY", first_commit, first_blob, 2),
+            )
             self.assertEqual(result["disposition"], "DENIED")
             self.assertFalse(result["matched_values_included"])
-            self.assertNotIn(matched_value, json.dumps(result))
-            self.assertIn("identifying_git_identity",
-                          {item["category"] for item in result["findings"]})
+            serialized = json.dumps(result)
+            self.assertNotIn(matched_value, serialized)
+            self.assertNotIn(second_value, serialized)
+            self.assertNotIn("private.invalid", serialized)
+            identity = next(item for item in result["findings"]
+                            if item["category"] == "identifying_git_identity")
+            self.assertEqual(identity["version_count"], 3)
 
             sanitized = audit.scan(expected_head=head, strategy="SANITIZED_SINGLE_COMMIT")
             self.assertEqual(sanitized["disposition"], "CANDIDATE_PROOF_REQUIRED")
@@ -257,6 +267,48 @@ class Phase5HistoryReleaseAuditTests(unittest.TestCase):
                 self.assertEqual(next(batches), {first: b"abc"})
                 with self.assertRaisesRegex(ValueError, "malformed blob data"):
                     next(batches)
+
+    def test_remediation_targets_deduplicate_promote_scope_and_sort(self):
+        commits = ("a" * 40, "b" * 40, "c" * 40)
+        first, second, third = "1" * 40, "2" * 40, "3" * 40
+        classified = {
+            (second, "z.txt"): [("credential_material", "BLOCKING")],
+            (third, "a.txt"): [("personal_home_path", "BLOCKING")],
+            (first, "z.txt"): [("credential_material", "BLOCKING")],
+        }
+        provenance = {
+            (first, "z.txt"): commits[0],
+            (second, "z.txt"): commits[1],
+            (third, "a.txt"): commits[2],
+        }
+        with tempfile.TemporaryDirectory(prefix="phase5-remediation-targets-") as temp:
+            findings = HistoryReleaseAudit(Path(temp))._aggregate_findings(
+                classified,
+                provenance,
+                {(second, "z.txt")},
+                {commit: rank for rank, commit in enumerate(commits)},
+            )
+        self.assertEqual(
+            [(item["category"], item["path"]) for item in findings],
+            [("credential_material", "z.txt"), ("personal_home_path", "a.txt")],
+        )
+        target = findings[0]
+        self.assertEqual(target["version_count"], 2)
+        self.assertEqual(target["scope"], "CURRENT_AND_HISTORY")
+        self.assertEqual((target["first_commit"], target["blob_hash"]),
+                         (commits[0], first))
+
+    def test_more_than_512_unique_remediation_targets_fail_closed(self):
+        commit, blob = "a" * 40, "b" * 40
+        classified = {
+            (blob, f"path-{index:03d}.txt"): [("credential_material", "BLOCKING")]
+            for index in range(_LIMITS["findings"] + 1)
+        }
+        provenance = {pair: commit for pair in classified}
+        with tempfile.TemporaryDirectory(prefix="phase5-target-budget-") as temp:
+            with self.assertRaisesRegex(ValueError, "finding budget exceeded"):
+                HistoryReleaseAudit(Path(temp))._aggregate_findings(
+                    classified, provenance, set(), {commit: 0})
 
     def test_provenance_maps_earliest_duplicate_with_one_fixed_git_pass(self):
         commits = ("a" * 40, "b" * 40, "c" * 40)

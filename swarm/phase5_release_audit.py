@@ -306,6 +306,56 @@ class HistoryReleaseAudit:
             raise ValueError("history audit could not bind a finding to a commit")
         return provenance
 
+    def _aggregate_findings(
+        self,
+        classified: dict[tuple[str, str], list[tuple[str, str]]],
+        provenance: dict[tuple[str, str], str],
+        current: set[tuple[str, str]],
+        commit_rank: dict[str, int],
+    ) -> list[dict[str, object]]:
+        grouped: dict[tuple[str, str], tuple[str, set[tuple[str, str]]]] = {}
+        for pair, categories in classified.items():
+            for category, severity in categories:
+                key = (category, pair[1])
+                if key in grouped and grouped[key][0] != severity:
+                    raise ValueError("history audit received inconsistent finding severity")
+                grouped.setdefault(key, (severity, set()))[1].add(pair)
+        if len(grouped) > _LIMITS["findings"]:
+            raise ValueError("history audit finding budget exceeded")
+
+        findings = []
+        for (category, path), (severity, versions) in grouped.items():
+            try:
+                earliest = min(
+                    versions,
+                    key=lambda pair: (commit_rank[provenance[pair]], pair[0]),
+                )
+            except KeyError as exc:
+                raise ValueError("history audit could not rank finding provenance") from exc
+            report_path = (
+                "<redacted-path>"
+                if _HISTORY_PATTERNS[0][2].search(path.encode())
+                else path
+            )
+            findings.append({
+                "category": category,
+                "severity": severity,
+                "path": report_path,
+                "first_commit": provenance[earliest],
+                "blob_hash": earliest[0],
+                "scope": (
+                    "CURRENT_AND_HISTORY"
+                    if any(pair in current for pair in versions)
+                    else "HISTORY_ONLY"
+                ),
+                "version_count": len(versions),
+            })
+        findings.sort(key=lambda item: (
+            str(item["category"]), str(item["path"]),
+            str(item["first_commit"]), str(item["blob_hash"]),
+        ))
+        return findings
+
     def scan(self, *, expected_head: str, strategy: str) -> dict[str, object]:
         self._deadline = time.monotonic() + _LIMITS["scan_seconds"]
         expected = self._sha(expected_head)
@@ -360,7 +410,7 @@ class HistoryReleaseAudit:
                 raise ValueError("history audit received malformed current tree data")
             current.add((self._sha(fields[2]), self._path(path)))
 
-        findings = []
+        identity_first, identity_count = None, 0
         for line in self._git("log", "--all", "--reverse", "--format=%H%x00%ae%x00%ce").decode().splitlines():
             fields = line.split("\0")
             if len(fields) != 3 or self._sha(fields[0]) not in commit_set:
@@ -368,12 +418,16 @@ class HistoryReleaseAudit:
             if any(email and not email.lower().endswith(
                     ("@example.invalid", "@example.com", "@users.noreply.github.com"))
                    for email in fields[1:]):
-                findings.append({
-                    "category": "identifying_git_identity", "severity": "REVIEW",
-                    "path": "@commit-metadata", "first_commit": fields[0],
-                    "blob_hash": None, "scope": "HISTORY_METADATA",
-                })
-                break
+                identity_first = identity_first or fields[0]
+                identity_count += 1
+        findings = []
+        if identity_first:
+            findings.append({
+                "category": "identifying_git_identity", "severity": "REVIEW",
+                "path": "@commit-metadata", "first_commit": identity_first,
+                "blob_hash": None, "scope": "HISTORY_METADATA",
+                "version_count": identity_count,
+            })
 
         classified: dict[tuple[str, str], list[tuple[str, str]]] = {}
         for oid, path in sorted(set(paths)):
@@ -386,19 +440,14 @@ class HistoryReleaseAudit:
                 categories.append(("sensitive_operational_path", "BLOCKING"))
             if categories:
                 classified[(oid, path)] = categories
-        if len(findings) + sum(map(len, classified.values())) > _LIMITS["findings"]:
-            raise ValueError("history audit finding budget exceeded")
         provenance = self._provenance(set(classified), commit_set)
-        for (oid, path), categories in classified.items():
-            for category, severity in categories:
-                findings.append({
-                    "category": category,
-                    "severity": severity,
-                    "path": "<redacted-path>" if _HISTORY_PATTERNS[0][2].search(path.encode()) else path,
-                    "first_commit": provenance[(oid, path)],
-                    "blob_hash": oid,
-                    "scope": "CURRENT_AND_HISTORY" if (oid, path) in current else "HISTORY_ONLY",
-                })
+        commit_rank = {
+            commit: rank for rank, commit in enumerate(reversed(commits))
+        }
+        findings.extend(self._aggregate_findings(
+            classified, provenance, current, commit_rank))
+        if len(findings) > _LIMITS["findings"]:
+            raise ValueError("history audit finding budget exceeded")
 
         final_refs, final_ref_hash = self._refs()
         if self._head() != expected or final_refs != refs or final_ref_hash != ref_hash:
