@@ -1,0 +1,30 @@
+{
+  "adjudication": null,
+  "candidate_commit": "5fa2a8c5b688030a2b3c7b5ff07aa2ef5055aa19",
+  "deployment": "DISABLED",
+  "job_id": "phase2a-5934a1d4619ba5d454c2e227",
+  "kill_switch": "ENGAGED",
+  "mutation_allowed": false,
+  "reviews": [
+    {
+      "provider": "ANYTHINGLLM",
+      "result": {
+        "blocking_findings": [],
+        "job_id": "phase2a-5934a1d4619ba5d454c2e227",
+        "non_blocking_notes": [
+          "The frontend validation regex for secrets is broad and may cause false positives if legitimate limitation strings contain substrings like 'api_key' or 'access_token' without actual secret values, but the server-side validation in `swarm/mission_control.py` is the primary gate and the frontend serves as a defense-in-depth layer.",
+          "The `renderCapabilityStatus` function uses `escapeHtml` for all dynamic content, preventing XSS from malformed server data, which is consistent with the fail-closed design.",
+          "The `WORK_QUEUE.md` change from READY to IN_PROGRESS is appropriate for a feature in progress."
+        ],
+        "proposed_rules": [],
+        "reasoning_summary": "The patch implements `capability_status_snapshot` in `swarm/console.py` and `serialize_capability_status` in `swarm/mission_control.py`. The server-side `serialize_capability_status` strictly validates the `FUNCTIONALITY_MAP` and `audit_completed_requirement_work` results, ensuring that all capabilities are in DRY_RUN mode, live_enabled is false, production_ready is false, and no secret-bearing strings are present. It raises `MissionControlError` for any violation, enforcing a fail-closed boundary. The `/api/capability-status` endpoint in `swarm/console.py` uses this serializer and returns a canonical or unavailable status. The frontend `validateCapabilityStatus` in `console/app.js` mirrors these safety checks, rejecting any payload that allows mutation, live mode, or production readiness. The `renderCapabilityStatus` function safely renders the data using `escapeHtml`. Tests in `tests/test_mission_control.py` verify that unsafe or secret-bearing sources are rejected, and that the canonical projection is correct. Tests in `tests/test_console.py` and `tests/test_console_frontend.js` verify the API endpoint and frontend validation/rendering. The implementation correctly separates demo and canonical data, and no authority callbacks are introduced. The fail-closed boundaries are well-tested and enforced at both server and client levels.",
+        "reviewed_commit": "5fa2a8c5b688030a2b3c7b5ff07aa2ef5055aa19",
+        "risk": "LOW",
+        "tests_missing": [],
+        "verdict": "APPROVE"
+      },
+      "state": "APPROVED"
+    }
+  ],
+  "state": "APPROVED"
+}

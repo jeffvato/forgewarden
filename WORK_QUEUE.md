@@ -1580,7 +1580,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-UX-013 — Canonical capability reality projection
 - Requirement: FW-UX truthful Mission Control product-status integration
-- State: IN_PROGRESS
+- State: DONE
 - Priority: P0
 - Dependencies: FW-INTEGRITY-004 and FW-UX-012
 - Approval: Jeff authorized Mission Control integration after the capability reality audit; read-only status projection is within that scope.
@@ -1597,6 +1597,28 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - output remains bounded and read-only with the engaged kill switch and disabled deployment.
 - Expected validation: focused Python and frontend proof, exact independent read-only review, then one full suite and Product Integrity Gate after approval.
 - Security considerations: status visibility cannot change capability state or authorize any product action.
+- Completion evidence: exact candidate `5fa2a8c5b688030a2b3c7b5ff07aa2ef5055aa19`; after one incomplete Qwen reading that incorrectly stopped before the backend hunks, bounded exact AnythingLLM/Qwen job `phase2a-5934a1d4619ba5d454c2e227` inspected the unchanged complete patch and returned APPROVE/LOW with no blockers or missing tests. Focused validation passed 91 Python tests plus the Node frontend contract after one trivial missing-test-import repair; full suite passed 2101/1. Product Integrity passed every hard check, 116/116 accepted-task traceability, functionality-map validation, 15 focused integrity tests, and the 4-test Golden Path; only pre-existing `tzdata` remains YELLOW. Evidence: `docs/fw-ux-013-qwen-review.json`, `docs/fw-ux-013-integrity.json`.
+
+
+### FW-INTEGRITY-005 — Executable cross-family product Golden Path
+- Requirement: FW-INTEGRITY representative current-commit behavioral proof
+- State: READY
+- Priority: P0
+- Dependencies: FW-INTEGRITY-004 and FW-UX-013
+- Approval: Jeff authorized continuation into the next phase; this bounded proof executes existing caller-supplied DRY_RUN interfaces without adding live authority.
+- Description: Replace recorded-history confidence with one deterministic current-commit Golden Path that composes representative Identity, Harness, AI-defense/endpoint, SOC/Evidence, Recovery, policy/Action Ticket, and Mission Control read-only behavior through their existing canonical interfaces.
+- Target path: tests/test_product_golden_path.py
+- Allowed paths: tests/test_product_golden_path.py, scripts/run-product-golden-path.sh, swarm/integrity.py, docs/fw-integrity-reality-audit.md, docs/fw-integrity-product-golden-path.md, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: bash scripts/run-product-golden-path.sh
+- Acceptance criteria:
+  - execute representative already-accepted cross-family behavior at the exact current commit instead of trusting historical test counts or documentation;
+  - bind one tenant and canonical identities across the composed lifecycle and fail closed on cross-tenant, stale, replayed, malformed, or unsupported facts;
+  - preserve canonical owner boundaries and prove outputs remain DRY_RUN, read-only/proposal-only, deployment-disabled, kill-switch-engaged, and production-not-ready;
+  - emit a bounded deterministic proof summary that identifies exercised families and assertions without raw prompts, content, credentials, or authority callbacks;
+  - wire Product Integrity to this product Golden Path only after the standalone proof passes, without duplicating subsystem implementations;
+  - add no sensor, provider call, credential resolution, network/process hook, response/recovery execution, Git mutation, deployment, or new authority.
+- Expected validation: one focused Linux Golden Path, exact independent read-only review, then one full suite and Product Integrity Gate after approval.
+- Security considerations: the proof consumes local fixture interfaces only and cannot authorize, execute, contain, restore, deploy, or certify production readiness.
 
 ### FW-API-001 — Canonical tenant-bound read-only request admission
 - Requirement: FW-API versioned least-privilege API/SDK contract

@@ -1,0 +1,4182 @@
+{
+  "architecture_validation": {
+    "functionality_map": {
+      "accepted_family_count": 22,
+      "extra_foundational_families": [
+        "FW-ASOC",
+        "FW-CORE"
+      ],
+      "live_enabled": false,
+      "mapped_family_count": 24,
+      "operating_mode": "DRY_RUN",
+      "passed": true,
+      "production_ready": false
+    },
+    "invariant_ids": [
+      "FW-INV-001",
+      "FW-INV-002",
+      "FW-INV-003",
+      "FW-INV-004",
+      "FW-INV-005",
+      "FW-INV-006",
+      "FW-INV-007",
+      "FW-INV-008",
+      "FW-INV-009"
+    ],
+    "owners": {
+      "agent_authority": "FW-ASOC",
+      "ai_agent_defense": "FW-AID",
+      "compliance": "FW-COMP",
+      "cryptographic_authority": "FW-KEYS / FW-ROOT",
+      "evidence": "FW-EVID",
+      "identity": "FW-ID",
+      "mcp_access": "MCP Gateway",
+      "model_selection": "Model Broker",
+      "normalized_events": "canonical ForgeWarden Event Schema",
+      "operations": "FW-OPS",
+      "policy_decisions": "FW-ROOT/Z3",
+      "recovery": "FW-REC",
+      "soc_incidents": "FW-SOC"
+    },
+    "passed": true
+  },
+  "canonical_ownership": {
+    "agent_authority": {
+      "implementation": "swarm.asoc.CapabilityAuthorizer",
+      "owner": "FW-ASOC",
+      "status": "IMPLEMENTED"
+    },
+    "ai_agent_defense": {
+      "implementation": "swarm.ai_agent_defense DeterministicAIThreatClassifier / AICrossDomainCorrelator / AIContainmentProposalRegistry",
+      "owner": "FW-AID",
+      "status": "IMPLEMENTED"
+    },
+    "compliance": {
+      "implementation": "swarm.compliance ControlMapping / ComplianceEvidenceAdapter / ControlAssessmentObservation",
+      "owner": "FW-COMP",
+      "status": "IMPLEMENTED"
+    },
+    "cryptographic_authority": {
+      "implementation": "swarm.keys.SecretHandleRegistry / swarm.asoc.HMACLeaseSigner",
+      "owner": "FW-KEYS / FW-ROOT",
+      "status": "IMPLEMENTED_PARTIAL"
+    },
+    "evidence": {
+      "implementation": "swarm.evidence.EvidenceEnvelope / EvidenceLedger / CanonicalAuditEvidenceStore with swarm.core.AuditLog",
+      "owner": "FW-EVID",
+      "status": "IMPLEMENTED"
+    },
+    "identity": {
+      "implementation": "swarm.identity.IdentityRecord",
+      "owner": "FW-ID",
+      "status": "IMPLEMENTED_PARTIAL"
+    },
+    "mcp_access": {
+      "implementation": "swarm.mcp_gateway.MCPGateway",
+      "owner": "MCP Gateway",
+      "status": "IMPLEMENTED"
+    },
+    "model_selection": {
+      "implementation": "swarm.model_broker.ModelBroker",
+      "owner": "Model Broker",
+      "status": "IMPLEMENTED"
+    },
+    "normalized_events": {
+      "implementation": "swarm.normalized_events.NormalizedEventStore",
+      "owner": "canonical ForgeWarden Event Schema",
+      "status": "IMPLEMENTED_PARTIAL"
+    },
+    "operations": {
+      "implementation": "swarm.operations / swarm.operations_capacity / swarm.mission_control.OperationsContinuityView",
+      "owner": "FW-OPS",
+      "status": "IMPLEMENTED"
+    },
+    "policy_decisions": {
+      "implementation": "swarm.policy_gate.DeterministicPolicy",
+      "owner": "FW-ROOT/Z3",
+      "status": "IMPLEMENTED_PARTIAL"
+    },
+    "recovery": {
+      "implementation": "swarm.recovery RecoveryCheckpoint / ResumeAdmission",
+      "owner": "FW-REC",
+      "status": "IMPLEMENTED"
+    },
+    "soc_incidents": {
+      "implementation": "swarm.soc.SOCIncidentProjection",
+      "owner": "FW-SOC",
+      "status": "IMPLEMENTED_PARTIAL"
+    }
+  },
+  "checks": {
+    "architecture_ownership": true,
+    "build": true,
+    "completion_traceability": true,
+    "configuration": true,
+    "functionality_map": true,
+    "golden_path": true,
+    "invariant_manifest": true,
+    "repository": true,
+    "startup": true,
+    "tests": true
+  },
+  "commands": {
+    "golden_path": {
+      "command": [
+        "bash",
+        "scripts/run-asoc-golden-path.sh"
+      ],
+      "output": "....                                                                     [100%]\n4 passed in 0.16s\n",
+      "passed": true,
+      "returncode": 0
+    },
+    "tests": {
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_integrity.py"
+      ],
+      "output": "...............                                                          [100%]\n15 passed in 31.56s\n",
+      "passed": true,
+      "returncode": 0
+    }
+  },
+  "decision": "YELLOW",
+  "dependency_check": {
+    "command": [
+      "/usr/bin/python3",
+      "-m",
+      "pip",
+      "check"
+    ],
+    "output": "oslo-serialization 5.4.0 requires tzdata, which is not installed.\noslo-utils 7.1.0 requires tzdata, which is not installed.\n",
+    "passed": false,
+    "returncode": 1
+  },
+  "findings": [
+    {
+      "area": "dependencies",
+      "reason": "pip check reports missing or incompatible packages",
+      "severity": "YELLOW"
+    }
+  ],
+  "functionality": [
+    {
+      "component": "swarm.core / swarm.autonomous_loop",
+      "demo_available": false,
+      "dependencies": [
+        "policy_gate",
+        "AuditLog",
+        "Git"
+      ],
+      "golden_path": "PASS: bounded dry-run/review control path",
+      "implementation_status": "IMPLEMENTED",
+      "integration_status": "INTEGRATED",
+      "integration_tests": "PASS",
+      "last_validated_commit": "5fa2a8c5b688030a2b3c7b5ff07aa2ef5055aa19",
+      "limitations": "No production deployment or live mutation",
+      "live_enabled": false,
+      "operating_mode": "DRY_RUN",
+      "production_ready": false,
+      "proof_status": "ACCEPTED_BOUNDED",
+      "requirement_id": "FW-CORE",
+      "state": "Proven",
+      "unit_tests": "PASS",
+      "user_surface": "local runner and console"
+    },
+    {
+      "component": "swarm.asoc",
+      "demo_available": false,
+      "dependencies": [
+        "FW-ID",
+        "FW-ROOT",
+        "Action Tickets",
+        "Model Broker",
+        "MCP Gateway",
+        "FW-EVID"
+      ],
+      "golden_path": "PASS: authorization, aggregate budgets, delegation, replay, recovery, kill-switch, and cross-tenant denials",
+      "implementation_status": "IMPLEMENTED",
+      "integration_status": "INTEGRATED",
+      "integration_tests": "PASS",
+      "last_validated_commit": "5fa2a8c5b688030a2b3c7b5ff07aa2ef5055aa19",
+      "limitations": "In-memory single-process DRY_RUN registries; no full external orchestration or Z3 solver",
+      "live_enabled": false,
+      "operating_mode": "DRY_RUN",
+      "production_ready": false,
+      "proof_status": "ACCEPTED_BOUNDED",
+      "requirement_id": "FW-ASOC",
+      "state": "Proven",
+      "unit_tests": "PASS",
+      "user_surface": "internal authorization interface"
+    },
+    {
+      "component": "swarm.identity",
+      "demo_available": false,
+      "dependencies": [
+        "FW-KEYS",
+        "FW-EVID",
+        "FW-HARNESS"
+      ],
+      "golden_path": "PASS: tenant identity lifecycle, worker admission, revocation, and replay denial",
+      "implementation_status": "IMPLEMENTED",
+      "integration_status": "INTEGRATED",
+      "integration_tests": "PASS",
+      "last_validated_commit": "5fa2a8c5b688030a2b3c7b5ff07aa2ef5055aa19",
+      "limitations": "In-memory metadata only; no live authentication, federation, OAuth exchange, or device trust",
+      "live_enabled": false,
+      "operating_mode": "DRY_RUN",
+      "production_ready": false,
+      "proof_status": "ACCEPTED_BOUNDED",
+      "requirement_id": "FW-ID",
+      "state": "Proven",
+      "unit_tests": "PASS",
+      "user_surface": "internal identity and worker-binding interface"
+    },
+    {
+      "component": "swarm.keys",
+      "demo_available": false,
+      "dependencies": [
+        "FW-ID",
+        "FW-EVID",
+        "trusted backend boundary"
+      ],
+      "golden_path": "PASS: handle registration, binding, invalidation, and replay denial",
+      "implementation_status": "IMPLEMENTED",
+      "integration_status": "INTEGRATED",
+      "integration_tests": "PASS",
+      "last_validated_commit": "5fa2a8c5b688030a2b3c7b5ff07aa2ef5055aa19",
+      "limitations": "No vault/HSM backend, material resolution, signing, encryption, or live credentials",
+      "live_enabled": false,
+      "operating_mode": "DRY_RUN",
+      "production_ready": false,
+      "proof_status": "ACCEPTED_BOUNDED",
+      "requirement_id": "FW-KEYS",
+      "state": "Proven",
+      "unit_tests": "PASS",
+      "user_surface": "internal opaque-handle interface"
+    },
+    {
+      "component": "swarm.evidence / swarm.core.AuditLog",
+      "demo_available": false,
+      "dependencies": [
+        "domain validators",
+        "tenant identity"
+      ],
+      "golden_path": "PASS: tenant chain, durable append, restart reconstruction, replay, and tamper denial",
+      "implementation_status": "IMPLEMENTED",
+      "integration_status": "INTEGRATED",
+      "integration_tests": "PASS",
+      "last_validated_commit": "5fa2a8c5b688030a2b3c7b5ff07aa2ef5055aa19",
+      "limitations": "Local unsigned Evidence; no external storage, replication, cryptographic signing, or export",
+      "live_enabled": false,
+      "operating_mode": "DRY_RUN",
+      "production_ready": false,
+      "proof_status": "ACCEPTED_BOUNDED",
+      "requirement_id": "FW-EVID",
+      "state": "Proven",
+      "unit_tests": "PASS",
+      "user_surface": "internal canonical Evidence lifecycle"
+    },
+    {
+      "component": "swarm.recovery",
+      "demo_available": false,
+      "dependencies": [
+        "FW-EVID",
+        "Git facts",
+        "kill switch"
+      ],
+      "golden_path": "PASS: checkpoint persistence, reconstruction, exact resume admission, and tamper denial",
+      "implementation_status": "IMPLEMENTED",
+      "integration_status": "INTEGRATED",
+      "integration_tests": "PASS",
+      "last_validated_commit": "5fa2a8c5b688030a2b3c7b5ff07aa2ef5055aa19",
+      "limitations": "Metadata coordination only; no restore, rollback, restart, repair, or recovery execution",
+      "live_enabled": false,
+      "operating_mode": "DRY_RUN",
+      "production_ready": false,
+      "proof_status": "ACCEPTED_BOUNDED",
+      "requirement_id": "FW-REC",
+      "state": "Proven",
+      "unit_tests": "PASS",
+      "user_surface": "internal recovery-admission metadata"
+    },
+    {
+      "component": "swarm.compliance",
+      "demo_available": false,
+      "dependencies": [
+        "FW-ID",
+        "FW-EVID",
+        "policy/test references"
+      ],
+      "golden_path": "PASS: mapping, Evidence admission, assessment, replay, expiry, and durability denial",
+      "implementation_status": "IMPLEMENTED",
+      "integration_status": "INTEGRATED",
+      "integration_tests": "PASS",
+      "last_validated_commit": "5fa2a8c5b688030a2b3c7b5ff07aa2ef5055aa19",
+      "limitations": "No certification, attestation, external reporting, or control execution",
+      "live_enabled": false,
+      "operating_mode": "DRY_RUN",
+      "production_ready": false,
+      "proof_status": "ACCEPTED_BOUNDED",
+      "requirement_id": "FW-COMP",
+      "state": "Proven",
+      "unit_tests": "PASS",
+      "user_surface": "internal compliance mapping metadata"
+    },
+    {
+      "component": "swarm.harness_controller / swarm.harness_task / swarm.harness_context",
+      "demo_available": true,
+      "dependencies": [
+        "FW-ID",
+        "FW-KEYS",
+        "FW-EVID",
+        "Model Broker",
+        "Git controller"
+      ],
+      "golden_path": "PASS: persistent task, context, budgets, worker/reviewer, validation, escalation, and resume contracts",
+      "implementation_status": "IMPLEMENTED",
+      "integration_status": "INTEGRATED",
+      "integration_tests": "PASS",
+      "last_validated_commit": "5fa2a8c5b688030a2b3c7b5ff07aa2ef5055aa19",
+      "limitations": "Bounded local engineering harness; provider invocations remain adapter-controlled and deployment disabled",
+      "live_enabled": false,
+      "operating_mode": "DRY_RUN",
+      "production_ready": false,
+      "proof_status": "ACCEPTED_BOUNDED",
+      "requirement_id": "FW-HARNESS",
+      "state": "Proven",
+      "unit_tests": "PASS",
+      "user_surface": "Mission Control and internal controller"
+    },
+    {
+      "component": "swarm.ai_agent_defense / swarm.normalized_events",
+      "demo_available": true,
+      "dependencies": [
+        "FW-ENDPOINT",
+        "FW-ID",
+        "FW-KEYS",
+        "FW-SOC",
+        "FW-EVID",
+        "FW-HARNESS"
+      ],
+      "golden_path": "PASS: fixture attribution through detection, correlation, proposal, Evidence, and projection",
+      "implementation_status": "IMPLEMENTED",
+      "integration_status": "INTEGRATED",
+      "integration_tests": "PASS",
+      "last_validated_commit": "5fa2a8c5b688030a2b3c7b5ff07aa2ef5055aa19",
+      "limitations": "Caller-supplied metadata only; no live sensor, enforcement, containment, or recovery execution",
+      "live_enabled": false,
+      "operating_mode": "DRY_RUN",
+      "production_ready": false,
+      "proof_status": "ACCEPTED_BOUNDED",
+      "requirement_id": "FW-AID",
+      "state": "Proven",
+      "unit_tests": "PASS",
+      "user_surface": "Mission Control AI Security"
+    },
+    {
+      "component": "swarm.api_contract",
+      "demo_available": false,
+      "dependencies": [
+        "FW-ID",
+        "policy",
+        "leases",
+        "FW-EVID"
+      ],
+      "golden_path": "PASS: versioned tenant-bound read admission and fail-closed mutation/authority denials",
+      "implementation_status": "IMPLEMENTED",
+      "integration_status": "INTEGRATED",
+      "integration_tests": "PASS",
+      "last_validated_commit": "5fa2a8c5b688030a2b3c7b5ff07aa2ef5055aa19",
+      "limitations": "No listener, remote transport, response handler, authentication exchange, or mutation API",
+      "live_enabled": false,
+      "operating_mode": "DRY_RUN",
+      "production_ready": false,
+      "proof_status": "ACCEPTED_BOUNDED",
+      "requirement_id": "FW-API",
+      "state": "Proven",
+      "unit_tests": "PASS",
+      "user_surface": "internal read-only admission contract"
+    },
+    {
+      "component": "swarm.mcp_gateway",
+      "demo_available": false,
+      "dependencies": [
+        "FW-ID",
+        "policy",
+        "leases",
+        "FW-EVID"
+      ],
+      "golden_path": "PASS: registered tool admission, tenant/capability binding, replay, and kill-switch denial",
+      "implementation_status": "IMPLEMENTED",
+      "integration_status": "INTEGRATED",
+      "integration_tests": "PASS",
+      "last_validated_commit": "5fa2a8c5b688030a2b3c7b5ff07aa2ef5055aa19",
+      "limitations": "No arbitrary tool execution, live discovery, credential resolution, or external MCP transport",
+      "live_enabled": false,
+      "operating_mode": "DRY_RUN",
+      "production_ready": false,
+      "proof_status": "ACCEPTED_BOUNDED",
+      "requirement_id": "FW-MCP",
+      "state": "Proven",
+      "unit_tests": "PASS",
+      "user_surface": "internal MCP admission interface"
+    },
+    {
+      "component": "swarm.console / swarm.mission_control / console",
+      "demo_available": true,
+      "dependencies": [
+        "FW-HARNESS",
+        "FW-AID",
+        "FW-SOC",
+        "FW-EVID"
+      ],
+      "golden_path": "PASS: demo separation plus canonical read-only provider lifecycle and tenant denial",
+      "implementation_status": "IMPLEMENTED",
+      "integration_status": "INTEGRATED",
+      "integration_tests": "PASS",
+      "last_validated_commit": "5fa2a8c5b688030a2b3c7b5ff07aa2ef5055aa19",
+      "limitations": "Loopback read-only console; most operational scenario data remains clearly labeled DEMO",
+      "live_enabled": false,
+      "operating_mode": "DRY_RUN",
+      "production_ready": false,
+      "proof_status": "ACCEPTED_BOUNDED",
+      "requirement_id": "FW-UX",
+      "state": "Proven",
+      "unit_tests": "PASS",
+      "user_surface": "ForgeWarden Mission Control"
+    },
+    {
+      "component": "swarm.soc",
+      "demo_available": true,
+      "dependencies": [
+        "NormalizedEventStore",
+        "FW-AID",
+        "FW-EVID",
+        "Action Tickets"
+      ],
+      "golden_path": "PASS: normalized alert, correlated attack story, inert playbook proposal, and Evidence lifecycle",
+      "implementation_status": "IMPLEMENTED",
+      "integration_status": "INTEGRATED",
+      "integration_tests": "PASS",
+      "last_validated_commit": "5fa2a8c5b688030a2b3c7b5ff07aa2ef5055aa19",
+      "limitations": "Caller-supplied metadata only; no live SIEM ingestion, case service, or response execution",
+      "live_enabled": false,
+      "operating_mode": "DRY_RUN",
+      "production_ready": false,
+      "proof_status": "ACCEPTED_BOUNDED",
+      "requirement_id": "FW-SOC",
+      "state": "Proven",
+      "unit_tests": "PASS",
+      "user_surface": "Mission Control incident projection"
+    },
+    {
+      "component": "swarm.endpoint_fixtures / swarm.sensor_adapter / swarm.normalized_events",
+      "demo_available": false,
+      "dependencies": [
+        "FW-ID",
+        "FW-EVID",
+        "FW-AID"
+      ],
+      "golden_path": "PASS: Windows/Linux/macOS/Android fixtures, batching, correlation, recovery replay, and AI attribution",
+      "implementation_status": "IMPLEMENTED",
+      "integration_status": "INTEGRATED",
+      "integration_tests": "PASS",
+      "last_validated_commit": "5fa2a8c5b688030a2b3c7b5ff07aa2ef5055aa19",
+      "limitations": "No installed MicroSensor, platform hook, live collection, process control, or endpoint response",
+      "live_enabled": false,
+      "operating_mode": "DRY_RUN",
+      "production_ready": false,
+      "proof_status": "ACCEPTED_BOUNDED",
+      "requirement_id": "FW-ENDPOINT",
+      "state": "Proven",
+      "unit_tests": "PASS",
+      "user_surface": "internal endpoint fixture pipeline"
+    },
+    {
+      "component": "swarm.ransomware",
+      "demo_available": true,
+      "dependencies": [
+        "FW-ENDPOINT",
+        "FW-EVID",
+        "Action Tickets"
+      ],
+      "golden_path": "PASS: supplied behavioral detection, correlation, inert containment proposal, and false-positive proof",
+      "implementation_status": "IMPLEMENTED",
+      "integration_status": "INTEGRATED",
+      "integration_tests": "PASS",
+      "last_validated_commit": "5fa2a8c5b688030a2b3c7b5ff07aa2ef5055aa19",
+      "limitations": "No live filesystem sensor, isolation, snapshot, rollback, or remediation execution",
+      "live_enabled": false,
+      "operating_mode": "DRY_RUN",
+      "production_ready": false,
+      "proof_status": "ACCEPTED_BOUNDED",
+      "requirement_id": "FW-RANSOM",
+      "state": "Proven",
+      "unit_tests": "PASS",
+      "user_surface": "internal RansomGuard detector and proposal"
+    },
+    {
+      "component": "swarm.browser_email",
+      "demo_available": false,
+      "dependencies": [
+        "FW-AID",
+        "FW-SOC",
+        "FW-EVID"
+      ],
+      "golden_path": "PASS: caller-supplied content metadata, classification, correlation, and inert response proposal",
+      "implementation_status": "IMPLEMENTED",
+      "integration_status": "INTEGRATED",
+      "integration_tests": "PASS",
+      "last_validated_commit": "5fa2a8c5b688030a2b3c7b5ff07aa2ef5055aa19",
+      "limitations": "No browser extension, mail transport, content retrieval, account action, or network enforcement",
+      "live_enabled": false,
+      "operating_mode": "DRY_RUN",
+      "production_ready": false,
+      "proof_status": "ACCEPTED_BOUNDED",
+      "requirement_id": "FW-BME",
+      "state": "Proven",
+      "unit_tests": "PASS",
+      "user_surface": "internal browser/email detection interface"
+    },
+    {
+      "component": "swarm.saas_security",
+      "demo_available": false,
+      "dependencies": [
+        "FW-ID",
+        "FW-KEYS",
+        "FW-EVID",
+        "FW-SOC"
+      ],
+      "golden_path": "PASS: supplied posture facts, risk, ownership binding, proposal, and Mission Control projection",
+      "implementation_status": "IMPLEMENTED",
+      "integration_status": "INTEGRATED",
+      "integration_tests": "PASS",
+      "last_validated_commit": "5fa2a8c5b688030a2b3c7b5ff07aa2ef5055aa19",
+      "limitations": "No SaaS discovery, provider API, OAuth exchange, mutation, or response execution",
+      "live_enabled": false,
+      "operating_mode": "DRY_RUN",
+      "production_ready": false,
+      "proof_status": "ACCEPTED_BOUNDED",
+      "requirement_id": "FW-SAAS",
+      "state": "Proven",
+      "unit_tests": "PASS",
+      "user_surface": "internal SaaS security lifecycle"
+    },
+    {
+      "component": "swarm.supply_chain",
+      "demo_available": false,
+      "dependencies": [
+        "FW-KEYS",
+        "TrustedSignatureCatalog",
+        "FW-EVID",
+        "FW-SOC"
+      ],
+      "golden_path": "PASS: supplied artifact facts, risk, provenance binding, proposal, and projection",
+      "implementation_status": "IMPLEMENTED",
+      "integration_status": "INTEGRATED",
+      "integration_tests": "PASS",
+      "last_validated_commit": "5fa2a8c5b688030a2b3c7b5ff07aa2ef5055aa19",
+      "limitations": "No repository scanner, package retrieval, CI/CD integration, signing, or deployment enforcement",
+      "live_enabled": false,
+      "operating_mode": "DRY_RUN",
+      "production_ready": false,
+      "proof_status": "ACCEPTED_BOUNDED",
+      "requirement_id": "FW-SUPPLY",
+      "state": "Proven",
+      "unit_tests": "PASS",
+      "user_surface": "internal supply-chain lifecycle"
+    },
+    {
+      "component": "swarm.network_security",
+      "demo_available": false,
+      "dependencies": [
+        "FW-ENDPOINT",
+        "FW-ID",
+        "FW-EVID",
+        "FW-SOC"
+      ],
+      "golden_path": "PASS: supplied observation, classification, owner binding, proposal, and projection",
+      "implementation_status": "IMPLEMENTED",
+      "integration_status": "INTEGRATED",
+      "integration_tests": "PASS",
+      "last_validated_commit": "5fa2a8c5b688030a2b3c7b5ff07aa2ef5055aa19",
+      "limitations": "No packet/DNS sensor, socket, NAC, firewall change, containment, or network response",
+      "live_enabled": false,
+      "operating_mode": "DRY_RUN",
+      "production_ready": false,
+      "proof_status": "ACCEPTED_BOUNDED",
+      "requirement_id": "FW-NET",
+      "state": "Proven",
+      "unit_tests": "PASS",
+      "user_surface": "internal network security lifecycle"
+    },
+    {
+      "component": "swarm.attack_surface",
+      "demo_available": false,
+      "dependencies": [
+        "FW-ENDPOINT",
+        "FW-NET",
+        "FW-SAAS",
+        "FW-EVID"
+      ],
+      "golden_path": "PASS: supplied external-asset facts, classification, owner binding, proposal, and projection",
+      "implementation_status": "IMPLEMENTED",
+      "integration_status": "INTEGRATED",
+      "integration_tests": "PASS",
+      "last_validated_commit": "5fa2a8c5b688030a2b3c7b5ff07aa2ef5055aa19",
+      "limitations": "No discovery, DNS resolution, scan, cloud query, exploit, takedown, or remediation",
+      "live_enabled": false,
+      "operating_mode": "DRY_RUN",
+      "production_ready": false,
+      "proof_status": "ACCEPTED_BOUNDED",
+      "requirement_id": "FW-ASM",
+      "state": "Proven",
+      "unit_tests": "PASS",
+      "user_surface": "internal attack-surface lifecycle"
+    },
+    {
+      "component": "swarm.data_security",
+      "demo_available": false,
+      "dependencies": [
+        "FW-ENDPOINT",
+        "FW-SAAS",
+        "FW-SUPPLY",
+        "FW-EVID"
+      ],
+      "golden_path": "PASS: supplied posture facts, classification, owner binding, DLP proposal, and projection",
+      "implementation_status": "IMPLEMENTED",
+      "integration_status": "INTEGRATED",
+      "integration_tests": "PASS",
+      "last_validated_commit": "5fa2a8c5b688030a2b3c7b5ff07aa2ef5055aa19",
+      "limitations": "No content discovery, inspection, query, data movement, DLP enforcement, or remediation",
+      "live_enabled": false,
+      "operating_mode": "DRY_RUN",
+      "production_ready": false,
+      "proof_status": "ACCEPTED_BOUNDED",
+      "requirement_id": "FW-DSPM",
+      "state": "Proven",
+      "unit_tests": "PASS",
+      "user_surface": "internal data-security lifecycle"
+    },
+    {
+      "component": "swarm.high_assurance",
+      "demo_available": false,
+      "dependencies": [
+        "Approved Model Registry",
+        "Model Broker",
+        "FW-EVID",
+        "Mission Control"
+      ],
+      "golden_path": "PASS: profile, exact model admission, approved-equivalent failover, Evidence, and projection",
+      "implementation_status": "IMPLEMENTED",
+      "integration_status": "INTEGRATED",
+      "integration_tests": "PASS",
+      "last_validated_commit": "5fa2a8c5b688030a2b3c7b5ff07aa2ef5055aa19",
+      "limitations": "No provider invocation, sovereign infrastructure, ATO/certification, credential resolution, or deployment",
+      "live_enabled": false,
+      "operating_mode": "DRY_RUN",
+      "production_ready": false,
+      "proof_status": "ACCEPTED_BOUNDED",
+      "requirement_id": "FW-GOV",
+      "state": "Proven",
+      "unit_tests": "PASS",
+      "user_surface": "internal high-assurance admission and projection"
+    },
+    {
+      "component": "swarm.operations / swarm.operations_capacity",
+      "demo_available": false,
+      "dependencies": [
+        "FW-EVID",
+        "FW-REC",
+        "FW-ENDPOINT"
+      ],
+      "golden_path": "PASS: health/capacity Evidence, reconstruction, resume admission, and projection",
+      "implementation_status": "IMPLEMENTED",
+      "integration_status": "INTEGRATED",
+      "integration_tests": "PASS",
+      "last_validated_commit": "5fa2a8c5b688030a2b3c7b5ff07aa2ef5055aa19",
+      "limitations": "Caller-supplied local metadata; no live telemetry, HA/DR control, retention movement, or service operation",
+      "live_enabled": false,
+      "operating_mode": "DRY_RUN",
+      "production_ready": false,
+      "proof_status": "ACCEPTED_BOUNDED",
+      "requirement_id": "FW-OPS",
+      "state": "Proven",
+      "unit_tests": "PASS",
+      "user_surface": "Mission Control operations continuity"
+    },
+    {
+      "component": "swarm.integrity",
+      "demo_available": false,
+      "dependencies": [
+        "Git",
+        "Python",
+        "pytest",
+        "invariant manifest",
+        "WORK_QUEUE"
+      ],
+      "golden_path": "PASS: build/startup/configuration/invariants/tests/Golden Path plus accepted-work traceability",
+      "implementation_status": "IMPLEMENTED",
+      "integration_status": "INTEGRATED",
+      "integration_tests": "PASS",
+      "last_validated_commit": "5fa2a8c5b688030a2b3c7b5ff07aa2ef5055aa19",
+      "limitations": "Current proof is repository-local; clean packaging, mutation testing, and broader production-like execution remain",
+      "live_enabled": false,
+      "operating_mode": "DRY_RUN",
+      "production_ready": false,
+      "proof_status": "CURRENT_REPOSITORY_VALIDATION",
+      "requirement_id": "FW-INTEGRITY",
+      "state": "Implemented",
+      "unit_tests": "PASS",
+      "user_surface": "integrity gate and capability-status report"
+    }
+  ],
+  "head": "5fa2a8c5b688030a2b3c7b5ff07aa2ef5055aa19",
+  "missing_canonical_owners": [],
+  "reality_audit": {
+    "assessment": "TRACEABLE",
+    "assurance": "TRACEABILITY_ONLY",
+    "production_readiness_inferred": false,
+    "runtime_validation": "NOT_RUN_BY_THIS_AUDIT",
+    "schema_version": 1,
+    "summary": {
+      "accepted": 116,
+      "accepted_families": 22,
+      "traceable": 116,
+      "unsupported": 0
+    },
+    "tasks": [
+      {
+        "allowed_paths": [
+          "docs/fw-gov-inventory.md",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "dc51ddc65f58a44f3c65a569461822ed738a9613",
+          "dc51ddc65f58a44f3c65a569"
+        ],
+        "evidence_paths": [
+          "docs/fw-gov-001-qwen-review.json"
+        ],
+        "family_id": "FW-GOV",
+        "kind": "DOCUMENTATION_ONLY",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-GOV-001",
+        "resolved_commits": [
+          "dc51ddc65f58a44f3c65a569461822ed738a9613"
+        ],
+        "test_paths": [],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/high_assurance.py",
+          "tests/test_high_assurance.py",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "514e67b4c636b3bb8ef54952f702a9a52b08bd04",
+          "f90312a8e3b3d90f6ac30a3d5f68663141bca1e3",
+          "f90312a8e3b3d90f6ac30a3d"
+        ],
+        "evidence_paths": [
+          "docs/fw-gov-002-qwen-review.json",
+          "docs/fw-gov-002-qwen-review-repair.json",
+          "docs/fw-gov-002-claude-review-repair.json",
+          "docs/fw-gov-002-integrity.json"
+        ],
+        "family_id": "FW-GOV",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-GOV-002",
+        "resolved_commits": [
+          "514e67b4c636b3bb8ef54952f702a9a52b08bd04",
+          "f90312a8e3b3d90f6ac30a3d5f68663141bca1e3"
+        ],
+        "test_paths": [
+          "tests/test_high_assurance.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/high_assurance.py",
+          "tests/test_high_assurance.py",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "d2f843352edd5dc93dc26344c091cf9e2c7dae61",
+          "7abf65dcfc131397ee1bac39137f496f5511a83d",
+          "7abf65dcfc131397ee1bac39"
+        ],
+        "evidence_paths": [
+          "docs/fw-gov-003-qwen-review.json",
+          "docs/fw-gov-003-qwen-repair-review.json",
+          "docs/fw-gov-003-integrity.json"
+        ],
+        "family_id": "FW-GOV",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-GOV-003",
+        "resolved_commits": [
+          "d2f843352edd5dc93dc26344c091cf9e2c7dae61",
+          "7abf65dcfc131397ee1bac39137f496f5511a83d"
+        ],
+        "test_paths": [
+          "tests/test_high_assurance.py",
+          "tests/test_harness_models.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/high_assurance.py",
+          "tests/test_high_assurance.py",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "49ab75cf40281e9e635427089fa02216551e64d2",
+          "49ab75cf40281e9e63542708"
+        ],
+        "evidence_paths": [
+          "docs/fw-gov-004-qwen-review.json",
+          "docs/fw-gov-004-claude-review.json",
+          "docs/fw-gov-004-integrity.json"
+        ],
+        "family_id": "FW-GOV",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-GOV-004",
+        "resolved_commits": [
+          "49ab75cf40281e9e635427089fa02216551e64d2"
+        ],
+        "test_paths": [
+          "tests/test_high_assurance.py",
+          "tests/test_harness_models.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/high_assurance.py",
+          "swarm/mission_control.py",
+          "tests/test_high_assurance.py",
+          "tests/test_mission_control.py",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "b3f667f083d1d40f22b11a5ea6d355ddf76c7971",
+          "b7f768bfee93418553b37823c13bc0e65fe874ae",
+          "b7f768bfee93418553b37823"
+        ],
+        "evidence_paths": [
+          "docs/fw-gov-005-qwen-review.json",
+          "docs/fw-gov-005-qwen-repair-review.json",
+          "docs/fw-gov-005-integrity.json"
+        ],
+        "family_id": "FW-GOV",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-GOV-005",
+        "resolved_commits": [
+          "b3f667f083d1d40f22b11a5ea6d355ddf76c7971",
+          "b7f768bfee93418553b37823c13bc0e65fe874ae"
+        ],
+        "test_paths": [
+          "tests/test_high_assurance.py",
+          "tests/test_mission_control.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/high_assurance.py",
+          "swarm/mission_control.py",
+          "tests/test_high_assurance.py",
+          "tests/test_mission_control.py",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "fb7e28c2a13809e0d556b1525e8cd738e8ed1a85",
+          "fb7e28c2a13809e0d556b152"
+        ],
+        "evidence_paths": [
+          "docs/fw-gov-006-qwen-review.json",
+          "docs/fw-gov-006-integrity.json"
+        ],
+        "family_id": "FW-GOV",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-GOV-006",
+        "resolved_commits": [
+          "fb7e28c2a13809e0d556b1525e8cd738e8ed1a85"
+        ],
+        "test_paths": [
+          "tests/test_high_assurance.py",
+          "tests/test_harness_models.py",
+          "tests/test_mission_control.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "docs/fw-dspm-inventory.md",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "67bdf048500cdf3f2a2b3ae04141f0c1a9d330ae",
+          "67bdf048500cdf3f2a2b3ae0"
+        ],
+        "evidence_paths": [
+          "docs/fw-dspm-001-qwen-review.json"
+        ],
+        "family_id": "FW-DSPM",
+        "kind": "DOCUMENTATION_ONLY",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-DSPM-001",
+        "resolved_commits": [
+          "67bdf048500cdf3f2a2b3ae04141f0c1a9d330ae"
+        ],
+        "test_paths": [],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/data_security.py",
+          "tests/test_data_security.py",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "04f9f41048211b712d40c44283627efe189f9e67",
+          "72e6c304f73af10a2a56aefc332f63b6643309fe",
+          "72e6c304f73af10a2a56aefc"
+        ],
+        "evidence_paths": [
+          "docs/fw-dspm-002-qwen-review.json",
+          "docs/fw-dspm-002-qwen-repair-review.json",
+          "docs/fw-dspm-002-integrity.json"
+        ],
+        "family_id": "FW-DSPM",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-DSPM-002",
+        "resolved_commits": [
+          "04f9f41048211b712d40c44283627efe189f9e67",
+          "72e6c304f73af10a2a56aefc332f63b6643309fe"
+        ],
+        "test_paths": [
+          "tests/test_data_security.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/data_security.py",
+          "tests/test_data_security.py",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "30a23961040c066b74d88be31fd22e4acb15faf3",
+          "30a23961040c066b74d88be3"
+        ],
+        "evidence_paths": [
+          "docs/fw-dspm-003-qwen-review.json",
+          "docs/fw-dspm-003-integrity.json"
+        ],
+        "family_id": "FW-DSPM",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-DSPM-003",
+        "resolved_commits": [
+          "30a23961040c066b74d88be31fd22e4acb15faf3"
+        ],
+        "test_paths": [
+          "tests/test_data_security.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/data_security.py",
+          "tests/test_data_security.py",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "470a5722cafbf4c16d9b308d41c0f48ad5424222",
+          "470a5722cafbf4c16d9b308d"
+        ],
+        "evidence_paths": [
+          "docs/fw-dspm-004-qwen-review.json",
+          "docs/fw-dspm-004-integrity.json"
+        ],
+        "family_id": "FW-DSPM",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-DSPM-004",
+        "resolved_commits": [
+          "470a5722cafbf4c16d9b308d41c0f48ad5424222"
+        ],
+        "test_paths": [
+          "tests/test_data_security.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/data_security.py",
+          "tests/test_data_security.py",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "42f935aa056e63f95fbb11f8f0eae270f83e426a",
+          "c57b8c4eb15edc2d38db3ecfefdffd3ae95b197b",
+          "c57b8c4eb15edc2d38db3ecf"
+        ],
+        "evidence_paths": [
+          "docs/fw-dspm-005-qwen-review.json",
+          "docs/fw-dspm-005-qwen-repair-review.json",
+          "docs/fw-dspm-005-claude-repair-review.json",
+          "docs/fw-dspm-005-integrity.json"
+        ],
+        "family_id": "FW-DSPM",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-DSPM-005",
+        "resolved_commits": [
+          "42f935aa056e63f95fbb11f8f0eae270f83e426a",
+          "c57b8c4eb15edc2d38db3ecfefdffd3ae95b197b"
+        ],
+        "test_paths": [
+          "tests/test_data_security.py",
+          "tests/test_action_ticket.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/data_security.py",
+          "swarm/mission_control.py",
+          "tests/test_data_security.py",
+          "tests/test_mission_control.py",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "b13d22b08698a7413d4e2a29c8dfa43f4d9cc9bc",
+          "5044231dafc490b2d8b56141b3bb4e44c541c918",
+          "5044231dafc490b2d8b56141"
+        ],
+        "evidence_paths": [
+          "docs/fw-dspm-006-qwen-review.json",
+          "docs/fw-dspm-006-qwen-repair-review.json",
+          "docs/fw-dspm-006-integrity.json"
+        ],
+        "family_id": "FW-DSPM",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-DSPM-006",
+        "resolved_commits": [
+          "b13d22b08698a7413d4e2a29c8dfa43f4d9cc9bc",
+          "5044231dafc490b2d8b56141b3bb4e44c541c918"
+        ],
+        "test_paths": [
+          "tests/test_data_security.py",
+          "tests/test_mission_control.py",
+          "tests/test_action_ticket.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "docs/fw-asm-inventory.md",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "bb2e6821e3209a5e067b878b9c9ddd39eafac43f",
+          "bb2e6821e3209a5e067b878b"
+        ],
+        "evidence_paths": [
+          "docs/fw-asm-001-qwen-review.json"
+        ],
+        "family_id": "FW-ASM",
+        "kind": "DOCUMENTATION_ONLY",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-ASM-001",
+        "resolved_commits": [
+          "bb2e6821e3209a5e067b878b9c9ddd39eafac43f"
+        ],
+        "test_paths": [],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/attack_surface.py",
+          "tests/test_attack_surface.py",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "ab8ad675e95bec0be73ec0d3f24bd804638bef14",
+          "6eb438b94d2173bc7846a70e8e6af55fb6481cf3",
+          "6eb438b94d2173bc7846a70e"
+        ],
+        "evidence_paths": [
+          "docs/fw-asm-002-qwen-review.json",
+          "docs/fw-asm-002-qwen-repair-review.json",
+          "docs/fw-asm-002-claude-repair-review.json",
+          "docs/fw-asm-002-integrity.json"
+        ],
+        "family_id": "FW-ASM",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-ASM-002",
+        "resolved_commits": [
+          "ab8ad675e95bec0be73ec0d3f24bd804638bef14",
+          "6eb438b94d2173bc7846a70e8e6af55fb6481cf3"
+        ],
+        "test_paths": [
+          "tests/test_attack_surface.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/attack_surface.py",
+          "tests/test_attack_surface.py",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "99a8f5d71f2196b535b947b6ccc58c02ddfd2afd",
+          "33395090781f5785d4fa8bcaf874bcf980319f17",
+          "33395090781f5785d4fa8bca"
+        ],
+        "evidence_paths": [
+          "docs/fw-asm-003-qwen-review.json",
+          "docs/fw-asm-003-claude-review.json",
+          "docs/fw-asm-003-claude-repair-review.json",
+          "docs/fw-asm-003-integrity.json"
+        ],
+        "family_id": "FW-ASM",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-ASM-003",
+        "resolved_commits": [
+          "99a8f5d71f2196b535b947b6ccc58c02ddfd2afd",
+          "33395090781f5785d4fa8bcaf874bcf980319f17"
+        ],
+        "test_paths": [
+          "tests/test_attack_surface.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/attack_surface.py",
+          "tests/test_attack_surface.py",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "e9e642373c4ad4cc24bf88af0405260e0a5022fb",
+          "11c0a42b6ea06ced07ed130e351cb1ed954f2027",
+          "11c0a42b6ea06ced07ed130e"
+        ],
+        "evidence_paths": [
+          "docs/fw-asm-004-qwen-review.json",
+          "docs/fw-asm-004-claude-review.json",
+          "docs/fw-asm-004-claude-repair-review.json",
+          "docs/fw-asm-004-integrity.json"
+        ],
+        "family_id": "FW-ASM",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-ASM-004",
+        "resolved_commits": [
+          "e9e642373c4ad4cc24bf88af0405260e0a5022fb",
+          "11c0a42b6ea06ced07ed130e351cb1ed954f2027"
+        ],
+        "test_paths": [
+          "tests/test_attack_surface.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/attack_surface.py",
+          "tests/test_attack_surface.py",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "c7beba4efe72e8cd1263cb365df7e3dc19361f2e",
+          "22aab2585521921bc58ef36e290b1990f87dc232",
+          "22aab2585521921bc58ef36e"
+        ],
+        "evidence_paths": [
+          "docs/fw-asm-005-qwen-review.json",
+          "docs/fw-asm-005-qwen-repair-review.json",
+          "docs/fw-asm-005-integrity.json"
+        ],
+        "family_id": "FW-ASM",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-ASM-005",
+        "resolved_commits": [
+          "c7beba4efe72e8cd1263cb365df7e3dc19361f2e",
+          "22aab2585521921bc58ef36e290b1990f87dc232"
+        ],
+        "test_paths": [
+          "tests/test_attack_surface.py",
+          "tests/test_action_ticket.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/attack_surface.py",
+          "swarm/mission_control.py",
+          "tests/test_attack_surface.py",
+          "tests/test_mission_control.py",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "100ab24c2e642f7162e3b7aca0a265b66d849787",
+          "e70bfae69c068109c954c61a0ef4ca32efa4fca7",
+          "e70bfae69c068109c954c61a"
+        ],
+        "evidence_paths": [
+          "docs/fw-asm-006-qwen-review.json",
+          "docs/fw-asm-006-qwen-repair-review.json",
+          "docs/fw-asm-006-integrity.json"
+        ],
+        "family_id": "FW-ASM",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-ASM-006",
+        "resolved_commits": [
+          "100ab24c2e642f7162e3b7aca0a265b66d849787",
+          "e70bfae69c068109c954c61a0ef4ca32efa4fca7"
+        ],
+        "test_paths": [
+          "tests/test_attack_surface.py",
+          "tests/test_mission_control.py",
+          "tests/test_action_ticket.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "docs/fw-net-inventory.md",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "a9c30f03842c83f77ad29df123f104b8dbebb7eb",
+          "a9c30f03842c83f77ad29df1"
+        ],
+        "evidence_paths": [
+          "docs/fw-net-001-qwen-review.json"
+        ],
+        "family_id": "FW-NET",
+        "kind": "DOCUMENTATION_ONLY",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-NET-001",
+        "resolved_commits": [
+          "a9c30f03842c83f77ad29df123f104b8dbebb7eb"
+        ],
+        "test_paths": [],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/network_security.py",
+          "tests/test_network_security.py",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "6aac57d824a75448baff969b4d03d917070157fc",
+          "225c4722bb4437db43feffd3e7645874ef2337f1"
+        ],
+        "evidence_paths": [
+          "docs/fw-net-002-*.json"
+        ],
+        "family_id": "FW-NET",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-NET-002",
+        "resolved_commits": [
+          "6aac57d824a75448baff969b4d03d917070157fc",
+          "225c4722bb4437db43feffd3e7645874ef2337f1"
+        ],
+        "test_paths": [
+          "tests/test_network_security.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/network_security.py",
+          "tests/test_network_security.py",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "f55997946067a27389b0e61955ff13f494ce4a41",
+          "8d1abbdad6cfe9ebdd2d4e0fff228475a8334458"
+        ],
+        "evidence_paths": [
+          "docs/fw-net-003-*.json"
+        ],
+        "family_id": "FW-NET",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-NET-003",
+        "resolved_commits": [
+          "f55997946067a27389b0e61955ff13f494ce4a41",
+          "8d1abbdad6cfe9ebdd2d4e0fff228475a8334458"
+        ],
+        "test_paths": [
+          "tests/test_network_security.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/network_security.py",
+          "tests/test_network_security.py",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "defab7ed42e8c97385763d6d7d35b493e2a31dc5",
+          "3e6bf56142cccf6ce01e360f25dc78ef2231a9c4"
+        ],
+        "evidence_paths": [
+          "docs/fw-net-004-*.json"
+        ],
+        "family_id": "FW-NET",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-NET-004",
+        "resolved_commits": [
+          "defab7ed42e8c97385763d6d7d35b493e2a31dc5",
+          "3e6bf56142cccf6ce01e360f25dc78ef2231a9c4"
+        ],
+        "test_paths": [
+          "tests/test_network_security.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/network_security.py",
+          "tests/test_network_security.py",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "4d48492ba3062ce502ffc4b62cd4acdadd48a551",
+          "4d48492ba3062ce502ffc4b6"
+        ],
+        "evidence_paths": [
+          "docs/fw-net-005-*.json"
+        ],
+        "family_id": "FW-NET",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-NET-005",
+        "resolved_commits": [
+          "4d48492ba3062ce502ffc4b62cd4acdadd48a551"
+        ],
+        "test_paths": [
+          "tests/test_network_security.py",
+          "tests/test_action_ticket.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/network_security.py",
+          "swarm/mission_control.py",
+          "tests/test_network_security.py",
+          "tests/test_mission_control.py",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "35ced75ff53d180e123b27db9199e5325a69d437",
+          "afff90a8ffec4e32a953dbd25f3020e2f5b84555"
+        ],
+        "evidence_paths": [
+          "docs/fw-net-006-*.json"
+        ],
+        "family_id": "FW-NET",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-NET-006",
+        "resolved_commits": [
+          "35ced75ff53d180e123b27db9199e5325a69d437",
+          "afff90a8ffec4e32a953dbd25f3020e2f5b84555"
+        ],
+        "test_paths": [
+          "tests/test_network_security.py",
+          "tests/test_mission_control.py",
+          "tests/test_action_ticket.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/supply_chain.py",
+          "swarm/mission_control.py",
+          "tests/test_supply_chain.py",
+          "tests/test_mission_control.py",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "ec3734d72d10f5c74df88e2270b927c64118a850",
+          "ec3734d72d10f5c74df88e22"
+        ],
+        "evidence_paths": [
+          "docs/fw-supply-006-*.json"
+        ],
+        "family_id": "FW-SUPPLY",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-SUPPLY-006",
+        "resolved_commits": [
+          "ec3734d72d10f5c74df88e2270b927c64118a850"
+        ],
+        "test_paths": [
+          "tests/test_supply_chain.py",
+          "tests/test_mission_control.py",
+          "tests/test_action_ticket.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/supply_chain.py",
+          "tests/test_supply_chain.py",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "b0dce11bb3f4c563abe5da17ab7319a9c735895c",
+          "b0dce11bb3f4c563abe5da17"
+        ],
+        "evidence_paths": [
+          "docs/fw-supply-005-*.json"
+        ],
+        "family_id": "FW-SUPPLY",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-SUPPLY-005",
+        "resolved_commits": [
+          "b0dce11bb3f4c563abe5da17ab7319a9c735895c"
+        ],
+        "test_paths": [
+          "tests/test_supply_chain.py",
+          "tests/test_action_ticket.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/supply_chain.py",
+          "tests/test_supply_chain.py",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "20c422642d805372916fd988b3c179200f667ac7",
+          "0e144a0ce6842b59f51c201742578cbf72edb1ee",
+          "0e144a0ce6842b59f51c2017"
+        ],
+        "evidence_paths": [
+          "docs/fw-supply-004-*.json"
+        ],
+        "family_id": "FW-SUPPLY",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-SUPPLY-004",
+        "resolved_commits": [
+          "20c422642d805372916fd988b3c179200f667ac7",
+          "0e144a0ce6842b59f51c201742578cbf72edb1ee"
+        ],
+        "test_paths": [
+          "tests/test_supply_chain.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/supply_chain.py",
+          "tests/test_supply_chain.py",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "be592c686b1c7b111c3972a3667ee52b111cdd4c",
+          "be592c686b1c7b111c3972a3"
+        ],
+        "evidence_paths": [
+          "docs/fw-supply-003-*.json"
+        ],
+        "family_id": "FW-SUPPLY",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-SUPPLY-003",
+        "resolved_commits": [
+          "be592c686b1c7b111c3972a3667ee52b111cdd4c"
+        ],
+        "test_paths": [
+          "tests/test_supply_chain.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/supply_chain.py",
+          "tests/test_supply_chain.py",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "25ebaee63969b870ba323081d3ba7f7bc9163d0b",
+          "25ebaee63969b870ba323081"
+        ],
+        "evidence_paths": [
+          "docs/fw-supply-002-*.json"
+        ],
+        "family_id": "FW-SUPPLY",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-SUPPLY-002",
+        "resolved_commits": [
+          "25ebaee63969b870ba323081d3ba7f7bc9163d0b"
+        ],
+        "test_paths": [
+          "tests/test_supply_chain.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "docs/fw-supply-inventory.md",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "189ac38fc34a309666544938c03b79c743bd8edc",
+          "189ac38fc34a309666544938"
+        ],
+        "evidence_paths": [
+          "docs/fw-supply-001-qwen-review.json"
+        ],
+        "family_id": "FW-SUPPLY",
+        "kind": "DOCUMENTATION_ONLY",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-SUPPLY-001",
+        "resolved_commits": [
+          "189ac38fc34a309666544938c03b79c743bd8edc"
+        ],
+        "test_paths": [],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/saas_security.py",
+          "swarm/mission_control.py",
+          "tests/test_saas_security.py",
+          "tests/test_mission_control.py",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "b27f507e57a5f9d0885163fe1b6e48cd426b34ff",
+          "b27f507e57a5f9d0885163fe"
+        ],
+        "evidence_paths": [
+          "docs/fw-saas-006-*.json"
+        ],
+        "family_id": "FW-SAAS",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-SAAS-006",
+        "resolved_commits": [
+          "b27f507e57a5f9d0885163fe1b6e48cd426b34ff"
+        ],
+        "test_paths": [
+          "tests/test_saas_security.py",
+          "tests/test_mission_control.py",
+          "tests/test_action_ticket.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/saas_security.py",
+          "tests/test_saas_security.py",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "089503e5be4607182d0177a1a4e8ce85d2b46af9",
+          "7949a26e032a2d81d69438bb3121e0e3ed900de0",
+          "7949a26e032a2d81d69438bb"
+        ],
+        "evidence_paths": [
+          "docs/fw-saas-005-*.json"
+        ],
+        "family_id": "FW-SAAS",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-SAAS-005",
+        "resolved_commits": [
+          "089503e5be4607182d0177a1a4e8ce85d2b46af9",
+          "7949a26e032a2d81d69438bb3121e0e3ed900de0"
+        ],
+        "test_paths": [
+          "tests/test_saas_security.py",
+          "tests/test_action_ticket.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/saas_security.py",
+          "tests/test_saas_security.py",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "f66e1d92b0fc4bf9bfb3309529446dc13e71bebc",
+          "a2b0691298999ab1dfb6650f8ecf468046742f35",
+          "a2b0691298999ab1dfb6650f"
+        ],
+        "evidence_paths": [
+          "docs/fw-saas-004-*.json"
+        ],
+        "family_id": "FW-SAAS",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-SAAS-004",
+        "resolved_commits": [
+          "f66e1d92b0fc4bf9bfb3309529446dc13e71bebc",
+          "a2b0691298999ab1dfb6650f8ecf468046742f35"
+        ],
+        "test_paths": [
+          "tests/test_saas_security.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/saas_security.py",
+          "tests/test_saas_security.py",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "0c4f6b40324950bf4f96b806f8665f6b33140fc4",
+          "773a940c48033bad3362375aeaa14618b690e261",
+          "773a940c48033bad3362375a"
+        ],
+        "evidence_paths": [
+          "docs/fw-saas-003-*.json"
+        ],
+        "family_id": "FW-SAAS",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-SAAS-003",
+        "resolved_commits": [
+          "0c4f6b40324950bf4f96b806f8665f6b33140fc4",
+          "773a940c48033bad3362375aeaa14618b690e261"
+        ],
+        "test_paths": [
+          "tests/test_saas_security.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/saas_security.py",
+          "tests/test_saas_security.py",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "f1928e2c0a124a7df635357a2cb333be0a2cabb3",
+          "f1928e2c0a124a7df635357a"
+        ],
+        "evidence_paths": [
+          "docs/fw-saas-002-qwen-review.json",
+          "docs/fw-saas-002-claude-review.json",
+          "docs/fw-saas-002-integrity.json"
+        ],
+        "family_id": "FW-SAAS",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-SAAS-002",
+        "resolved_commits": [
+          "f1928e2c0a124a7df635357a2cb333be0a2cabb3"
+        ],
+        "test_paths": [
+          "tests/test_saas_security.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "docs/fw-saas-inventory.md",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "03e958d71502f1a7eec91610123880868cd9c5b8",
+          "03e958d71502f1a7eec91610"
+        ],
+        "evidence_paths": [
+          "docs/fw-saas-001-qwen-review.json",
+          "docs/fw-saas-001-claude-review.json"
+        ],
+        "family_id": "FW-SAAS",
+        "kind": "DOCUMENTATION_ONLY",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-SAAS-001",
+        "resolved_commits": [
+          "03e958d71502f1a7eec91610123880868cd9c5b8"
+        ],
+        "test_paths": [],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/browser_email.py",
+          "tests/test_browser_email.py",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "513d3b4bf451b88d93cce2bc1499a187a6757eed",
+          "513d3b4bf451b88d93cce2bc"
+        ],
+        "evidence_paths": [
+          "docs/fw-bme-04-qwen-review.json",
+          "docs/fw-bme-04-claude-review.json",
+          "docs/fw-bme-04-integrity.json"
+        ],
+        "family_id": "FW-BME",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-BME-04",
+        "resolved_commits": [
+          "513d3b4bf451b88d93cce2bc1499a187a6757eed"
+        ],
+        "test_paths": [
+          "tests/test_browser_email.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "tests/test_macos_ransomware.py",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "c44d1ebd5b0d6a6ea42f61ded6641156b362c6e2",
+          "dd430b5bc0816015fc565792479ceec0e892b4ef",
+          "dd430b5bc0816015fc565792"
+        ],
+        "evidence_paths": [
+          "docs/fw-ransom-06-*.json"
+        ],
+        "family_id": "FW-RANSOM",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-RANSOM-06",
+        "resolved_commits": [
+          "c44d1ebd5b0d6a6ea42f61ded6641156b362c6e2",
+          "dd430b5bc0816015fc565792479ceec0e892b4ef"
+        ],
+        "test_paths": [
+          "tests/test_macos_ransomware.py",
+          "tests/test_macos_fixtures.py",
+          "tests/test_ransomware.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/macos_fixtures.py",
+          "swarm/endpoint_fixtures.py",
+          "tests/test_macos_fixtures.py",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "aa4edf990621304f323d76893fe2c5d5e12d7f0d",
+          "aa4edf990621304f323d7689"
+        ],
+        "evidence_paths": [
+          "docs/fw-endpoint-macos-01-qwen-review.json",
+          "docs/fw-endpoint-macos-01-integrity.json"
+        ],
+        "family_id": "FW-ENDPOINT",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-ENDPOINT-MACOS-01",
+        "resolved_commits": [
+          "aa4edf990621304f323d76893fe2c5d5e12d7f0d"
+        ],
+        "test_paths": [
+          "tests/test_macos_fixtures.py",
+          "tests/test_endpoint_fixtures.py",
+          "tests/test_normalized_events.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "docs/fw-endpoint-ransom-continuation.md",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "4482c8599bddd74be152dcbfa7a646dd78244b70",
+          "4482c8599bddd74be152dcbf"
+        ],
+        "evidence_paths": [
+          "docs/fw-endpoint-14-qwen-review.json"
+        ],
+        "family_id": "FW-ENDPOINT",
+        "kind": "DOCUMENTATION_ONLY",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-ENDPOINT-14",
+        "resolved_commits": [
+          "4482c8599bddd74be152dcbfa7a646dd78244b70"
+        ],
+        "test_paths": [],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "ROADMAP.md",
+          "DECISIONS.md",
+          "docs/fw-aid-architecture.md",
+          "docs/fw-endpoint-sensor-contract.md",
+          "docs/fw-harness-inventory.md",
+          "docs/management-console.md",
+          "docs/security-analysis.md",
+          "docs/fw-integrity-dependency-graph.md",
+          "docs/fw-integrity-functionality-map.md",
+          "swarm/integrity.py",
+          "tests/test_fw_aid_architecture.py",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "9e3e0230c5bc5aa3cfca740c9aae46b7d1e44438",
+          "9e3e0230c5bc5aa3cfca740c"
+        ],
+        "evidence_paths": [],
+        "family_id": "FW-AID",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-AID-001",
+        "resolved_commits": [
+          "9e3e0230c5bc5aa3cfca740c9aae46b7d1e44438"
+        ],
+        "test_paths": [
+          "tests/test_fw_aid_architecture.py",
+          "tests/test_integrity.py",
+          "tests/test_endpoint_design.py",
+          "tests/test_mission_control.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/browser_email.py",
+          "tests/test_browser_email.py",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "c5769c7002e8f2ffb3ae9885b20bbe8d81df88c6"
+        ],
+        "evidence_paths": [],
+        "family_id": "FW-BME",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-BME-03",
+        "resolved_commits": [
+          "c5769c7002e8f2ffb3ae9885b20bbe8d81df88c6"
+        ],
+        "test_paths": [
+          "tests/test_browser_email.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/soc.py",
+          "tests/test_soc.py",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "d036c4d101c08fdaf081d9070fdb6046e9f03fd4"
+        ],
+        "evidence_paths": [],
+        "family_id": "FW-SOC",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-SOC-01",
+        "resolved_commits": [
+          "d036c4d101c08fdaf081d9070fdb6046e9f03fd4"
+        ],
+        "test_paths": [
+          "tests/test_soc.py",
+          "tests/test_normalized_events.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/soc.py",
+          "tests/test_soc.py",
+          "swarm/integrity.py",
+          "tests/test_integrity.py",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "c89987fcb7061ffebc858548d052b051c6f233cc"
+        ],
+        "evidence_paths": [],
+        "family_id": "FW-SOC",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-SOC-02",
+        "resolved_commits": [
+          "c89987fcb7061ffebc858548d052b051c6f233cc"
+        ],
+        "test_paths": [
+          "tests/test_soc.py",
+          "tests/test_integrity.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/soc.py",
+          "tests/test_soc.py",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "01c29518727ea37f5db82980e0b0b174477c53d1"
+        ],
+        "evidence_paths": [],
+        "family_id": "FW-SOC",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-SOC-03",
+        "resolved_commits": [
+          "01c29518727ea37f5db82980e0b0b174477c53d1"
+        ],
+        "test_paths": [
+          "tests/test_soc.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/soc.py",
+          "tests/test_soc.py",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "a36d5a75f043720ac625aeaea4da99cf03f75bf3"
+        ],
+        "evidence_paths": [],
+        "family_id": "FW-SOC",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-SOC-04",
+        "resolved_commits": [
+          "a36d5a75f043720ac625aeaea4da99cf03f75bf3"
+        ],
+        "test_paths": [
+          "tests/test_soc.py",
+          "tests/test_action_ticket.py",
+          "tests/test_policy_gate.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/soc.py",
+          "tests/test_soc.py",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "a4c2534f9223a9af522838bbac7a0d8dadbbbc67"
+        ],
+        "evidence_paths": [],
+        "family_id": "FW-SOC",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-SOC-05",
+        "resolved_commits": [
+          "a4c2534f9223a9af522838bbac7a0d8dadbbbc67"
+        ],
+        "test_paths": [
+          "tests/test_soc.py",
+          "tests/test_normalized_events.py",
+          "tests/test_action_ticket.py",
+          "tests/test_policy_gate.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/identity.py",
+          "tests/test_identity.py",
+          "swarm/integrity.py",
+          "tests/test_integrity.py",
+          "docs/fw-id-inventory.md",
+          "DECISIONS.md",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "2d89726dd8c5d69a61b86d33de3f3fc56c8d2bfd"
+        ],
+        "evidence_paths": [],
+        "family_id": "FW-ID",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-ID-001",
+        "resolved_commits": [
+          "2d89726dd8c5d69a61b86d33de3f3fc56c8d2bfd"
+        ],
+        "test_paths": [
+          "tests/test_identity.py",
+          "tests/test_integrity.py",
+          "tests/test_asoc.py",
+          "tests/test_harness_worker.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/identity.py",
+          "tests/test_identity.py",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "1a082004f8e041afadd13d068189a5fabc92fe36",
+          "98603a37d016ca6daf73884a485bc897c524a8f0"
+        ],
+        "evidence_paths": [],
+        "family_id": "FW-ID",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-ID-002",
+        "resolved_commits": [
+          "1a082004f8e041afadd13d068189a5fabc92fe36",
+          "98603a37d016ca6daf73884a485bc897c524a8f0"
+        ],
+        "test_paths": [
+          "tests/test_identity.py",
+          "tests/test_asoc.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/identity.py",
+          "tests/test_identity.py",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "ef38dafa15a22c8a52c73c0d0c081685d5103155",
+          "e3113ec9151641c89ecd128f"
+        ],
+        "evidence_paths": [],
+        "family_id": "FW-ID",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-ID-003",
+        "resolved_commits": [
+          "ef38dafa15a22c8a52c73c0d0c081685d5103155"
+        ],
+        "test_paths": [
+          "tests/test_identity.py",
+          "tests/test_harness_worker.py",
+          "tests/test_model_broker.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/identity.py",
+          "swarm/harness_worker.py",
+          "tests/test_identity.py",
+          "tests/test_harness_worker.py",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "672b6ff99113a3b565c3dbbc33acaaad686e8c0d",
+          "b532f38b788748c9962df546"
+        ],
+        "evidence_paths": [],
+        "family_id": "FW-ID",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-ID-004",
+        "resolved_commits": [
+          "672b6ff99113a3b565c3dbbc33acaaad686e8c0d"
+        ],
+        "test_paths": [
+          "tests/test_identity.py",
+          "tests/test_harness_worker.py",
+          "tests/test_harness_controller.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/identity.py",
+          "swarm/harness_worker.py",
+          "tests/test_identity.py",
+          "tests/test_harness_worker.py",
+          "tests/test_harness_controller.py",
+          "swarm/integrity.py",
+          "tests/test_integrity.py",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "de01fef00bcd95ad04beab592ea053a6cb4491c2",
+          "121d5b011d3a41d1837db7e9"
+        ],
+        "evidence_paths": [],
+        "family_id": "FW-ID",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-ID-005",
+        "resolved_commits": [
+          "de01fef00bcd95ad04beab592ea053a6cb4491c2"
+        ],
+        "test_paths": [
+          "tests/test_identity.py",
+          "tests/test_harness_worker.py",
+          "tests/test_harness_controller.py",
+          "tests/test_integrity.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/keys.py",
+          "tests/test_keys.py",
+          "swarm/identity.py",
+          "swarm/harness_worker.py",
+          "tests/test_identity.py",
+          "tests/test_harness_worker.py",
+          "swarm/integrity.py",
+          "tests/test_integrity.py",
+          "docs/fw-keys-001-inventory.md",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "ca866fdfb800c20ec89a804a83ed01a8572c9955",
+          "ca866fdfb800c20ec89a804a"
+        ],
+        "evidence_paths": [],
+        "family_id": "FW-KEYS",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-KEYS-001",
+        "resolved_commits": [
+          "ca866fdfb800c20ec89a804a83ed01a8572c9955"
+        ],
+        "test_paths": [
+          "tests/test_keys.py",
+          "tests/test_identity.py",
+          "tests/test_harness_worker.py",
+          "tests/test_integrity.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/keys.py",
+          "tests/test_keys.py",
+          "swarm/integrity.py",
+          "tests/test_integrity.py",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "328620664045ed01ff2028dfa6619a6ab25a9f4a",
+          "328620664045ed01ff2028df"
+        ],
+        "evidence_paths": [],
+        "family_id": "FW-KEYS",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-KEYS-002",
+        "resolved_commits": [
+          "328620664045ed01ff2028dfa6619a6ab25a9f4a"
+        ],
+        "test_paths": [
+          "tests/test_keys.py",
+          "tests/test_integrity.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/keys.py",
+          "swarm/identity.py",
+          "swarm/harness_worker.py",
+          "swarm/harness_controller.py",
+          "tests/test_keys.py",
+          "tests/test_identity.py",
+          "tests/test_harness_worker.py",
+          "tests/test_harness_controller.py",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "5569690c74569d56e0bb1d8336fa1ccbcb3b1b5f",
+          "5569690c74569d56e0bb1d83"
+        ],
+        "evidence_paths": [],
+        "family_id": "FW-KEYS",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-KEYS-003",
+        "resolved_commits": [
+          "5569690c74569d56e0bb1d8336fa1ccbcb3b1b5f"
+        ],
+        "test_paths": [
+          "tests/test_keys.py",
+          "tests/test_identity.py",
+          "tests/test_harness_worker.py",
+          "tests/test_harness_controller.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/keys.py",
+          "swarm/anti_malware.py",
+          "tests/test_keys.py",
+          "tests/test_anti_malware.py",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "efec39cb2c91294473766908e7590bd433b0a9f8",
+          "efec39cb2c91294473766908"
+        ],
+        "evidence_paths": [],
+        "family_id": "FW-KEYS",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-KEYS-004",
+        "resolved_commits": [
+          "efec39cb2c91294473766908e7590bd433b0a9f8"
+        ],
+        "test_paths": [
+          "tests/test_keys.py",
+          "tests/test_anti_malware.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/keys.py",
+          "swarm/identity.py",
+          "swarm/harness_worker.py",
+          "swarm/harness_controller.py",
+          "swarm/anti_malware.py",
+          "swarm/integrity.py",
+          "tests/test_keys.py",
+          "tests/test_identity.py",
+          "tests/test_harness_worker.py",
+          "tests/test_harness_controller.py",
+          "tests/test_anti_malware.py",
+          "tests/test_integrity.py",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "30f99d8337af77fc02e405cf27cbd55f7ed7335a",
+          "30f99d8337af77fc02e405cf"
+        ],
+        "evidence_paths": [],
+        "family_id": "FW-KEYS",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-KEYS-005",
+        "resolved_commits": [
+          "30f99d8337af77fc02e405cf27cbd55f7ed7335a"
+        ],
+        "test_paths": [
+          "tests/test_keys.py",
+          "tests/test_identity.py",
+          "tests/test_harness_worker.py",
+          "tests/test_harness_controller.py",
+          "tests/test_anti_malware.py",
+          "tests/test_integrity.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/evidence.py",
+          "swarm/core.py",
+          "swarm/harness_evidence.py",
+          "swarm/accepted_work_evidence.py",
+          "swarm/audit_integrity.py",
+          "swarm/integrity.py",
+          "docs/fw-evid-inventory.md",
+          "tests/test_evidence.py",
+          "tests/test_integrity.py",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "ad76ff095581a7a52a5a1c49574aefca227a89f8",
+          "bf87e0c6c89e774d2c896772837648dd20e7e9c1",
+          "bf87e0c6c89e774d2c896772"
+        ],
+        "evidence_paths": [],
+        "family_id": "FW-EVID",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-EVID-001",
+        "resolved_commits": [
+          "ad76ff095581a7a52a5a1c49574aefca227a89f8",
+          "bf87e0c6c89e774d2c896772837648dd20e7e9c1"
+        ],
+        "test_paths": [
+          "tests/test_evidence.py",
+          "tests/test_audit_integrity.py",
+          "tests/test_accepted_work_evidence.py",
+          "tests/test_harness_evidence.py",
+          "tests/test_integrity.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/evidence.py",
+          "tests/test_evidence.py",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "7ee285c6c655d05ff88c01eaa449af85cb7a46d1",
+          "7ee285c6c655d05ff88c01ea"
+        ],
+        "evidence_paths": [],
+        "family_id": "FW-EVID",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-EVID-002",
+        "resolved_commits": [
+          "7ee285c6c655d05ff88c01eaa449af85cb7a46d1"
+        ],
+        "test_paths": [
+          "tests/test_evidence.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/evidence.py",
+          "swarm/harness_evidence.py",
+          "swarm/harness_controller.py",
+          "tests/test_evidence.py",
+          "tests/test_harness_evidence.py",
+          "tests/test_harness_controller.py",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "3a4044c60a79ae440ff58edadf227df947d96500",
+          "3a4044c60a79ae440ff58eda"
+        ],
+        "evidence_paths": [],
+        "family_id": "FW-EVID",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-EVID-003",
+        "resolved_commits": [
+          "3a4044c60a79ae440ff58edadf227df947d96500"
+        ],
+        "test_paths": [
+          "tests/test_evidence.py",
+          "tests/test_harness_evidence.py",
+          "tests/test_harness_controller.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/evidence.py",
+          "swarm/core.py",
+          "swarm/audit_integrity.py",
+          "tests/test_evidence.py",
+          "tests/test_swarm.py",
+          "tests/test_audit_integrity.py",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "c2b5b46967e65ddc6676aad1631f268370829a7c",
+          "c2b5b46967e65ddc6676aad1"
+        ],
+        "evidence_paths": [],
+        "family_id": "FW-EVID",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-EVID-004",
+        "resolved_commits": [
+          "c2b5b46967e65ddc6676aad1631f268370829a7c"
+        ],
+        "test_paths": [
+          "tests/test_evidence.py",
+          "tests/test_swarm.py",
+          "tests/test_audit_integrity.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/accepted_work_evidence.py",
+          "swarm/evidence.py",
+          "tests/test_accepted_work_evidence.py",
+          "tests/test_evidence.py",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "8b86578dbf6ede0236b45d00b856c648cd39198e",
+          "8b86578dbf6ede0236b45d00"
+        ],
+        "evidence_paths": [],
+        "family_id": "FW-EVID",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-EVID-005",
+        "resolved_commits": [
+          "8b86578dbf6ede0236b45d00b856c648cd39198e"
+        ],
+        "test_paths": [
+          "tests/test_accepted_work_evidence.py",
+          "tests/test_evidence.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/evidence.py",
+          "swarm/harness_evidence.py",
+          "swarm/accepted_work_evidence.py",
+          "swarm/integrity.py",
+          "tests/test_evidence_lifecycle.py",
+          "tests/test_evidence.py",
+          "tests/test_harness_evidence.py",
+          "tests/test_accepted_work_evidence.py",
+          "docs/fw-evid-inventory.md",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "bb8f2a64adf3563581b8e81fab21598cc95ad2fc",
+          "bb8f2a64adf3563581b8e81f"
+        ],
+        "evidence_paths": [],
+        "family_id": "FW-EVID",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-EVID-006",
+        "resolved_commits": [
+          "bb8f2a64adf3563581b8e81fab21598cc95ad2fc"
+        ],
+        "test_paths": [
+          "tests/test_evidence.py",
+          "tests/test_harness_evidence.py",
+          "tests/test_accepted_work_evidence.py",
+          "tests/test_evidence_lifecycle.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/harness_failure.py",
+          "swarm/harness_risk.py",
+          "swarm/harness_recovery.py",
+          "tests/test_harness_failure.py",
+          "docs/fw-harness-inventory.md",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "9d196c4032da456d2d2274eecdd15e3a8d33ebf9",
+          "9d196c4032da456d2d2274ee"
+        ],
+        "evidence_paths": [],
+        "family_id": "FW-HARNESS",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-HARNESS-017",
+        "resolved_commits": [
+          "9d196c4032da456d2d2274eecdd15e3a8d33ebf9"
+        ],
+        "test_paths": [
+          "tests/test_harness_failure.py",
+          "tests/test_harness_risk.py",
+          "tests/test_harness_recovery.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/harness_models.py",
+          "swarm/harness_risk.py",
+          "tests/test_harness_models.py",
+          "tests/test_harness_risk.py",
+          "docs/fw-harness-inventory.md",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "b647df6b8b78c5703da99909e247a03d21653ae1",
+          "b647df6b8b78c5703da99909"
+        ],
+        "evidence_paths": [],
+        "family_id": "FW-HARNESS",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-HARNESS-016",
+        "resolved_commits": [
+          "b647df6b8b78c5703da99909e247a03d21653ae1"
+        ],
+        "test_paths": [
+          "tests/test_harness_models.py",
+          "tests/test_harness_risk.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/harness_risk.py",
+          "tests/test_harness_risk.py",
+          "docs/fw-harness-inventory.md",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "dda243e755c4f21b565aca762d5f9cb949ec35df",
+          "dda243e755c4f21b565aca76"
+        ],
+        "evidence_paths": [],
+        "family_id": "FW-HARNESS",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-HARNESS-015",
+        "resolved_commits": [
+          "dda243e755c4f21b565aca762d5f9cb949ec35df"
+        ],
+        "test_paths": [
+          "tests/test_harness_risk.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/policy_gate.py",
+          "swarm/integrity.py",
+          "tests/test_policy_gate.py",
+          "tests/test_integrity.py",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "ace85ab00d187b4836826ad6a3ce8c532b209a6d",
+          "ace85ab00d187b4836826ad6"
+        ],
+        "evidence_paths": [],
+        "family_id": "FW-INTEGRITY",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-INTEGRITY-001",
+        "resolved_commits": [
+          "ace85ab00d187b4836826ad6a3ce8c532b209a6d"
+        ],
+        "test_paths": [
+          "tests/test_policy_gate.py",
+          "tests/test_integrity.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "docs/core-completion-audit-2026-09-12.md",
+          "docs/fw-integrity-dependency-graph.md",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "c16987e2751525c811872e5893113b86799b1bc7",
+          "c16987e2751525c811872e58"
+        ],
+        "evidence_paths": [],
+        "family_id": "FW-INTEGRITY",
+        "kind": "DOCUMENTATION_ONLY",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-INTEGRITY-002",
+        "resolved_commits": [
+          "c16987e2751525c811872e5893113b86799b1bc7"
+        ],
+        "test_paths": [],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/integrity.py",
+          "tests/test_integrity.py",
+          "docs/fw-integrity-reality-audit.md",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "45f4b90fda129ee1154ff48c3c2586ff378c8315",
+          "45f4b90fda129ee1154ff48c"
+        ],
+        "evidence_paths": [
+          "docs/fw-integrity-003-qwen-review.json",
+          "docs/fw-integrity-003-integrity.json"
+        ],
+        "family_id": "FW-INTEGRITY",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-INTEGRITY-003",
+        "resolved_commits": [
+          "45f4b90fda129ee1154ff48c3c2586ff378c8315"
+        ],
+        "test_paths": [
+          "tests/test_integrity.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/integrity.py",
+          "tests/test_integrity.py",
+          "docs/fw-integrity-functionality-map.md",
+          "docs/fw-integrity-reality-audit.md",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "ce51d7019077e522b76fdbe963879c3ddcb44ad7",
+          "ce51d7019077e522b76fdbe9"
+        ],
+        "evidence_paths": [
+          "docs/fw-integrity-004-qwen-review.json",
+          "docs/fw-integrity-004-integrity.json"
+        ],
+        "family_id": "FW-INTEGRITY",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-INTEGRITY-004",
+        "resolved_commits": [
+          "ce51d7019077e522b76fdbe963879c3ddcb44ad7"
+        ],
+        "test_paths": [
+          "tests/test_integrity.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/api_contract.py",
+          "tests/test_api_contract.py",
+          "docs/fw-api-architecture.md",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "2e9aa47da907f77be54894fc443487c0081f853d"
+        ],
+        "evidence_paths": [],
+        "family_id": "FW-API",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-API-001",
+        "resolved_commits": [
+          "2e9aa47da907f77be54894fc443487c0081f853d"
+        ],
+        "test_paths": [
+          "tests/test_api_contract.py",
+          "tests/test_identity.py",
+          "tests/test_policy_gate.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "docs/fw-ops-inventory.md",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "f44d173f8016202b0ac3f198f7cb9a5b18f7b275",
+          "f44d173f8016202b0ac3f198"
+        ],
+        "evidence_paths": [],
+        "family_id": "FW-OPS",
+        "kind": "DOCUMENTATION_ONLY",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-OPS-001",
+        "resolved_commits": [
+          "f44d173f8016202b0ac3f198f7cb9a5b18f7b275"
+        ],
+        "test_paths": [],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/operations.py",
+          "tests/test_operations.py",
+          "docs/fw-ops-inventory.md",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "e10f730392bbf7138e50081c05632d20c1401679",
+          "e10f730392bbf7138e50081c"
+        ],
+        "evidence_paths": [],
+        "family_id": "FW-OPS",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-OPS-002",
+        "resolved_commits": [
+          "e10f730392bbf7138e50081c05632d20c1401679"
+        ],
+        "test_paths": [
+          "tests/test_operations.py",
+          "tests/test_sensor_adapter.py",
+          "tests/test_harness_recovery.py",
+          "tests/test_policy_gate.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/operations_capacity.py",
+          "tests/test_operations_capacity.py",
+          "docs/fw-ops-inventory.md",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "f0cf0e53a04a51e3700cfaacff5590b98a2d78f9",
+          "f0cf0e53a04a51e3700cfaac"
+        ],
+        "evidence_paths": [],
+        "family_id": "FW-OPS",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-OPS-003",
+        "resolved_commits": [
+          "f0cf0e53a04a51e3700cfaacff5590b98a2d78f9"
+        ],
+        "test_paths": [
+          "tests/test_operations_capacity.py",
+          "tests/test_operations.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/mission_control.py",
+          "swarm/integrity.py",
+          "tests/test_operations_continuity.py",
+          "tests/test_integrity.py",
+          "docs/fw-ops-inventory.md",
+          "docs/fw-integrity-functionality-map.md",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "f64e38c2579ee002e65fbf909d8edc7c202ab7c2",
+          "f64e38c2579ee002e65fbf90"
+        ],
+        "evidence_paths": [],
+        "family_id": "FW-OPS",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-OPS-004",
+        "resolved_commits": [
+          "f64e38c2579ee002e65fbf909d8edc7c202ab7c2"
+        ],
+        "test_paths": [
+          "tests/test_operations_continuity.py",
+          "tests/test_operations_capacity.py",
+          "tests/test_operations.py",
+          "tests/test_recovery.py",
+          "tests/test_mission_control.py",
+          "tests/test_integrity.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/mission_control_demo.py",
+          "swarm/console.py",
+          "console/index.html",
+          "console/app.js",
+          "console/styles.css",
+          "tests/test_console.py",
+          "docs/management-console.md",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "d68b457590986e29d3403d935480a0c4ae8559ad",
+          "68b457590986e29d3403d935"
+        ],
+        "evidence_paths": [],
+        "family_id": "FW-UX",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-UX-001",
+        "resolved_commits": [
+          "d68b457590986e29d3403d935480a0c4ae8559ad"
+        ],
+        "test_paths": [
+          "tests/test_console.py",
+          "tests/test_mission_control.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/recovery.py",
+          "tests/test_recovery.py",
+          "docs/fw-rec-inventory.md",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "f94d24570bfe87fc1047bf31c761f05e35dfedcb",
+          "f94d24570bfe87fc1047bf31"
+        ],
+        "evidence_paths": [],
+        "family_id": "FW-REC",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-REC-003",
+        "resolved_commits": [
+          "f94d24570bfe87fc1047bf31c761f05e35dfedcb"
+        ],
+        "test_paths": [
+          "tests/test_recovery.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/recovery.py",
+          "tests/test_recovery.py",
+          "tests/test_recovery_lifecycle.py",
+          "docs/fw-rec-inventory.md",
+          "swarm/integrity.py",
+          "tests/test_integrity.py",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "037873cfc7b69a8cc2e3c5b7226369af79d85dda",
+          "37873cfc7b69a8cc2e3c5b72"
+        ],
+        "evidence_paths": [],
+        "family_id": "FW-REC",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-REC-004",
+        "resolved_commits": [
+          "037873cfc7b69a8cc2e3c5b7226369af79d85dda"
+        ],
+        "test_paths": [
+          "tests/test_recovery.py",
+          "tests/test_recovery_lifecycle.py",
+          "tests/test_integrity.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "docs/fw-comp-inventory.md",
+          "swarm/compliance.py",
+          "swarm/integrity.py",
+          "tests/test_compliance.py",
+          "tests/test_integrity.py",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "ec7be16605726f1bcb289fbb06258018715b6128",
+          "c7be16605726f1bcb289fbb0"
+        ],
+        "evidence_paths": [],
+        "family_id": "FW-COMP",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-COMP-001",
+        "resolved_commits": [
+          "ec7be16605726f1bcb289fbb06258018715b6128"
+        ],
+        "test_paths": [
+          "tests/test_compliance.py",
+          "tests/test_integrity.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/compliance.py",
+          "tests/test_compliance.py",
+          "docs/fw-comp-inventory.md",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "eadc358389da26c487c5ce70f5e0a89add6638b0",
+          "eadc358389da26c487c5ce70"
+        ],
+        "evidence_paths": [],
+        "family_id": "FW-COMP",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-COMP-002",
+        "resolved_commits": [
+          "eadc358389da26c487c5ce70f5e0a89add6638b0"
+        ],
+        "test_paths": [
+          "tests/test_compliance.py",
+          "tests/test_evidence.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/compliance.py",
+          "tests/test_compliance.py",
+          "docs/fw-comp-inventory.md",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "b7f7b785f2de6b1a27fbceb1f2bc952728cc4bef",
+          "b7f7b785f2de6b1a27fbceb1"
+        ],
+        "evidence_paths": [],
+        "family_id": "FW-COMP",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-COMP-003",
+        "resolved_commits": [
+          "b7f7b785f2de6b1a27fbceb1f2bc952728cc4bef"
+        ],
+        "test_paths": [
+          "tests/test_compliance.py",
+          "tests/test_evidence.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/compliance.py",
+          "swarm/integrity.py",
+          "tests/test_compliance.py",
+          "tests/test_integrity.py",
+          "docs/fw-comp-inventory.md",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "602507c85dd075c0444c3a1f26e3d22363c5034d",
+          "602507c85dd075c0444c3a1f"
+        ],
+        "evidence_paths": [],
+        "family_id": "FW-COMP",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-COMP-004",
+        "resolved_commits": [
+          "602507c85dd075c0444c3a1f26e3d22363c5034d"
+        ],
+        "test_paths": [
+          "tests/test_compliance.py",
+          "tests/test_integrity.py",
+          "tests/test_evidence.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/normalized_events.py",
+          "tests/test_normalized_events.py",
+          "tests/test_fw_aid.py",
+          "docs/fw-aid-architecture.md",
+          "docs/fw-endpoint-sensor-contract.md",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "239069eaf02b9df127060f851243348ef899145b",
+          "239069eaf02b9df127060f85"
+        ],
+        "evidence_paths": [],
+        "family_id": "FW-AID",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-AID-002",
+        "resolved_commits": [
+          "239069eaf02b9df127060f851243348ef899145b"
+        ],
+        "test_paths": [
+          "tests/test_normalized_events.py",
+          "tests/test_fw_aid.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/ai_agent_defense.py",
+          "swarm/normalized_events.py",
+          "tests/test_fw_aid.py",
+          "docs/fw-aid-architecture.md",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "e62de434510351338ecadf00f46357865e4bdbb7",
+          "e62de434510351338ecadf00"
+        ],
+        "evidence_paths": [],
+        "family_id": "FW-AID",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-AID-003",
+        "resolved_commits": [
+          "e62de434510351338ecadf00f46357865e4bdbb7"
+        ],
+        "test_paths": [
+          "tests/test_fw_aid.py",
+          "tests/test_normalized_events.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/ai_agent_defense.py",
+          "swarm/harness_evidence.py",
+          "swarm/normalized_events.py",
+          "tests/test_fw_aid.py",
+          "tests/test_harness_evidence.py",
+          "docs/fw-aid-architecture.md",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "5ede6beece0707973b4f018a92ebd3553bee7609",
+          "5ede6beece0707973b4f018a"
+        ],
+        "evidence_paths": [],
+        "family_id": "FW-AID",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-AID-004",
+        "resolved_commits": [
+          "5ede6beece0707973b4f018a92ebd3553bee7609"
+        ],
+        "test_paths": [
+          "tests/test_fw_aid.py",
+          "tests/test_harness_evidence.py",
+          "tests/test_normalized_events.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/ai_agent_defense.py",
+          "swarm/soc.py",
+          "swarm/normalized_events.py",
+          "tests/test_fw_aid.py",
+          "tests/test_soc.py",
+          "docs/fw-aid-architecture.md",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "49743ac430e24a6518e0a8e81f0fa99a2f976472",
+          "49743ac430e24a6518e0a8e8"
+        ],
+        "evidence_paths": [],
+        "family_id": "FW-AID",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-AID-005",
+        "resolved_commits": [
+          "49743ac430e24a6518e0a8e81f0fa99a2f976472"
+        ],
+        "test_paths": [
+          "tests/test_fw_aid.py",
+          "tests/test_soc.py",
+          "tests/test_normalized_events.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/ai_agent_defense.py",
+          "swarm/policy_gate.py",
+          "swarm/soc.py",
+          "tests/test_fw_aid.py",
+          "tests/test_policy_gate.py",
+          "docs/fw-aid-architecture.md",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "63ca1c903590a212c750ea7bb3261e0e0bf10473",
+          "63ca1c903590a212c750ea7b"
+        ],
+        "evidence_paths": [],
+        "family_id": "FW-AID",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-AID-006",
+        "resolved_commits": [
+          "63ca1c903590a212c750ea7bb3261e0e0bf10473"
+        ],
+        "test_paths": [
+          "tests/test_fw_aid.py",
+          "tests/test_policy_gate.py",
+          "tests/test_soc.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/mission_control.py",
+          "swarm/mission_control_demo.py",
+          "tests/test_mission_control.py",
+          "tests/test_fw_aid.py",
+          "docs/fw-aid-architecture.md",
+          "docs/management-console.md",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "731bb5bf65a309b5b70ca4336896879baad13b43",
+          "731bb5bf65a309b5b70ca433"
+        ],
+        "evidence_paths": [],
+        "family_id": "FW-AID",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-AID-007",
+        "resolved_commits": [
+          "731bb5bf65a309b5b70ca4336896879baad13b43"
+        ],
+        "test_paths": [
+          "tests/test_mission_control.py",
+          "tests/test_fw_aid.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "tests/test_fw_aid_adversarial.py",
+          "swarm/ai_agent_defense.py",
+          "swarm/normalized_events.py",
+          "docs/fw-aid-architecture.md",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "906f98b28c8cbf63832d359a6f4d117e665aa1ee",
+          "906f98b28c8cbf63832d359a"
+        ],
+        "evidence_paths": [],
+        "family_id": "FW-AID",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-AID-008",
+        "resolved_commits": [
+          "906f98b28c8cbf63832d359a6f4d117e665aa1ee"
+        ],
+        "test_paths": [
+          "tests/test_fw_aid_adversarial.py",
+          "tests/test_fw_aid.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/endpoint_fixtures.py",
+          "swarm/normalized_events.py",
+          "swarm/ai_agent_defense.py",
+          "tests/test_endpoint_adapter.py",
+          "tests/test_fw_aid.py",
+          "docs/fw-aid-architecture.md",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "a5257103929b4d90d88a23d14cfdf0d9010e6f03",
+          "a5257103929b4d90d88a23d1"
+        ],
+        "evidence_paths": [],
+        "family_id": "FW-AID",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-AID-009",
+        "resolved_commits": [
+          "a5257103929b4d90d88a23d14cfdf0d9010e6f03"
+        ],
+        "test_paths": [
+          "tests/test_endpoint_adapter.py",
+          "tests/test_fw_aid.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "tests/test_fw_aid_lifecycle.py",
+          "tests/test_fw_aid_architecture.py",
+          "swarm/ai_agent_defense.py",
+          "swarm/normalized_events.py",
+          "swarm/mission_control.py",
+          "swarm/integrity.py",
+          "docs/fw-aid-architecture.md",
+          "ROADMAP.md",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "b83de7c697d02e23f4cb372f961c260fa2a5fbff",
+          "b83de7c697d02e23f4cb372f"
+        ],
+        "evidence_paths": [],
+        "family_id": "FW-AID",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-AID-010",
+        "resolved_commits": [
+          "b83de7c697d02e23f4cb372f961c260fa2a5fbff"
+        ],
+        "test_paths": [
+          "tests/test_fw_aid_lifecycle.py",
+          "tests/test_fw_aid.py",
+          "tests/test_endpoint_adapter.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/mission_control_demo.py",
+          "swarm/console.py",
+          "console/index.html",
+          "console/app.js",
+          "console/styles.css",
+          "tests/test_console.py",
+          "tests/test_console_frontend.js",
+          "docs/management-console.md",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "de39e59393ef014a56413958bf4ce8dadbb68e68",
+          "de39e59393ef014a56413958"
+        ],
+        "evidence_paths": [],
+        "family_id": "FW-UX",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-UX-002",
+        "resolved_commits": [
+          "de39e59393ef014a56413958bf4ce8dadbb68e68"
+        ],
+        "test_paths": [
+          "tests/test_console.py",
+          "tests/test_mission_control.py",
+          "tests/test_console_frontend.js"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/mission_control_demo.py",
+          "console/index.html",
+          "console/app.js",
+          "console/styles.css",
+          "tests/test_console.py",
+          "tests/test_console_frontend.js",
+          "docs/management-console.md",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "038de2b019b2c5a07c33f35d1ca1e4d41dfa1f53",
+          "f6c130a62759f7abbc12c78f"
+        ],
+        "evidence_paths": [],
+        "family_id": "FW-UX",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-UX-003",
+        "resolved_commits": [
+          "038de2b019b2c5a07c33f35d1ca1e4d41dfa1f53"
+        ],
+        "test_paths": [
+          "tests/test_console.py",
+          "tests/test_mission_control.py",
+          "tests/test_console_frontend.js"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/mission_control_demo.py",
+          "console/index.html",
+          "console/app.js",
+          "console/styles.css",
+          "tests/test_console.py",
+          "tests/test_console_frontend.js",
+          "docs/management-console.md",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "63b012bbde64d932a0216cf4dbb9483423881671",
+          "3d0d3ea71394454b46958d86"
+        ],
+        "evidence_paths": [],
+        "family_id": "FW-UX",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-UX-004",
+        "resolved_commits": [
+          "63b012bbde64d932a0216cf4dbb9483423881671"
+        ],
+        "test_paths": [
+          "tests/test_console.py",
+          "tests/test_mission_control.py",
+          "tests/test_console_frontend.js"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/mission_control_demo.py",
+          "console/index.html",
+          "console/app.js",
+          "console/styles.css",
+          "tests/test_console.py",
+          "tests/test_console_frontend.js",
+          "docs/management-console.md",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "c662398c169ac3bbc8a94833ec9257a6b5853c30",
+          "2ef2b5df65deda6a84517f77"
+        ],
+        "evidence_paths": [],
+        "family_id": "FW-UX",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-UX-005",
+        "resolved_commits": [
+          "c662398c169ac3bbc8a94833ec9257a6b5853c30"
+        ],
+        "test_paths": [
+          "tests/test_console.py",
+          "tests/test_mission_control.py",
+          "tests/test_console_frontend.js"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "console/app.js",
+          "tests/test_console_frontend.js",
+          "docs/management-console.md",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "976203f9366c75d2864837cfbdbde1a38cbd4656",
+          "976203f9366c75d2864837cf"
+        ],
+        "evidence_paths": [
+          "docs/fw-ux-006-qwen-review.json"
+        ],
+        "family_id": "FW-UX",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-UX-006",
+        "resolved_commits": [
+          "976203f9366c75d2864837cfbdbde1a38cbd4656"
+        ],
+        "test_paths": [
+          "tests/test_console.py",
+          "tests/test_mission_control.py",
+          "tests/test_console_frontend.js"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/console.py",
+          "swarm/mission_control.py",
+          "console/app.js",
+          "console/index.html",
+          "tests/test_console.py",
+          "tests/test_mission_control.py",
+          "tests/test_console_frontend.js",
+          "docs/management-console.md",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "4997c080d6d24d144b663be4475c6cbcc4ddbcbf",
+          "4997c080d6d24d144b663be4"
+        ],
+        "evidence_paths": [],
+        "family_id": "FW-UX",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-UX-007",
+        "resolved_commits": [
+          "4997c080d6d24d144b663be4475c6cbcc4ddbcbf"
+        ],
+        "test_paths": [
+          "tests/test_console.py",
+          "tests/test_mission_control.py",
+          "tests/test_harness_controller.py",
+          "tests/test_console_frontend.js"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/mission_control.py",
+          "swarm/console.py",
+          "console/app.js",
+          "console/index.html",
+          "tests/test_console.py",
+          "tests/test_mission_control.py",
+          "tests/test_console_frontend.js",
+          "docs/management-console.md",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "7155354fcf77eca6cb998a8b1d6627da8880c61b",
+          "63a34baad213a29ac38fe4413d54d8b6154dce22",
+          "63a34baad213a29ac38fe441"
+        ],
+        "evidence_paths": [],
+        "family_id": "FW-UX",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-UX-008",
+        "resolved_commits": [
+          "7155354fcf77eca6cb998a8b1d6627da8880c61b",
+          "63a34baad213a29ac38fe4413d54d8b6154dce22"
+        ],
+        "test_paths": [
+          "tests/test_mission_control.py",
+          "tests/test_console.py",
+          "tests/test_soc.py",
+          "tests/test_console_frontend.js"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/mission_control.py",
+          "swarm/console.py",
+          "console/app.js",
+          "console/index.html",
+          "tests/test_console.py",
+          "tests/test_mission_control.py",
+          "tests/test_console_frontend.js",
+          "docs/management-console.md",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "b2ea73d6d1f06ea51b00e3a1197536aef240dcb3",
+          "b2ea73d6d1f06ea51b00e3a1"
+        ],
+        "evidence_paths": [],
+        "family_id": "FW-UX",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-UX-009",
+        "resolved_commits": [
+          "b2ea73d6d1f06ea51b00e3a1197536aef240dcb3"
+        ],
+        "test_paths": [
+          "tests/test_mission_control.py",
+          "tests/test_console.py",
+          "tests/test_evidence.py",
+          "tests/test_console_frontend.js"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/mission_control.py",
+          "swarm/console.py",
+          "console/app.js",
+          "console/index.html",
+          "tests/test_console.py",
+          "tests/test_mission_control.py",
+          "tests/test_console_frontend.js",
+          "docs/management-console.md",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "19eb5927448c0efe4f516415ace214d5c06a2b54",
+          "19eb5927448c0efe4f516415"
+        ],
+        "evidence_paths": [],
+        "family_id": "FW-UX",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-UX-010",
+        "resolved_commits": [
+          "19eb5927448c0efe4f516415ace214d5c06a2b54"
+        ],
+        "test_paths": [
+          "tests/test_mission_control.py",
+          "tests/test_console.py",
+          "tests/test_policy_gate.py",
+          "tests/test_action_ticket.py",
+          "tests/test_console_frontend.js"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/mission_control.py",
+          "swarm/console.py",
+          "console/app.js",
+          "console/index.html",
+          "tests/test_console.py",
+          "tests/test_mission_control.py",
+          "tests/test_console_frontend.js",
+          "docs/management-console.md",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "415730f10a309b27ac940f8631f1eaeb892a027d",
+          "415730f10a309b27ac940f86"
+        ],
+        "evidence_paths": [],
+        "family_id": "FW-UX",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-UX-011",
+        "resolved_commits": [
+          "415730f10a309b27ac940f8631f1eaeb892a027d"
+        ],
+        "test_paths": [
+          "tests/test_mission_control.py",
+          "tests/test_console.py",
+          "tests/test_model_broker.py",
+          "tests/test_mcp_gateway.py",
+          "tests/test_console_frontend.js"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/console.py",
+          "console/app.js",
+          "tests/test_console.py",
+          "tests/test_console_frontend.js",
+          "tests/test_mission_control_lifecycle.py",
+          "docs/management-console.md",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "9a46f0ddb68fa374c09101ff56a234153c8ba127",
+          "9a46f0ddb68fa374c09101ff"
+        ],
+        "evidence_paths": [],
+        "family_id": "FW-UX",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-UX-012",
+        "resolved_commits": [
+          "9a46f0ddb68fa374c09101ff56a234153c8ba127"
+        ],
+        "test_paths": [
+          "tests/test_mission_control_lifecycle.py",
+          "tests/test_console.py",
+          "tests/test_console_frontend.js"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/recovery.py",
+          "tests/test_recovery.py",
+          "docs/fw-rec-inventory.md",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "70b881390e8f7aeb204a09098cbdfbba22579440",
+          "70b881390e8f7aeb204a0909"
+        ],
+        "evidence_paths": [],
+        "family_id": "FW-REC",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-REC-002",
+        "resolved_commits": [
+          "70b881390e8f7aeb204a09098cbdfbba22579440"
+        ],
+        "test_paths": [
+          "tests/test_recovery.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/recovery.py",
+          "swarm/autonomous_loop.py",
+          "swarm/work_checkpoint.py",
+          "swarm/harness_recovery.py",
+          "swarm/evidence.py",
+          "tests/test_recovery.py",
+          "tests/test_autonomous_loop.py",
+          "tests/test_work_checkpoint.py",
+          "tests/test_harness_recovery.py",
+          "docs/fw-rec-inventory.md",
+          "swarm/integrity.py",
+          "tests/test_integrity.py",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "4ffa96f611f5588850922d821ae0047699a94c76",
+          "4ffa96f611f5588850922d82"
+        ],
+        "evidence_paths": [],
+        "family_id": "FW-REC",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-REC-001",
+        "resolved_commits": [
+          "4ffa96f611f5588850922d821ae0047699a94c76"
+        ],
+        "test_paths": [
+          "tests/test_recovery.py",
+          "tests/test_autonomous_loop.py",
+          "tests/test_work_checkpoint.py",
+          "tests/test_harness_recovery.py",
+          "tests/test_integrity.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/browser_email.py",
+          "tests/test_browser_email.py",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "87a2d15f29504679d35b7c84f4c7e6a940f1dfd9"
+        ],
+        "evidence_paths": [
+          "docs/fw-bme-02-claude-review.json",
+          "docs/fw-bme-02-integrity.json"
+        ],
+        "family_id": "FW-BME",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-BME-02",
+        "resolved_commits": [
+          "87a2d15f29504679d35b7c84f4c7e6a940f1dfd9"
+        ],
+        "test_paths": [
+          "tests/test_browser_email.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/browser_email.py",
+          "tests/test_browser_email.py",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "dea7ca0d90924888556783aa3b3e98c1615ce324"
+        ],
+        "evidence_paths": [
+          "docs/fw-bme-01-claude-review.json",
+          "docs/fw-bme-01-integrity.json"
+        ],
+        "family_id": "FW-BME",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-BME-01",
+        "resolved_commits": [
+          "dea7ca0d90924888556783aa3b3e98c1615ce324"
+        ],
+        "test_paths": [
+          "tests/test_browser_email.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/mcp_gateway.py",
+          "tests/test_mcp_gateway.py",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "ef5dec5a97888ab1b325c208eea85e54cb0505da"
+        ],
+        "evidence_paths": [
+          "docs/fw-mcp-05-claude-review.json",
+          "docs/fw-mcp-05-integrity.json"
+        ],
+        "family_id": "FW-MCP",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-MCP-05",
+        "resolved_commits": [
+          "ef5dec5a97888ab1b325c208eea85e54cb0505da"
+        ],
+        "test_paths": [
+          "tests/test_mcp_gateway.py",
+          "tests/test_asoc.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/mcp_gateway.py",
+          "tests/test_mcp_gateway.py",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "dd2cad59ede185a4f8eeac3ac7d7f6ee486329bc"
+        ],
+        "evidence_paths": [
+          "docs/fw-mcp-04-claude-review.json",
+          "docs/fw-mcp-04-integrity.json"
+        ],
+        "family_id": "FW-MCP",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-MCP-04",
+        "resolved_commits": [
+          "dd2cad59ede185a4f8eeac3ac7d7f6ee486329bc"
+        ],
+        "test_paths": [
+          "tests/test_mcp_gateway.py",
+          "tests/test_asoc.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/mcp_gateway.py",
+          "tests/test_mcp_gateway.py",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "ed8b0a915b9ff8f1a3c85507066595afd79b171d"
+        ],
+        "evidence_paths": [
+          "docs/fw-mcp-03-claude-review.json",
+          "docs/fw-mcp-03-integrity.json"
+        ],
+        "family_id": "FW-MCP",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-MCP-03",
+        "resolved_commits": [
+          "ed8b0a915b9ff8f1a3c85507066595afd79b171d"
+        ],
+        "test_paths": [
+          "tests/test_mcp_gateway.py",
+          "tests/test_asoc.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/mcp_gateway.py",
+          "tests/test_mcp_gateway.py",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "a6d1232e841861b41da00c49b95c82ef6ffe6c5e"
+        ],
+        "evidence_paths": [
+          "docs/fw-mcp-02-claude-review.json",
+          "docs/fw-mcp-02-integrity.json"
+        ],
+        "family_id": "FW-MCP",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-MCP-02",
+        "resolved_commits": [
+          "a6d1232e841861b41da00c49b95c82ef6ffe6c5e"
+        ],
+        "test_paths": [
+          "tests/test_mcp_gateway.py",
+          "tests/test_asoc.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/mcp_gateway.py",
+          "tests/test_mcp_gateway.py",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "87dda89c410ec0d563719476b7564a833b1c7177"
+        ],
+        "evidence_paths": [
+          "docs/fw-mcp-01-claude-review.json",
+          "docs/fw-mcp-01-integrity.json"
+        ],
+        "family_id": "FW-MCP",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-MCP-01",
+        "resolved_commits": [
+          "87dda89c410ec0d563719476b7564a833b1c7177"
+        ],
+        "test_paths": [
+          "tests/test_mcp_gateway.py",
+          "tests/test_asoc.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/ransomware.py",
+          "tests/test_ransomware.py",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "05e7b34b0cadd28d58adc094b1c9264f50276f42"
+        ],
+        "evidence_paths": [
+          "docs/fw-ransom-05-claude-review.json",
+          "docs/fw-ransom-05-integrity.json"
+        ],
+        "family_id": "FW-RANSOM",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-RANSOM-05",
+        "resolved_commits": [
+          "05e7b34b0cadd28d58adc094b1c9264f50276f42"
+        ],
+        "test_paths": [
+          "tests/test_ransomware.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/ransomware.py",
+          "tests/test_ransomware.py",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "7c28fedfa04e925c47c305ab4c1cb4b6a30ed65b"
+        ],
+        "evidence_paths": [
+          "docs/fw-ransom-04-claude-review.json",
+          "docs/fw-ransom-04-integrity.json"
+        ],
+        "family_id": "FW-RANSOM",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-RANSOM-04",
+        "resolved_commits": [
+          "7c28fedfa04e925c47c305ab4c1cb4b6a30ed65b"
+        ],
+        "test_paths": [
+          "tests/test_ransomware.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/ransomware.py",
+          "tests/test_ransomware.py",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "55edcd4c98b2e05f493fa3bd79162daa72c10654"
+        ],
+        "evidence_paths": [
+          "docs/fw-ransom-03-claude-review.json",
+          "docs/fw-ransom-03-integrity.json"
+        ],
+        "family_id": "FW-RANSOM",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-RANSOM-03",
+        "resolved_commits": [
+          "55edcd4c98b2e05f493fa3bd79162daa72c10654"
+        ],
+        "test_paths": [
+          "tests/test_ransomware.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/ransomware.py",
+          "tests/test_ransomware.py",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md"
+        ],
+        "commit_references": [
+          "0ce44dcd92d5a14576ceff5fba859fccb7398847"
+        ],
+        "evidence_paths": [
+          "docs/fw-ransom-02-claude-review.json",
+          "docs/fw-ransom-02-integrity.json"
+        ],
+        "family_id": "FW-RANSOM",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-RANSOM-02",
+        "resolved_commits": [
+          "0ce44dcd92d5a14576ceff5fba859fccb7398847"
+        ],
+        "test_paths": [
+          "tests/test_ransomware.py"
+        ],
+        "traceability": "TRACEABLE"
+      },
+      {
+        "allowed_paths": [
+          "swarm/ransomware.py",
+          "tests/test_ransomware.py",
+          "WORK_QUEUE.md",
+          "SWARM_STATUS.md",
+          "DECISIONS.md"
+        ],
+        "commit_references": [
+          "41e4655ad9178cc77166d3ac73220ca4ccbc0721"
+        ],
+        "evidence_paths": [
+          "docs/fw-ransom-01-claude-review.json",
+          "docs/fw-ransom-01-integrity.json"
+        ],
+        "family_id": "FW-RANSOM",
+        "kind": "IMPLEMENTATION",
+        "missing_paths": [],
+        "reasons": [],
+        "requirement_id": "FW-RANSOM-01",
+        "resolved_commits": [
+          "41e4655ad9178cc77166d3ac73220ca4ccbc0721"
+        ],
+        "test_paths": [
+          "tests/test_ransomware.py"
+        ],
+        "traceability": "TRACEABLE"
+      }
+    ],
+    "unmapped_accepted_families": []
+  },
+  "schema_version": "1"
+}
