@@ -1602,7 +1602,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-INTEGRITY-005 — Executable cross-family product Golden Path
 - Requirement: FW-INTEGRITY representative current-commit behavioral proof
-- State: READY
+- State: IN_PROGRESS
 - Priority: P0
 - Dependencies: FW-INTEGRITY-004 and FW-UX-013
 - Approval: Jeff authorized continuation into the next phase; this bounded proof executes existing caller-supplied DRY_RUN interfaces without adding live authority.
