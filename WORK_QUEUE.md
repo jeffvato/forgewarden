@@ -20,6 +20,24 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 
 Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical implementation is not new work. FWQ-0008 VALIDATED preserves a provenance caveat, not a request to rebuild or automatically repeat review. FWQ-0012–0016 are reconciled DONE from existing implementation and recorded proof.
 
+### FW-ENDPOINT-MACOS-01 — Caller-supplied macOS fixture admission
+- Requirement: FW-ENDPOINT bounded macOS normalization
+- State: REVIEW
+- Priority: P0
+- Dependencies: FW-ENDPOINT-14, FW-ENDPOINT-04
+- Approval: Jeff authorized FW-ENDPOINT continuation with small bounded candidates; this fixture-only milestone preserves all current no-live-endpoint limits.
+- Description: Map explicit macOS-shaped endpoint records and bounded batches into the canonical NormalizedEventStore without platform access or response authority.
+- Target path: swarm/macos_fixtures.py
+- Allowed paths: swarm/macos_fixtures.py, swarm/endpoint_fixtures.py, tests/test_macos_fixtures.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_macos_fixtures.py tests/test_endpoint_fixtures.py tests/test_normalized_events.py
+- Acceptance criteria:
+  - exact-shape macOS caller-supplied records map to the existing canonical event vocabulary and store;
+  - single and bounded batch admission preserve deterministic ordering, tenant/device binding, duplicate rejection, queue pressure, Evidence-first behavior, DRY_RUN, and DETECT_ONLY;
+  - malformed shape, source, event type, metadata, store, tenant/device, batch bounds, duplicates, Evidence failure, and store pressure fail closed;
+  - no platform API, service, sensor, hook, filesystem/process/network operation, credential access, containment, remediation, recovery execution, or deployment authority is added.
+- Expected validation: focused Linux proof, exact independent read-only review, then one full suite and Product Integrity run after approval.
+- Security considerations: the mapper accepts data only; NormalizedEventStore remains the state/evidence owner and no AI or fixture gains authority.
+
 ### FW-ENDPOINT-14 — Endpoint and RansomGuard continuation inventory
 - Requirement: FW-ENDPOINT/FW-RANSOM continuation ownership and next-platform admission
 - State: DONE
