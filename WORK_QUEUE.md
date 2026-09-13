@@ -20,6 +20,24 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 
 Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical implementation is not new work. FWQ-0008 VALIDATED preserves a provenance caveat, not a request to rebuild or automatically repeat review. FWQ-0012–0016 are reconciled DONE from existing implementation and recorded proof.
 
+### FW-SUPPLY-002 — Caller-supplied component and provenance observation
+- Requirement: FW-SUPPLY immutable tenant-bound metadata boundary
+- State: IN_PROGRESS
+- Priority: P0
+- Dependencies: FW-SUPPLY-001
+- Approval: Jeff authorized the ordered FW-SUPPLY phase using small bounded candidates.
+- Description: Normalize strict caller-supplied component identity, version, artifact digest, and source/provenance references into immutable Evidence-first metadata.
+- Target path: swarm/supply_chain.py
+- Allowed paths: swarm/supply_chain.py, tests/test_supply_chain.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_supply_chain.py
+- Acceptance criteria:
+  - exact ecosystem, package/version, lowercase SHA-256, time, tenant, shape, size, and reference bounds fail closed;
+  - immutable observations are untrusted, DRY_RUN, and DETECT_ONLY;
+  - Evidence succeeds before return and excludes package/version/source/provenance values;
+  - no repository, registry, feed, package-manager, CI/build/cloud access, credential use, install, publish, signing, deployment, remediation, or response authority is added.
+- Expected validation: focused Linux proof, exact independent read-only review, then full suite and Product Integrity once after approval.
+- Security considerations: all component and provenance facts remain caller-supplied untrusted metadata and cannot authorize supply-chain operations.
+
 ### FW-SUPPLY-001 — Software supply-chain ownership and bounded route
 - Requirement: FW-SUPPLY canonical ownership inventory
 - State: DONE

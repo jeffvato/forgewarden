@@ -1,0 +1,119 @@
+"""Bounded caller-supplied software supply-chain observation contracts."""
+from __future__ import annotations
+
+from dataclasses import dataclass
+import json
+import re
+from typing import Any, Callable, Mapping
+
+
+MAX_SUPPLY_FIXTURE_BYTES = 32 * 1024
+MAX_SUPPLY_TEXT_BYTES = 256
+_REF = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:/@+-]{0,255}$")
+_PACKAGE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.@/+-]{0,255}$")
+_VERSION = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.+-]{0,127}$")
+_SHA256 = re.compile(r"^[0-9a-f]{64}$")
+_ECOSYSTEMS = frozenset({"CONTAINER", "GENERIC", "MAVEN", "NPM", "NUGET", "PYPI"})
+_REQUIRED = frozenset({
+    "event_id", "tenant_id", "observed_at_epoch", "component_ref",
+    "ecosystem", "package_name", "version", "artifact_sha256",
+    "source_ref", "provenance_ref", "evidence_ref",
+})
+
+
+class SupplyChainObservationDenied(PermissionError):
+    def __init__(self, reason: str):
+        self.reason = reason
+        super().__init__(reason)
+
+
+def _reference(value: Any, field: str) -> str:
+    if (
+        not isinstance(value, str)
+        or len(value.encode("utf-8")) > MAX_SUPPLY_TEXT_BYTES
+        or not _REF.fullmatch(value)
+    ):
+        raise SupplyChainObservationDenied(f"{field}_INVALID")
+    return value
+
+
+@dataclass(frozen=True)
+class SupplyChainObservation:
+    event_id: str
+    tenant_id: str
+    observed_at_epoch: int
+    component_ref: str
+    ecosystem: str
+    package_name: str
+    version: str
+    artifact_sha256: str
+    source_ref: str
+    provenance_ref: str
+    evidence_ref: str
+    trust: str = "UNTRUSTED_DATA"
+    mode: str = "DRY_RUN"
+    action: str = "DETECT_ONLY"
+
+
+def normalize_supply_chain_observation(
+    fixture: Mapping[str, Any], *, tenant_id: str, now_epoch: int,
+    audit: Callable[[str, dict[str, Any]], None],
+) -> SupplyChainObservation:
+    """Validate one exact component metadata fixture and record Evidence first."""
+    if not isinstance(fixture, Mapping) or not callable(audit):
+        raise SupplyChainObservationDenied("FIXTURE_INVALID")
+    try:
+        size = len(json.dumps(
+            fixture, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
+        ).encode("utf-8"))
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise SupplyChainObservationDenied("FIXTURE_INVALID") from exc
+    if size > MAX_SUPPLY_FIXTURE_BYTES or set(fixture) != _REQUIRED:
+        raise SupplyChainObservationDenied("FIXTURE_INVALID")
+    expected_tenant = _reference(tenant_id, "TENANT")
+    if fixture.get("tenant_id") != expected_tenant:
+        raise SupplyChainObservationDenied("TENANT_MISMATCH")
+    observed = fixture.get("observed_at_epoch")
+    if (
+        not isinstance(observed, int) or isinstance(observed, bool)
+        or not isinstance(now_epoch, int) or isinstance(now_epoch, bool)
+        or observed < 0 or observed > now_epoch
+    ):
+        raise SupplyChainObservationDenied("OBSERVED_AT_INVALID")
+    ecosystem = fixture.get("ecosystem")
+    if ecosystem not in _ECOSYSTEMS:
+        raise SupplyChainObservationDenied("ECOSYSTEM_INVALID")
+    package_name = fixture.get("package_name")
+    version = fixture.get("version")
+    digest = fixture.get("artifact_sha256")
+    if not isinstance(package_name, str) or not _PACKAGE.fullmatch(package_name):
+        raise SupplyChainObservationDenied("PACKAGE_NAME_INVALID")
+    if not isinstance(version, str) or not _VERSION.fullmatch(version):
+        raise SupplyChainObservationDenied("VERSION_INVALID")
+    if not isinstance(digest, str) or not _SHA256.fullmatch(digest):
+        raise SupplyChainObservationDenied("ARTIFACT_SHA256_INVALID")
+    event_id = _reference(fixture.get("event_id"), "EVENT_ID")
+    component_ref = _reference(fixture.get("component_ref"), "COMPONENT_REF")
+    source_ref = _reference(fixture.get("source_ref"), "SOURCE_REF")
+    provenance_ref = _reference(fixture.get("provenance_ref"), "PROVENANCE_REF")
+    evidence_ref = _reference(fixture.get("evidence_ref"), "EVIDENCE_REF")
+    try:
+        audit("supply_chain_observation_normalized", {
+            "event_id": event_id,
+            "tenant_id": expected_tenant,
+            "observed_at_epoch": observed,
+            "component_ref": component_ref,
+            "ecosystem": ecosystem,
+            "artifact_sha256": digest,
+            "evidence_ref": evidence_ref,
+            "trust": "UNTRUSTED_DATA",
+            "mode": "DRY_RUN",
+            "action": "DETECT_ONLY",
+            "deployment": "DISABLED",
+        })
+    except Exception as exc:
+        raise SupplyChainObservationDenied("EVIDENCE_WRITE_FAILED") from exc
+    return SupplyChainObservation(
+        event_id, expected_tenant, observed, component_ref, ecosystem,
+        package_name, version, digest, source_ref, provenance_ref, evidence_ref,
+    )
