@@ -5,6 +5,7 @@ import hashlib
 import json
 import re
 import subprocess
+import time
 from pathlib import Path
 
 
@@ -105,7 +106,7 @@ _REF = re.compile(r"^refs/[A-Za-z0-9._/@+-]+$")
 _LIMITS = {
     "refs": 256, "commits": 5000, "objects": 10000, "blob_bytes": 2 * 1024 * 1024,
     "batch_blob_bytes": 8 * 1024 * 1024, "total_blob_bytes": 256 * 1024 * 1024,
-    "findings": 512, "git_output": 40 * 1024 * 1024,
+    "findings": 512, "git_output": 40 * 1024 * 1024, "scan_seconds": 120,
 }
 _STRATEGIES = frozenset({"PRESERVE_HISTORY", "SANITIZED_SINGLE_COMMIT"})
 _SANITIZED_IDENTIFIERS = {
@@ -149,16 +150,31 @@ class HistoryReleaseAudit:
         self.root = root.resolve()
         if not self.root.is_dir():
             raise ValueError("history audit repository must be a real directory")
+        self._deadline: float | None = None
+
+    def _remaining_timeout(self) -> float:
+        if self._deadline is None:
+            return 30.0
+        remaining = self._deadline - time.monotonic()
+        if remaining <= 0:
+            raise ValueError("history audit scan deadline exceeded")
+        return min(30.0, remaining)
 
     def _git(self, *args: str, stdin: bytes | None = None) -> bytes:
+        timeout = self._remaining_timeout()
         try:
             result = subprocess.run(
                 ["git", "-C", str(self.root), *args], input=stdin,
                 stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=False,
-                check=False, timeout=30,
+                check=False, timeout=timeout,
             )
-        except (OSError, subprocess.TimeoutExpired) as exc:
+        except subprocess.TimeoutExpired as exc:
+            if self._deadline is not None and time.monotonic() >= self._deadline:
+                raise ValueError("history audit scan deadline exceeded") from exc
             raise ValueError("history audit Git operation failed") from exc
+        except OSError as exc:
+            raise ValueError("history audit Git operation failed") from exc
+        self._remaining_timeout()
         if result.returncode or len(result.stdout) > _LIMITS["git_output"]:
             raise ValueError("history audit Git operation failed")
         return result.stdout
@@ -243,15 +259,55 @@ class HistoryReleaseAudit:
         if batch:
             yield self._read_blob_batch(batch)
 
-    def _first_commit(self, oid: str, path: str) -> str:
-        commits = self._git(
-            "log", "--all", "--reverse", "--format=%H", f"--find-object={oid}", "--", path
-        ).decode().splitlines()
-        if not commits:
+    def _provenance(
+        self,
+        required: set[tuple[str, str]],
+        reachable_commits: set[str],
+    ) -> dict[tuple[str, str], str]:
+        if not required:
+            return {}
+        raw = self._git(
+            "log", "--all", "--reverse", "--root", "-m", "--raw", "--no-abbrev",
+            "--no-renames", "--format=commit:%H",
+        )
+        provenance: dict[tuple[str, str], str] = {}
+        commit: str | None = None
+        zero_ids = {"0" * 40, "0" * 64}
+        for index, line in enumerate(raw.decode().splitlines()):
+            if index % 1024 == 0:
+                self._remaining_timeout()
+            if not line:
+                continue
+            if line.startswith("commit:"):
+                candidate = self._sha(line.removeprefix("commit:"))
+                if candidate not in reachable_commits:
+                    raise ValueError("history audit received unreachable provenance commit")
+                commit = candidate
+                continue
+            metadata, separator, path = line.partition("\t")
+            fields = metadata.split(" ")
+            if (not separator or commit is None or len(fields) != 5
+                    or not fields[0].startswith(":")
+                    or len(fields[0]) != 7
+                    or any(character not in "01234567" for character in fields[0][1:])
+                    or len(fields[1]) != 6
+                    or any(character not in "01234567" for character in fields[1])
+                    or not re.fullmatch(r"[A-Z][0-9]{0,3}", fields[4])):
+                raise ValueError("history audit received malformed provenance data")
+            old_oid, new_oid = self._sha(fields[2]), self._sha(fields[3])
+            safe_path = self._path(path)
+            if old_oid in zero_ids and fields[4].startswith("D"):
+                raise ValueError("history audit received malformed provenance data")
+            pair = (new_oid, safe_path)
+            if new_oid not in zero_ids and pair in required:
+                provenance.setdefault(pair, commit)
+        missing = required - set(provenance)
+        if missing:
             raise ValueError("history audit could not bind a finding to a commit")
-        return self._sha(commits[0])
+        return provenance
 
     def scan(self, *, expected_head: str, strategy: str) -> dict[str, object]:
+        self._deadline = time.monotonic() + _LIMITS["scan_seconds"]
         expected = self._sha(expected_head)
         if strategy not in _STRATEGIES:
             raise ValueError("unsupported history publication strategy")
@@ -319,6 +375,7 @@ class HistoryReleaseAudit:
                 })
                 break
 
+        classified: dict[tuple[str, str], list[tuple[str, str]]] = {}
         for oid, path in sorted(set(paths)):
             if oid not in sizes:
                 continue
@@ -327,17 +384,21 @@ class HistoryReleaseAudit:
                           else list(matched_content[oid]))
             if _SENSITIVE_PATH.search(path):
                 categories.append(("sensitive_operational_path", "BLOCKING"))
+            if categories:
+                classified[(oid, path)] = categories
+        if len(findings) + sum(map(len, classified.values())) > _LIMITS["findings"]:
+            raise ValueError("history audit finding budget exceeded")
+        provenance = self._provenance(set(classified), commit_set)
+        for (oid, path), categories in classified.items():
             for category, severity in categories:
                 findings.append({
                     "category": category,
                     "severity": severity,
                     "path": "<redacted-path>" if _HISTORY_PATTERNS[0][2].search(path.encode()) else path,
-                    "first_commit": self._first_commit(oid, path),
+                    "first_commit": provenance[(oid, path)],
                     "blob_hash": oid,
                     "scope": "CURRENT_AND_HISTORY" if (oid, path) in current else "HISTORY_ONLY",
                 })
-                if len(findings) > _LIMITS["findings"]:
-                    raise ValueError("history audit finding budget exceeded")
 
         final_refs, final_ref_hash = self._refs()
         if self._head() != expected or final_refs != refs or final_ref_hash != ref_hash:

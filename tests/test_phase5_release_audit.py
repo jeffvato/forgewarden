@@ -192,6 +192,10 @@ class Phase5HistoryReleaseAuditTests(unittest.TestCase):
             self.git(root, "add", "fixtures/removed.txt")
             self.git(root, "commit", "-m", "historical fixture")
             first_commit = self.git(root, "rev-parse", "HEAD")
+            fixture.write_text("temporary clean revision\n", encoding="utf-8")
+            self.git(root, "commit", "-am", "replace historical fixture")
+            fixture.write_text(f'token = "{matched_value}"\n', encoding="utf-8")
+            self.git(root, "commit", "-am", "repeat historical fixture")
             self.git(root, "tag", "retained-history")
             self.git(root, "switch", "main")
 
@@ -253,6 +257,55 @@ class Phase5HistoryReleaseAuditTests(unittest.TestCase):
                 self.assertEqual(next(batches), {first: b"abc"})
                 with self.assertRaisesRegex(ValueError, "malformed blob data"):
                     next(batches)
+
+    def test_provenance_maps_earliest_duplicate_with_one_fixed_git_pass(self):
+        commits = ("a" * 40, "b" * 40, "c" * 40)
+        blob, other, zeros = "d" * 40, "e" * 40, "0" * 40
+        raw = (
+            f"commit:{commits[0]}\n\n"
+            f":000000 100644 {zeros} {blob} A\tpath.txt\n"
+            f"commit:{commits[1]}\n\n"
+            f":100644 100644 {blob} {other} M\tpath.txt\n"
+            f"commit:{commits[2]}\n\n"
+            f":100644 100644 {other} {blob} M\tpath.txt\n"
+        ).encode()
+        with tempfile.TemporaryDirectory(prefix="phase5-provenance-") as temp:
+            audit = HistoryReleaseAudit(Path(temp))
+            calls = []
+            audit._git = lambda *args, **kwargs: calls.append(args) or raw
+            result = audit._provenance({(blob, "path.txt")}, set(commits))
+        self.assertEqual(result, {(blob, "path.txt"): commits[0]})
+        self.assertEqual(calls, [(
+            "log", "--all", "--reverse", "--root", "-m", "--raw",
+            "--no-abbrev", "--no-renames", "--format=commit:%H",
+        )])
+
+    def test_provenance_missing_and_malformed_data_fail_closed(self):
+        commit, blob = "a" * 40, "b" * 40
+        with tempfile.TemporaryDirectory(prefix="phase5-provenance-failure-") as temp:
+            audit = HistoryReleaseAudit(Path(temp))
+            audit._git = lambda *args, **kwargs: f"commit:{commit}\n".encode()
+            with self.assertRaisesRegex(ValueError, "could not bind"):
+                audit._provenance({(blob, "path.txt")}, {commit})
+            audit._git = lambda *args, **kwargs: (
+                f"commit:{commit}\nunexpected raw output\n".encode())
+            with self.assertRaisesRegex(ValueError, "malformed provenance"):
+                audit._provenance({(blob, "path.txt")}, {commit})
+
+    def test_git_output_and_overall_scan_time_are_bounded(self):
+        completed = subprocess.CompletedProcess([], 0, b"12345", b"")
+        with tempfile.TemporaryDirectory(prefix="phase5-operation-bounds-") as temp:
+            audit = HistoryReleaseAudit(Path(temp))
+            with patch.dict(_LIMITS, {"git_output": 4}), patch(
+                "swarm.phase5_release_audit.subprocess.run", return_value=completed
+            ):
+                with self.assertRaisesRegex(ValueError, "Git operation failed"):
+                    audit._git("status")
+            audit._deadline = 0.0
+            with patch("swarm.phase5_release_audit.subprocess.run") as run:
+                with self.assertRaisesRegex(ValueError, "scan deadline exceeded"):
+                    audit._git("status")
+                run.assert_not_called()
 
     def test_repo_above_old_aggregate_limit_scans_in_bounded_batches(self):
         with tempfile.TemporaryDirectory(prefix="phase5-batched-repo-") as temp:
