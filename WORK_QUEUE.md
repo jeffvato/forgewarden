@@ -22,7 +22,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-SUPPLY-001 — Software supply-chain ownership and bounded route
 - Requirement: FW-SUPPLY canonical ownership inventory
-- State: REVIEW
+- State: DONE
 - Priority: P0
 - Dependencies: FW-SAAS-006, FW-KEYS, FW-EVID, FW-AV
 - Approval: Jeff authorized the ordered FW-SUPPLY phase through the continuing heartbeat.
@@ -37,6 +37,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no live repository/registry/feed/package-manager/CI/build/cloud access, credential use, installation, publication, signing, deployment, remediation, rollback, quarantine, or response authority is added.
 - Expected validation: deterministic inventory, `git diff --check`, and exact independent read-only review; no product suite or Product Integrity rerun for documentation-only architecture.
 - Security considerations: roadmap and queue metadata cannot authorize supply-chain or release operations.
+- Completion evidence: exact candidate `189ac38fc34a309666544938c03b79c743bd8edc`; deterministic repository/source/test ownership checks and `git diff --check` passed. Exact AnythingLLM/Qwen job `phase2a-189ac38fc34a309666544938` returned APPROVE/LOW with no blockers or missing tests. No product suite or Product Integrity rerun was required because runtime behavior did not change. Evidence: `docs/fw-supply-001-qwen-review.json`.
 
 ### FW-SAAS-006 — Integrated lifecycle and Mission Control projection
 - Requirement: FW-SAAS accepted-stage composition and operator visibility
