@@ -35,7 +35,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-DSPM-002 — Caller-supplied data-posture observation
 - Requirement: FW-DSPM immutable tenant-bound metadata boundary
-- State: REPAIR
+- State: DONE
 - Priority: P0
 - Dependencies: FW-DSPM-001
 - Approval: Jeff authorized the ordered FW-DSPM phase through the continuing heartbeat.
@@ -44,10 +44,11 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 - Allowed paths: swarm/data_security.py, tests/test_data_security.py, WORK_QUEUE.md, SWARM_STATUS.md
 - Test command: python3 -m pytest -q tests/test_data_security.py
 - Acceptance criteria: immutable bounded untrusted DRY_RUN/DETECT_ONLY metadata is Evidence-first and fail-closed; no content, credential, discovery, query, data movement, DLP enforcement, mutation, or response authority is added.
+- Completion evidence: implementation candidate `04f9f41048211b712d40c44283627efe189f9e67`; test-only repair `72e6c304f73af10a2a56aefc332f63b6643309fe`. Exact AnythingLLM/Qwen APPROVE/LOW requested direct oversized-fixture, non-Mapping fixture, and non-callable Evidence sink proofs; exact repair job `phase2a-72e6c304f73af10a2a56aefc` closed all three and returned APPROVE/LOW with no blockers or missing tests. Focused validation passed 29 tests and the full suite passed 1971 with 1 skipped. Product Integrity passed every hard check and the Golden Path, with only the pre-existing `tzdata` dependency YELLOW. Evidence: `docs/fw-dspm-002-qwen-review.json`, `docs/fw-dspm-002-qwen-repair-review.json`, `docs/fw-dspm-002-integrity.json`.
 
 ### FW-DSPM-003 — Data exposure and access-risk classification
 - Requirement: FW-DSPM exact supplied-fact evaluation
-- State: BLOCKED
+- State: READY
 - Priority: P0
 - Dependencies: FW-DSPM-002
 - Approval: Jeff authorized the ordered FW-DSPM phase through the continuing heartbeat.
