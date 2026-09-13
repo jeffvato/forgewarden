@@ -20,6 +20,24 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 
 Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical implementation is not new work. FWQ-0008 VALIDATED preserves a provenance caveat, not a request to rebuild or automatically repeat review. FWQ-0012–0016 are reconciled DONE from existing implementation and recorded proof.
 
+### FW-SUPPLY-001 — Software supply-chain ownership and bounded route
+- Requirement: FW-SUPPLY canonical ownership inventory
+- State: REVIEW
+- Priority: P0
+- Dependencies: FW-SAAS-006, FW-KEYS, FW-EVID, FW-AV
+- Approval: Jeff authorized the ordered FW-SUPPLY phase through the continuing heartbeat.
+- Description: Map existing dependency, vulnerability, add-on catalog, signature, release, artifact, Evidence, policy, and Mission Control owners and define the first genuinely missing bounded supply-chain contract.
+- Target path: docs/fw-supply-inventory.md
+- Allowed paths: docs/fw-supply-inventory.md, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: git diff --check HEAD^ HEAD and deterministic repository/source/test/evidence inventory
+- Acceptance criteria:
+  - existing vulnerability index, add-on manifest/catalog, TrustedSignatureCatalog/FW-KEYS, release fixture, FW-AV, Product Integrity, policy/Action Ticket, FW-EVID, FW-SOC, and Mission Control owners are reused;
+  - substantive FW-SUPPLY-002 through FW-SUPPLY-006 IDs and dependencies are explicit without claiming implementation;
+  - the first runtime gap is an immutable tenant-bound caller-supplied component/provenance metadata contract;
+  - no live repository/registry/feed/package-manager/CI/build/cloud access, credential use, installation, publication, signing, deployment, remediation, rollback, quarantine, or response authority is added.
+- Expected validation: deterministic inventory, `git diff --check`, and exact independent read-only review; no product suite or Product Integrity rerun for documentation-only architecture.
+- Security considerations: roadmap and queue metadata cannot authorize supply-chain or release operations.
+
 ### FW-SAAS-006 — Integrated lifecycle and Mission Control projection
 - Requirement: FW-SAAS accepted-stage composition and operator visibility
 - State: DONE
