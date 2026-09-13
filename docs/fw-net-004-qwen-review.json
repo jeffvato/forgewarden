@@ -1,0 +1,35 @@
+{
+  "adjudication": null,
+  "candidate_commit": "defab7ed42e8c97385763d6d7d35b493e2a31dc5",
+  "deployment": "DISABLED",
+  "job_id": "phase2a-defab7ed42e8c97385763d6d",
+  "kill_switch": "ENGAGED",
+  "mutation_allowed": false,
+  "reviews": [
+    {
+      "provider": "ANYTHINGLLM",
+      "result": {
+        "blocking_findings": [],
+        "job_id": "phase2a-defab7ed42e8c97385763d6d",
+        "non_blocking_notes": [
+          "The source binding check `endpoint_event_ref != f\"fw-endpoint/{tenant_id}/{finding.event_id}\"` is performed after general correlation ref validation. This is correct but relies on `finding.event_id` being a valid segment for the regex to have passed previously. If `finding.event_id` contained characters invalid for the correlation ref regex, the SOURCE_BINDING_INVALID error would not be reached because CORRELATION_REF_INVALID would trigger first. This is acceptable as it adheres to the 'malformed' denial requirement.",
+          "The `audit` call is wrapped in a try-except block that catches any Exception and raises `NetworkObservationDenied(\"EVIDENCE_WRITE_FAILED\")`. This ensures that if the audit sink fails, the binding is denied, satisfying the 'Evidence succeeds before... return' requirement by failing the operation entirely rather than returning a binding without guaranteed audit persistence.",
+          "The `NetworkReferenceBinding` dataclass is frozen, ensuring immutability as required."
+        ],
+        "proposed_rules": [
+          "Ensure that `finding.event_id` is validated against the correlation ref regex segment rules before being used in the source binding check to prevent potential edge-case bypasses if event_id contains disallowed characters."
+        ],
+        "reasoning_summary": "The patch correctly implements the FW-NET-004 requirement to bind exact immutable admitted network findings to their canonical owner references. The `bind_network_references` function validates tenant matching, source event binding (endpoint ref must match finding's event_id), and the format/tenancy of all correlation and identity references. It strictly enforces that the finding is in a 'DETECT_ONLY' state with no authority granted, and that evidence references are bounded, sorted, unique, and tenant-matched. The immutability of the resulting `NetworkReferenceBinding` is guaranteed via `frozen=True`. The audit mechanism is integrated such that failure to write evidence results in a denial, adhering to the 'Evidence succeeds before immutable CORRELATE_ONLY return' constraint. The code does not create any owner state or live network authority, maintaining the no-authority boundary. The provided tests cover the main success path, immutability, and various mismatch/invalid reference scenarios. The risk is low as the changes are isolated to a new function and dataclass with strict validation logic.",
+        "reviewed_commit": "defab7ed42e8c97385763d6d7d35b493e2a31dc5",
+        "risk": "LOW",
+        "tests_missing": [
+          "Test for finding with MEDIUM risk to ensure `expected_recommendations` logic works for non-HIGH/CRITICAL cases.",
+          "Test for finding with invalid trust, mode, or action fields to explicitly verify FINDING_INVALID denial for those specific attributes."
+        ],
+        "verdict": "APPROVE"
+      },
+      "state": "REVIEW_RETURNED"
+    }
+  ],
+  "state": "REVIEW_REQUIRED"
+}

@@ -67,7 +67,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-NET-004 — Canonical cross-domain reference binding
 - Requirement: FW-NET owner composition
-- State: REPAIR
+- State: DONE
 - Priority: P0
 - Dependencies: FW-NET-003
 - Approval: Jeff authorized the ordered FW-NET phase using small bounded candidates.
@@ -76,10 +76,11 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 - Allowed paths: swarm/network_security.py, tests/test_network_security.py, WORK_QUEUE.md, SWARM_STATUS.md
 - Test command: python3 -m pytest -q tests/test_network_security.py
 - Acceptance criteria: exact tenant/source/reference bindings and Evidence order fail closed; references remain advisory and establish no authority.
+- Completion evidence: initial candidate `defab7ed42e8c97385763d6d7d35b493e2a31dc5` passed focused 51. Exact AnythingLLM/Qwen returned APPROVE/LOW but requested direct MEDIUM/WARN and forged authority-field proofs. Test-only repair `3e6bf56142cccf6ce01e360f25dc78ef2231a9c4` closed them and passed focused 56; exact AnythingLLM/Qwen repair review returned APPROVE/LOW with no blockers or missing tests. Full 1862 passed/1 skipped; Product Integrity fresh full 1862/1 and Golden Path 56 passed with every hard check and only pre-existing dependency YELLOW. Evidence: `docs/fw-net-004-*.json`.
 
 ### FW-NET-005 — Inert Action Ticket-bound containment proposal
 - Requirement: FW-NET bounded non-executing response intent
-- State: BLOCKED
+- State: READY
 - Priority: P0
 - Dependencies: FW-NET-004
 - Approval: Jeff authorized the ordered FW-NET phase using small bounded candidates.
