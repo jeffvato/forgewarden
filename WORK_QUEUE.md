@@ -31,7 +31,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 - Allowed paths: docs/fw-gov-inventory.md, WORK_QUEUE.md, SWARM_STATUS.md
 - Test command: git diff --check HEAD^ HEAD and deterministic repository/source/test/evidence inventory
 - Acceptance criteria: canonical owners and substantive stable-ID implementation route are explicit; no opaque router, provider activation, credential, live ATO/FedRAMP claim, deployment, sovereign infrastructure, model invocation, authority expansion, or security downgrade is added.
-- Completion evidence: candidate ; exact AnythingLLM/Qwen job  returned APPROVE/LOW with no blocking findings or missing tests in ; deterministic inventory and  passed; documentation-only milestone required no product-suite or Product Integrity rerun.
+- Completion evidence: candidate `dc51ddc65f58a44f3c65a569461822ed738a9613`; exact AnythingLLM/Qwen job `phase2a-dc51ddc65f58a44f3c65a569` returned APPROVE/LOW with no blocking findings or missing tests in `docs/fw-gov-001-qwen-review.json`; deterministic inventory and `git diff --check` passed; documentation-only milestone required no product-suite or Product Integrity rerun.
 
 ### FW-GOV-002 — High-assurance authorization profile
 - Requirement: FW-GOV immutable tenant-bound authorization metadata
