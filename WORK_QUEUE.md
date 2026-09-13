@@ -22,7 +22,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-GOV-001 — High-assurance ownership and bounded route
 - Requirement: FW-GOV canonical ownership inventory
-- State: READY
+- State: REVIEW
 - Priority: P0
 - Dependencies: FW-DSPM-006, FW-HARNESS, FW-ID, FW-KEYS, FW-EVID
 - Approval: Jeff authorized the ordered FW-GOV phase through the continuing heartbeat.
@@ -31,6 +31,66 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 - Allowed paths: docs/fw-gov-inventory.md, WORK_QUEUE.md, SWARM_STATUS.md
 - Test command: git diff --check HEAD^ HEAD and deterministic repository/source/test/evidence inventory
 - Acceptance criteria: canonical owners and substantive stable-ID implementation route are explicit; no opaque router, provider activation, credential, live ATO/FedRAMP claim, deployment, sovereign infrastructure, model invocation, authority expansion, or security downgrade is added.
+
+### FW-GOV-002 — High-assurance authorization profile
+- Requirement: FW-GOV immutable tenant-bound authorization metadata
+- State: BLOCKED
+- Priority: P0
+- Dependencies: FW-GOV-001, FW-ID, FW-EVID
+- Approval: Jeff authorized the ordered FW-GOV phase through the continuing heartbeat.
+- Description: Normalize strict caller-supplied boundary, environment, data-class, assurance, ATO, FedRAMP, DoD IL, sovereign/offline, validity, authorization-state, and Evidence metadata.
+- Target path: swarm/high_assurance.py
+- Allowed paths: swarm/high_assurance.py, tests/test_high_assurance.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_high_assurance.py
+- Acceptance criteria: immutable bounded untrusted DRY_RUN metadata is Evidence-first and grants no authorization; malformed, stale, cross-tenant, claim-shaped, or authority-bearing inputs deny.
+
+### FW-GOV-003 — Deterministic model authorization admission
+- Requirement: FW-GOV profile and Approved Model Registry composition
+- State: BLOCKED
+- Priority: P0
+- Dependencies: FW-GOV-002, FW-HARNESS
+- Approval: Jeff authorized the ordered FW-GOV phase through the continuing heartbeat.
+- Description: Admit an exact Approved Model Candidate only when profile boundary, environment, data class, tier, validity, and authorization metadata match.
+- Target path: swarm/high_assurance.py
+- Allowed paths: swarm/high_assurance.py, tests/test_high_assurance.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_high_assurance.py tests/test_harness_models.py
+- Acceptance criteria: deterministic metadata-only admission fails closed on mismatch or downgrade and grants no invocation/deployment authority; no opaque router LLM is consulted.
+
+### FW-GOV-004 — Sovereign/offline and approved-equivalent failover
+- Requirement: FW-GOV provider-failure and environment continuity policy
+- State: BLOCKED
+- Priority: P0
+- Dependencies: FW-GOV-003
+- Approval: Jeff authorized the ordered FW-GOV phase through the continuing heartbeat.
+- Description: Evaluate exact candidate failure metadata against sovereign/offline constraints and permit only same-or-higher approved equivalents.
+- Target path: swarm/high_assurance.py
+- Allowed paths: swarm/high_assurance.py, tests/test_high_assurance.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_high_assurance.py tests/test_harness_models.py
+- Acceptance criteria: provider/model/environment failure cannot downgrade assurance; offline-required profiles deny remote candidates; no eligible equivalent returns the canonical fail-closed reason without invocation.
+
+### FW-GOV-005 — Evidence and Mission Control projection
+- Requirement: FW-GOV canonical chronology and operator visibility
+- State: BLOCKED
+- Priority: P0
+- Dependencies: FW-GOV-004, FW-EVID
+- Approval: Jeff authorized the ordered FW-GOV phase through the continuing heartbeat.
+- Description: Bind accepted authorization decisions to canonical Evidence and expose sanitized canonical or explicitly simulated high-assurance status through Mission Control.
+- Target paths: swarm/high_assurance.py, swarm/mission_control.py
+- Allowed paths: swarm/high_assurance.py, swarm/mission_control.py, tests/test_high_assurance.py, tests/test_mission_control.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_high_assurance.py tests/test_mission_control.py
+- Acceptance criteria: exact chronology and bindings fail closed; visibility owns no registry, provider, credential, approval, invocation, policy, deployment, or authority.
+
+### FW-GOV-006 — Integrated high-assurance lifecycle proof
+- Requirement: FW-GOV accepted-stage and adversarial composition
+- State: BLOCKED
+- Priority: P0
+- Dependencies: FW-GOV-005
+- Approval: Jeff authorized the ordered FW-GOV phase through the continuing heartbeat.
+- Description: Compose profile, model admission, failover/offline decision, Evidence, and Mission Control stages with adversarial downgrade and substitution proofs.
+- Target paths: swarm/high_assurance.py, swarm/mission_control.py
+- Allowed paths: swarm/high_assurance.py, swarm/mission_control.py, tests/test_high_assurance.py, tests/test_mission_control.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_high_assurance.py tests/test_harness_models.py tests/test_mission_control.py
+- Acceptance criteria: exact lifecycle preserves tenant/boundary/environment/data/tier/model/evidence bindings; downgrade, opaque routing, substitution, stale authorization, remote use under offline policy, and no-approved-model paths fail closed.
 
 ### FW-DSPM-001 — Data security posture ownership and bounded route
 - Requirement: FW-DSPM canonical ownership inventory
