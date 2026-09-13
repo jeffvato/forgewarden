@@ -106,8 +106,14 @@ def normalize_high_assurance_profile(
     impact = fixture.get("dod_impact_level")
     if environment not in _ENVIRONMENTS:
         raise HighAssuranceProfileDenied("ENVIRONMENT_INVALID")
-    if not isinstance(classes, tuple) or not classes or len(classes) > len(_DATA_CLASSES) or tuple(sorted(set(classes))) != classes or any(item not in _DATA_CLASSES for item in classes):
+    if (
+        not isinstance(classes, list) or not classes
+        or len(classes) > len(_DATA_CLASSES)
+        or sorted(set(classes)) != classes
+        or any(item not in _DATA_CLASSES for item in classes)
+    ):
         raise HighAssuranceProfileDenied("DATA_CLASSIFICATIONS_INVALID")
+    classes = tuple(classes)
     if tier not in _TIERS:
         raise HighAssuranceProfileDenied("ASSURANCE_TIER_INVALID")
     if auth_state not in _AUTH_STATES:
