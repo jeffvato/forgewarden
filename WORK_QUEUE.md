@@ -22,7 +22,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-SUPPLY-004 — Canonical owner reference binding
 - Requirement: FW-SUPPLY vulnerability/catalog/signature/Evidence composition
-- State: IN_PROGRESS
+- State: DONE
 - Priority: P0
 - Dependencies: FW-SUPPLY-003
 - Approval: Jeff authorized the ordered FW-SUPPLY phase using small bounded candidates.
@@ -37,6 +37,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no vulnerability/catalog/signature/Evidence owner is duplicated and no live feed, registry, signing, publication, deployment, remediation, or response authority is added.
 - Expected validation: focused Linux proof, exact independent read-only review, then full suite and Product Integrity once after approval.
 - Security considerations: validated references remain advisory links and cannot establish publisher trust, signature validity, vulnerability truth, or execution authority.
+- Completion evidence: initial candidate `20c422642d805372916fd988b3c179200f667ac7` passed focused 33. AnythingLLM was unavailable; exact Claude found the implementation correct but required three symmetric Evidence-reference boundary tests. Repair `0e144a0ce6842b59f51c201742578cbf72edb1ee` added exactly duplicate, cross-tenant, and wrong-kind cases and passed focused 36; AnythingLLM remained unavailable, then exact Claude job `phase2a-0e144a0ce6842b59f51c2017` returned APPROVE/LOW with no blockers or missing tests. Full 1793 passed/1 skipped. The first integrity run hit the known unrelated desktop MCP child-reaping race; its isolated test passed, and the fresh integrity rerun passed full 1793/1 and Golden Path 36 with every hard check and only pre-existing dependency YELLOW. Evidence: `docs/fw-supply-004-*.json`.
 
 ### FW-SUPPLY-003 — Vulnerability and provenance classification
 - Requirement: FW-SUPPLY exact supplied-fact evaluation

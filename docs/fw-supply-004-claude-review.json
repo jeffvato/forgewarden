@@ -1,0 +1,33 @@
+{
+  "adjudication": null,
+  "candidate_commit": "20c422642d805372916fd988b3c179200f667ac7",
+  "deployment": "DISABLED",
+  "job_id": "phase2a-20c422642d805372916fd988",
+  "kill_switch": "ENGAGED",
+  "mutation_allowed": false,
+  "reviews": [
+    {
+      "provider": "CLAUDE",
+      "result": {
+        "blocking_findings": [],
+        "job_id": "phase2a-20c422642d805372916fd988",
+        "non_blocking_notes": [
+          "Test code references observation() helper\u2014verify it exists in original file before line 125",
+          "Evidence reference validation is code-correct but test coverage is asymmetric compared to vulnerability_refs tests"
+        ],
+        "proposed_rules": [],
+        "reasoning_summary": "The implementation correctly enforces immutable, tenant-bound canonical reference binding with fail-closed validation on kind, tenant, count, ordering, duplicates, and evidence boundaries per FW-SUPPLY-004 acceptance criteria. Code is secure: no registry creation, no response/deployment authority, DRY_RUN/CORRELATE_ONLY mode enforced, audit must succeed before return. Patch is narrow and deterministic. However, test coverage has gaps: while vulnerability_refs are tested for duplicates, cross-tenant refs, and wrong kind, evidence_refs are tested only for empty and overflow cases. The code handles these cases correctly (same validation logic), but to fully demonstrate that boundaries fail closed per acceptance criteria, the three missing evidence_refs test cases should be added to the parametrized test to achieve symmetry and explicit verification. No blocking issues in implementation correctness or security; this is a test completeness question for human decision on whether edge case coverage is sufficient for this particular patch scope.",
+        "reviewed_commit": "20c422642d805372916fd988b3c179200f667ac7",
+        "risk": "LOW",
+        "tests_missing": [
+          "Duplicate evidence_refs test case: evidence_refs with same ref twice should raise EVIDENCE_REFS_INVALID",
+          "Cross-tenant evidence_refs test case: evidence_refs with tenant-b should raise EVIDENCE_REFS_INVALID",
+          "Wrong kind for evidence_ref test case: evidence_refs with fw-vuln or fw-catalog kind should raise EVIDENCE_REFS_INVALID"
+        ],
+        "verdict": "HUMAN_REQUIRED"
+      },
+      "state": "REVIEW_RETURNED"
+    }
+  ],
+  "state": "REVIEW_REQUIRED"
+}

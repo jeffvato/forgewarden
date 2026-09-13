@@ -1,0 +1,26 @@
+{
+  "adjudication": null,
+  "candidate_commit": "0e144a0ce6842b59f51c201742578cbf72edb1ee",
+  "deployment": "DISABLED",
+  "job_id": "phase2a-0e144a0ce6842b59f51c2017",
+  "kill_switch": "ENGAGED",
+  "mutation_allowed": false,
+  "reviews": [
+    {
+      "provider": "CLAUDE",
+      "result": {
+        "blocking_findings": [],
+        "job_id": "phase2a-0e144a0ce6842b59f51c2017",
+        "non_blocking_notes": [],
+        "proposed_rules": [],
+        "reasoning_summary": "Repair commit adds all three required test cases for Evidence reference boundary validation: duplicate detection (replay), cross-tenant isolation, and wrong-kind reference rejection. Test cases use consistent parametrized format, target correct error code (EVIDENCE_REFS_INVALID), and cover critical fail-closed security boundaries. Patch is narrow, test-only, no implementation changes, no network or authority exposure. Deterministic checks pass. FW-SUPPLY-004 vulnerability boundaries (canonical vulnerability/catalog/signature/Evidence binding, cross-tenant isolation, reference-kind validation) are now properly tested.",
+        "reviewed_commit": "0e144a0ce6842b59f51c201742578cbf72edb1ee",
+        "risk": "LOW",
+        "tests_missing": [],
+        "verdict": "APPROVE"
+      },
+      "state": "APPROVED"
+    }
+  ],
+  "state": "APPROVED"
+}
