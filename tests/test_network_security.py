@@ -2,7 +2,7 @@ from dataclasses import FrozenInstanceError, replace
 
 import pytest
 
-from swarm.network_security import NetworkObservationDenied, classify_network_observation, normalize_network_observation
+from swarm.network_security import NetworkObservationDenied, bind_network_references, classify_network_observation, normalize_network_observation
 
 
 def fixture(**overrides):
@@ -186,3 +186,69 @@ def test_network_classifier_uses_highest_risk_for_combined_consistent_facts():
     )
     assert finding.risk == "CRITICAL"
     assert finding.recommendations == ("WARN", "PROPOSE_BLOCK")
+
+
+def finding():
+    return classify_network_observation(
+        observation(indicators=["UNAUTHORIZED_EGRESS"]),
+        tenant_id="tenant-a", audit=lambda *_args: None,
+    )
+
+
+def binding_args(**overrides):
+    values = dict(
+        tenant_id="tenant-a",
+        endpoint_event_ref="fw-endpoint/tenant-a/network-1",
+        aid_finding_ref="fw-finding/tenant-a/aid-egress-1",
+        soc_incident_ref="fw-incident/tenant-a/incident-1",
+        identity_ref="fw-id/tenant-a.network-controller",
+        evidence_refs=("fw-evid/tenant-a/network-1",),
+        audit=lambda *_args: None,
+    )
+    values.update(overrides)
+    return values
+
+
+def test_network_reference_binding_is_immutable_evidence_first_and_inert():
+    evidence = []
+    value = bind_network_references(
+        finding(), **binding_args(audit=lambda *args: evidence.append(args)),
+    )
+    assert value.risk == "HIGH"
+    assert value.endpoint_event_ref == "fw-endpoint/tenant-a/network-1"
+    assert value.action == "CORRELATE_ONLY" and value.mode == "DRY_RUN"
+    assert value.authority_granted is False
+    assert evidence[0][0] == "network_references_bound"
+    assert evidence[0][1]["response_executed"] is False
+    with pytest.raises(FrozenInstanceError):
+        value.risk = "LOW"
+
+
+@pytest.mark.parametrize("overrides,reason", [
+    ({"tenant_id": "tenant-b"}, "TENANT_MISMATCH"),
+    ({"endpoint_event_ref": "fw-endpoint/tenant-a/other"}, "SOURCE_BINDING_INVALID"),
+    ({"endpoint_event_ref": "fw-endpoint/tenant-b/network-1"}, "CORRELATION_REF_INVALID"),
+    ({"aid_finding_ref": "fw-incident/tenant-a/aid-1"}, "CORRELATION_REF_INVALID"),
+    ({"soc_incident_ref": "fw-incident/tenant-b/incident-1"}, "CORRELATION_REF_INVALID"),
+    ({"identity_ref": "fw-id/tenant-b.network-controller"}, "IDENTITY_REF_INVALID"),
+    ({"evidence_refs": ()}, "EVIDENCE_REFS_INVALID"),
+    ({"evidence_refs": ("fw-evid/tenant-a/network-1",) * 2}, "EVIDENCE_REFS_INVALID"),
+    ({"evidence_refs": ("fw-evid/tenant-b/network-1",)}, "EVIDENCE_REFS_INVALID"),
+    ({"evidence_refs": tuple(f"fw-evid/tenant-a/{i}" for i in range(17))}, "EVIDENCE_REFS_INVALID"),
+])
+def test_network_reference_binding_rejects_mismatch_or_invalid_references(overrides, reason):
+    with pytest.raises(NetworkObservationDenied, match=reason):
+        bind_network_references(finding(), **binding_args(**overrides))
+
+
+def test_network_reference_binding_revalidates_finding_and_evidence():
+    with pytest.raises(NetworkObservationDenied, match="FINDING_INVALID"):
+        bind_network_references(
+            replace(finding(), action="BLOCK"), **binding_args(),
+        )
+    with pytest.raises(NetworkObservationDenied, match="EVIDENCE_WRITE_FAILED"):
+        bind_network_references(
+            finding(), **binding_args(
+                audit=lambda *_args: (_ for _ in ()).throw(RuntimeError("offline")),
+            ),
+        )

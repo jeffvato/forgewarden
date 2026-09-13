@@ -13,11 +13,16 @@ from typing import Any, Callable, Mapping
 
 MAX_NETWORK_FIXTURE_BYTES = 32 * 1024
 MAX_NETWORK_INDICATORS = 16
+MAX_NETWORK_EVIDENCE_REFS = 16
 _TEXT = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:/@+-]{0,255}$")
 _TENANT = re.compile(r"^[a-z][a-z0-9_.-]{0,127}$")
 _OWNER_REF = re.compile(
     r"^fw-(asset|network|evid)/([a-z][a-z0-9_.-]{0,127})/[a-z][a-z0-9_.:/+-]{0,191}$"
 )
+_CORRELATION_REF = re.compile(
+    r"^fw-(endpoint|finding|incident|evid)/([a-z][a-z0-9_.-]{0,127})/[a-z][a-z0-9_.:/+-]{0,191}$"
+)
+_IDENTITY_REF = re.compile(r"^fw-id/([a-z][a-z0-9_.-]{0,127})\.([a-z][a-z0-9_.-]{0,126})$")
 _PROTOCOLS = frozenset({
     "DHCP", "DNS", "HTTP", "HTTPS", "KERBEROS", "LDAP", "RDP", "SMB",
     "SSH", "TCP", "TLS", "UDP", "VPN", "WIFI",
@@ -85,6 +90,24 @@ class NetworkThreatFinding:
     trust: str = "UNTRUSTED_DATA"
     mode: str = "DRY_RUN"
     action: str = "DETECT_ONLY"
+    authority_granted: bool = False
+
+
+@dataclass(frozen=True)
+class NetworkReferenceBinding:
+    event_id: str
+    tenant_id: str
+    device_ref: str
+    risk: str
+    indicators: tuple[str, ...]
+    endpoint_event_ref: str
+    aid_finding_ref: str
+    soc_incident_ref: str
+    identity_ref: str
+    evidence_refs: tuple[str, ...]
+    trust: str = "UNTRUSTED_DATA"
+    mode: str = "DRY_RUN"
+    action: str = "CORRELATE_ONLY"
     authority_granted: bool = False
 
 
@@ -224,3 +247,82 @@ def classify_network_observation(
         observation.protocol, observation.direction, indicators, risk,
         recommendations,
     )
+
+
+def bind_network_references(
+    finding: NetworkThreatFinding, *, tenant_id: str, endpoint_event_ref: str,
+    aid_finding_ref: str, soc_incident_ref: str, identity_ref: str,
+    evidence_refs: tuple[str, ...],
+    audit: Callable[[str, dict[str, Any]], None],
+) -> NetworkReferenceBinding:
+    """Bind canonical owner references without creating owner state."""
+    if not isinstance(finding, NetworkThreatFinding) or not callable(audit):
+        raise NetworkObservationDenied("FINDING_INVALID")
+    if finding.tenant_id != tenant_id:
+        raise NetworkObservationDenied("TENANT_MISMATCH")
+    expected_recommendations = (
+        ("WARN", "PROPOSE_BLOCK")
+        if finding.risk in {"HIGH", "CRITICAL"} else ("WARN",)
+    )
+    if (
+        finding.risk not in {"MEDIUM", "HIGH", "CRITICAL"}
+        or finding.recommendations != expected_recommendations
+        or finding.trust != "UNTRUSTED_DATA" or finding.mode != "DRY_RUN"
+        or finding.action != "DETECT_ONLY"
+        or finding.authority_granted is not False
+        or not finding.indicators
+        or tuple(sorted(set(finding.indicators))) != finding.indicators
+        or not set(finding.indicators) <= _INDICATORS
+    ):
+        raise NetworkObservationDenied("FINDING_INVALID")
+    device_ref = _owner_ref(finding.device_ref, "asset", tenant_id, "DEVICE_REF")
+    for value, kind in (
+        (endpoint_event_ref, "endpoint"),
+        (aid_finding_ref, "finding"),
+        (soc_incident_ref, "incident"),
+    ):
+        match = _CORRELATION_REF.fullmatch(value) if isinstance(value, str) else None
+        if match is None or match.group(1) != kind or match.group(2) != tenant_id:
+            raise NetworkObservationDenied("CORRELATION_REF_INVALID")
+    if endpoint_event_ref != f"fw-endpoint/{tenant_id}/{finding.event_id}":
+        raise NetworkObservationDenied("SOURCE_BINDING_INVALID")
+    identity_match = _IDENTITY_REF.fullmatch(identity_ref) if isinstance(identity_ref, str) else None
+    if identity_match is None or identity_match.group(1) != tenant_id:
+        raise NetworkObservationDenied("IDENTITY_REF_INVALID")
+    if (
+        not isinstance(evidence_refs, tuple)
+        or not 1 <= len(evidence_refs) <= MAX_NETWORK_EVIDENCE_REFS
+        or tuple(sorted(set(evidence_refs))) != evidence_refs
+    ):
+        raise NetworkObservationDenied("EVIDENCE_REFS_INVALID")
+    for value in evidence_refs:
+        match = _CORRELATION_REF.fullmatch(value) if isinstance(value, str) else None
+        if match is None or match.group(1) != "evid" or match.group(2) != tenant_id:
+            raise NetworkObservationDenied("EVIDENCE_REFS_INVALID")
+    result = NetworkReferenceBinding(
+        finding.event_id, tenant_id, device_ref, finding.risk,
+        finding.indicators, endpoint_event_ref, aid_finding_ref,
+        soc_incident_ref, identity_ref, evidence_refs,
+    )
+    try:
+        audit("network_references_bound", {
+            "event_id": result.event_id,
+            "tenant_id": tenant_id,
+            "device_ref": device_ref,
+            "risk": result.risk,
+            "indicators": result.indicators,
+            "endpoint_event_ref": endpoint_event_ref,
+            "aid_finding_ref": aid_finding_ref,
+            "soc_incident_ref": soc_incident_ref,
+            "identity_ref": identity_ref,
+            "evidence_refs": evidence_refs,
+            "trust": "UNTRUSTED_DATA",
+            "mode": "DRY_RUN",
+            "action": "CORRELATE_ONLY",
+            "deployment": "DISABLED",
+            "response_executed": False,
+            "authority_granted": False,
+        })
+    except Exception as exc:
+        raise NetworkObservationDenied("EVIDENCE_WRITE_FAILED") from exc
+    return result
