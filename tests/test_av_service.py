@@ -38,7 +38,18 @@ def test_service_reuses_canonical_fixture_pipeline_and_exposes_status_only():
     assert status["action"] == "DETECT_ONLY"
     assert status["automatic_blocking"] is False
     assert status["quarantine_execution"] is False
+    assert status["service_control"] == "CENTRAL_ONLY"
+    assert status["local_stop_allowed"] is False
+    assert status["local_policy_change_allowed"] is False
     assert status["metrics"].accepted_records == 1
+
+
+def test_local_user_mode_allows_preferences_but_never_service_stop():
+    service = AVProtectionService(profile(enterprise=False), DryRunSensorPipeline(NormalizedEventStore(lambda *_: None)))
+    status = service.status()
+    assert status["service_control"] == "LOCAL_POLICY_LIMITED"
+    assert status["local_stop_allowed"] is False
+    assert status["local_policy_change_allowed"] is True
 
 
 def test_service_rejects_cross_tenant_observation():
