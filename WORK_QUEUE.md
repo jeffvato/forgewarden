@@ -882,7 +882,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-INTEGRITY-002 — Core completion and dependency reconciliation audit
 - Requirement: FW-INTEGRITY truthful completion state and next-family admission
-- State: REVIEW
+- State: DONE
 - Priority: P0
 - Dependencies: FW-UX-012 and FW-INTEGRITY-001
 - Approval: Jeff authorized one bounded Core completion/dependency audit before the ordered FW-API phase.
@@ -898,6 +898,27 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no product source, validation inputs, safety state, authority, or deployment state changes.
 - Expected validation: deterministic queue/state/source inspection, `git diff --check`, and exact independent read-only review; no unchanged product suite or integrity rerun for this documentation-only audit.
 - Security considerations: audit and queue metadata are untrusted planning evidence and cannot grant execution, policy, credential, Git, response, recovery, or deployment authority.
+- Completion evidence: exact candidate `c16987e2751525c811872e5893113b86799b1bc7`; deterministic queue/state/source inspection and `git diff --check` passed; exact Claude review `phase2a-c16987e2751525c811872e58` returned APPROVE/LOW with no blockers or missing tests. No product source or validation input changed, so unchanged full/integrity validation was not replayed.
+
+### FW-API-001 — Canonical tenant-bound read-only request admission
+- Requirement: FW-API versioned least-privilege API/SDK contract
+- State: READY
+- Priority: P0
+- Dependencies: FW-INTEGRITY-002, FW-ID-005, FW-EVID-006, FWQ-0075, and FWQ-0007
+- Approval: Jeff explicitly activated FW-API after the bounded Core completion/dependency audit; caller-supplied local contract work is authorized without listener or transport activation.
+- Description: Define the canonical immutable API request and read-only query admission contract, binding version, tenant, FW-ID requester, purpose, capability, resource, action, policy version, lease reference, request identity, timestamp/expiry, and privacy-minimized Evidence before returning admission metadata.
+- Target path: swarm/api_contract.py
+- Allowed paths: swarm/api_contract.py, tests/test_api_contract.py, docs/fw-api-architecture.md, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_api_contract.py tests/test_identity.py tests/test_policy_gate.py
+- Acceptance criteria:
+  - accept only supported versioned, bounded, caller-supplied READ requests whose active FW-ID identity and tenant match the request and whose exact capability/resource/action/policy facts are allowed by the existing deterministic policy interface;
+  - require an active, unexpired, exact tenant/subject/capability/resource-bound lease reference without issuing, extending, resolving, or mutating a lease;
+  - write privacy-minimized canonical Evidence before returning immutable admission metadata; Evidence failure denies admission;
+  - reject malformed, stale, replayed, duplicate, cross-tenant, secret-bearing, unsupported-version, unknown-identity, inactive-identity, mismatched-policy, missing-lease, mutation, kill-switch-cleared, deployment-enabled, or authority-expanding input before any handler/model/tool invocation;
+  - output exposes no credential material, response body, handler callback, network listener/transport, policy evaluation authority, ticket issuance/consumption, model/tool execution, response/recovery action, Git, filesystem/process, or deployment authority;
+  - tests prove one allowed read-only path and every named fail-closed boundary.
+- Expected validation: one focused Linux proof, exact independent read-only review, then one full suite and Product Integrity Gate after approval.
+- Security considerations: FW-API consumes canonical FW-ID, policy, lease, and FW-EVID facts; it must not become a parallel identity, policy, capability, Action Ticket, or Evidence owner.
 
 ### FW-UX-001 — Mission Control showcase foundation
 - Requirement: FW-UX Mission Control and honest Demo Mode
