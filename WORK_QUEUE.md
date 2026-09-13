@@ -41,7 +41,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-ASM-002 — Caller-supplied external-asset observation
 - Requirement: FW-ASM immutable tenant-bound metadata boundary
-- State: REPAIR
+- State: DONE
 - Priority: P0
 - Dependencies: FW-ASM-001
 - Approval: Jeff authorized the ordered FW-ASM phase using small bounded candidates.
@@ -50,10 +50,11 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 - Allowed paths: swarm/attack_surface.py, tests/test_attack_surface.py, WORK_QUEUE.md, SWARM_STATUS.md
 - Test command: python3 -m pytest -q tests/test_attack_surface.py
 - Acceptance criteria: immutable bounded untrusted DRY_RUN/DETECT_ONLY metadata is Evidence-first and fail-closed; no content, credential, discovery, scan, connection, query, mutation, or response authority is added.
+- Completion evidence: implementation candidate `ab8ad675e95bec0be73ec0d3f24bd804638bef14`; test-only repair `6eb438b94d2173bc7846a70e8e6af55fb6481cf3`. Focused validation passed 21 tests and the full suite passed 1896 with 1 skipped. Exact AnythingLLM/Qwen review approved the repair at LOW risk but placed an optional future-hardening note in `tests_missing`, so it was not accepted by the deterministic gate; exact Claude fallback job `phase2a-6eb438b94d2173bc7846a70e` returned APPROVE/LOW with no blockers or missing tests. Product Integrity passed every hard check and the Golden Path, with only the pre-existing `tzdata` dependency YELLOW. Evidence: `docs/fw-asm-002-qwen-review.json`, `docs/fw-asm-002-qwen-repair-review.json`, `docs/fw-asm-002-claude-repair-review.json`, `docs/fw-asm-002-integrity.json`.
 
 ### FW-ASM-003 — Exposure and exploitability classification
 - Requirement: FW-ASM exact supplied-fact evaluation
-- State: BLOCKED
+- State: READY
 - Priority: P0
 - Dependencies: FW-ASM-002
 - Approval: Jeff authorized the ordered FW-ASM phase using small bounded candidates.

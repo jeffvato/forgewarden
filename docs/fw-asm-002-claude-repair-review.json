@@ -1,0 +1,28 @@
+{
+  "adjudication": null,
+  "candidate_commit": "6eb438b94d2173bc7846a70e8e6af55fb6481cf3",
+  "deployment": "DISABLED",
+  "job_id": "phase2a-6eb438b94d2173bc7846a70e",
+  "kill_switch": "ENGAGED",
+  "mutation_allowed": false,
+  "reviews": [
+    {
+      "provider": "CLAUDE",
+      "result": {
+        "blocking_findings": [],
+        "job_id": "phase2a-6eb438b94d2173bc7846a70e",
+        "non_blocking_notes": [
+          "Future hardening: parametrize service field tests across all JSON-incompatible types (set, tuple, datetime); implement property-based testing for observation boundary matrix; add performance regression tests for large fixture payloads."
+        ],
+        "proposed_rules": [],
+        "reasoning_summary": "Commit 6eb438b94d2173bc7846a70e8e6af55fb6481cf3 closes all four test gaps identified in the parent FW-ASM-002 review. The patch adds four focused test cases validating error boundaries: boolean observation time rejection, invalid tenant formats, malformed current-time values, and non-JSON fixture serialization. All tests use correct pytest patterns with appropriate exception matching. No production code changed; runtime behavior and authority unchanged. The patch is narrow, deterministic, and directly satisfies the bounded repair milestone requirements. No blocking findings or required tests remain for acceptance.",
+        "reviewed_commit": "6eb438b94d2173bc7846a70e8e6af55fb6481cf3",
+        "risk": "LOW",
+        "tests_missing": [],
+        "verdict": "APPROVE"
+      },
+      "state": "APPROVED"
+    }
+  ],
+  "state": "APPROVED"
+}
