@@ -87,7 +87,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-GOV-006 — Integrated high-assurance lifecycle proof
 - Requirement: FW-GOV accepted-stage and adversarial composition
-- State: READY
+- State: DONE
 - Priority: P0
 - Dependencies: FW-GOV-005
 - Approval: Jeff authorized the ordered FW-GOV phase through the continuing heartbeat.
@@ -96,6 +96,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 - Allowed paths: swarm/high_assurance.py, swarm/mission_control.py, tests/test_high_assurance.py, tests/test_mission_control.py, WORK_QUEUE.md, SWARM_STATUS.md
 - Test command: python3 -m pytest -q tests/test_high_assurance.py tests/test_harness_models.py tests/test_mission_control.py
 - Acceptance criteria: exact lifecycle preserves tenant/boundary/environment/data/tier/model/evidence bindings; downgrade, opaque routing, substitution, stale authorization, remote use under offline policy, and no-approved-model paths fail closed.
+- Completion evidence: exact candidate `fb7e28c2a13809e0d556b1525e8cd738e8ed1a85`; focused validation passed 160. Exact AnythingLLM/Qwen job `phase2a-fb7e28c2a13809e0d556b152` returned APPROVE/LOW with no blockers or missing tests. Full validation and Product Integrity each passed 2089 tests with 1 skipped; focused Golden Path passed 160. Every hard integrity check passed, with YELLOW only for pre-existing `tzdata`. Evidence: `docs/fw-gov-006-qwen-review.json`, `docs/fw-gov-006-integrity.json`. The bounded FW-GOV phase and ordered heartbeat roadmap are complete.
 
 ### FW-DSPM-001 — Data security posture ownership and bounded route
 - Requirement: FW-DSPM canonical ownership inventory

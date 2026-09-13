@@ -1,0 +1,30 @@
+{
+  "adjudication": null,
+  "candidate_commit": "fb7e28c2a13809e0d556b1525e8cd738e8ed1a85",
+  "deployment": "DISABLED",
+  "job_id": "phase2a-fb7e28c2a13809e0d556b152",
+  "kill_switch": "ENGAGED",
+  "mutation_allowed": false,
+  "reviews": [
+    {
+      "provider": "ANYTHINGLLM",
+      "result": {
+        "blocking_findings": [],
+        "job_id": "phase2a-fb7e28c2a13809e0d556b152",
+        "non_blocking_notes": [
+          "The `run_high_assurance_dry_run_lifecycle` function correctly composes the FW-GOV-006 stages: profile normalization, admission, optional failure/failover, evidence binding, and Mission Control projection.",
+          "Fail-closed behavior is verified for unbound fallback candidates, stale authorizations, downgrades, and missing approved models.",
+          "The `HighAssuranceDryRunLifecycle` dataclass is immutable and explicitly disables deployment, invocation, and authority, aligning with the DRY_RUN requirement."
+        ],
+        "proposed_rules": [],
+        "reasoning_summary": "The commit implements the integrated immutable DRY_RUN lifecycle for FW-GOV-006. It composes profile normalization, exact ApprovedModelCandidate admission, optional exact failure plus same-or-higher approved-equivalent failover/offline decision, complete tenant-bound Evidence binding, and Mission Control projection. The code strictly adheres to tenant/boundary/environment/data/tier/model/evidence bindings. It fails closed on downgrades, substitutions, stale authorizations, remote use under offline policy, no approved model, unbound fallback, and authority-shaped inputs. No opaque router, provider invocation, credential, deployment, mutation, or authority is introduced. The provided tests confirm the integrated lifecycle behavior, including direct and failover paths, denial scenarios, and offline constraints, with 160 focused tests passing.",
+        "reviewed_commit": "fb7e28c2a13809e0d556b1525e8cd738e8ed1a85",
+        "risk": "LOW",
+        "tests_missing": [],
+        "verdict": "APPROVE"
+      },
+      "state": "APPROVED"
+    }
+  ],
+  "state": "APPROVED"
+}
