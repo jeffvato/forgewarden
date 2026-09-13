@@ -1,6 +1,6 @@
 # ForgeWarden Swarm Status
 
-- 2026-09-13: FW-OPS-001 inventory candidate prepared: existing Product Integrity, endpoint capacity, Harness monitoring/budget, Recovery continuity, loopback status, process-bound, Mission Control, and FW-EVID seams are mapped to canonical owners. The first runtime gap is a tenant-bound read-only operational health projection; live telemetry export, HA/DR coordination, retention movement, service control, rollback execution, and deployment remain unimplemented and unauthorized. Deterministic source inspection and git diff check are the validation boundary; exact review is next.
+- 2026-09-13: FW-OPS-001 accepted at candidate `f44d173f8016202b0ac3f198f7cb9a5b18f7b275`: existing Product Integrity, endpoint capacity, Harness monitoring/budget, Recovery continuity, loopback status, process-bound, Mission Control, and FW-EVID seams are mapped to canonical owners. Exact Claude review returned APPROVE/LOW with no blockers or missing tests after deterministic repository/source/queue inspection and git diff check. No product validation was replayed for the documentation-only inventory. The first runtime gap is FW-OPS-002 tenant-bound read-only operational health projection; live telemetry export, HA/DR coordination, retention movement, service control, rollback execution, and deployment remain unimplemented and unauthorized.
 
 - 2026-09-13: FW-API-001 accepted at candidate `2e9aa47da907f77be54894fc443487c0081f853d`: canonical immutable tenant-bound read-only request admission now consumes existing FW-ID, deterministic policy, signed lease, and FW-EVID interfaces; every named denial fails before handler/model/tool invocation. Focused proof passed 99 tests. The first Claude attempt exhausted its bounded turns and AnythingLLM was unavailable; the required return to Claude then produced exact APPROVE/LOW with no blockers or missing tests. Full and Product Integrity fresh suites passed 1660 tests with 1 skipped; all hard checks passed and health remains YELLOW only for pre-existing `tzdata`. The bounded read-only FW-API phase is complete; FW-OPS inventory and first substantive milestone are next.
 
@@ -13,8 +13,8 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: FW-OPS-001 exact inventory review.
-- Next task: exact review of FW-OPS-001, then FW-OPS-002 tenant-bound operational health projection.
+- Current focus: FW-OPS-001 accepted; canonical operations ownership and gaps are mapped.
+- Next task: FW-OPS-002 tenant-bound operational health projection.
 - Harness role: permanent ForgeWarden Core subsystem and default controller for ForgeWarden's own development; one governed architecture serves both roles under D-023.
 - Worker transport direction: registered local CLIs and explicitly approved API-backed workers; API keys are resolved only through FW-KEYS secret handles inside trusted adapters and never enter model context or lifecycle evidence.
 - Provider authentication direction: deterministic OpenAI, Anthropic, and Google/Gemini profiles with provider-specific official OAuth where available and approved API-key classes otherwise; Gemini CLI is registered as `agy` for read-only roles, FW-ID owns delegated identity, and FW-KEYS owns all credential material.
