@@ -1,0 +1,30 @@
+{
+  "adjudication": null,
+  "candidate_commit": "30a23961040c066b74d88be31fd22e4acb15faf3",
+  "deployment": "DISABLED",
+  "job_id": "phase2a-30a23961040c066b74d88be3",
+  "kill_switch": "ENGAGED",
+  "mutation_allowed": false,
+  "reviews": [
+    {
+      "provider": "ANYTHINGLLM",
+      "result": {
+        "blocking_findings": [],
+        "job_id": "phase2a-30a23961040c066b74d88be3",
+        "non_blocking_notes": [
+          "Patch updates SWARM_STATUS.md and WORK_QUEUE.md to reflect the new phase2a validation state.",
+          "The implementation correctly isolates advisory logic from enforcement, maintaining the DRY_RUN and ADVISE_ONLY posture.",
+          "Deterministic risk calculation logic is clearly defined and adheres to the specified signal precedence rules."
+        ],
+        "proposed_rules": [],
+        "reasoning_summary": "The commit implements the FW-DSPM-003 candidate as specified. It introduces a deterministic classification function for data security observations that strictly adheres to the 'advise-only' constraint. The code correctly validates input integrity, denies contradictory facts (such as AI workflow with no AI access), rejects cross-tenant mismatches, and handles evidence write failures gracefully. The risk scoring logic is deterministic and maps specific signal combinations to LOW, MEDIUM, HIGH, or CRITICAL risk levels without invoking any AI models or inspecting content. The provided tests cover the key acceptance criteria, including deterministic classification, denial of contradictory/invalid inputs, and verification that no enforcement or deployment actions are triggered. All 38 focused tests passed, confirming the stability and correctness of the implementation. There are no blocking findings, and the risk level is LOW as the changes are isolated, advisory, and thoroughly tested.",
+        "reviewed_commit": "30a23961040c066b74d88be31fd22e4acb15faf3",
+        "risk": "LOW",
+        "tests_missing": [],
+        "verdict": "APPROVE"
+      },
+      "state": "APPROVED"
+    }
+  ],
+  "state": "APPROVED"
+}

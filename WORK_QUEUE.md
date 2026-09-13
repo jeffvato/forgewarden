@@ -48,7 +48,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-DSPM-003 — Data exposure and access-risk classification
 - Requirement: FW-DSPM exact supplied-fact evaluation
-- State: REVIEW
+- State: DONE
 - Priority: P0
 - Dependencies: FW-DSPM-002
 - Approval: Jeff authorized the ordered FW-DSPM phase through the continuing heartbeat.
@@ -57,10 +57,11 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 - Allowed paths: swarm/data_security.py, tests/test_data_security.py, WORK_QUEUE.md, SWARM_STATUS.md
 - Test command: python3 -m pytest -q tests/test_data_security.py
 - Acceptance criteria: bounded exact facts produce advisory risk; malformed, contradictory, cross-tenant, content-bearing, or authority-shaped facts deny; no model decision or response executor is added.
+- Completion evidence: exact candidate `30a23961040c066b74d88be31fd22e4acb15faf3`. Focused validation passed 38 tests and the full suite passed 1980 with 1 skipped. Exact AnythingLLM/Qwen job `phase2a-30a23961040c066b74d88be3` returned APPROVE/LOW with no blockers or missing tests. Product Integrity passed every hard check and the Golden Path, with only the pre-existing `tzdata` dependency YELLOW. Evidence: `docs/fw-dspm-003-qwen-review.json`, `docs/fw-dspm-003-integrity.json`.
 
 ### FW-DSPM-004 — Canonical data-security reference binding
 - Requirement: FW-DSPM owner-system composition
-- State: BLOCKED
+- State: READY
 - Priority: P0
 - Dependencies: FW-DSPM-003
 - Approval: Jeff authorized the ordered FW-DSPM phase through the continuing heartbeat.
