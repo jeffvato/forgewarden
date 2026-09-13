@@ -45,6 +45,9 @@ FW-AID consumes the same canonical identity, keys, model, MCP, endpoint,
 browser/email, event, policy, SOC, Evidence, recovery, and Mission Control
 owners. It adds AI-specific classification and correlation, never authority.
 
-Current checkout reality: several named families are still roadmap ownership
-labels rather than concrete modules. `swarm.integrity` records those gaps
-instead of treating the graph as proof of implementation.
+Current checkout reality at the FW-UX-012 checkpoint: the bounded DRY_RUN
+implementations represented above have canonical modules and tests, while
+FW-API and FW-OPS remain roadmap families without dedicated canonical modules.
+The graph records dependencies and ownership; it does not imply live sensors,
+production services, executed containment/recovery, deployment readiness, or
+authority beyond each accepted fixture/local contract.

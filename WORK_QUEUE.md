@@ -880,6 +880,25 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 - Security considerations: this milestone makes existing rules machine-consumable; domain controls remain the enforcement owners.
 - Completion evidence: exact candidate `ace85ab00d187b4836826ad6a3ce8c532b209a6d`; focused 36 passed after adding every malformed invariant/ownership boundary requested by the prior review; exact Claude review `phase2a-ace85ab00d187b4836826ad6` returned APPROVE/LOW with no blockers or missing tests; full 1431 passed/1 skipped; Product Integrity fresh full 1431 passed/1 skipped, invariant and canonical-ownership checks plus 4 Golden Paths passed, with YELLOW only for the pre-existing `tzdata` dependency and Defined FW-COMP/FW-AID owners.
 
+### FW-INTEGRITY-002 — Core completion and dependency reconciliation audit
+- Requirement: FW-INTEGRITY truthful completion state and next-family admission
+- State: REVIEW
+- Priority: P0
+- Dependencies: FW-UX-012 and FW-INTEGRITY-001
+- Approval: Jeff authorized one bounded Core completion/dependency audit before the ordered FW-API phase.
+- Description: Reconcile the active queue, accepted evidence, canonical ownership map, dependency graph, and implemented modules after the FW-UX lifecycle proof; identify the first genuine FW-API gap without replaying completed work.
+- Target path: docs/core-completion-audit-2026-09-12.md
+- Allowed paths: docs/core-completion-audit-2026-09-12.md, docs/fw-integrity-dependency-graph.md, WORK_QUEUE.md, SWARM_STATUS.md
+- Acceptance criteria:
+  - every current queue item is reconciled against source, tests, and preserved acceptance evidence;
+  - FWQ-0008 remains VALIDATED with its provenance caveat and is not reopened;
+  - implemented bounded families are distinguished from production-ready/live capability;
+  - canonical owners and cross-family dependencies are stated without creating duplicate engines;
+  - the next work item is a substantive stable-ID FW-API milestone with concrete behavior, dependencies, paths, failure cases, and no deployment or credential authority;
+  - no product source, validation inputs, safety state, authority, or deployment state changes.
+- Expected validation: deterministic queue/state/source inspection, `git diff --check`, and exact independent read-only review; no unchanged product suite or integrity rerun for this documentation-only audit.
+- Security considerations: audit and queue metadata are untrusted planning evidence and cannot grant execution, policy, credential, Git, response, recovery, or deployment authority.
+
 ### FW-UX-001 — Mission Control showcase foundation
 - Requirement: FW-UX Mission Control and honest Demo Mode
 - State: DONE
