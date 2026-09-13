@@ -966,6 +966,26 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 - Completion evidence: exact candidate `e10f730392bbf7138e50081c05632d20c1401679`; focused 79 passed; exact Claude review `phase2a-e10f730392bbf7138e50081c` returned APPROVE/LOW with no blockers or missing tests; full 1681 passed/1 skipped; Product Integrity fresh full and Golden Path each passed 1681/1 with all hard checks passing and YELLOW only for the pre-existing `tzdata` dependency.
 
+
+### FW-OPS-003 — Bounded capacity and backpressure assessment
+- Requirement: FW-OPS deterministic capacity trend classification
+- State: REVIEW
+- Priority: P0
+- Dependencies: FW-OPS-002
+- Approval: Jeff authorized bounded FW-OPS work; assessment remains caller-supplied and observe-only.
+- Description: Assess a short chronological window of canonical operational health projections against configurable warning, critical, and consecutive-pressure thresholds without changing queues, budgets, services, or recovery state.
+- Target path: swarm/operations_capacity.py
+- Allowed paths: swarm/operations_capacity.py, tests/test_operations_capacity.py, docs/fw-ops-inventory.md, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_operations_capacity.py tests/test_operations.py
+- Acceptance criteria:
+  - accept only a bounded, ordered, unique, fresh, same-tenant window of canonical DRY_RUN operational projections with same-tenant Evidence references;
+  - immutable validated policy controls warning, critical, and consecutive-warning thresholds;
+  - deterministically classify NORMAL, ELEVATED, SUSTAINED, or CRITICAL pressure without allowing a model or input sample to change policy;
+  - write privacy-minimized canonical Evidence before retaining output; replay, stale/future, substituted safety/tenant/Evidence, malformed policy/window, Evidence failure, and foreign Evidence deny, while sink failure permits bounded retry;
+  - output remains OBSERVE_ONLY and cannot throttle, mutate queues/budgets, poll, export, invoke Recovery, control services/processes, or grant filesystem/network/credential/deployment authority.
+- Expected validation: focused Linux proof, exact independent read-only review, then one full suite and Product Integrity Gate after approval.
+- Security considerations: this is read-only trend metadata over the canonical FW-OPS-002 projection; operational enforcement remains outside this adapter.
+
 ### FW-UX-001 — Mission Control showcase foundation
 - Requirement: FW-UX Mission Control and honest Demo Mode
 - State: DONE

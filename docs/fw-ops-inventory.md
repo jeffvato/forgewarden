@@ -81,3 +81,18 @@ foreign-Evidence input. Output is fixed to DRY_RUN, deployment DISABLED,
 OBSERVE_ONLY, `recovery_invoked=False`, and `authority_granted=False`.
 No host polling, queue mutation, telemetry export, listener, process/service
 control, recovery, rollback, credential access, or deployment is present.
+
+## FW-OPS-003 implemented contract
+
+`swarm.operations_capacity` consumes only previously projected canonical
+operational-health metadata. A configurable immutable policy evaluates a
+maximum eight-sample, tenant-bound, chronological and fresh window. One warning
+sample is ELEVATED, the configured consecutive warning count is SUSTAINED, and
+an unhealthy or critical-utilization sample is CRITICAL.
+
+The result remains Evidence-first and OBSERVE_ONLY. It cannot throttle queues,
+change budgets, poll a component, invoke Recovery, or control services.
+Substituted tenant/Evidence/safety facts, duplicate or reordered samples,
+stale/future windows, replay, malformed bounds, Evidence failure, and foreign
+Evidence references deny. Evidence failure does not consume the assessment ID,
+allowing a bounded trusted retry.
