@@ -1,0 +1,30 @@
+{
+  "adjudication": null,
+  "candidate_commit": "aa4edf990621304f323d76893fe2c5d5e12d7f0d",
+  "deployment": "DISABLED",
+  "job_id": "phase2a-aa4edf990621304f323d7689",
+  "kill_switch": "ENGAGED",
+  "mutation_allowed": false,
+  "reviews": [
+    {
+      "provider": "ANYTHINGLLM",
+      "result": {
+        "blocking_findings": [],
+        "job_id": "phase2a-aa4edf990621304f323d7689",
+        "non_blocking_notes": [
+          "The mapper strictly enforces caller-supplied identity by rejecting tenant/device mismatches and ensuring source identity.",
+          "Batch ingestion correctly validates bounds and duplicates before delegating to the canonical store, preserving atomicity.",
+          "No platform, filesystem, network, or credential access is introduced in the new module."
+        ],
+        "proposed_rules": [],
+        "reasoning_summary": "The patch introduces a pure, caller-supplied macOS fixture mapper that strictly adheres to the canonical NormalizedEventStore. It enforces exact shape checks, source/tenant/device binding, and event type validation. The implementation preserves atomic Evidence-first admission and maintains fixed DRY_RUN/DETECT_ONLY modes. No authority for platform operations, network access, or remediation is granted. Focused tests provide meaningful positive and fail-closed coverage for shape validation, ordering, duplicates, and store pressure.",
+        "reviewed_commit": "aa4edf990621304f323d76893fe2c5d5e12d7f0d",
+        "risk": "LOW",
+        "tests_missing": [],
+        "verdict": "APPROVE"
+      },
+      "state": "APPROVED"
+    }
+  ],
+  "state": "APPROVED"
+}

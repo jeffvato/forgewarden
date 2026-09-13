@@ -22,7 +22,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-ENDPOINT-MACOS-01 — Caller-supplied macOS fixture admission
 - Requirement: FW-ENDPOINT bounded macOS normalization
-- State: REVIEW
+- State: DONE
 - Priority: P0
 - Dependencies: FW-ENDPOINT-14, FW-ENDPOINT-04
 - Approval: Jeff authorized FW-ENDPOINT continuation with small bounded candidates; this fixture-only milestone preserves all current no-live-endpoint limits.
@@ -37,6 +37,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no platform API, service, sensor, hook, filesystem/process/network operation, credential access, containment, remediation, recovery execution, or deployment authority is added.
 - Expected validation: focused Linux proof, exact independent read-only review, then one full suite and Product Integrity run after approval.
 - Security considerations: the mapper accepts data only; NormalizedEventStore remains the state/evidence owner and no AI or fixture gains authority.
+- Completion evidence: exact candidate `aa4edf990621304f323d76893fe2c5d5e12d7f0d`; focused 45 passed; exact AnythingLLM/Qwen job `phase2a-aa4edf990621304f323d7689` returned APPROVE/LOW with no blockers or missing tests; full 1713 passed/1 skipped; Product Integrity fresh full 1713 passed/1 skipped, focused Golden Path 45 passed, every hard check passed, and health remained YELLOW only for the pre-existing `tzdata` dependency. Evidence: `docs/fw-endpoint-macos-01-qwen-review.json`, `docs/fw-endpoint-macos-01-integrity.json`.
 
 ### FW-ENDPOINT-14 — Endpoint and RansomGuard continuation inventory
 - Requirement: FW-ENDPOINT/FW-RANSOM continuation ownership and next-platform admission
