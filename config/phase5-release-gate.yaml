@@ -1,0 +1,20 @@
+schema_version: "1"
+format: FORGEWARDEN_RELEASE_ASSURANCE_GATE_V1
+technical_assurance: VERIFIED
+final_disposition: BLOCKED_PENDING_HUMAN_GATES
+publication: DISABLED
+production_ready: false
+legal_status: PENDING
+license_concluded: NOASSERTION
+license_declared: NOASSERTION
+required_pending_gates:
+  - legal_review
+  - chain_of_title_review
+  - trademark_media_review
+  - dependency_sbom_review
+  - reproducible_build_review
+  - clean_export_ci_review
+  - customer_root_release_approval
+tracks:
+  - PUBLIC_SDK
+  - SOURCE_AVAILABLE_DEMO

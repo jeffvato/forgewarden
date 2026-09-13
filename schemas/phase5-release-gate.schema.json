@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ForgeWarden Phase 5 Release Assurance Gate",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "format", "technical_assurance", "final_disposition", "publication", "production_ready", "legal_status", "license_concluded", "license_declared", "pending_gates", "tracks", "input_bundle_sha256", "safety"],
+  "properties": {
+    "schema_version": {"const": "1"},
+    "format": {"const": "FORGEWARDEN_RELEASE_ASSURANCE_GATE_V1"},
+    "technical_assurance": {"const": "VERIFIED"},
+    "final_disposition": {"const": "BLOCKED_PENDING_HUMAN_GATES"},
+    "publication": {"const": "DISABLED"},
+    "production_ready": {"const": false},
+    "legal_status": {"const": "PENDING"},
+    "license_concluded": {"const": "NOASSERTION"},
+    "license_declared": {"const": "NOASSERTION"},
+    "pending_gates": {"type": "array", "const": ["legal_review", "chain_of_title_review", "trademark_media_review", "dependency_sbom_review", "reproducible_build_review", "clean_export_ci_review", "customer_root_release_approval"]},
+    "input_bundle_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "tracks": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"type": "object", "additionalProperties": false, "required": ["track", "source_binding_sha256", "source_manifest_sha256", "provenance_sha256", "root_commit_sha1", "tree_sha1", "repository_result_sha256", "command_plan_sha256", "file_count", "checks_passed"], "properties": {
+      "track": {"enum": ["PUBLIC_SDK", "SOURCE_AVAILABLE_DEMO"]},
+      "source_binding_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+      "source_manifest_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+      "provenance_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+      "root_commit_sha1": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+      "tree_sha1": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+      "repository_result_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+      "command_plan_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+      "file_count": {"type": "integer", "minimum": 1, "maximum": 64},
+      "checks_passed": {"type": "integer", "minimum": 1, "maximum": 3}
+    }}},
+    "safety": {"type": "object", "additionalProperties": false, "required": ["publication_performed", "deployment_performed", "authority_granted", "network_accessed", "credential_accessed", "license_selected", "human_gate_satisfied"], "properties": {
+      "publication_performed": {"const": false}, "deployment_performed": {"const": false}, "authority_granted": {"const": false}, "network_accessed": {"const": false}, "credential_accessed": {"const": false}, "license_selected": {"const": false}, "human_gate_satisfied": {"const": false}
+    }}
+  }
+}

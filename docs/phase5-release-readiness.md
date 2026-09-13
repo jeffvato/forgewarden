@@ -119,6 +119,20 @@ pending, and publication and production readiness remain disabled. The
 controller has no remote creation, network, provider, credential, package,
 visibility, publication, deployment, or authority capability.
 
+## Deterministic technical assurance handoff
+
+FWQ-0085 adds a local release-assurance aggregator for the accepted history
+audit, sanitized export, dependency provenance, reproducible repository, and
+offline clean-export CI facts. It requires exact track and digest agreement
+across both public tracks, rejects unsafe or stronger readiness claims, and
+returns only digest-bound technical facts. Its disposition is always
+`BLOCKED_PENDING_HUMAN_GATES`; it cannot select a license, satisfy legal or
+chain-of-title review, clear trademarks or media, approve dependencies,
+change visibility, publish, deploy, or grant authority. The seven pending
+gates remain owned by their existing human and Core authorities. No prompts,
+review transcripts, credentials, private source identifiers, or raw findings
+are copied into the handoff output.
+
 
 ## Offline clean-export CI proof
 
