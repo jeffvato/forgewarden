@@ -27,6 +27,11 @@ _ACCESS_PATHS = frozenset({"DIRECT", "EXTERNAL", "SHARED", "UNKNOWN"})
 _ENCRYPTION = frozenset({"ENCRYPTED", "UNENCRYPTED", "UNKNOWN"})
 _AI_ACCESS = frozenset({"APPROVED", "NONE", "UNAPPROVED", "UNKNOWN"})
 _POLICY = frozenset({"COMPLIANT", "UNKNOWN", "VIOLATION"})
+_RISK_SIGNALS = frozenset({
+    "AI_ACCESS_UNAPPROVED", "COPIES_ELEVATED", "ENCRYPTION_MISSING",
+    "ENCRYPTION_UNKNOWN", "EXTERNAL_ACCESS", "POLICY_UNKNOWN",
+    "POLICY_VIOLATION", "SENSITIVE_DATA",
+})
 _REQUIRED = frozenset({
     "event_id", "tenant_id", "observed_at_epoch", "data_asset_ref",
     "location_asset_ref", "classification", "location_class",
@@ -73,6 +78,22 @@ class DataSecurityObservation:
     trust: str = "UNTRUSTED_DATA"
     mode: str = "DRY_RUN"
     action: str = "DETECT_ONLY"
+    authority_granted: bool = False
+
+
+@dataclass(frozen=True)
+class DataSecurityFinding:
+    event_id: str
+    tenant_id: str
+    data_asset_ref: str
+    location_asset_ref: str
+    classification: str
+    signals: tuple[str, ...]
+    risk: str
+    recommendations: tuple[str, ...]
+    trust: str = "UNTRUSTED_DATA"
+    mode: str = "DRY_RUN"
+    action: str = "ADVISE_ONLY"
     authority_granted: bool = False
 
 
@@ -149,4 +170,77 @@ def normalize_data_security_observation(
         event_id, tenant_id, observed, data_ref, location_ref, classification,
         location, identity_ref, access_path, copy_count, encryption, ai_access,
         policy, evidence_ref,
+    )
+
+
+def classify_data_security_observation(
+    observation: DataSecurityObservation, *, tenant_id: str,
+    audit: Callable[[str, dict[str, Any]], None],
+) -> DataSecurityFinding:
+    """Classify only admitted posture facts without inspecting data or using AI."""
+    if not isinstance(observation, DataSecurityObservation) or not callable(audit):
+        raise DataSecurityObservationDenied("OBSERVATION_INVALID")
+    if not isinstance(tenant_id, str) or not _TENANT.fullmatch(tenant_id):
+        raise DataSecurityObservationDenied("TENANT_INVALID")
+    if observation.tenant_id != tenant_id:
+        raise DataSecurityObservationDenied("TENANT_MISMATCH")
+    if (
+        observation.trust != "UNTRUSTED_DATA" or observation.mode != "DRY_RUN"
+        or observation.action != "DETECT_ONLY"
+        or observation.authority_granted is not False
+    ):
+        raise DataSecurityObservationDenied("OBSERVATION_AUTHORITY_INVALID")
+    if observation.location_class == "AI_WORKFLOW" and observation.ai_access_state == "NONE":
+        raise DataSecurityObservationDenied("FACTS_CONTRADICTORY")
+    signals: set[str] = set()
+    sensitive = observation.classification in {"CONFIDENTIAL", "RESTRICTED"}
+    if sensitive:
+        signals.add("SENSITIVE_DATA")
+    if observation.access_path == "EXTERNAL":
+        signals.add("EXTERNAL_ACCESS")
+    if observation.encryption_state == "UNENCRYPTED":
+        signals.add("ENCRYPTION_MISSING")
+    elif observation.encryption_state == "UNKNOWN":
+        signals.add("ENCRYPTION_UNKNOWN")
+    if observation.ai_access_state == "UNAPPROVED":
+        signals.add("AI_ACCESS_UNAPPROVED")
+    if observation.policy_state == "VIOLATION":
+        signals.add("POLICY_VIOLATION")
+    elif observation.policy_state == "UNKNOWN":
+        signals.add("POLICY_UNKNOWN")
+    if observation.copy_count > 10:
+        signals.add("COPIES_ELEVATED")
+    severe = {"EXTERNAL_ACCESS", "AI_ACCESS_UNAPPROVED", "POLICY_VIOLATION"}
+    if sensitive and len(signals & severe) >= 2:
+        risk = "CRITICAL"
+    elif sensitive and signals & severe:
+        risk = "HIGH"
+    elif signals & severe or signals & {"ENCRYPTION_MISSING", "COPIES_ELEVATED"}:
+        risk = "MEDIUM"
+    else:
+        risk = "LOW"
+    ordered_signals = tuple(sorted(signals))
+    if not set(ordered_signals) <= _RISK_SIGNALS:
+        raise DataSecurityObservationDenied("SIGNALS_INVALID")
+    recommendations = (
+        ("WARN", "PROPOSE_DLP") if risk in {"HIGH", "CRITICAL"} else ("WARN",)
+    )
+    try:
+        audit("data_security_observation_classified", {
+            "event_id": observation.event_id, "tenant_id": tenant_id,
+            "data_asset_ref": observation.data_asset_ref,
+            "classification": observation.classification,
+            "signals": ordered_signals, "risk": risk,
+            "recommendations": recommendations,
+            "evidence_ref": observation.evidence_ref,
+            "trust": "UNTRUSTED_DATA", "mode": "DRY_RUN",
+            "action": "ADVISE_ONLY", "deployment": "DISABLED",
+            "response_executed": False, "authority_granted": False,
+        })
+    except Exception as exc:
+        raise DataSecurityObservationDenied("EVIDENCE_WRITE_FAILED") from exc
+    return DataSecurityFinding(
+        observation.event_id, tenant_id, observation.data_asset_ref,
+        observation.location_asset_ref, observation.classification,
+        ordered_signals, risk, recommendations,
     )

@@ -1,8 +1,8 @@
-from dataclasses import FrozenInstanceError
+from dataclasses import FrozenInstanceError, replace
 
 import pytest
 
-from swarm.data_security import DataSecurityObservationDenied, normalize_data_security_observation
+from swarm.data_security import DataSecurityObservationDenied, classify_data_security_observation, normalize_data_security_observation
 
 
 def fixture(**overrides):
@@ -118,4 +118,64 @@ def test_data_security_observation_denies_oversized_fixture():
         normalize_data_security_observation(
             fixture(event_id="x" * 32768), tenant_id="tenant-a", now_epoch=150,
             audit=lambda *_args: None,
+        )
+
+
+def observation(**overrides):
+    return normalize_data_security_observation(
+        fixture(**overrides), tenant_id="tenant-a", now_epoch=150,
+        audit=lambda *_args: None,
+    )
+
+
+@pytest.mark.parametrize("changes,risk,recommendations", [
+    ({"access_path": "EXTERNAL", "ai_access_state": "UNAPPROVED"}, "CRITICAL", ("WARN", "PROPOSE_DLP")),
+    ({"policy_state": "VIOLATION"}, "HIGH", ("WARN", "PROPOSE_DLP")),
+    ({"classification": "INTERNAL", "encryption_state": "UNENCRYPTED"}, "MEDIUM", ("WARN",)),
+    ({"classification": "PUBLIC", "copy_count": 0}, "LOW", ("WARN",)),
+])
+def test_data_security_classification_is_deterministic_and_advisory(changes, risk, recommendations):
+    evidence = []
+    value = classify_data_security_observation(
+        observation(**changes), tenant_id="tenant-a",
+        audit=lambda *args: evidence.append(args),
+    )
+    assert value.risk == risk and value.recommendations == recommendations
+    assert value.signals == tuple(sorted(value.signals))
+    assert value.action == "ADVISE_ONLY" and value.authority_granted is False
+    assert evidence[0][1]["deployment"] == "DISABLED"
+    assert evidence[0][1]["response_executed"] is False
+
+
+def test_data_security_classification_denies_contradictory_ai_workflow_facts():
+    with pytest.raises(DataSecurityObservationDenied, match="FACTS_CONTRADICTORY"):
+        classify_data_security_observation(
+            observation(location_class="AI_WORKFLOW", ai_access_state="NONE"),
+            tenant_id="tenant-a", audit=lambda *_args: None,
+        )
+
+
+def test_data_security_classification_denies_cross_tenant_authority_and_evidence_failure():
+    admitted = observation()
+    with pytest.raises(DataSecurityObservationDenied, match="TENANT_MISMATCH"):
+        classify_data_security_observation(
+            admitted, tenant_id="tenant-b", audit=lambda *_args: None,
+        )
+    with pytest.raises(DataSecurityObservationDenied, match="OBSERVATION_AUTHORITY_INVALID"):
+        classify_data_security_observation(
+            replace(admitted, action="ENFORCE"), tenant_id="tenant-a",
+            audit=lambda *_args: None,
+        )
+    with pytest.raises(DataSecurityObservationDenied, match="EVIDENCE_WRITE_FAILED"):
+        classify_data_security_observation(
+            admitted, tenant_id="tenant-a",
+            audit=lambda *_args: (_ for _ in ()).throw(RuntimeError("offline")),
+        )
+
+
+@pytest.mark.parametrize("invalid", [None, {}, "observation"])
+def test_data_security_classification_denies_invalid_observation(invalid):
+    with pytest.raises(DataSecurityObservationDenied, match="OBSERVATION_INVALID"):
+        classify_data_security_observation(
+            invalid, tenant_id="tenant-a", audit=lambda *_args: None,
         )

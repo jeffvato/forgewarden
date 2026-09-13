@@ -48,7 +48,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-DSPM-003 — Data exposure and access-risk classification
 - Requirement: FW-DSPM exact supplied-fact evaluation
-- State: READY
+- State: REVIEW
 - Priority: P0
 - Dependencies: FW-DSPM-002
 - Approval: Jeff authorized the ordered FW-DSPM phase through the continuing heartbeat.
