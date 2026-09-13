@@ -54,7 +54,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-ASM-003 — Exposure and exploitability classification
 - Requirement: FW-ASM exact supplied-fact evaluation
-- State: REPAIR
+- State: DONE
 - Priority: P0
 - Dependencies: FW-ASM-002
 - Approval: Jeff authorized the ordered FW-ASM phase using small bounded candidates.
@@ -63,10 +63,11 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 - Allowed paths: swarm/attack_surface.py, tests/test_attack_surface.py, WORK_QUEUE.md, SWARM_STATUS.md
 - Test command: python3 -m pytest -q tests/test_attack_surface.py
 - Acceptance criteria: bounded exact facts produce advisory risk; malformed, contradictory, cross-tenant, or authority-shaped facts deny; no model decision or response executor is added.
+- Completion evidence: implementation candidate `99a8f5d71f2196b535b947b6ccc58c02ddfd2afd`; test-only repair `33395090781f5785d4fa8bcaf874bcf980319f17`. AnythingLLM was unavailable; exact Claude review identified two missing input-boundary proofs, and exact repair job `phase2a-33395090781f5785d4fa8bca` returned APPROVE/LOW with no blockers or missing tests. Focused validation passed 37 tests and the full suite passed 1912 with 1 skipped. Product Integrity passed every hard check and the Golden Path, with only the pre-existing `tzdata` dependency YELLOW. Evidence: `docs/fw-asm-003-qwen-review.json`, `docs/fw-asm-003-claude-review.json`, `docs/fw-asm-003-claude-repair-review.json`, `docs/fw-asm-003-integrity.json`.
 
 ### FW-ASM-004 — Canonical owner reference binding
 - Requirement: FW-ASM asset/network/vulnerability/certificate/incident composition
-- State: BLOCKED
+- State: READY
 - Priority: P0
 - Dependencies: FW-ASM-003
 - Approval: Jeff authorized the ordered FW-ASM phase using small bounded candidates.

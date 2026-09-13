@@ -1,0 +1,36 @@
+{
+  "adjudication": null,
+  "candidate_commit": "99a8f5d71f2196b535b947b6ccc58c02ddfd2afd",
+  "deployment": "DISABLED",
+  "job_id": "phase2a-99a8f5d71f2196b535b947b6",
+  "kill_switch": "ENGAGED",
+  "mutation_allowed": false,
+  "reviews": [
+    {
+      "provider": "CLAUDE",
+      "result": {
+        "blocking_findings": [
+          "Type validation for observation parameter not tested: OBSERVATION_INVALID error path lacks coverage for non-AttackSurfaceObservation inputs (None, dict, other types)",
+          "Type validation for audit parameter not tested: OBSERVATION_INVALID error path lacks coverage for non-callable audit (None, int, string, etc.)"
+        ],
+        "job_id": "phase2a-99a8f5d71f2196b535b947b6",
+        "non_blocking_notes": [
+          "Consider adding test coverage for tenant_id format validation (TENANT_INVALID path with invalid regex patterns)",
+          "Consider parametrizing OBSERVATION_AUTHORITY_INVALID test to cover trust, mode, and action state violations separately (currently only tests authority_granted)",
+          "Advisory-only design is correctly enforced throughout: deployment=DISABLED, action=ADVISE_ONLY, response_executed=False, authority_granted=False"
+        ],
+        "proposed_rules": [],
+        "reasoning_summary": "The implementation is correct, safe, and deterministic. Risk classification logic properly prioritizes exposed + confirmed_exploitable as CRITICAL, applies deterministic rules without model input, and enforces advisory-only constraints (DRY_RUN mode, no authority, ADVISE_ONLY action). Cross-tenant isolation and contradictory-fact detection are properly validated. However, two explicit validation error paths (OBSERVATION_INVALID for type checks on observation and audit parameters) are coded but untested. These must be tested because they are defensive checks with explicit error codes and clear failure scenarios. The current test suite uses a helper `observation()` that always produces valid objects, making these error paths unreachable in tests.",
+        "reviewed_commit": "99a8f5d71f2196b535b947b6ccc58c02ddfd2afd",
+        "risk": "LOW",
+        "tests_missing": [
+          "test_classify_attack_surface_observation_denies_non_observation_input \u2014 should reject None, dict, string, and other non-AttackSurfaceObservation types with OBSERVATION_INVALID",
+          "test_classify_attack_surface_observation_denies_non_callable_audit \u2014 should reject None, int, string, and other non-callable audit parameters with OBSERVATION_INVALID"
+        ],
+        "verdict": "REJECT"
+      },
+      "state": "REVIEW_RETURNED"
+    }
+  ],
+  "state": "REVIEW_REQUIRED"
+}

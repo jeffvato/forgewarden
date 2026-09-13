@@ -1,0 +1,26 @@
+{
+  "adjudication": null,
+  "candidate_commit": "33395090781f5785d4fa8bcaf874bcf980319f17",
+  "deployment": "DISABLED",
+  "job_id": "phase2a-33395090781f5785d4fa8bca",
+  "kill_switch": "ENGAGED",
+  "mutation_allowed": false,
+  "reviews": [
+    {
+      "provider": "CLAUDE",
+      "result": {
+        "blocking_findings": [],
+        "job_id": "phase2a-33395090781f5785d4fa8bca",
+        "non_blocking_notes": [],
+        "proposed_rules": [],
+        "reasoning_summary": "Test-only repair closing both input-boundary proofs for FW-ASM-003 classifier. Two parametrized tests added: non-observation rejection (None, {}, \"observation\", 1) and non-callable audit rejection (None, 1, \"audit\"). Both use correct AttackSurfaceObservationDenied exception with OBSERVATION_INVALID match. Patch is narrow, isolated to test file, no runtime changes. Deterministic advisory classifier behavior and authority unchanged. Focused validation reports 37 passed. No missing test coverage identified.",
+        "reviewed_commit": "33395090781f5785d4fa8bcaf874bcf980319f17",
+        "risk": "LOW",
+        "tests_missing": [],
+        "verdict": "APPROVE"
+      },
+      "state": "APPROVED"
+    }
+  ],
+  "state": "APPROVED"
+}
