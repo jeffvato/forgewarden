@@ -1795,7 +1795,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FWQ-0085 — Deterministic local release-assurance decision packet
 - Requirement: Phase 5 aggregate technical assurance and human-gate handoff
-- State: READY
+- State: DONE
 - Priority: P0
 - Dependencies: FWQ-0084
 - Approval: Jeff approved the public assurance plan. A local fail-closed technical decision packet is authorized; license selection, legal clearance, repository creation, visibility change, publication, and Customer Root release authorization remain human-controlled and disabled.
@@ -1812,6 +1812,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - create no repository, remote, release, workflow, credential, provider/billing access, network operation, license choice, approval, visibility change, publication, deployment, or authority grant.
 - Expected validation: one focused Linux proof, exact independent read-only review, then one full suite and Product Integrity Gate after approval.
 - Security considerations: the output is a local technical handoff only. It must remain blocked until every named human-controlled gate is separately satisfied through its canonical owner.
+- Completion evidence: exact candidate `5c0dc5912570e2130c65ac6f272f241621167ab0`; exact Claude fallback review job `phase2a-2efe3d8a4816d0486bbf392c` returned APPROVE/LOW with no blockers or missing tests after AnythingLLM failed closed for the candidate. Focused validation passed 44; full suite passed 2233/1; Product Integrity passed every hard check, 15 integrity tests, and the 44-test release Golden Path, with only pre-existing `tzdata` remaining YELLOW. The packet binds the accepted history, provenance, repository, and CI facts by exact track and digest, reports technical assurance `VERIFIED`, and remains `BLOCKED_PENDING_HUMAN_GATES`. No license, legal, visibility, Customer Root, publication, deployment, network, credential, provider, or authority action occurred. No additional substantive READY task remains until a human-controlled release gate is resolved or new work is authorized.
 
 
 ### FW-API-001 — Canonical tenant-bound read-only request admission
