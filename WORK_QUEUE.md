@@ -22,7 +22,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-SUPPLY-005 — Inert Action Ticket-bound component block proposal
 - Requirement: FW-SUPPLY bounded non-executing response intent
-- State: IN_PROGRESS
+- State: DONE
 - Priority: P0
 - Dependencies: FW-SUPPLY-004
 - Approval: Jeff authorized the ordered FW-SUPPLY phase using small bounded candidates.
@@ -38,6 +38,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no package block, install, deletion, registry/feed/build access, signing, publication, deployment, remediation, rollback, quarantine, or response executor is added.
 - Expected validation: focused Linux proof, exact independent read-only review, then full suite and Product Integrity once after approval.
 - Security considerations: a valid proposal records bounded intent only and cannot change a component, catalog, repository, build, release, or runtime.
+- Completion evidence: exact candidate `b0dce11bb3f4c563abe5da17ab7319a9c735895c`; focused 50 passed. AnythingLLM was unavailable, then exact Claude job `phase2a-b0dce11bb3f4c563abe5da17` returned APPROVE/LOW with no blockers or missing tests. Full 1802 passed/1 skipped; Product Integrity fresh full 1802/1 and Golden Path 50 passed with every hard check and only pre-existing dependency YELLOW. Evidence: `docs/fw-supply-005-*.json`.
 
 ### FW-SUPPLY-004 — Canonical owner reference binding
 - Requirement: FW-SUPPLY vulnerability/catalog/signature/Evidence composition

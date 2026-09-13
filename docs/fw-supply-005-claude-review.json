@@ -1,0 +1,29 @@
+{
+  "adjudication": null,
+  "candidate_commit": "b0dce11bb3f4c563abe5da17ab7319a9c735895c",
+  "deployment": "DISABLED",
+  "job_id": "phase2a-b0dce11bb3f4c563abe5da17",
+  "kill_switch": "ENGAGED",
+  "mutation_allowed": false,
+  "reviews": [
+    {
+      "provider": "CLAUDE",
+      "result": {
+        "blocking_findings": [],
+        "job_id": "phase2a-b0dce11bb3f4c563abe5da17",
+        "non_blocking_notes": [
+          "Function length (43 lines) acceptable given mandatory security validation stages",
+          "Regex pattern update to _TENANT_REF adds 'component' and 'policy' types; backward compatible as additive"
+        ],
+        "proposed_rules": [],
+        "reasoning_summary": "Patch implements FW-SUPPLY-005 requirements correctly. SupplyChainBlockProposal dataclass is frozen with execution disabled (authority_granted=False, response_executed=False, mode=DRY_RUN, deployment=DISABLED). Function enforce all mandatory constraints: HIGH/CRITICAL+UNTRUSTED_DATA+DRY_RUN+CORRELATE_ONLY input validation, tenant-matched component/policy refs, engaged kill switch. Evidence-first pattern with audit before ticket consumption ensures fail-closed on evidence failure. Replay protection via dual validate/validate_and_consume calls. No executors, deployment, or registry operations added. Comprehensive test coverage: happy path, 6 boundary condition parametrizations, replay scenario, evidence failure. Deterministic validation with specific error codes. Narrow scope with backward-compatible regex extension.",
+        "reviewed_commit": "b0dce11bb3f4c563abe5da17ab7319a9c735895c",
+        "risk": "LOW",
+        "tests_missing": [],
+        "verdict": "APPROVE"
+      },
+      "state": "APPROVED"
+    }
+  ],
+  "state": "APPROVED"
+}
