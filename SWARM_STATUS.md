@@ -1,6 +1,6 @@
 # ForgeWarden Swarm Status
 
-- 2026-09-13: FW-OPS-002 candidate prepared: an immutable tenant-bound operational snapshot now produces deterministic Evidence-first HEALTHY/DEGRADED/UNHEALTHY metadata from bounded caller-supplied component state, queue pressure, budget utilization, freshness, and canonical safety facts. Replay, concurrent duplicate, malformed, cross-tenant, stale, secret-bearing, excessive, over-limit, unsafe-runtime, Evidence-failed, and foreign-Evidence input deny; output remains DRY_RUN/OBSERVE_ONLY with no polling, export, process/service, recovery, rollback, network, credential, or deployment authority. Focused proof passed 79 tests; exact review is next.
+- 2026-09-13: FW-OPS-002 accepted at candidate `e10f730392bbf7138e50081c05632d20c1401679`: an immutable tenant-bound operational snapshot produces deterministic Evidence-first HEALTHY/DEGRADED/UNHEALTHY metadata from bounded caller-supplied component state, queue pressure, budget utilization, freshness, and canonical safety facts. Exact Claude review returned APPROVE/LOW with no blockers or missing tests; focused 79 passed; full and Product Integrity fresh suites each passed 1681/1 with all hard checks passing and YELLOW only for pre-existing `tzdata`. Output remains DRY_RUN/OBSERVE_ONLY with no polling, export, process/service, recovery, rollback, network, credential, or deployment authority. FW-OPS-003 bounded capacity/backpressure threshold assessment is next.
 
 - 2026-09-13: FW-OPS-001 accepted at candidate `f44d173f8016202b0ac3f198f7cb9a5b18f7b275`: existing Product Integrity, endpoint capacity, Harness monitoring/budget, Recovery continuity, loopback status, process-bound, Mission Control, and FW-EVID seams are mapped to canonical owners. Exact Claude review returned APPROVE/LOW with no blockers or missing tests after deterministic repository/source/queue inspection and git diff check. No product validation was replayed for the documentation-only inventory. The first runtime gap is FW-OPS-002 tenant-bound read-only operational health projection; live telemetry export, HA/DR coordination, retention movement, service control, rollback execution, and deployment remain unimplemented and unauthorized.
 
@@ -15,8 +15,8 @@
 ## Current state
 
 - Active phase: ForgeWarden Core
-- Current focus: FW-OPS-002 exact candidate review.
-- Next task: FW-OPS-002 exact review, then acceptance gates.
+- Current focus: FW-OPS-002 accepted; canonical operational health projection is complete.
+- Next task: FW-OPS-003 bounded capacity/backpressure threshold assessment.
 - Harness role: permanent ForgeWarden Core subsystem and default controller for ForgeWarden's own development; one governed architecture serves both roles under D-023.
 - Worker transport direction: registered local CLIs and explicitly approved API-backed workers; API keys are resolved only through FW-KEYS secret handles inside trusted adapters and never enter model context or lifecycle evidence.
 - Provider authentication direction: deterministic OpenAI, Anthropic, and Google/Gemini profiles with provider-specific official OAuth where available and approved API-key classes otherwise; Gemini CLI is registered as `agy` for read-only roles, FW-ID owns delegated identity, and FW-KEYS owns all credential material.

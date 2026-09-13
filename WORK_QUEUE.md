@@ -947,7 +947,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-OPS-002 — Tenant-bound operational health projection
 - Requirement: FW-OPS canonical read-only health and capacity status
-- State: REVIEW
+- State: DONE
 - Priority: P0
 - Dependencies: FW-OPS-001, FW-EVID-006, FWQ-0007, FW-ENDPOINT-04, and FW-HARNESS-012
 - Approval: Jeff authorized the ordered FW-OPS implementation phase; caller-supplied local observations are permitted without telemetry export, service control, or deployment.
@@ -963,6 +963,8 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - output remains OBSERVE_ONLY with no host polling, listener, telemetry export, queue mutation, process/service control, recovery/rollback, policy, credential, network, filesystem, or deployment authority.
 - Expected validation: focused Linux proof, exact independent read-only review, then one full suite and Product Integrity Gate after approval.
 - Security considerations: FW-OPS aggregates supplied operational facts only; existing domain components, FW-EVID, FW-REC, FW-ROOT and the trusted controller retain authority.
+
+- Completion evidence: exact candidate `e10f730392bbf7138e50081c05632d20c1401679`; focused 79 passed; exact Claude review `phase2a-e10f730392bbf7138e50081c` returned APPROVE/LOW with no blockers or missing tests; full 1681 passed/1 skipped; Product Integrity fresh full and Golden Path each passed 1681/1 with all hard checks passing and YELLOW only for the pre-existing `tzdata` dependency.
 
 ### FW-UX-001 — Mission Control showcase foundation
 - Requirement: FW-UX Mission Control and honest Demo Mode
