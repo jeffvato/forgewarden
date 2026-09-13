@@ -22,7 +22,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-DSPM-001 — Data security posture ownership and bounded route
 - Requirement: FW-DSPM canonical ownership inventory
-- State: READY
+- State: REVIEW
 - Priority: P0
 - Dependencies: FW-ASM-006, FW-ID, FW-EVID, FW-SOC
 - Approval: Jeff authorized the ordered FW-DSPM phase through the continuing heartbeat.
@@ -31,6 +31,66 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 - Allowed paths: docs/fw-dspm-inventory.md, WORK_QUEUE.md, SWARM_STATUS.md
 - Test command: git diff --check HEAD^ HEAD and deterministic repository/source/test/evidence inventory
 - Acceptance criteria: canonical owners and a bounded substantive implementation route are explicit; the first missing contract is caller-supplied tenant-bound data-posture metadata; no discovery, content access, credential use, data movement, DLP enforcement, mutation, deployment, or response authority is added.
+
+### FW-DSPM-002 — Caller-supplied data-posture observation
+- Requirement: FW-DSPM immutable tenant-bound metadata boundary
+- State: BLOCKED
+- Priority: P0
+- Dependencies: FW-DSPM-001
+- Approval: Jeff authorized the ordered FW-DSPM phase through the continuing heartbeat.
+- Description: Normalize strict caller-supplied data classification, location, ownership, access, copy, encryption, AI-access, policy, time, and Evidence metadata.
+- Target path: swarm/data_security.py
+- Allowed paths: swarm/data_security.py, tests/test_data_security.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_data_security.py
+- Acceptance criteria: immutable bounded untrusted DRY_RUN/DETECT_ONLY metadata is Evidence-first and fail-closed; no content, credential, discovery, query, data movement, DLP enforcement, mutation, or response authority is added.
+
+### FW-DSPM-003 — Data exposure and access-risk classification
+- Requirement: FW-DSPM exact supplied-fact evaluation
+- State: BLOCKED
+- Priority: P0
+- Dependencies: FW-DSPM-002
+- Approval: Jeff authorized the ordered FW-DSPM phase through the continuing heartbeat.
+- Description: Deterministically classify exact caller-supplied sensitivity, exposure, access, encryption, copy, and AI/agent-access facts.
+- Target path: swarm/data_security.py
+- Allowed paths: swarm/data_security.py, tests/test_data_security.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_data_security.py
+- Acceptance criteria: bounded exact facts produce advisory risk; malformed, contradictory, cross-tenant, content-bearing, or authority-shaped facts deny; no model decision or response executor is added.
+
+### FW-DSPM-004 — Canonical data-security reference binding
+- Requirement: FW-DSPM owner-system composition
+- State: BLOCKED
+- Priority: P0
+- Dependencies: FW-DSPM-003
+- Approval: Jeff authorized the ordered FW-DSPM phase through the continuing heartbeat.
+- Description: Bind exact DSPM findings to canonical asset, Identity, SaaS, supply/repository, AI-workflow, policy, FW-SOC, and FW-EVID references.
+- Target path: swarm/data_security.py
+- Allowed paths: swarm/data_security.py, tests/test_data_security.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_data_security.py
+- Acceptance criteria: exact tenant/source/reference bindings and Evidence order fail closed; references remain advisory and establish no owner state, data access, trust, or authority.
+
+### FW-DSPM-005 — Inert Action Ticket-bound DLP proposal
+- Requirement: FW-DSPM bounded non-executing response intent
+- State: BLOCKED
+- Priority: P0
+- Dependencies: FW-DSPM-004
+- Approval: Jeff authorized the ordered FW-DSPM phase through the continuing heartbeat.
+- Description: Convert an exact high-confidence DSPM binding into an Evidence-first inert DLP/risk-reduction proposal through existing policy and single-use Action Ticket controls.
+- Target path: swarm/data_security.py
+- Allowed paths: swarm/data_security.py, tests/test_data_security.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_data_security.py tests/test_action_ticket.py
+- Acceptance criteria: engaged kill switch, exact policy/target/ticket binding, and Evidence are mandatory; output is PROPOSE_ONLY and cannot inspect, move, alter, delete, encrypt, or block data.
+
+### FW-DSPM-006 — Integrated lifecycle and Mission Control projection
+- Requirement: FW-DSPM accepted-stage composition and operator visibility
+- State: BLOCKED
+- Priority: P0
+- Dependencies: FW-DSPM-005
+- Approval: Jeff authorized the ordered FW-DSPM phase through the continuing heartbeat.
+- Description: Compose accepted observation, classification, owner-reference, and inert-proposal stages and expose sanitized canonical or explicitly simulated facts through Mission Control.
+- Target paths: swarm/data_security.py, swarm/mission_control.py
+- Allowed paths: swarm/data_security.py, swarm/mission_control.py, tests/test_data_security.py, tests/test_mission_control.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_data_security.py tests/test_mission_control.py tests/test_action_ticket.py
+- Acceptance criteria: one deterministic lifecycle preserves exact ordering and bindings; lower-risk/failure paths stop early; visibility owns no content, state, callbacks, tickets, DLP enforcement, or response authority.
 
 ### FW-ASM-001 — External attack-surface ownership and bounded route
 - Requirement: FW-ASM canonical ownership inventory
