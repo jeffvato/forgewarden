@@ -3140,7 +3140,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FWQ-0086 — Bounded customer scan-report contract
 - Requirement: FW-AV detect-only customer assurance output
-- State: IN_PROGRESS
+- State: DONE
 - Priority: P0
 - Dependencies: FW-AV detector/content controls, FW-EVID
 - Approval: Jeff authorized completing the anti-malware capability within current DRY_RUN boundaries; offline caller-supplied reporting is permitted.
@@ -3156,6 +3156,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - reuse the existing detector and FW-EVID sink rather than creating another scanner or evidence store.
 - Expected validation: focused Linux proof, exact independent read-only review, then full suite and Product Integrity Gate after approval.
 - Security considerations: this is an offline assurance projection only; it does not claim installed endpoint protection or production readiness.
+- Completion evidence: implementation `d396ad689142f57dec74d2981e6c12d744d8f6c9`; focused anti-malware proof passed 59 tests; exact AnythingLLM/Qwen review job `phase2a-d396ad689142f57dec74d298` returned APPROVE/LOW with no blockers or missing tests; repository validation passed 307 tests with 1 skipped; Product Integrity returned YELLOW only for the pre-existing `tzdata` dependency, with hard checks and Golden Paths passing. No live endpoint or response authority was added.
 
 ## Queue cleanup
 
