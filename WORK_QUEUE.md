@@ -67,7 +67,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-ASM-004 — Canonical owner reference binding
 - Requirement: FW-ASM asset/network/vulnerability/certificate/incident composition
-- State: REVIEW
+- State: REPAIR
 - Priority: P0
 - Dependencies: FW-ASM-003
 - Approval: Jeff authorized the ordered FW-ASM phase using small bounded candidates.

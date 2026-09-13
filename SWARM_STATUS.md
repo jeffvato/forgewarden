@@ -1,5 +1,7 @@
 # ForgeWarden Swarm Status
 
+- 2026-09-13: FW-ASM-004 is in bounded test-only repair after AnythingLLM was unavailable and exact Claude APPROVE/LOW requested direct empty, maximum, and over-limit canonical-reference proofs. Runtime logic and authority are unchanged.
+
 - 2026-09-13: FW-ASM-004 is in focused validation. Exact findings bind only tenant-matched canonical asset, exposure, FW-NET, vulnerability, TrustedSignatureCatalog/signature, FW-SOC, and FW-EVID references. Invalid, duplicate, cross-tenant, forged-authority, and Evidence-failing inputs deny; references create no owner state or trust.
 
 - 2026-09-13: FW-ASM-003 accepted at implementation `99a8f5d71f2196b535b947b6ccc58c02ddfd2afd` and test-only repair `33395090781f5785d4fa8bcaf874bcf980319f17`. Exact admitted exposure, ownership, exploitability, and forgotten-asset facts produce deterministic LOW/MEDIUM/HIGH/CRITICAL advisory risk; contradictory, cross-tenant, malformed, authority-shaped, and Evidence-failing inputs deny. AnythingLLM was unavailable; exact Claude review requested two input-boundary proofs, and the exact repair received APPROVE/LOW with no blockers or missing tests. Focused 37 and full 1912/1 passed. Product Integrity passed every hard check and Golden Path, with only the pre-existing `tzdata` dependency YELLOW. No model decision, discovery, exploit, response, deployment, or authority was added. FW-ASM-004 canonical owner reference binding is next.

@@ -262,3 +262,19 @@ def test_attack_surface_reference_binding_denies_forged_finding_and_evidence_fai
             source, **binding_kwargs(),
             audit=lambda *_args: (_ for _ in ()).throw(RuntimeError("offline")),
         )
+
+
+@pytest.mark.parametrize("field,prefix,reason", [
+    ("vulnerability_refs", "fw-vuln", "VULNERABILITY_REFS_INVALID"),
+    ("evidence_refs", "fw-evid", "EVIDENCE_REFS_INVALID"),
+])
+def test_attack_surface_reference_binding_enforces_reference_count_boundaries(field, prefix, reason):
+    maximum = tuple(f"{prefix}/tenant-a/ref-{index:02d}" for index in range(16))
+    assert bind_attack_surface_references(
+        finding(), **binding_kwargs(**{field: maximum}), audit=lambda *_args: None,
+    )
+    for invalid in ((), maximum + (f"{prefix}/tenant-a/ref-16",)):
+        with pytest.raises(AttackSurfaceObservationDenied, match=reason):
+            bind_attack_surface_references(
+                finding(), **binding_kwargs(**{field: invalid}), audit=lambda *_args: None,
+            )
