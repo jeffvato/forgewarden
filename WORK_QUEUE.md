@@ -20,6 +20,84 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 
 Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical implementation is not new work. FWQ-0008 VALIDATED preserves a provenance caveat, not a request to rebuild or automatically repeat review. FWQ-0012–0016 are reconciled DONE from existing implementation and recorded proof.
 
+### FW-ASM-001 — External attack-surface ownership and bounded route
+- Requirement: FW-ASM canonical ownership inventory
+- State: REVIEW
+- Priority: P0
+- Dependencies: FW-NET-006, FW-SAAS, FW-SUPPLY, FW-ID, FW-KEYS, FW-EVID
+- Approval: Jeff authorized the ordered FW-ASM phase through the continuing heartbeat.
+- Description: Map existing asset, network, SaaS/cloud, vulnerability, certificate/key, policy, Evidence, SOC, and Mission Control owners and define the first missing bounded ASM contract.
+- Target path: docs/fw-asm-inventory.md
+- Allowed paths: docs/fw-asm-inventory.md, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: git diff --check HEAD^ HEAD and deterministic repository/source/test/evidence inventory
+- Acceptance criteria:
+  - existing FW-ENDPOINT/FW-ID asset, FW-NET, FW-SAAS, vulnerability/FW-SUPPLY, FW-KEYS/TrustedSignatureCatalog, policy/Action Ticket, FW-EVID, FW-SOC, and Mission Control owners are reused;
+  - substantive FW-ASM-002 through FW-ASM-006 IDs and dependencies are explicit without claiming implementation;
+  - the first runtime gap is immutable tenant-bound caller-supplied external-asset/exposure metadata;
+  - no discovery, DNS resolution, scan, socket/HTTP, cloud/CMDB query, certificate retrieval, credential use, exploit, mutation, takedown, containment, remediation, deployment, or response authority is added.
+- Expected validation: deterministic inventory, `git diff --check`, and exact independent read-only review; no product suite or Product Integrity rerun for documentation-only architecture.
+- Security considerations: roadmap and queue metadata cannot authorize attack-surface discovery or response.
+
+### FW-ASM-002 — Caller-supplied external-asset observation
+- Requirement: FW-ASM immutable tenant-bound metadata boundary
+- State: READY
+- Priority: P0
+- Dependencies: FW-ASM-001
+- Approval: Jeff authorized the ordered FW-ASM phase using small bounded candidates.
+- Description: Normalize strict caller-supplied asset type/reference, exposure, service/protocol, ownership, visibility, time, and Evidence metadata.
+- Target path: swarm/attack_surface.py
+- Allowed paths: swarm/attack_surface.py, tests/test_attack_surface.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_attack_surface.py
+- Acceptance criteria: immutable bounded untrusted DRY_RUN/DETECT_ONLY metadata is Evidence-first and fail-closed; no content, credential, discovery, scan, connection, query, mutation, or response authority is added.
+
+### FW-ASM-003 — Exposure and exploitability classification
+- Requirement: FW-ASM exact supplied-fact evaluation
+- State: BLOCKED
+- Priority: P0
+- Dependencies: FW-ASM-002
+- Approval: Jeff authorized the ordered FW-ASM phase using small bounded candidates.
+- Description: Deterministically classify exact caller-supplied exposure, ownership, exploitability, and forgotten-asset facts.
+- Target path: swarm/attack_surface.py
+- Allowed paths: swarm/attack_surface.py, tests/test_attack_surface.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_attack_surface.py
+- Acceptance criteria: bounded exact facts produce advisory risk; malformed, contradictory, cross-tenant, or authority-shaped facts deny; no model decision or response executor is added.
+
+### FW-ASM-004 — Canonical owner reference binding
+- Requirement: FW-ASM asset/network/vulnerability/certificate/incident composition
+- State: BLOCKED
+- Priority: P0
+- Dependencies: FW-ASM-003
+- Approval: Jeff authorized the ordered FW-ASM phase using small bounded candidates.
+- Description: Bind exact ASM findings to canonical asset, FW-NET, vulnerability/FW-SUPPLY, FW-KEYS certificate, FW-SOC, and FW-EVID references.
+- Target path: swarm/attack_surface.py
+- Allowed paths: swarm/attack_surface.py, tests/test_attack_surface.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_attack_surface.py
+- Acceptance criteria: exact tenant/source/reference bindings and Evidence order fail closed; references remain advisory and establish no trust or authority.
+
+### FW-ASM-005 — Inert Action Ticket-bound risk-reduction proposal
+- Requirement: FW-ASM bounded non-executing response intent
+- State: BLOCKED
+- Priority: P0
+- Dependencies: FW-ASM-004
+- Approval: Jeff authorized the ordered FW-ASM phase using small bounded candidates.
+- Description: Convert an exact high-confidence ASM binding into an Evidence-first inert proposal through existing policy and single-use Action Ticket controls.
+- Target path: swarm/attack_surface.py
+- Allowed paths: swarm/attack_surface.py, tests/test_attack_surface.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_attack_surface.py tests/test_action_ticket.py
+- Acceptance criteria: engaged kill switch, exact policy/target/ticket binding, and Evidence are mandatory; output is PROPOSE_ONLY and cannot alter an asset or external service.
+
+### FW-ASM-006 — Integrated lifecycle and Mission Control projection
+- Requirement: FW-ASM accepted-stage composition and operator visibility
+- State: BLOCKED
+- Priority: P0
+- Dependencies: FW-ASM-005
+- Approval: Jeff authorized the ordered FW-ASM phase using small bounded candidates.
+- Description: Compose accepted observation, classification, owner-reference, and inert-proposal stages and expose sanitized canonical or explicitly simulated facts through Mission Control.
+- Target paths: swarm/attack_surface.py, swarm/mission_control.py
+- Allowed paths: swarm/attack_surface.py, swarm/mission_control.py, tests/test_attack_surface.py, tests/test_mission_control.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_attack_surface.py tests/test_mission_control.py tests/test_action_ticket.py
+- Acceptance criteria: one deterministic lifecycle preserves exact ordering and bindings; lower-risk/failure paths stop early; visibility owns no state, callbacks, tickets, or response authority.
+
 ### FW-NET-001 — Network security ownership and bounded route
 - Requirement: FW-NET canonical ownership inventory
 - State: DONE
