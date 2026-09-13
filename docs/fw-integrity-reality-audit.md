@@ -70,8 +70,13 @@ This milestone proves traceability only. It does not establish code coverage,
 mutation resistance, runtime effectiveness, clean-start behavior, or live
 sensor/provider/containment capability.
 
-The next bounded milestone should reconcile the 14 missing family entries into
-a truthful capability-status projection with explicit operating boundaries,
-then expose that projection read-only in Mission Control. A later Golden Path
-must execute representative cross-family behavior at the current exact commit
-instead of relying on recorded historical test counts.
+FW-INTEGRITY-004 reconciled the 14 missing families. The canonical map now
+contains all 22 accepted families plus the foundational FW-ASOC and FW-CORE
+records. Every record explicitly reports bounded proof, implementation,
+integration, Demo availability, DRY_RUN operation, live-disabled state,
+production-not-ready state, and concrete limitations.
+
+FW-UX-013 is the next bounded milestone. It will expose this validated status
+through a read-only Mission Control provider. A later Golden Path must execute
+representative cross-family behavior at the current exact commit instead of
+relying on recorded historical test counts.

@@ -1,0 +1,32 @@
+{
+  "adjudication": null,
+  "candidate_commit": "ce51d7019077e522b76fdbe963879c3ddcb44ad7",
+  "deployment": "DISABLED",
+  "job_id": "phase2a-ce51d7019077e522b76fdbe9",
+  "kill_switch": "ENGAGED",
+  "mutation_allowed": false,
+  "reviews": [
+    {
+      "provider": "ANYTHINGLLM",
+      "result": {
+        "blocking_findings": [],
+        "job_id": "phase2a-ce51d7019077e522b76fdbe9",
+        "non_blocking_notes": [
+          "The collapse of FW-ASOC-01/02 into FW-ASOC maintains bounded scope by explicitly listing no full external orchestration or Z3 solver in limitations, preventing over-claiming.",
+          "The validation function enforces that Proven requires IMPLEMENTED, INTEGRATED, and ACCEPTED_BOUNDED states.",
+          "Every entry fixes operating_mode to DRY_RUN and live_enabled and production_ready to false."
+        ],
+        "proposed_rules": [
+          "Require every Proven functionality-map entry to carry IMPLEMENTED, INTEGRATED, and ACCEPTED_BOUNDED evidence states."
+        ],
+        "reasoning_summary": "FW-INTEGRITY-004 introduces a structured canonical capability map and fail-closed validator. All 22 accepted families appear exactly once, with FW-ASOC and FW-CORE retained as explicit foundational records. Each record exposes implementation, integration, bounded proof, demo, operating, live, production, and limitation state. Validation rejects duplicate, missing, malformed, stronger-than-evidence, live-enabled, and production-ready claims. The change is metadata and validation only and adds no execution or authority.",
+        "reviewed_commit": "ce51d7019077e522b76fdbe963879c3ddcb44ad7",
+        "risk": "LOW",
+        "tests_missing": [],
+        "verdict": "APPROVE"
+      },
+      "state": "APPROVED"
+    }
+  ],
+  "state": "APPROVED"
+}

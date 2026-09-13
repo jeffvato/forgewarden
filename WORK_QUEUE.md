@@ -1558,7 +1558,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-INTEGRITY-004 — Canonical capability status reconciliation
 - Requirement: FW-INTEGRITY truthful product status and Mission Control source contract
-- State: IN_PROGRESS
+- State: DONE
 - Priority: P0
 - Dependencies: FW-INTEGRITY-003
 - Approval: Jeff authorized continuation into the next phase with a reality audit and Mission Control integration; this bounded unit reconciles status metadata only.
@@ -1575,6 +1575,28 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - output is bounded read-only product-status data suitable for a later Mission Control adapter and provides no callbacks or authority.
 - Expected validation: one focused Linux proof, exact independent read-only review, then one full suite and Product Integrity Gate after approval.
 - Security considerations: product-status metadata cannot activate, invoke, deploy, contain, recover, mutate, certify, or grant authority.
+- Completion evidence: exact candidate `ce51d7019077e522b76fdbe963879c3ddcb44ad7`; focused 15 passed; exact AnythingLLM/Qwen job `phase2a-ce51d7019077e522b76fdbe9` returned APPROVE/LOW with no blockers or missing tests; full suite passed 2094/1; Product Integrity passed every hard check, completion traceability, the complete functionality map, and the 15-test Golden Path. All 22 accepted families plus foundational FW-ASOC/FW-CORE are mapped with DRY_RUN, live-disabled, production-not-ready boundaries; only pre-existing `tzdata` remains YELLOW. Evidence: `docs/fw-integrity-004-qwen-review.json`, `docs/fw-integrity-004-integrity.json`.
+
+
+### FW-UX-013 — Canonical capability reality projection
+- Requirement: FW-UX truthful Mission Control product-status integration
+- State: READY
+- Priority: P0
+- Dependencies: FW-INTEGRITY-004 and FW-UX-012
+- Approval: Jeff authorized Mission Control integration after the capability reality audit; read-only status projection is within that scope.
+- Description: Expose the validated canonical functionality map and reality-audit summary through one bounded Mission Control provider and clearly separate bounded proof, Demo availability, live state, and production readiness.
+- Target path: swarm/mission_control.py
+- Allowed paths: swarm/mission_control.py, swarm/console.py, console/app.js, console/index.html, tests/test_mission_control.py, tests/test_console.py, tests/test_console_frontend.js, docs/management-console.md, docs/fw-integrity-reality-audit.md, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_mission_control.py tests/test_console.py tests/test_integrity.py && node --test tests/test_console_frontend.js
+- Acceptance criteria:
+  - consume only the canonical validated FW-INTEGRITY functionality map and traceability summary;
+  - expose bounded family, proof, implementation, integration, demo, DRY_RUN, live-disabled, production-not-ready, and limitation fields;
+  - malformed, duplicate, missing-family, secret-bearing, live-enabled, deployment-enabled, production-ready, mutating, or cross-boundary status fails closed;
+  - Mission Control visibly distinguishes accepted bounded proof from live and production readiness without relabeling Demo data;
+  - the provider and browser receive no Git, test, model, policy, approval, credential, mutation, response, recovery, network, or deployment callback;
+  - output remains bounded and read-only with the engaged kill switch and disabled deployment.
+- Expected validation: focused Python and frontend proof, exact independent read-only review, then one full suite and Product Integrity Gate after approval.
+- Security considerations: status visibility cannot change capability state or authorize any product action.
 
 ### FW-API-001 — Canonical tenant-bound read-only request admission
 - Requirement: FW-API versioned least-privilege API/SDK contract
