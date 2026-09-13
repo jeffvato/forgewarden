@@ -20,6 +20,25 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 
 Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical implementation is not new work. FWQ-0008 VALIDATED preserves a provenance caveat, not a request to rebuild or automatically repeat review. FWQ-0012–0016 are reconciled DONE from existing implementation and recorded proof.
 
+### FW-SAAS-005 — Inert policy and Action Ticket-bound response proposal
+- Requirement: FW-SAAS bounded non-executing response intent
+- State: IN_PROGRESS
+- Priority: P0
+- Dependencies: FW-SAAS-004
+- Approval: Jeff authorized the ordered FW-SAAS phase using small bounded candidates.
+- Description: Convert an exact high-confidence SaaS correlation into an Evidence-first proposal using the canonical single-use Action Ticket boundary without contacting or changing a SaaS provider.
+- Target path: swarm/saas_security.py
+- Allowed paths: swarm/saas_security.py, tests/test_saas_security.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_saas_security.py tests/test_action_ticket.py
+- Acceptance criteria:
+  - only an exact HIGH, untrusted, DRY_RUN/CORRELATE_ONLY SaaS correlation can produce the fixed SaaS application-disable proposal class;
+  - tenant-matched target and policy-decision references, engaged kill switch, and an exact signed single-use Action Ticket binding are mandatory;
+  - Evidence succeeds before ticket consumption and output; replay, mismatch, Evidence failure, invalid policy/target reference, or cleared kill switch fails closed;
+  - output remains immutable DRY_RUN/PROPOSE_ONLY with deployment disabled and authority/response false;
+  - no SaaS provider call, OAuth/token/credential access, network, mutation, containment, remediation, deployment, or response executor is added.
+- Expected validation: focused Linux proof, exact independent read-only review, then full suite and Product Integrity once after approval.
+- Security considerations: a valid proposal records bounded intent only; it cannot execute provider or identity action.
+
 ### FW-SAAS-004 — FW-SOC/FW-AID correlation references
 - Requirement: FW-SAAS canonical cross-domain reference binding
 - State: DONE

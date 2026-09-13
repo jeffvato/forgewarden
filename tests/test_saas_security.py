@@ -2,11 +2,14 @@ from dataclasses import FrozenInstanceError, replace
 
 import pytest
 
+from swarm.action_ticket import ActionTicket, ActionTicketRegistry
+from swarm.asoc import HMACLeaseSigner
 from swarm.saas_security import (
     SaaSObservationDenied,
     bind_saas_correlation_references,
     classify_saas_observation,
     normalize_saas_observation,
+    propose_saas_app_disable,
 )
 
 
@@ -182,4 +185,80 @@ def test_saas_correlation_revalidates_finding_and_denies_evidence_failure():
             finding,
             audit=lambda *_args: (_ for _ in ()).throw(RuntimeError("offline")),
             **values,
+        )
+
+
+def _correlation():
+    return bind_saas_correlation_references(
+        _finding(), tenant_id="tenant-a",
+        soc_incident_ref="fw-incident/tenant-a/saas-1",
+        aid_finding_ref="fw-finding/tenant-a/saas-1",
+        evidence_refs=("fw-evid/tenant-a/saas-1",), audit=lambda *_args: None,
+    )
+
+
+def _tickets(**overrides):
+    registry = ActionTicketRegistry(HMACLeaseSigner({"key-1": b"test-only-key-material"}))
+    values = dict(
+        ticket_id="ticket-1", tenant_id="tenant-a", subject_agent_id="agent-1",
+        lease_id="lease-1", capability="saas.app.disable.propose",
+        resource="fw-resource/tenant-a/app-1",
+        action_class="SAAS_APP_DISABLE_PROPOSAL", issued_by="operator-1",
+        approval_reference="approval-1", policy_version="policy-v1",
+        issued_at=100, expires_at=200, key_reference="key-1",
+    )
+    values.update(overrides)
+    registry.issue(ActionTicket(**values))
+    return registry
+
+
+def _proposal_args(**overrides):
+    values = dict(
+        tickets=_tickets(), ticket_id="ticket-1",
+        target_ref="fw-resource/tenant-a/app-1",
+        policy_decision_ref="fw-policy/tenant-a/decision-1",
+        subject_agent_id="agent-1", lease_id="lease-1",
+        policy_version="policy-v1", now=150, kill_switch_state="ENGAGED",
+        audit=lambda *_args: None,
+    )
+    values.update(overrides)
+    return values
+
+
+def test_saas_response_proposal_consumes_exact_ticket_and_remains_inert():
+    evidence = []
+    args = _proposal_args(audit=lambda *items: evidence.append(items))
+    result = propose_saas_app_disable(_correlation(), **args)
+    assert result.action_class == "SAAS_APP_DISABLE_PROPOSAL"
+    assert result.disposition == "PROPOSE_ONLY"
+    assert result.mode == "DRY_RUN" and result.deployment == "DISABLED"
+    assert result.kill_switch == "ENGAGED"
+    assert result.authority_granted is False and result.response_executed is False
+    assert evidence[0][1]["response_executed"] is False
+    with pytest.raises(SaaSObservationDenied, match="ACTION_TICKET_DENIED"):
+        propose_saas_app_disable(_correlation(), **args)
+
+
+@pytest.mark.parametrize("overrides,reason", [
+    ({"kill_switch_state": "CLEAR"}, "KILL_SWITCH_NOT_ENGAGED"),
+    ({"target_ref": "fw-resource/tenant-b/app-1"}, "PROPOSAL_REF_INVALID"),
+    ({"policy_decision_ref": "fw-policy/tenant-b/decision-1"}, "PROPOSAL_REF_INVALID"),
+    ({"subject_agent_id": "agent-2"}, "ACTION_TICKET_DENIED"),
+    ({"policy_version": "policy-v2"}, "ACTION_TICKET_DENIED"),
+])
+def test_saas_response_proposal_rejects_authority_and_tenant_mismatch(overrides, reason):
+    with pytest.raises(SaaSObservationDenied, match=reason):
+        propose_saas_app_disable(_correlation(), **_proposal_args(**overrides))
+
+
+def test_saas_response_proposal_requires_high_confidence_and_evidence():
+    with pytest.raises(SaaSObservationDenied, match="PROPOSAL_SOURCE_INVALID"):
+        propose_saas_app_disable(
+            replace(_correlation(), confidence="MEDIUM"), **_proposal_args(),
+        )
+    with pytest.raises(SaaSObservationDenied, match="EVIDENCE_WRITE_FAILED"):
+        propose_saas_app_disable(
+            _correlation(), **_proposal_args(
+                audit=lambda *_args: (_ for _ in ()).throw(RuntimeError("offline")),
+            ),
         )
