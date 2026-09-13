@@ -174,6 +174,9 @@ class Phase5ReleaseCITests(unittest.TestCase):
             repository, release = self.repository(
                 Path(temp), "PUBLIC_SDK", "sdk")
             cases = []
+            missing = copy.deepcopy(release)
+            missing.pop("tree_sha1")
+            cases.append(missing)
             extra = copy.deepcopy(release)
             extra["source_commit"] = self.head
             cases.append(extra)
@@ -200,6 +203,20 @@ class Phase5ReleaseCITests(unittest.TestCase):
                         expected_track="PUBLIC_SDK",
                         expected_repository_result=changed,
                     )
+
+    def test_symlinked_repository_root_fails_closed(self):
+        with tempfile.TemporaryDirectory(prefix="phase5-release-ci-link-") as temp:
+            parent = Path(temp)
+            repository, release = self.repository(
+                parent, "PUBLIC_SDK", "sdk")
+            link = parent / "repository-link"
+            link.symlink_to(repository, target_is_directory=True)
+            with self.assertRaisesRegex(ValueError, "real directory"):
+                run_release_ci(
+                    link,
+                    expected_track="PUBLIC_SDK",
+                    expected_repository_result=release,
+                )
 
     def test_dirty_tree_extra_ref_and_unreachable_object_fail_closed(self):
         with tempfile.TemporaryDirectory(prefix="phase5-release-ci-dirty-") as temp:
@@ -248,6 +265,10 @@ class Phase5ReleaseCITests(unittest.TestCase):
                         expected_track="PUBLIC_SDK",
                         expected_repository_result=release,
                     )
+        policy = _load_policy()
+        policy["tracks"]["PUBLIC_SDK"]["checks"] = []
+        with self.assertRaisesRegex(ValueError, "plan is empty"):
+            _command_plan("PUBLIC_SDK", policy)
         policy = _load_policy()
         policy["tracks"]["PUBLIC_SDK"]["checks"][0]["id"] = "UNKNOWN"
         with self.assertRaisesRegex(ValueError, "unknown"):
