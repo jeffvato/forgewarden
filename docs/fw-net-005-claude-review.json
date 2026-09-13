@@ -1,0 +1,30 @@
+{
+  "adjudication": null,
+  "candidate_commit": "4d48492ba3062ce502ffc4b62cd4acdadd48a551",
+  "deployment": "DISABLED",
+  "job_id": "phase2a-4d48492ba3062ce502ffc4b6",
+  "kill_switch": "ENGAGED",
+  "mutation_allowed": false,
+  "reviews": [
+    {
+      "provider": "CLAUDE",
+      "result": {
+        "blocking_findings": [],
+        "job_id": "phase2a-4d48492ba3062ce502ffc4b6",
+        "non_blocking_notes": [
+          "Concurrency test not explicit in this file\u201470 focused tests and acceptance criteria mention concurrent/replay ordering review, suggesting coverage exists in broader test suite",
+          "Both validate() and validate_and_consume() are sequentially ordered with audit between them; sequential replay test confirms single-use enforcement, concurrent race condition mitigated by ActionTicketRegistry.validate_and_consume() atomicity",
+          "Dataclass frozen=True, all immutable properties hardcoded: mode=DRY_RUN, deployment=DISABLED, authority_granted=False, response_executed=False"
+        ],
+        "proposed_rules": [],
+        "reasoning_summary": "Patch implements inert ticket-bound network containment proposal with deterministic security properties:\\n\\n**Security boundary enforcement (met):**\\n- Source binding validation: binding.risk \u2208 {HIGH, CRITICAL}, trust==UNTRUSTED_DATA, mode==DRY_RUN, action==CORRELATE_ONLY, authority_granted==False (test_network_containment_proposal_revalidates_source_and_evidence covers all 5 variants)\\n- Kill switch engaged: kill_switch_state must equal \\\"ENGAGED\\\" (test with CLEAR override denies KILL_SWITCH_NOT_ENGAGED)\\n- Tenant matching: target_ref and policy_decision_ref both match fw-(network|policy)/TENANT_ID/... and TENANT_ID matches binding.tenant_id (test parametrization covers tenant-b mismatch, format mismatch)\\n- Action ticket validation: validate() called before audit, validate_and_consume() called after, binding includes tenant_id, subject_agent_id, lease_id, capability, resource, policy_version, now (test parametrization denies agent/lease/version mismatch)\\n\\n**Evidence-first design (met):**\\n- audit() call sandwiched between validate() and validate_and_consume()\\n- Audit failure raises EVIDENCE_WRITE_FAILED before ticket consumption\\n- Audit payload includes all proposal metadata with immutable hardcoded values\\n\\n**Replay prevention (met):**\\n- Single-use ticket confirmed by test: first call succeeds, second call raises ACTION_TICKET_DENIED\\n- validate_and_consume() consumes ticket atomically after audit succeeds\\n\\n**No-authority boundary (met):**\\n- authority_granted hardcoded False in NetworkContainmentProposal dataclass\\n- Rejected if source binding.authority_granted != False\\n- Function creates proposal object only; no execution, network mutation, or containment operations\\n\\n**Immutability (met):**\\n- NetworkContainmentProposal is @dataclass(frozen=True)\\n- All 8 fields including event_id, tenant_id, target_ref, policy_decision_ref, action_ticket_ref, risk have fixed values; 9 fields hardcoded: action_class, mode, deployment, kill_switch, disposition, authority_granted, response_executed all immutable defaults\\n\\n**Narrow scope (met):**\\n- 4 files changed (status/queue updates, 1 new function, 1 new dataclass, 14 new tests)\\n- No refactoring, no changes to existing functions\\n- No socket, firewall, NAC, route, segmentation, containment, deployment, or response executor added\\n\\n**Test coverage (met):**\\n- Normal path: proposal creation, ticket consumption, evidence audit, immutability\\n- Boundary: 7 parametrized rejection cases (kill_switch, target_ref format/tenant, policy_decision_ref tenant, subject_agent/lease/policy_version mismatch)\\n- Source validation: 5 parametrized rejections (risk, trust, mode, action, authority) + evidence write failure\\n- Replay: sequential re-use denied\\n- Total: 14 new tests (1 normal+1 replay + 7 boundary + 5 source + 1 evidence = 15 test cases across 3 test functions)\\n\\n**No blockers identified:** All mandatory security properties enforced, output immutable and inert, boundaries validated, single-use ticket prevents replay.",
+        "reviewed_commit": "4d48492ba3062ce502ffc4b62cd4acdadd48a551",
+        "risk": "LOW",
+        "tests_missing": [],
+        "verdict": "APPROVE"
+      },
+      "state": "APPROVED"
+    }
+  ],
+  "state": "APPROVED"
+}

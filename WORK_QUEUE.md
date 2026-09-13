@@ -80,7 +80,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-NET-005 — Inert Action Ticket-bound containment proposal
 - Requirement: FW-NET bounded non-executing response intent
-- State: REVIEW
+- State: DONE
 - Priority: P0
 - Dependencies: FW-NET-004
 - Approval: Jeff authorized the ordered FW-NET phase using small bounded candidates.
@@ -89,10 +89,11 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 - Allowed paths: swarm/network_security.py, tests/test_network_security.py, WORK_QUEUE.md, SWARM_STATUS.md
 - Test command: python3 -m pytest -q tests/test_network_security.py tests/test_action_ticket.py
 - Acceptance criteria: engaged kill switch, exact policy/target/ticket binding, and Evidence are mandatory; output is PROPOSE_ONLY and cannot alter any network resource.
+- Completion evidence: exact candidate `4d48492ba3062ce502ffc4b62cd4acdadd48a551`; focused 70 passed. AnythingLLM was unavailable, then exact Claude job `phase2a-4d48492ba3062ce502ffc4b6` returned APPROVE/LOW with no blockers or missing tests. Full 1871 passed/1 skipped; Product Integrity fresh full 1871/1 and Golden Path 70 passed with every hard check and only pre-existing dependency YELLOW. Evidence: `docs/fw-net-005-*.json`.
 
 ### FW-NET-006 — Integrated lifecycle and Mission Control projection
 - Requirement: FW-NET accepted-stage composition and operator visibility
-- State: BLOCKED
+- State: READY
 - Priority: P0
 - Dependencies: FW-NET-005
 - Approval: Jeff authorized the ordered FW-NET phase using small bounded candidates.
