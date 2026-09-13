@@ -4,6 +4,15 @@ This file records only genuine blockers that require Customer Root authority, un
 
 ## Current blockers
 
+### B-035 — FW-UX-012 exact review providers temporarily unavailable
+
+- Related task/requirement: FW-UX-012 integrated canonical Mission Control backend lifecycle proof.
+- Exact condition: candidate `9a46f0ddb68fa374c09101ff56a234153c8ba127` passed its focused proof (19 Python tests plus the Node frontend contract). Claude reached its maximum verifier turns without returning a verdict; the explicitly authorized AnythingLLM/Qwen fallback then reported `AnythingLLM bridge unavailable`.
+- Why work cannot complete safely: the milestone requires an independent schema-valid exact APPROVE/LOW result before full validation and acceptance. Neither provider returned approval, and no approval is inferred.
+- Independent READY work: none before this ordered FW-UX lifecycle proof is accepted.
+- Current candidate/checkpoint: candidate `9a46f0ddb68fa374c09101ff56a234153c8ba127`; last accepted checkpoint `254b70b8920b6c996c49e7537bfe907477514a11`.
+- First resume action: retry Claude once on the unchanged exact candidate at the next heartbeat; if it remains unavailable, retry the configured AnythingLLM/Qwen bridge within its bounded rate limits. Continue only on validated exact APPROVE/LOW.
+
 ### B-034 — FW-EVID-001 exact review temporarily unavailable
 
 - Related task/requirement: FW-EVID-001 Evidence inventory and canonical envelope contract.
