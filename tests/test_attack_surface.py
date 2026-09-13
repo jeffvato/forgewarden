@@ -70,3 +70,36 @@ def test_attack_surface_observation_accepts_port_boundaries_and_denies_evidence_
             fixture(), tenant_id="tenant-a", now_epoch=150,
             audit=lambda *_args: (_ for _ in ()).throw(RuntimeError("offline")),
         )
+
+
+def test_attack_surface_observation_rejects_boolean_observation_time():
+    with pytest.raises(AttackSurfaceObservationDenied, match="OBSERVED_AT_INVALID"):
+        normalize_attack_surface_observation(
+            fixture(observed_at_epoch=True), tenant_id="tenant-a", now_epoch=150,
+            audit=lambda *_args: None,
+        )
+
+
+@pytest.mark.parametrize("tenant_id", ["", "Tenant With Spaces"])
+def test_attack_surface_observation_rejects_invalid_expected_tenant(tenant_id):
+    with pytest.raises(AttackSurfaceObservationDenied, match="TENANT_INVALID"):
+        normalize_attack_surface_observation(
+            fixture(), tenant_id=tenant_id, now_epoch=150, audit=lambda *_args: None,
+        )
+
+
+@pytest.mark.parametrize("now_epoch", [True, -1])
+def test_attack_surface_observation_rejects_invalid_current_time(now_epoch):
+    with pytest.raises(AttackSurfaceObservationDenied, match="OBSERVED_AT_INVALID"):
+        normalize_attack_surface_observation(
+            fixture(), tenant_id="tenant-a", now_epoch=now_epoch,
+            audit=lambda *_args: None,
+        )
+
+
+def test_attack_surface_observation_rejects_non_json_fixture_value():
+    with pytest.raises(AttackSurfaceObservationDenied, match="FIXTURE_INVALID"):
+        normalize_attack_surface_observation(
+            fixture(service={"HTTP"}), tenant_id="tenant-a", now_epoch=150,
+            audit=lambda *_args: None,
+        )

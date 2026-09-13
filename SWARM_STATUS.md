@@ -1,5 +1,7 @@
 # ForgeWarden Swarm Status
 
+- 2026-09-13: FW-ASM-002 is in bounded test-only repair after exact AnythingLLM/Qwen returned APPROVE/LOW but requested direct boolean-time, invalid-tenant, malformed-current-time, and non-JSON fixture proofs. Runtime behavior and authority are unchanged.
+
 - 2026-09-13: FW-ASM-002 is in exact review after focused validation passed 15 tests. The candidate adds only immutable Evidence-first caller-supplied external-asset metadata with strict tenant, canonical owner-reference, time, type, service, protocol, port, ownership, visibility, shape, and size bounds. It performs no discovery, scan, connection, query, mutation, or response.
 
 - 2026-09-13: FW-ASM-001 accepted at candidate `bb2e6821e3209a5e067b878b9c9ddd39eafac43f`. The inventory reuses canonical FW-ENDPOINT/FW-ID asset, FW-NET, FW-SAAS, vulnerability/FW-SUPPLY, FW-KEYS/TrustedSignatureCatalog, policy/Action Ticket, FW-EVID, FW-SOC, and Mission Control owners. Deterministic inventory and `git diff --check` passed; exact AnythingLLM/Qwen returned APPROVE/LOW with no blockers or missing tests. No product suite or Product Integrity rerun was required for this documentation-only milestone. No discovery or response authority was added. FW-ASM-002 immutable caller-supplied external-asset/exposure metadata is next.
