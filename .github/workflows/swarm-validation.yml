@@ -8,11 +8,19 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: swarm-validation-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
 jobs:
   deterministic-fixture-suite:
     name: Python ${{ matrix.python-version }}
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -20,12 +28,14 @@ jobs:
     steps:
       - name: Check out swarm
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
       - name: Set up Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install test dependencies
-        run: python -m pip install --disable-pip-version-check -r requirements-test.txt
+        run: timeout 5m python -m pip install --disable-pip-version-check -r requirements-test.txt
       - name: Validate shell launchers
         run: |
           bash -n packaging/hermes-swarm
@@ -43,7 +53,13 @@ jobs:
             exit 1
           fi
       - name: Run portable deterministic fixture suite
-        run: bash scripts/validate-swarm.sh --portable
+        run: timeout 8m bash scripts/validate-swarm.sh --portable
+      - name: Run current full pytest suite
+        run: timeout 12m python -m pytest -q
+      - name: Validate Mission Control frontend contract
+        run: timeout 2m node --test tests/test_console_frontend.js
+      - name: Check tracked patch whitespace
+        run: timeout 1m git diff --check HEAD
 
 
   pull-request-codebase-review:
@@ -56,27 +72,29 @@ jobs:
     steps:
       - name: Check out PR
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
       - name: Set up Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: '3.12'
       - name: Install review dependencies
-        run: python -m pip install --disable-pip-version-check -r requirements-test.txt
+        run: timeout 5m python -m pip install --disable-pip-version-check -r requirements-test.txt
       - name: Build read-only quality report
         run: |
           mkdir -p artifacts
-          PYTHONPATH=. python -m swarm.cli quality-review \
+          timeout 5m env PYTHONPATH=. python -m swarm.cli quality-review \
             --repository . \
             --output artifacts/quality-review.json
       - name: Build revision-bound codebase index
         run: |
-          PYTHONPATH=. python -m swarm.cli codebase-index-build \
+          timeout 5m env PYTHONPATH=. python -m swarm.cli codebase-index-build \
             --repository . \
             --index-path /tmp/forgewarden-codebase-index.json \
             --revision "${{ github.sha }}"
       - name: Build index evidence
         run: |
-          PYTHONPATH=. python -m swarm.cli index-evidence \
+          timeout 5m env PYTHONPATH=. python -m swarm.cli index-evidence \
             --quality-report artifacts/quality-review.json \
             --repository . \
             --index-path /tmp/forgewarden-codebase-index.json \
