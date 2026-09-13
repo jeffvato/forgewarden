@@ -25,6 +25,7 @@ from .supply_chain import SupplyChainDryRunLifecycle
 from .network_security import NetworkDryRunLifecycle
 from .attack_surface import AttackSurfaceDryRunLifecycle
 from .data_security import DataSecurityDryRunLifecycle
+from .high_assurance import HighAssuranceEvidenceBinding
 
 
 _TENANT = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$")
@@ -1045,4 +1046,68 @@ def project_operations_continuity(
         health.evidence_reference,
         capacity.evidence_reference,
         capacity.assessed_at_epoch,
+    )
+
+
+@dataclass(frozen=True)
+class HighAssuranceMissionView:
+    schema_version: int
+    tenant_id: str
+    profile_id: str
+    security_boundary: str
+    environment: str
+    data_classification: str
+    authorization_state: str
+    failed_candidate_id: str | None
+    selected_candidate_id: str
+    provider: str
+    model_id: str
+    assurance_tier: str
+    decision: str
+    evidence_refs: tuple[str, ...]
+    data_mode: str = "CANONICAL"
+    data_label: str = "CANONICAL READ-ONLY HIGH-ASSURANCE DECISION"
+    kill_switch: str = "ENGAGED"
+    deployment: str = "DISABLED"
+    mutation_allowed: bool = False
+    invocation_authorized: bool = False
+    authority_granted: bool = False
+
+
+def project_high_assurance(
+    binding: HighAssuranceEvidenceBinding, *, tenant_id: str,
+    data_mode: str = "CANONICAL",
+) -> HighAssuranceMissionView:
+    """Project sanitized FW-GOV facts without registry or provider authority."""
+    if not isinstance(binding, HighAssuranceEvidenceBinding) or not _TENANT.fullmatch(tenant_id):
+        raise MissionControlError("high-assurance binding malformed")
+    if (
+        binding.tenant_id != tenant_id or data_mode not in {"CANONICAL", "DEMO"}
+        or binding.mode != "DRY_RUN" or binding.deployment != "DISABLED"
+        or binding.action != "CORRELATE_ONLY"
+        or binding.invocation_authorized or binding.authority_granted
+        or not binding.evidence_refs or len(binding.evidence_refs) > 16
+        or tuple(sorted(set(binding.evidence_refs))) != binding.evidence_refs
+    ):
+        raise MissionControlError("high-assurance binding or authority invalid")
+    visible = (
+        binding.profile_id, binding.security_boundary, binding.environment,
+        binding.data_classification, binding.authorization_state,
+        binding.selected_candidate_id, binding.provider, binding.model_id,
+        binding.assurance_tier, binding.decision, *binding.evidence_refs,
+    )
+    if binding.failed_candidate_id is not None:
+        visible += (binding.failed_candidate_id,)
+    if any(not isinstance(value, str) or len(value.encode()) > 1000 or _SECRET.search(value) for value in visible):
+        raise MissionControlError("high-assurance projection secret-bearing or excessive")
+    if any(not value.startswith(f"fw-evid/{tenant_id}/") for value in binding.evidence_refs):
+        raise MissionControlError("high-assurance Evidence tenant mismatch")
+    return HighAssuranceMissionView(
+        1, tenant_id, binding.profile_id, binding.security_boundary,
+        binding.environment, binding.data_classification,
+        binding.authorization_state, binding.failed_candidate_id,
+        binding.selected_candidate_id, binding.provider, binding.model_id,
+        binding.assurance_tier, binding.decision, binding.evidence_refs,
+        data_mode,
+        "DEMO / SIMULATED DATA" if data_mode == "DEMO" else "CANONICAL READ-ONLY HIGH-ASSURANCE DECISION",
     )

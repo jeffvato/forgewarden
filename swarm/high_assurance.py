@@ -130,6 +130,28 @@ class HighAssuranceFailoverDecision:
     authority_granted: bool = False
 
 
+@dataclass(frozen=True)
+class HighAssuranceEvidenceBinding:
+    profile_id: str
+    tenant_id: str
+    security_boundary: str
+    environment: str
+    data_classification: str
+    authorization_state: str
+    failed_candidate_id: str | None
+    selected_candidate_id: str
+    provider: str
+    model_id: str
+    assurance_tier: str
+    decision: str
+    evidence_refs: tuple[str, ...]
+    mode: str = "DRY_RUN"
+    deployment: str = "DISABLED"
+    action: str = "CORRELATE_ONLY"
+    invocation_authorized: bool = False
+    authority_granted: bool = False
+
+
 def _tenant_ref(value: Any, pattern: re.Pattern[str], tenant_id: str, reason: str) -> str:
     match = pattern.fullmatch(value) if isinstance(value, str) else None
     if match is None or match.group(1) != tenant_id:
@@ -442,4 +464,86 @@ def select_high_assurance_failover(
         failed_admission.candidate_id, selected.candidate_id, selected.provider,
         selected.model_id, profile.environment, selected.assurance_tier.name,
         failure.reason,
+    )
+
+
+def bind_high_assurance_evidence(
+    profile: HighAssuranceAuthorizationProfile,
+    admission: HighAssuranceModelAdmission,
+    *, tenant_id: str, evidence_refs: tuple[str, ...],
+    audit: Callable[[str, dict[str, Any]], None],
+    failure: HighAssuranceCandidateFailure | None = None,
+    failover: HighAssuranceFailoverDecision | None = None,
+) -> HighAssuranceEvidenceBinding:
+    """Bind canonical decision chronology without owning Evidence storage."""
+    if (
+        not isinstance(profile, HighAssuranceAuthorizationProfile)
+        or not isinstance(admission, HighAssuranceModelAdmission)
+        or not callable(audit)
+        or not isinstance(evidence_refs, tuple) or not evidence_refs
+        or len(evidence_refs) > 16 or tuple(sorted(set(evidence_refs))) != evidence_refs
+    ):
+        raise HighAssuranceProfileDenied("EVIDENCE_BINDING_INVALID")
+    if profile.tenant_id != tenant_id or admission.tenant_id != tenant_id:
+        raise HighAssuranceProfileDenied("TENANT_MISMATCH")
+    validated_refs = tuple(
+        _tenant_ref(value, _EVID_REF, tenant_id, "EVIDENCE_REF_INVALID")
+        for value in evidence_refs
+    )
+    required_refs = {profile.evidence_ref, admission.registry_evidence_ref}
+    if (failure is None) != (failover is None):
+        raise HighAssuranceProfileDenied("FAILOVER_CHRONOLOGY_INVALID")
+    if failure is not None and failover is not None:
+        if (
+            failure.tenant_id != tenant_id or failover.tenant_id != tenant_id
+            or failure.profile_id != profile.profile_id
+            or failover.profile_id != profile.profile_id
+            or failure.candidate_id != admission.candidate_id
+            or failover.failed_candidate_id != admission.candidate_id
+            or failover.failure_id != failure.failure_id
+            or failover.environment != profile.environment
+            or failover.invocation_authorized or failover.authority_granted
+            or failover.mode != "DRY_RUN" or failover.deployment != "DISABLED"
+        ):
+            raise HighAssuranceProfileDenied("FAILOVER_CHRONOLOGY_INVALID")
+        required_refs.add(failure.evidence_ref)
+        selected_id, provider, model_id = failover.selected_candidate_id, failover.provider, failover.model_id
+        tier, decision, failed_id = failover.assurance_tier, failover.disposition, admission.candidate_id
+    else:
+        selected_id, provider, model_id = admission.candidate_id, admission.provider, admission.model_id
+        tier, decision, failed_id = admission.candidate_assurance_tier, admission.disposition, None
+    if not required_refs.issubset(validated_refs):
+        raise HighAssuranceProfileDenied("EVIDENCE_CHRONOLOGY_INCOMPLETE")
+    if (
+        admission.profile_id != profile.profile_id
+        or admission.security_boundary != profile.security_boundary
+        or admission.environment != profile.environment
+        or admission.authorization_state != profile.authorization_state
+        or admission.profile_evidence_ref != profile.evidence_ref
+        or admission.mode != "DRY_RUN" or admission.deployment != "DISABLED"
+        or admission.invocation_authorized or admission.authority_granted
+    ):
+        raise HighAssuranceProfileDenied("ADMISSION_BINDING_INVALID")
+    try:
+        audit("high_assurance_evidence_bound", {
+            "profile_id": profile.profile_id, "tenant_id": tenant_id,
+            "security_boundary": profile.security_boundary,
+            "environment": profile.environment,
+            "data_classification": admission.data_classification,
+            "authorization_state": profile.authorization_state,
+            "failed_candidate_id": failed_id,
+            "selected_candidate_id": selected_id, "provider": provider,
+            "model_id": model_id, "assurance_tier": tier,
+            "decision": decision, "evidence_refs": validated_refs,
+            "mode": "DRY_RUN", "deployment": "DISABLED",
+            "action": "CORRELATE_ONLY", "invocation_authorized": False,
+            "authority_granted": False,
+        })
+    except Exception as exc:
+        raise HighAssuranceProfileDenied("EVIDENCE_WRITE_FAILED") from exc
+    return HighAssuranceEvidenceBinding(
+        profile.profile_id, tenant_id, profile.security_boundary,
+        profile.environment, admission.data_classification,
+        profile.authorization_state, failed_id, selected_id, provider, model_id,
+        tier, decision, validated_refs,
     )

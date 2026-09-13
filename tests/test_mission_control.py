@@ -8,7 +8,9 @@ from swarm.harness_models import ApprovedModelCandidate
 from swarm.harness_risk import AssuranceTier
 from swarm.mcp_gateway import MCPGatewaySafetyState, MCPToolCatalogEntry
 from swarm.harness_worker import WorkerRegistration, WorkerRole, WorkerTransport
-from swarm.mission_control import MissionControlError, ModelMCPActivity, PolicyTicketActivity, project_ai_security, project_attack_surface, project_data_security, project_mission_control, project_network_security, project_saas_security, project_supply_chain, serialize_evidence_activity, serialize_harness_activity, serialize_incident_activity, serialize_model_mcp_activity, serialize_policy_ticket_activity
+from swarm.mission_control import MissionControlError, ModelMCPActivity, PolicyTicketActivity, project_ai_security, project_attack_surface, project_data_security, project_high_assurance, project_mission_control, project_network_security, project_saas_security, project_supply_chain, serialize_evidence_activity, serialize_harness_activity, serialize_incident_activity, serialize_model_mcp_activity, serialize_policy_ticket_activity
+from tests.test_high_assurance import admission as gov_admission, admitted_profile as gov_profile
+from swarm.high_assurance import bind_high_assurance_evidence
 from swarm.action_ticket import ActionTicket
 from swarm.policy_gate import PolicyContext, PolicyDecision
 from swarm.evidence import EvidenceRecord, evidence_record_sha256, validate_evidence_envelope
@@ -580,3 +582,32 @@ def test_data_security_projection_directly_denies_event_risk_and_mode_drift():
         )
     with pytest.raises(MissionControlError, match="binding"):
         project_data_security(lifecycle, tenant_id="tenant-a", data_mode="UNKNOWN")
+
+
+def gov_binding():
+    profile = gov_profile(); admission = gov_admission(profile_value=profile)
+    return bind_high_assurance_evidence(profile, admission, tenant_id="tenant-a", evidence_refs=(profile.evidence_ref, admission.registry_evidence_ref), audit=lambda *_: None)
+
+
+def test_high_assurance_projection_is_read_only_and_honestly_labeled():
+    view = project_high_assurance(gov_binding(), tenant_id="tenant-a")
+    assert view.profile_id == "fw-gov-profile/tenant-a/reviewer-prod"
+    assert view.selected_candidate_id == "approved-reviewer"
+    assert view.data_label == "CANONICAL READ-ONLY HIGH-ASSURANCE DECISION"
+    assert view.kill_switch == "ENGAGED" and view.deployment == "DISABLED"
+    assert not view.mutation_allowed and not view.invocation_authorized and not view.authority_granted
+    assert project_high_assurance(gov_binding(), tenant_id="tenant-a", data_mode="DEMO").data_label == "DEMO / SIMULATED DATA"
+
+
+def test_high_assurance_projection_denies_cross_tenant_tamper_secret_and_unknown_mode():
+    binding = gov_binding()
+    for changed in (
+        replace(binding, tenant_id="tenant-b"),
+        replace(binding, invocation_authorized=True),
+        replace(binding, evidence_refs=("fw-evid/tenant-b/other",)),
+        replace(binding, model_id="api_key=secret-value"),
+    ):
+        with pytest.raises(MissionControlError):
+            project_high_assurance(changed, tenant_id="tenant-a")
+    with pytest.raises(MissionControlError):
+        project_high_assurance(binding, tenant_id="tenant-a", data_mode="UNKNOWN")

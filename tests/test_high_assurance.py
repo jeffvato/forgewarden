@@ -2,7 +2,7 @@ from dataclasses import FrozenInstanceError, replace
 
 import pytest
 
-from swarm.high_assurance import HighAssuranceProfileDenied, admit_high_assurance_model, normalize_high_assurance_failure, normalize_high_assurance_profile, select_high_assurance_failover
+from swarm.high_assurance import HighAssuranceProfileDenied, admit_high_assurance_model, bind_high_assurance_evidence, normalize_high_assurance_failure, normalize_high_assurance_profile, select_high_assurance_failover
 from swarm.harness_models import ApprovedModelCandidate
 from swarm.harness_risk import AssuranceTier
 from swarm.harness_worker import WorkerRole
@@ -265,3 +265,38 @@ def test_failover_denies_failure_substitution_forged_authority_and_evidence_fail
         failover(failure_value=replace(failure(), authority_granted=True))
     with pytest.raises(HighAssuranceProfileDenied, match="EVIDENCE_WRITE_FAILED"):
         failover(audit=lambda *_: (_ for _ in ()).throw(OSError("offline")))
+
+
+def test_evidence_binding_preserves_direct_admission_and_failover_chronology():
+    profile_value = admitted_profile()
+    admission_value = admission(profile_value=profile_value)
+    direct = bind_high_assurance_evidence(
+        profile_value, admission_value, tenant_id="tenant-a",
+        evidence_refs=(profile_value.evidence_ref, admission_value.registry_evidence_ref),
+        audit=lambda *_: None,
+    )
+    assert direct.failed_candidate_id is None and direct.selected_candidate_id == admission_value.candidate_id
+    failure_value = failure()
+    failover_value = failover(profile_value, admission_value, failure_value)
+    refs = tuple(sorted((profile_value.evidence_ref, admission_value.registry_evidence_ref, failure_value.evidence_ref)))
+    bound = bind_high_assurance_evidence(profile_value, admission_value, tenant_id="tenant-a", evidence_refs=refs, audit=lambda *_: None, failure=failure_value, failover=failover_value)
+    assert bound.failed_candidate_id == admission_value.candidate_id
+    assert bound.selected_candidate_id == failover_value.selected_candidate_id
+    assert bound.action == "CORRELATE_ONLY" and not bound.invocation_authorized
+
+
+def test_evidence_binding_denies_incomplete_duplicate_cross_tenant_or_tampered_chronology():
+    profile_value = admitted_profile(); admission_value = admission(profile_value=profile_value)
+    failure_value = failure(); failover_value = failover(profile_value, admission_value, failure_value)
+    base = tuple(sorted((profile_value.evidence_ref, admission_value.registry_evidence_ref, failure_value.evidence_ref)))
+    for refs, reason in (
+        ((profile_value.evidence_ref,), "INCOMPLETE"),
+        ((profile_value.evidence_ref,) * 2, "INVALID"),
+        (tuple(sorted(("fw-evid/tenant-b/other",) + base)), "EVIDENCE_REF_INVALID"),
+    ):
+        with pytest.raises(HighAssuranceProfileDenied, match=reason):
+            bind_high_assurance_evidence(profile_value, admission_value, tenant_id="tenant-a", evidence_refs=refs, audit=lambda *_: None, failure=failure_value, failover=failover_value)
+    with pytest.raises(HighAssuranceProfileDenied, match="FAILOVER_CHRONOLOGY_INVALID"):
+        bind_high_assurance_evidence(profile_value, admission_value, tenant_id="tenant-a", evidence_refs=base, audit=lambda *_: None, failure=failure_value, failover=replace(failover_value, failed_candidate_id="other"))
+    with pytest.raises(HighAssuranceProfileDenied, match="ADMISSION_BINDING_INVALID"):
+        bind_high_assurance_evidence(profile_value, replace(admission_value, invocation_authorized=True), tenant_id="tenant-a", evidence_refs=tuple(sorted((profile_value.evidence_ref, admission_value.registry_evidence_ref))), audit=lambda *_: None)
