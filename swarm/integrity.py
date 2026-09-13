@@ -310,6 +310,20 @@ _PERFORMANCE_POLICY_FIELDS = frozenset({
     "scenario_id", "iterations", "max_wall_ms", "max_peak_kib",
     "timeout_seconds", "max_output_bytes", "max_processes",
 })
+_PERFORMANCE_RESULT_FIELDS = frozenset({
+    "schema_version", "scenario_id", "iterations", "operations",
+    "wall_ms", "peak_kib", "processes", "checksum", "mode",
+    "deployment", "authority_granted",
+})
+_PERFORMANCE_CHILD = r'''
+import json
+import sys
+from swarm.integrity import _run_control_performance_scenario
+print(json.dumps(
+    _run_control_performance_scenario(sys.argv[1], int(sys.argv[2])),
+    sort_keys=True, separators=(",", ":"), ensure_ascii=True,
+))
+'''
 
 
 def validate_performance_policy(value: Any) -> tuple[dict[str, int | str], ...]:
@@ -421,6 +435,128 @@ def _run_control_performance_scenario(scenario_id: str, iterations: int) -> dict
         "operations": iterations, "wall_ms": wall_ms, "peak_kib": peak_kib,
         "processes": 1, "checksum": checksum, "mode": "DRY_RUN",
         "deployment": "DISABLED", "authority_granted": False,
+    }
+
+
+def _validated_performance_result(
+    policy: dict[str, int | str], returncode: int | None, output: bytes, *, timed_out: bool = False,
+) -> dict[str, Any]:
+    if timed_out:
+        raise ValueError("performance scenario timed out")
+    if returncode is None or not isinstance(returncode, int) or isinstance(returncode, bool) or returncode != 0:
+        raise ValueError("performance scenario process failed")
+    if len(output) > int(policy["max_output_bytes"]):
+        raise ValueError("performance scenario output exceeds its bound")
+    if _CLEAN_SECRET.search(output):
+        raise ValueError("performance scenario output contains secret-bearing content")
+    try:
+        value = json.loads(output.decode("ascii"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ValueError("performance scenario output is malformed") from exc
+    if not isinstance(value, dict) or set(value) != _PERFORMANCE_RESULT_FIELDS:
+        raise ValueError("performance scenario result schema is invalid")
+    integer_fields = ("iterations", "operations", "peak_kib", "processes", "checksum")
+    if any(not isinstance(value[field], int) or isinstance(value[field], bool) or value[field] < 0 for field in integer_fields):
+        raise ValueError("performance scenario result values are invalid")
+    if (
+        value["schema_version"] != 1 or value["scenario_id"] != policy["scenario_id"]
+        or value["iterations"] != policy["iterations"] or value["operations"] != policy["iterations"]
+        or value["processes"] > policy["max_processes"]
+        or not isinstance(value["wall_ms"], (int, float)) or isinstance(value["wall_ms"], bool)
+        or value["wall_ms"] < 0 or value["wall_ms"] > policy["max_wall_ms"]
+        or value["peak_kib"] > policy["max_peak_kib"]
+        or value["mode"] != "DRY_RUN" or value["deployment"] != "DISABLED"
+        or value["authority_granted"] is not False
+    ):
+        raise ValueError("performance scenario exceeded policy or safety bounds")
+    return {
+        "scenario_id": value["scenario_id"], "iterations": value["iterations"],
+        "wall_ms": value["wall_ms"], "peak_kib": value["peak_kib"],
+        "max_wall_ms": policy["max_wall_ms"], "max_peak_kib": policy["max_peak_kib"],
+        "processes": value["processes"], "result": "PASS", "output_retained": False,
+    }
+
+
+def run_control_performance_baseline(root: Path, expected_commit: str) -> dict[str, Any]:
+    """Measure fixed pure controls from an exact archive under tracked policy."""
+    root = root.resolve()
+    if not _CLEAN_SHA.fullmatch(expected_commit):
+        raise ValueError("performance proof expected commit is invalid")
+
+    def exact_head() -> str:
+        try:
+            return subprocess.run(
+                ["git", "rev-parse", "HEAD"], cwd=root, text=True,
+                capture_output=True, timeout=10, check=True,
+            ).stdout.strip()
+        except (OSError, subprocess.SubprocessError) as exc:
+            raise ValueError("performance proof Git state is unavailable") from exc
+
+    if exact_head() != expected_commit:
+        raise ValueError("performance proof current commit mismatch")
+    policy_path = root / "config/integrity-performance.json"
+    if not policy_path.is_file() or policy_path.is_symlink():
+        raise ValueError("performance policy is unavailable")
+    policy_bytes = policy_path.read_bytes()
+    try:
+        tracked_policy = subprocess.run(
+            ["git", "show", expected_commit + ":config/integrity-performance.json"], cwd=root,
+            capture_output=True, timeout=10, check=True,
+        ).stdout
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise ValueError("performance policy is not tracked at the exact commit") from exc
+    if tracked_policy != policy_bytes or len(policy_bytes) > 32 * 1024:
+        raise ValueError("performance policy differs from the exact commit or exceeds its bound")
+    try:
+        policies = validate_performance_policy(json.loads(policy_bytes.decode("utf-8")))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ValueError("performance policy JSON is malformed") from exc
+    try:
+        archived = subprocess.run(
+            ["git", "archive", "--format=tar", expected_commit], cwd=root,
+            capture_output=True, timeout=30, check=True,
+        ).stdout
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise ValueError("performance proof archive is unavailable") from exc
+    if not archived or len(archived) > 64 * 1024 * 1024:
+        raise ValueError("performance proof archive size is invalid")
+
+    results: list[dict[str, Any]] = []
+    with tempfile.TemporaryDirectory(prefix="forgewarden-performance-") as temporary:
+        checkout = Path(temporary).resolve()
+        _extract_mutation_archive(archived, checkout)
+        environment = {
+            "LANG": "C.UTF-8", "LC_ALL": "C.UTF-8", "PYTHONPATH": str(checkout),
+            "PYTHONNOUSERSITE": "1", "PYTHONDONTWRITEBYTECODE": "1",
+        }
+        for policy in policies:
+            if exact_head() != expected_commit:
+                raise ValueError("performance proof source commit changed")
+            try:
+                completed = subprocess.run(
+                    [sys.executable, "-c", _PERFORMANCE_CHILD, str(policy["scenario_id"]), str(policy["iterations"])],
+                    cwd=checkout, env=environment, capture_output=True,
+                    timeout=int(policy["timeout_seconds"]), check=False,
+                )
+                output = completed.stdout + completed.stderr
+                results.append(_validated_performance_result(policy, completed.returncode, output))
+            except subprocess.TimeoutExpired as exc:
+                output = (exc.stdout or b"") + (exc.stderr or b"")
+                _validated_performance_result(policy, None, output, timed_out=True)
+            except OSError as exc:
+                raise ValueError("performance scenario process is unavailable") from exc
+    if Path(temporary).exists():
+        raise ValueError("performance checkout cleanup failed")
+    if exact_head() != expected_commit:
+        raise ValueError("performance proof source commit changed")
+    return {
+        "schema_version": 1, "proof": "BOUNDED_CONTROL_PLANE_PERFORMANCE",
+        "commit": expected_commit, "policy_sha256": hashlib.sha256(policy_bytes).hexdigest(),
+        "scenarios": results, "summary": {"defined": len(policies), "passed": len(results), "failed": 0},
+        "temporary_checkout_removed": True, "assurance": "LOCAL_REGRESSION_ONLY",
+        "production_capacity_inferred": False, "service_level_inferred": False,
+        "mode": "DRY_RUN", "deployment": "DISABLED", "kill_switch": "ENGAGED",
+        "live_enabled": False, "production_ready": False, "authority_granted": False,
     }
 
 
