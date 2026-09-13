@@ -1,0 +1,35 @@
+{
+  "adjudication": null,
+  "candidate_commit": "089503e5be4607182d0177a1a4e8ce85d2b46af9",
+  "deployment": "DISABLED",
+  "job_id": "phase2a-089503e5be4607182d0177a1",
+  "kill_switch": "ENGAGED",
+  "mutation_allowed": false,
+  "reviews": [
+    {
+      "provider": "CLAUDE",
+      "result": {
+        "blocking_findings": [],
+        "job_id": "phase2a-089503e5be4607182d0177a1",
+        "non_blocking_notes": [
+          "Missing parametrized test cases for correlation trust/mode/action validation (trust != UNTRUSTED_DATA, mode != DRY_RUN, action != CORRELATE_ONLY) \u2014 could be added via replace() pattern used in confidence test",
+          "Missing tests for invalid ref format validation (regex mismatch patterns) and invalid input types (isinstance checks) \u2014 defensive but untested branches"
+        ],
+        "proposed_rules": [],
+        "reasoning_summary": "FW-SAAS-005 correctly implements bounded, inert application-disable proposal generation. The patch enforces all acceptance criteria: (1) only HIGH/UNTRUSTED_DATA/DRY_RUN/CORRELATE_ONLY correlations produce proposals; (2) tenant-matched target and policy refs with engaged kill switch are mandatory; (3) evidence audited before ticket consumption prevents replay; (4) output is immutable, inert, with no execution authority; (5) no provider contact, credentials, or network access. Single-use Action Ticket binding prevents replay (verified by test). Narrow scope, no regressions, defensive validation throughout. Immutable frozen dataclass ensures proposal cannot be modified. Test suite covers happy path, replay prevention, kill switch check, tenant/agent/policy mismatches, confidence validation, and audit failure. Minor gaps in parametrized coverage for correlation fields and regex validation are not blocking\u2014core acceptance criteria fully met and verified.",
+        "reviewed_commit": "089503e5be4607182d0177a1a4e8ce85d2b46af9",
+        "risk": "LOW",
+        "tests_missing": [
+          "Parametrized test case: replace(_correlation(), trust='TRUSTED_DATA') \u2192 PROPOSAL_SOURCE_INVALID",
+          "Parametrized test case: replace(_correlation(), mode='EXECUTE') \u2192 PROPOSAL_SOURCE_INVALID",
+          "Parametrized test case: replace(_correlation(), action='REMEDIATE') \u2192 PROPOSAL_SOURCE_INVALID",
+          "Test for invalid target_ref format (regex validation)",
+          "Test for invalid policy_decision_ref format (regex validation)"
+        ],
+        "verdict": "APPROVE"
+      },
+      "state": "REVIEW_RETURNED"
+    }
+  ],
+  "state": "REVIEW_REQUIRED"
+}

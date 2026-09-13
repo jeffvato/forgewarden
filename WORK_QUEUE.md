@@ -22,7 +22,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-SAAS-005 — Inert policy and Action Ticket-bound response proposal
 - Requirement: FW-SAAS bounded non-executing response intent
-- State: IN_PROGRESS
+- State: DONE
 - Priority: P0
 - Dependencies: FW-SAAS-004
 - Approval: Jeff authorized the ordered FW-SAAS phase using small bounded candidates.
@@ -38,6 +38,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no SaaS provider call, OAuth/token/credential access, network, mutation, containment, remediation, deployment, or response executor is added.
 - Expected validation: focused Linux proof, exact independent read-only review, then full suite and Product Integrity once after approval.
 - Security considerations: a valid proposal records bounded intent only; it cannot execute provider or identity action.
+- Completion evidence: initial candidate `089503e5be4607182d0177a1a4e8ce85d2b46af9` passed focused 39. AnythingLLM returned invalid JSON and was rejected; exact Claude returned APPROVE/LOW but requested five direct source-authority and malformed-reference tests. Repair `7949a26e032a2d81d69438bb3121e0e3ed900de0` added exactly those cases and passed focused 41. AnythingLLM was unavailable for repair review, then exact Claude job `phase2a-7949a26e032a2d81d69438bb` returned APPROVE/LOW with no blockers or missing tests. Full 1753 passed/1 skipped; Product Integrity fresh full 1753/1 and Golden Path 41 passed with every hard check and only pre-existing dependency YELLOW. Evidence: `docs/fw-saas-005-*.json`.
 
 ### FW-SAAS-004 — FW-SOC/FW-AID correlation references
 - Requirement: FW-SAAS canonical cross-domain reference binding

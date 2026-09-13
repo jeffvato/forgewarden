@@ -1,0 +1,31 @@
+{
+  "adjudication": null,
+  "candidate_commit": "7949a26e032a2d81d69438bb3121e0e3ed900de0",
+  "deployment": "DISABLED",
+  "job_id": "phase2a-7949a26e032a2d81d69438bb",
+  "kill_switch": "ENGAGED",
+  "mutation_allowed": false,
+  "reviews": [
+    {
+      "provider": "CLAUDE",
+      "result": {
+        "blocking_findings": [],
+        "job_id": "phase2a-7949a26e032a2d81d69438bb",
+        "non_blocking_notes": [
+          "Patch correctly implements all five required negative test cases in focused, minimal scope",
+          "Parametrized test expansion adds canonical prefix format validation for target_ref and policy_decision_ref",
+          "Refactored high-confidence test into loop efficiently covers all five boundary conditions: trust, mode, action, target_ref format, policy_decision_ref format",
+          "Test-only changes eliminate production code risk"
+        ],
+        "proposed_rules": [],
+        "reasoning_summary": "Commit adds exactly the five required direct negative tests for proposal validation boundaries: (1) invalid trust value, (2) invalid mode value, (3) invalid action value, (4) target_ref without canonical prefix, (5) policy_decision_ref without canonical prefix. Two new parametrized cases validate ref format requirements; refactored high-confidence test expands single confidence check into loop testing trust, mode, action conditions alongside confidence. All tests use PROPOSAL_SOURCE_INVALID rejection matching, preventing invalid proposals from proceeding. Patch is narrow (14 lines, single test file), deterministic, and contains no production code changes. Validates tenant/policy/target binding, kill switch engagement requirement, evidence-before-consumption flow, and immutable proposal-stage rejection. No network, provider, or deployment authority involved.",
+        "reviewed_commit": "7949a26e032a2d81d69438bb3121e0e3ed900de0",
+        "risk": "LOW",
+        "tests_missing": [],
+        "verdict": "APPROVE"
+      },
+      "state": "APPROVED"
+    }
+  ],
+  "state": "APPROVED"
+}
