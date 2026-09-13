@@ -74,7 +74,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-GOV-005 — Evidence and Mission Control projection
 - Requirement: FW-GOV canonical chronology and operator visibility
-- State: READY
+- State: DONE
 - Priority: P0
 - Dependencies: FW-GOV-004, FW-EVID
 - Approval: Jeff authorized the ordered FW-GOV phase through the continuing heartbeat.
@@ -83,10 +83,11 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 - Allowed paths: swarm/high_assurance.py, swarm/mission_control.py, tests/test_high_assurance.py, tests/test_mission_control.py, WORK_QUEUE.md, SWARM_STATUS.md
 - Test command: python3 -m pytest -q tests/test_high_assurance.py tests/test_mission_control.py
 - Acceptance criteria: exact chronology and bindings fail closed; visibility owns no registry, provider, credential, approval, invocation, policy, deployment, or authority.
+- Completion evidence: implementation candidate `b3f667f083d1d40f22b11a5ea6d355ddf76c7971`; test-only repair `b7f768bfee93418553b37823c13bc0e65fe874ae`. Exact AnythingLLM/Qwen review approved the design at LOW risk and requested direct Evidence durability-exception chaining proof; the repair added it and exact job `phase2a-b7f768bfee93418553b37823` returned APPROVE/LOW with no blockers or missing tests. Focused validation passed 123; full validation and Product Integrity each passed 2085 tests with 1 skipped; focused Golden Path passed 123. Every hard integrity check passed, with YELLOW only for pre-existing `tzdata`. Evidence: `docs/fw-gov-005-qwen-review.json`, `docs/fw-gov-005-qwen-repair-review.json`, `docs/fw-gov-005-integrity.json`.
 
 ### FW-GOV-006 — Integrated high-assurance lifecycle proof
 - Requirement: FW-GOV accepted-stage and adversarial composition
-- State: BLOCKED
+- State: READY
 - Priority: P0
 - Dependencies: FW-GOV-005
 - Approval: Jeff authorized the ordered FW-GOV phase through the continuing heartbeat.

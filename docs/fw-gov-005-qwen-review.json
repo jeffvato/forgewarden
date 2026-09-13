@@ -1,0 +1,33 @@
+{
+  "adjudication": null,
+  "candidate_commit": "b3f667f083d1d40f22b11a5ea6d355ddf76c7971",
+  "deployment": "DISABLED",
+  "job_id": "phase2a-b3f667f083d1d40f22b11a5e",
+  "kill_switch": "ENGAGED",
+  "mutation_allowed": false,
+  "reviews": [
+    {
+      "provider": "ANYTHINGLLM",
+      "result": {
+        "blocking_findings": [],
+        "job_id": "phase2a-b3f667f083d1d40f22b11a5e",
+        "non_blocking_notes": [
+          "The `_tenant_ref` helper relies on existing validation logic for evidence references. Ensure this helper strictly enforces the `fw-evid/{tenant_id}/` prefix format to prevent any potential bypass of tenant isolation in `bind_high_assurance_evidence`.",
+          "In `project_high_assurance`, the secret detection uses a regex `_SECRET`. Verify that this regex is comprehensive enough to catch all potential PII or credential patterns in the projected fields to maintain the 'sanitized' guarantee."
+        ],
+        "proposed_rules": [
+          "Ensure that any new Evidence reference validation logic in `swarm/high_assurance.py` must explicitly verify the tenant ID prefix matches the binding's tenant ID before proceeding to avoid cross-tenant leakage."
+        ],
+        "reasoning_summary": "The implementation correctly binds high-assurance decisions to canonical tenant-bound Evidence references. It enforces strict tenant isolation, validates the integrity of the evidence chronology (detecting missing, duplicate, or cross-tenant references), and fails closed on any tampering or authority escalation. The Mission Control projection layer is strictly read-only, sanitizes output by rejecting secret-bearing or excessively long fields, and correctly labels data modes (CANONICAL vs DEMO) while maintaining kill-switch and deployment-disabled states. The code does not own any registry, provider, or authority, adhering to the separation of concerns. All acceptance criteria for FW-GOV-005 are met, including the requirement to fail closed on invalid bindings and the prohibition on mutation or invocation authority.",
+        "reviewed_commit": "b3f667f083d1d40f22b11a5ea6d355ddf76c7971",
+        "risk": "LOW",
+        "tests_missing": [
+          "Test for `bind_high_assurance_evidence` where `audit` raises a specific exception type to ensure `HighAssuranceProfileDenied` is correctly chained (currently only generic Exception catch is tested via flow, not explicit exception chaining verification)."
+        ],
+        "verdict": "APPROVE"
+      },
+      "state": "REVIEW_RETURNED"
+    }
+  ],
+  "state": "REVIEW_REQUIRED"
+}
