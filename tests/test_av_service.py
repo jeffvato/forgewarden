@@ -52,6 +52,13 @@ def test_local_user_mode_allows_preferences_but_never_service_stop():
     assert status["local_policy_change_allowed"] is True
 
 
+def test_service_resource_limits_and_invalid_profile_fail_closed():
+    with pytest.raises(AVServiceContractError, match="max_queue_events"):
+        AVServiceProfile("tenant-a", "device-a", "LINUX", True, "STATUS_ONLY", max_queue_events=1025)
+    with pytest.raises(AVServiceContractError, match="profile"):
+        AVProtectionService(object(), DryRunSensorPipeline(NormalizedEventStore(lambda *_: None)))
+
+
 def test_service_rejects_cross_tenant_observation():
     service = AVProtectionService(profile(), DryRunSensorPipeline(NormalizedEventStore(lambda *_: None)))
     record = {
