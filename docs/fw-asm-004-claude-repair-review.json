@@ -1,0 +1,28 @@
+{
+  "adjudication": null,
+  "candidate_commit": "11c0a42b6ea06ced07ed130e351cb1ed954f2027",
+  "deployment": "DISABLED",
+  "job_id": "phase2a-11c0a42b6ea06ced07ed130e",
+  "kill_switch": "ENGAGED",
+  "mutation_allowed": false,
+  "reviews": [
+    {
+      "provider": "CLAUDE",
+      "result": {
+        "blocking_findings": [],
+        "job_id": "phase2a-11c0a42b6ea06ced07ed130e",
+        "non_blocking_notes": [
+          "Test-only repair adds parametrized boundary validation for vulnerability_refs and evidence_refs reference count enforcement. Covers required edge cases: empty tuple (invalid), 16-element maximum-valid, and 17-element over-limit with appropriate error matching. No runtime behavior or authority changes. WORK_QUEUE.md state transition (REVIEW \u2192 REPAIR) and SWARM_STATUS.md documentation updates are consistent with bounded test-only repair approach."
+        ],
+        "proposed_rules": [],
+        "reasoning_summary": "Commit adds single parametrized test that comprehensively validates FW-ASM-004 canonical owner reference binding boundary enforcement. Test structure directly closes prior-review gaps by proving: (1) empty references denied, (2) exactly 16 references accepted as maximum-valid, (3) 17 references rejected as over-limit. Both vulnerability_refs and evidence_refs fields are covered with tenant-matched prefixes (fw-vuln, fw-evid) and proper AttackSurfaceObservationDenied exception matching. Patch is narrow, deterministic, and focused. No runtime logic changes. Previous focused validation passed 49; this repair provides direct deterministic proofs for the identified reference tuple boundaries with no additional gaps remaining.",
+        "reviewed_commit": "11c0a42b6ea06ced07ed130e351cb1ed954f2027",
+        "risk": "LOW",
+        "tests_missing": [],
+        "verdict": "APPROVE"
+      },
+      "state": "APPROVED"
+    }
+  ],
+  "state": "APPROVED"
+}

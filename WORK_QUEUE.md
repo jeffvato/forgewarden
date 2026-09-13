@@ -67,7 +67,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-ASM-004 — Canonical owner reference binding
 - Requirement: FW-ASM asset/network/vulnerability/certificate/incident composition
-- State: REPAIR
+- State: DONE
 - Priority: P0
 - Dependencies: FW-ASM-003
 - Approval: Jeff authorized the ordered FW-ASM phase using small bounded candidates.
@@ -76,10 +76,11 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 - Allowed paths: swarm/attack_surface.py, tests/test_attack_surface.py, WORK_QUEUE.md, SWARM_STATUS.md
 - Test command: python3 -m pytest -q tests/test_attack_surface.py
 - Acceptance criteria: exact tenant/source/reference bindings and Evidence order fail closed; references remain advisory and establish no trust or authority.
+- Completion evidence: implementation candidate `e9e642373c4ad4cc24bf88af0405260e0a5022fb`; test-only repair `11c0a42b6ea06ced07ed130e351cb1ed954f2027`. AnythingLLM was unavailable; exact Claude review returned APPROVE/LOW and requested direct reference-count boundary proofs. Exact repair job `phase2a-11c0a42b6ea06ced07ed130e` closed them and returned APPROVE/LOW with no blockers or missing tests. Focused validation passed 49 tests and the full suite passed 1924 with 1 skipped. Product Integrity passed every hard check and the Golden Path, with only the pre-existing `tzdata` dependency YELLOW. Evidence: `docs/fw-asm-004-qwen-review.json`, `docs/fw-asm-004-claude-review.json`, `docs/fw-asm-004-claude-repair-review.json`, `docs/fw-asm-004-integrity.json`.
 
 ### FW-ASM-005 — Inert Action Ticket-bound risk-reduction proposal
 - Requirement: FW-ASM bounded non-executing response intent
-- State: BLOCKED
+- State: READY
 - Priority: P0
 - Dependencies: FW-ASM-004
 - Approval: Jeff authorized the ordered FW-ASM phase using small bounded candidates.

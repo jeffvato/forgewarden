@@ -1,0 +1,38 @@
+{
+  "adjudication": null,
+  "candidate_commit": "e9e642373c4ad4cc24bf88af0405260e0a5022fb",
+  "deployment": "DISABLED",
+  "job_id": "phase2a-e9e642373c4ad4cc24bf88af",
+  "kill_switch": "ENGAGED",
+  "mutation_allowed": false,
+  "reviews": [
+    {
+      "provider": "CLAUDE",
+      "result": {
+        "blocking_findings": [],
+        "job_id": "phase2a-e9e642373c4ad4cc24bf88af",
+        "non_blocking_notes": [
+          "Regex `_CANONICAL_REF` correctly validates kind and tenant_id fields for all reference types",
+          "Reference types properly segregated: network/catalog/signature/incident as scalar, vuln/evid as sorted tuples",
+          "Tenant isolation enforced at reference level (match.group(2) != tenant_id checks)",
+          "Duplicate detection via tuple(sorted(set())) comparison correctly rejects unsorted input",
+          "Forged authority check (authority_granted must be False) prevents privilege escalation",
+          "Evidence write failure properly caught and re-raised as AttackSurfaceObservationDenied",
+          "DRY_RUN mode and CORRELATE_ONLY action ensure no state creation or deployment",
+          "Audit log includes deployment=DISABLED and response_executed=False for compliance"
+        ],
+        "proposed_rules": [],
+        "reasoning_summary": "Patch implements canonical owner reference binding for FW-ASM-004 with deterministic input validation. All five requirement classes met: tenant-matched references validated via tenant_id cross-check; invalid types rejected by _CANONICAL_REF regex; duplicates detected via sorted() comparison; cross-tenant refs caught at validation; forged findings with authority_granted!=False denied; evidence write failures trigger EVIDENCE_WRITE_FAILED exception. Scope is narrow\u2014adds `AttackSurfaceReferenceBinding` dataclass, regex pattern, and `bind_attack_surface_references()` function with strict mode (DRY_RUN, CORRELATE_ONLY, UNTRUSTED_DATA, no trust creation). Test suite covers happy path, parametrized invalid/cross-tenant cases, forged finding rejection, and evidence failure. Two boundary cases lack explicit tests (tuple length extrema and empty set) but implementation's `1 <= len(values) <= MAX_ASM_OWNER_REFS` checks are clear. No authority, state, trust, deployment, or response authority added.",
+        "reviewed_commit": "e9e642373c4ad4cc24bf88af0405260e0a5022fb",
+        "risk": "LOW",
+        "tests_missing": [
+          "Boundary test for MAX_ASM_OWNER_REFS: explicit case for 16 elements (max valid) vs 17 elements (exceeding max)",
+          "Empty tuple edge case: vulnerability_refs=() and evidence_refs=() should both reject (code requires 1 \u2264 len \u2264 16)"
+        ],
+        "verdict": "APPROVE"
+      },
+      "state": "REVIEW_RETURNED"
+    }
+  ],
+  "state": "REVIEW_REQUIRED"
+}
