@@ -922,6 +922,26 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 - Completion evidence: exact candidate `2e9aa47da907f77be54894fc443487c0081f853d`; focused 99 passed; the first Claude attempt ended unavailable at its bounded turn limit and AnythingLLM was unavailable, then the required return to Claude produced exact APPROVE/LOW with no blockers or missing tests; full 1660 passed/1 skipped; Product Integrity fresh checks and full/Golden Path validations passed 1660/1 with YELLOW only for the pre-existing `tzdata` dependency. The bounded caller-supplied read-only FW-API phase is complete; no listener, transport, response body, mutation, credential, deployment, or execution authority was added.
 
+
+### FW-OPS-001 — Canonical operations inventory and ownership map
+- Requirement: FW-OPS operations, health, capacity, and continuity architecture
+- State: REVIEW
+- Priority: P0
+- Dependencies: FW-API-001, FW-INTEGRITY-002, FW-REC-003, FW-HARNESS-012, and FW-ENDPOINT-04
+- Approval: Jeff authorized the ordered FW-OPS phase after FW-API; this inventory changes no runtime or authority.
+- Description: Inventory existing operational health, capacity/backpressure, validation, monitoring, recovery, status, and Evidence seams; establish canonical ownership and the safest first missing FW-OPS behavior without duplicating those systems.
+- Target path: docs/fw-ops-inventory.md
+- Allowed paths: docs/fw-ops-inventory.md, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: deterministic source/queue inspection and git diff --check
+- Acceptance criteria:
+  - map existing Product Integrity, endpoint pipeline metrics, Harness monitoring/budgets, Recovery continuity, Mission Control status, process bounds, and FW-EVID interfaces to their canonical owners;
+  - distinguish operational telemetry from canonical security Evidence and prevent a competing store, policy engine, recovery controller, or status owner;
+  - state the current bounded DRY_RUN implementation honestly and identify production HA/DR, telemetry export, retention, service control, and rollout/rollback as unimplemented;
+  - define a substantive next milestone with exact inputs, outputs, failure boundaries, dependencies, and allowed authority;
+  - preserve tenant isolation, DRY_RUN, disabled deployment, engaged kill switch, and all no-network/no-process/no-recovery-execution boundaries.
+- Expected validation: deterministic source/queue inspection, git diff --check, and exact independent read-only review; no unchanged product validation is rerun.
+- Security considerations: inventory metadata cannot grant service, telemetry, recovery, deployment, Evidence, policy, filesystem, process, network, or credential authority.
+
 ### FW-UX-001 — Mission Control showcase foundation
 - Requirement: FW-UX Mission Control and honest Demo Mode
 - State: DONE
