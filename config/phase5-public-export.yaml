@@ -1,0 +1,42 @@
+schema_version: "1"
+publication: DISABLED
+source_profile: config/phase5-release-readiness.yaml
+source_profile_version: 2
+manifest_name: FORGEWARDEN-PUBLIC-MANIFEST.json
+
+limits:
+  max_files: 8
+  max_file_bytes: 524288
+  max_total_bytes: 2097152
+  max_manifest_bytes: 65536
+  max_path_bytes: 240
+
+tracks:
+  PUBLIC_SDK:
+    source_scope: EXPLICIT_ALLOWLIST_ONLY
+    includes_private_core: false
+    allowlist:
+      - docs/add-on-sdk.md
+      - schemas/addon-manifest.schema.json
+      - swarm/addon_sdk.py
+      - swarm/addons.py
+  SOURCE_AVAILABLE_DEMO:
+    source_scope: EXPLICIT_ALLOWLIST_ONLY
+    includes_private_core: false
+    allowlist:
+      - console/app.js
+      - console/index.html
+      - console/styles.css
+      - swarm/mission_control_demo.py
+
+required_denials:
+  - PRIVATE_CORE
+  - GIT_HISTORY_AND_REFS
+  - SENSITIVE_OPERATIONAL_PATHS
+  - PRIVATE_EVIDENCE_AND_REVIEWS
+  - GENERATED_STATE
+  - UNPROVEN_MEDIA
+  - PROHIBITED_IDENTIFIERS
+  - CREDENTIAL_SHAPED_CONTENT
+  - UNLISTED_FILES
+  - AUTHORITY_AND_PUBLICATION

@@ -1,8 +1,32 @@
+import json
 import tempfile
 import unittest
 from pathlib import Path
 
+import yaml
+from jsonschema import Draft202012Validator
+
 from swarm.phase5_release_candidate import build_release_candidate
+
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+class Phase5PublicExportPolicyTests(unittest.TestCase):
+    def test_exact_public_tracks_are_allowlisted_and_private_core_is_excluded(self):
+        policy = yaml.safe_load(
+            (ROOT / "config/phase5-public-export.yaml").read_text(encoding="utf-8"))
+        schema = json.loads(
+            (ROOT / "schemas/phase5-public-export.schema.json").read_text(encoding="utf-8"))
+        Draft202012Validator(schema).validate(policy)
+        self.assertEqual(policy["publication"], "DISABLED")
+        self.assertEqual(set(policy["tracks"]), {"PUBLIC_SDK", "SOURCE_AVAILABLE_DEMO"})
+        for track in policy["tracks"].values():
+            self.assertEqual(track["source_scope"], "EXPLICIT_ALLOWLIST_ONLY")
+            self.assertFalse(track["includes_private_core"])
+            self.assertTrue(track["allowlist"])
+        self.assertIn("PRIVATE_CORE", policy["required_denials"])
+        self.assertIn("UNLISTED_FILES", policy["required_denials"])
 
 
 class Phase5ReleaseCandidateTests(unittest.TestCase):
