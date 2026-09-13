@@ -3138,6 +3138,25 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 - Completion evidence: exact candidate `bb185c3be81c41df55a58adb0bddde1471573ce8`; regression reproduced before fix, focused 11 passed afterward; exact Claude APPROVE/LOW with no blockers/missing tests; full 833 passed/1 skipped; integrity all hard checks and 4 Golden Paths pass. Saved review/gate: `docs/fwq-0064-claude-review.json`, `docs/fwq-0064-integrity.json`.
 
+### FWQ-0086 — Bounded customer scan-report contract
+- Requirement: FW-AV detect-only customer assurance output
+- State: IN_PROGRESS
+- Priority: P0
+- Dependencies: FW-AV detector/content controls, FW-EVID
+- Approval: Jeff authorized completing the anti-malware capability within current DRY_RUN boundaries; offline caller-supplied reporting is permitted.
+- Description: Add an immutable, tenant-bound summary over existing FW-AV findings so an offline pilot can produce a deterministic customer scan report without adding live endpoint, transport, or response authority.
+- Target path: swarm/anti_malware.py
+- Allowed paths: swarm/anti_malware.py, tests/test_anti_malware.py, docs/fw-av-windows-linux-delivery-plan.md, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_anti_malware.py
+- Acceptance criteria:
+  - accept only bounded, non-empty, unique, same-tenant `ScanFinding` values and derive CLEAN/DETECTED status, artifact count, byte total, and a deterministic report digest;
+  - require canonical Evidence before returning the immutable report and expose only artifact references/digests, never content or secrets;
+  - reject malformed, duplicate, cross-tenant, over-bound, unsupported-mode, and Evidence-failed input fail closed;
+  - preserve fixed DRY_RUN/DETECT_ONLY semantics and add no endpoint, filesystem, process, network, credential, quarantine, remediation, recovery, deployment, or response authority;
+  - reuse the existing detector and FW-EVID sink rather than creating another scanner or evidence store.
+- Expected validation: focused Linux proof, exact independent read-only review, then full suite and Product Integrity Gate after approval.
+- Security considerations: this is an offline assurance projection only; it does not claim installed endpoint protection or production readiness.
+
 ## Queue cleanup
 
 FWQ-0019 through FWQ-0062 were repetitive successor/population placeholders. They are retired rather than treated as executable work. FWQ-0008 already has implementation and follow-up hardening; FWQ-0009 has recorded acceptance and unchanged source/tests. Neither is a new implementation task. FWQ-0017/0018 successor references are historical and do not authorize recreating FWQ-0019. The completion audit supersedes stale next-task prose.
