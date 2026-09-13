@@ -944,6 +944,26 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 - Completion evidence: exact candidate `f44d173f8016202b0ac3f198f7cb9a5b18f7b275`; deterministic repository/source/queue inspection and git diff check passed; exact Claude review `phase2a-f44d173f8016202b0ac3f198` returned APPROVE/LOW with no blockers or missing tests. No product source or validation input changed, so unchanged product suites were not replayed.
 
+
+### FW-OPS-002 — Tenant-bound operational health projection
+- Requirement: FW-OPS canonical read-only health and capacity status
+- State: REVIEW
+- Priority: P0
+- Dependencies: FW-OPS-001, FW-EVID-006, FWQ-0007, FW-ENDPOINT-04, and FW-HARNESS-012
+- Approval: Jeff authorized the ordered FW-OPS implementation phase; caller-supplied local observations are permitted without telemetry export, service control, or deployment.
+- Description: Add one immutable versioned operational snapshot and deterministic Evidence-first health projection for bounded caller-supplied component state, queue pressure, budget utilization, freshness, and required safety state.
+- Target path: swarm/operations.py
+- Allowed paths: swarm/operations.py, tests/test_operations.py, docs/fw-ops-inventory.md, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_operations.py tests/test_sensor_adapter.py tests/test_harness_recovery.py tests/test_policy_gate.py
+- Acceptance criteria:
+  - accept only version-1, bounded, tenant-consistent, fresh component observations with enumerated health and non-negative queue/budget usage within positive declared limits;
+  - deterministically classify HEALTHY, DEGRADED, or UNHEALTHY using explicit component state plus policy-local 80% warning and 100% unhealthy thresholds;
+  - require DRY_RUN, disabled deployment, and engaged kill switch and write privacy-minimized same-tenant canonical Evidence before retaining immutable output;
+  - replay, concurrent duplicate, malformed, cross-tenant, stale, secret-bearing, excessive, over-limit, Evidence-failed, or foreign-Evidence input denies safely, with Evidence failure permitting a bounded retry;
+  - output remains OBSERVE_ONLY with no host polling, listener, telemetry export, queue mutation, process/service control, recovery/rollback, policy, credential, network, filesystem, or deployment authority.
+- Expected validation: focused Linux proof, exact independent read-only review, then one full suite and Product Integrity Gate after approval.
+- Security considerations: FW-OPS aggregates supplied operational facts only; existing domain components, FW-EVID, FW-REC, FW-ROOT and the trusted controller retain authority.
+
 ### FW-UX-001 — Mission Control showcase foundation
 - Requirement: FW-UX Mission Control and honest Demo Mode
 - State: DONE

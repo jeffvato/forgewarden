@@ -65,3 +65,19 @@ grant authority.
 Throughout this sequence DRY_RUN, disabled deployment, the engaged kill switch,
 tenant isolation, Evidence separation, and deterministic authority remain
 mandatory.
+
+## FW-OPS-002 implemented contract
+
+`swarm.operations` now provides an immutable version-1 operational snapshot
+and Evidence-first health projection. It accepts at most 32 caller-supplied,
+tenant-bound component observations containing only enumerated state and
+bounded queue/budget counters. Deterministic 80% and 100% thresholds produce
+HEALTHY, DEGRADED, or UNHEALTHY metadata; explicit degraded, unavailable, and
+unhealthy component states take precedence as documented in code.
+
+The registry denies malformed, secret-bearing, duplicate, cross-tenant, stale,
+expired, replayed, unsafe-runtime, excessive, over-limit, Evidence-failed, and
+foreign-Evidence input. Output is fixed to DRY_RUN, deployment DISABLED,
+OBSERVE_ONLY, `recovery_invoked=False`, and `authority_granted=False`.
+No host polling, queue mutation, telemetry export, listener, process/service
+control, recovery, rollback, credential access, or deployment is present.
