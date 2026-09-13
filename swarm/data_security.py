@@ -10,6 +10,8 @@ import json
 import re
 from typing import Any, Callable, Mapping
 
+from .action_ticket import ActionTicketError, ActionTicketRegistry
+
 
 MAX_DSPM_FIXTURE_BYTES = 32 * 1024
 MAX_DSPM_COPY_COUNT = 100_000
@@ -23,6 +25,9 @@ _IDENTITY_REF = re.compile(r"^fw-id/([a-z][a-z0-9_.-]{0,127})\.[a-z][a-z0-9_.-]{
 _CANONICAL_REF = re.compile(
     r"^fw-(saas|component|workflow|policy|incident|evid)/"
     r"([a-z][a-z0-9_.-]{0,127})/[a-z][a-z0-9_.:/+-]{0,191}$"
+)
+_PROPOSAL_REF = re.compile(
+    r"^fw-(data|policy)/([a-z][a-z0-9_.-]{0,127})/[a-z][a-z0-9_.:/+-]{0,191}$"
 )
 _CLASSIFICATIONS = frozenset({"CONFIDENTIAL", "INTERNAL", "PUBLIC", "RESTRICTED"})
 _LOCATIONS = frozenset({
@@ -122,6 +127,23 @@ class DataSecurityReferenceBinding:
     mode: str = "DRY_RUN"
     action: str = "CORRELATE_ONLY"
     authority_granted: bool = False
+
+
+@dataclass(frozen=True)
+class DataSecurityDLPProposal:
+    event_id: str
+    tenant_id: str
+    target_ref: str
+    policy_decision_ref: str
+    action_ticket_ref: str
+    risk: str
+    action_class: str = "DSPM_DLP_PROPOSAL"
+    mode: str = "DRY_RUN"
+    deployment: str = "DISABLED"
+    kill_switch: str = "ENGAGED"
+    disposition: str = "PROPOSE_ONLY"
+    authority_granted: bool = False
+    response_executed: bool = False
 
 
 def normalize_data_security_observation(
@@ -344,4 +366,67 @@ def bind_data_security_references(
         finding.event_id, tenant_id, data_ref, location_ref,
         finding.owner_identity_ref, finding.risk, saas_ref, supply_ref,
         ai_workflow_ref, policy_decision_ref, soc_incident_ref, evidence_refs,
+    )
+
+
+def propose_data_security_dlp(
+    binding: DataSecurityReferenceBinding, *, tickets: ActionTicketRegistry,
+    ticket_id: str, target_ref: str, policy_decision_ref: str,
+    subject_agent_id: str, lease_id: str, policy_version: str, now: int,
+    kill_switch_state: str, audit: Callable[[str, dict[str, Any]], None],
+) -> DataSecurityDLPProposal:
+    """Consume proposal-only authority without inspecting or changing data."""
+    if (
+        not isinstance(binding, DataSecurityReferenceBinding)
+        or not isinstance(tickets, ActionTicketRegistry) or not callable(audit)
+    ):
+        raise DataSecurityObservationDenied("PROPOSAL_INPUT_INVALID")
+    if (
+        binding.risk not in {"HIGH", "CRITICAL"}
+        or binding.trust != "UNTRUSTED_DATA" or binding.mode != "DRY_RUN"
+        or binding.action != "CORRELATE_ONLY"
+        or binding.authority_granted is not False
+    ):
+        raise DataSecurityObservationDenied("PROPOSAL_SOURCE_INVALID")
+    if kill_switch_state != "ENGAGED":
+        raise DataSecurityObservationDenied("KILL_SWITCH_NOT_ENGAGED")
+    target_match = _PROPOSAL_REF.fullmatch(target_ref) if isinstance(target_ref, str) else None
+    policy_match = _PROPOSAL_REF.fullmatch(policy_decision_ref) if isinstance(policy_decision_ref, str) else None
+    if (
+        target_match is None or target_match.group(1) != "data"
+        or policy_match is None or policy_match.group(1) != "policy"
+        or target_match.group(2) != binding.tenant_id
+        or policy_match.group(2) != binding.tenant_id
+        or target_ref != binding.data_asset_ref
+    ):
+        raise DataSecurityObservationDenied("PROPOSAL_REF_INVALID")
+    ticket_binding = {
+        "tenant_id": binding.tenant_id, "subject_agent_id": subject_agent_id,
+        "lease_id": lease_id, "capability": "dspm.dlp.propose",
+        "resource": target_ref, "action_class": "DSPM_DLP_PROPOSAL",
+        "policy_version": policy_version, "now": now,
+    }
+    try:
+        tickets.validate(ticket_id, **ticket_binding)
+    except ActionTicketError as exc:
+        raise DataSecurityObservationDenied("ACTION_TICKET_DENIED") from exc
+    try:
+        audit("data_security_dlp_proposed", {
+            "event_id": binding.event_id, "tenant_id": binding.tenant_id,
+            "target_ref": target_ref, "policy_decision_ref": policy_decision_ref,
+            "action_ticket_ref": ticket_id, "risk": binding.risk,
+            "action_class": "DSPM_DLP_PROPOSAL", "mode": "DRY_RUN",
+            "deployment": "DISABLED", "kill_switch": "ENGAGED",
+            "disposition": "PROPOSE_ONLY", "authority_granted": False,
+            "response_executed": False,
+        })
+    except Exception as exc:
+        raise DataSecurityObservationDenied("EVIDENCE_WRITE_FAILED") from exc
+    try:
+        tickets.validate_and_consume(ticket_id, **ticket_binding)
+    except ActionTicketError as exc:
+        raise DataSecurityObservationDenied("ACTION_TICKET_DENIED") from exc
+    return DataSecurityDLPProposal(
+        binding.event_id, binding.tenant_id, target_ref, policy_decision_ref,
+        ticket_id, binding.risk,
     )

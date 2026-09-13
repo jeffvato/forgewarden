@@ -74,7 +74,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-DSPM-005 — Inert Action Ticket-bound DLP proposal
 - Requirement: FW-DSPM bounded non-executing response intent
-- State: READY
+- State: REVIEW
 - Priority: P0
 - Dependencies: FW-DSPM-004
 - Approval: Jeff authorized the ordered FW-DSPM phase through the continuing heartbeat.

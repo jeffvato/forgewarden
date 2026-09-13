@@ -2,7 +2,9 @@ from dataclasses import FrozenInstanceError, replace
 
 import pytest
 
-from swarm.data_security import DataSecurityObservationDenied, bind_data_security_references, classify_data_security_observation, normalize_data_security_observation
+from swarm.action_ticket import ActionTicket, ActionTicketRegistry
+from swarm.asoc import HMACLeaseSigner
+from swarm.data_security import DataSecurityObservationDenied, bind_data_security_references, classify_data_security_observation, normalize_data_security_observation, propose_data_security_dlp
 
 
 def fixture(**overrides):
@@ -243,4 +245,90 @@ def test_data_security_reference_binding_denies_forged_finding_and_evidence_fail
         bind_data_security_references(
             source, **binding_kwargs(),
             audit=lambda *_args: (_ for _ in ()).throw(RuntimeError("offline")),
+        )
+
+
+def reference_binding():
+    return bind_data_security_references(
+        finding(), **binding_kwargs(), audit=lambda *_args: None,
+    )
+
+
+def tickets(**overrides):
+    registry = ActionTicketRegistry(HMACLeaseSigner({"key-1": b"test-only-key-material"}))
+    values = {
+        "ticket_id": "ticket-1", "tenant_id": "tenant-a",
+        "subject_agent_id": "agent-1", "lease_id": "lease-1",
+        "capability": "dspm.dlp.propose",
+        "resource": "fw-data/tenant-a/customer-records",
+        "action_class": "DSPM_DLP_PROPOSAL", "issued_by": "operator-1",
+        "approval_reference": "approval-1", "policy_version": "policy-v1",
+        "issued_at": 100, "expires_at": 200, "key_reference": "key-1",
+    }
+    values.update(overrides)
+    registry.issue(ActionTicket(**values))
+    return registry
+
+
+def proposal_kwargs(**overrides):
+    values = {
+        "tickets": tickets(), "ticket_id": "ticket-1",
+        "target_ref": "fw-data/tenant-a/customer-records",
+        "policy_decision_ref": "fw-policy/tenant-a/dspm-1",
+        "subject_agent_id": "agent-1", "lease_id": "lease-1",
+        "policy_version": "policy-v1", "now": 150,
+        "kill_switch_state": "ENGAGED", "audit": lambda *_args: None,
+    }
+    values.update(overrides)
+    return values
+
+
+def test_data_security_dlp_proposal_consumes_ticket_and_never_executes():
+    evidence = []
+    args = proposal_kwargs(audit=lambda *items: evidence.append(items))
+    value = propose_data_security_dlp(reference_binding(), **args)
+    assert value.risk == "HIGH" and value.action_class == "DSPM_DLP_PROPOSAL"
+    assert value.disposition == "PROPOSE_ONLY"
+    assert value.mode == "DRY_RUN" and value.deployment == "DISABLED"
+    assert value.kill_switch == "ENGAGED"
+    assert value.authority_granted is False and value.response_executed is False
+    assert evidence[0][1]["response_executed"] is False
+    with pytest.raises(DataSecurityObservationDenied, match="ACTION_TICKET_DENIED"):
+        propose_data_security_dlp(reference_binding(), **args)
+
+
+@pytest.mark.parametrize("changes,reason", [
+    ({"kill_switch_state": "CLEAR"}, "KILL_SWITCH_NOT_ENGAGED"),
+    ({"target_ref": "fw-data/tenant-b/customer-records"}, "PROPOSAL_REF_INVALID"),
+    ({"target_ref": "fw-data/tenant-a/other"}, "PROPOSAL_REF_INVALID"),
+    ({"target_ref": "fw-asset/tenant-a/customer-records"}, "PROPOSAL_REF_INVALID"),
+    ({"policy_decision_ref": "fw-policy/tenant-b/dspm-1"}, "PROPOSAL_REF_INVALID"),
+    ({"policy_decision_ref": "policy-without-prefix"}, "PROPOSAL_REF_INVALID"),
+    ({"ticket_id": "missing-ticket"}, "ACTION_TICKET_DENIED"),
+    ({"subject_agent_id": "agent-2"}, "ACTION_TICKET_DENIED"),
+    ({"lease_id": "lease-2"}, "ACTION_TICKET_DENIED"),
+    ({"policy_version": "policy-v2"}, "ACTION_TICKET_DENIED"),
+    ({"now": 200}, "ACTION_TICKET_DENIED"),
+])
+def test_data_security_dlp_proposal_denies_boundary_mismatch(changes, reason):
+    with pytest.raises(DataSecurityObservationDenied, match=reason):
+        propose_data_security_dlp(
+            reference_binding(), **proposal_kwargs(**changes),
+        )
+
+
+def test_data_security_dlp_proposal_revalidates_source_and_evidence():
+    for changes in (
+        {"risk": "MEDIUM"}, {"trust": "TRUSTED"}, {"mode": "LIVE"},
+        {"action": "ENFORCE"}, {"authority_granted": True},
+    ):
+        with pytest.raises(DataSecurityObservationDenied, match="PROPOSAL_SOURCE_INVALID"):
+            propose_data_security_dlp(
+                replace(reference_binding(), **changes), **proposal_kwargs(),
+            )
+    with pytest.raises(DataSecurityObservationDenied, match="EVIDENCE_WRITE_FAILED"):
+        propose_data_security_dlp(
+            reference_binding(), **proposal_kwargs(
+                audit=lambda *_args: (_ for _ in ()).throw(RuntimeError("offline")),
+            ),
         )
