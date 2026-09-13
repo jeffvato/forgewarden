@@ -1,8 +1,8 @@
-from dataclasses import FrozenInstanceError
+from dataclasses import FrozenInstanceError, replace
 
 import pytest
 
-from swarm.network_security import NetworkObservationDenied, normalize_network_observation
+from swarm.network_security import NetworkObservationDenied, classify_network_observation, normalize_network_observation
 
 
 def fixture(**overrides):
@@ -105,4 +105,63 @@ def test_network_observation_rejects_malformed_owner_references(field, value, re
         normalize_network_observation(
             fixture(**{field: value}), tenant_id="tenant-a", now_epoch=150,
             audit=lambda *_args: None,
+        )
+
+
+def observation(**overrides):
+    return normalize_network_observation(
+        fixture(**overrides), tenant_id="tenant-a", now_epoch=150,
+        audit=lambda *_args: None,
+    )
+
+
+@pytest.mark.parametrize("overrides,risk,recommendations", [
+    ({"protocol": "DNS", "port": 53, "indicators": ["DNS_ANOMALY"]}, "MEDIUM", ("WARN",)),
+    ({"indicators": ["NETWORK_PROBE"]}, "MEDIUM", ("WARN",)),
+    ({"indicators": ["UNAUTHORIZED_EGRESS"]}, "HIGH", ("WARN", "PROPOSE_BLOCK")),
+    ({"direction": "EAST_WEST", "indicators": ["LATERAL_MOVEMENT"]}, "HIGH", ("WARN", "PROPOSE_BLOCK")),
+    ({"indicators": ["C2_PATTERN"]}, "CRITICAL", ("WARN", "PROPOSE_BLOCK")),
+    ({"indicators": ["EXFILTRATION_PATTERN"]}, "CRITICAL", ("WARN", "PROPOSE_BLOCK")),
+])
+def test_network_classifier_is_exact_deterministic_and_non_executing(overrides, risk, recommendations):
+    evidence = []
+    finding = classify_network_observation(
+        observation(**overrides), tenant_id="tenant-a",
+        audit=lambda *args: evidence.append(args),
+    )
+    assert finding.risk == risk and finding.recommendations == recommendations
+    assert finding.mode == "DRY_RUN" and finding.action == "DETECT_ONLY"
+    assert finding.authority_granted is False
+    assert evidence[0][0] == "network_threat_classified"
+    assert evidence[0][1]["response_executed"] is False
+    with pytest.raises(FrozenInstanceError):
+        finding.risk = "LOW"
+
+
+@pytest.mark.parametrize("overrides", [
+    {"indicators": []},
+    {"direction": "INBOUND", "indicators": ["UNAUTHORIZED_EGRESS"]},
+    {"direction": "OUTBOUND", "indicators": ["LATERAL_MOVEMENT"]},
+    {"protocol": "TLS", "indicators": ["SMB_WRITE"]},
+    {"protocol": "TLS", "indicators": ["DNS_ANOMALY"]},
+])
+def test_network_classifier_rejects_empty_or_contradictory_facts(overrides):
+    with pytest.raises(NetworkObservationDenied, match="INDICATORS_INVALID|INDICATOR_CONTEXT_INVALID"):
+        classify_network_observation(
+            observation(**overrides), tenant_id="tenant-a", audit=lambda *_args: None,
+        )
+
+
+def test_network_classifier_revalidates_tenant_authority_and_evidence():
+    value = observation(indicators=["UNAUTHORIZED_EGRESS"])
+    with pytest.raises(NetworkObservationDenied, match="TENANT_MISMATCH"):
+        classify_network_observation(value, tenant_id="tenant-b", audit=lambda *_args: None)
+    with pytest.raises(NetworkObservationDenied, match="OBSERVATION_AUTHORITY_INVALID"):
+        classify_network_observation(
+            replace(value, action="BLOCK"), tenant_id="tenant-a", audit=lambda *_args: None,
+        )
+    with pytest.raises(NetworkObservationDenied, match="EVIDENCE_WRITE_FAILED"):
+        classify_network_observation(
+            value, tenant_id="tenant-a",
+            audit=lambda *_args: (_ for _ in ()).throw(RuntimeError("offline")),
         )

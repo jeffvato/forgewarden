@@ -72,6 +72,22 @@ class NetworkObservation:
     authority_granted: bool = False
 
 
+@dataclass(frozen=True)
+class NetworkThreatFinding:
+    event_id: str
+    tenant_id: str
+    device_ref: str
+    protocol: str
+    direction: str
+    indicators: tuple[str, ...]
+    risk: str
+    recommendations: tuple[str, ...]
+    trust: str = "UNTRUSTED_DATA"
+    mode: str = "DRY_RUN"
+    action: str = "DETECT_ONLY"
+    authority_granted: bool = False
+
+
 def normalize_network_observation(
     fixture: Mapping[str, Any], *, tenant_id: str, now_epoch: int,
     audit: Callable[[str, dict[str, Any]], None],
@@ -146,4 +162,65 @@ def normalize_network_observation(
     return NetworkObservation(
         event_id, tenant_id, device_ref, observed, source_ref, destination_ref,
         protocol, port, direction, indicators, evidence_ref,
+    )
+
+
+def classify_network_observation(
+    observation: NetworkObservation, *, tenant_id: str,
+    audit: Callable[[str, dict[str, Any]], None],
+) -> NetworkThreatFinding:
+    """Classify only exact admitted facts without consulting a model."""
+    if not isinstance(observation, NetworkObservation) or not callable(audit):
+        raise NetworkObservationDenied("OBSERVATION_INVALID")
+    if observation.tenant_id != tenant_id:
+        raise NetworkObservationDenied("TENANT_MISMATCH")
+    if (
+        observation.trust != "UNTRUSTED_DATA" or observation.mode != "DRY_RUN"
+        or observation.action != "DETECT_ONLY"
+        or observation.authority_granted is not False
+    ):
+        raise NetworkObservationDenied("OBSERVATION_AUTHORITY_INVALID")
+    indicators = observation.indicators
+    if not indicators or tuple(sorted(set(indicators))) != indicators or not set(indicators) <= _INDICATORS:
+        raise NetworkObservationDenied("INDICATORS_INVALID")
+    if set(indicators) & {"C2_PATTERN", "EXFILTRATION_PATTERN", "UNAUTHORIZED_EGRESS"} and observation.direction != "OUTBOUND":
+        raise NetworkObservationDenied("INDICATOR_CONTEXT_INVALID")
+    if "LATERAL_MOVEMENT" in indicators and observation.direction != "EAST_WEST":
+        raise NetworkObservationDenied("INDICATOR_CONTEXT_INVALID")
+    if "SMB_WRITE" in indicators and observation.protocol != "SMB":
+        raise NetworkObservationDenied("INDICATOR_CONTEXT_INVALID")
+    if "DNS_ANOMALY" in indicators and observation.protocol != "DNS":
+        raise NetworkObservationDenied("INDICATOR_CONTEXT_INVALID")
+    if set(indicators) & {"C2_PATTERN", "EXFILTRATION_PATTERN"}:
+        risk = "CRITICAL"
+    elif set(indicators) & {"CREDENTIAL_ABUSE", "LATERAL_MOVEMENT", "UNAUTHORIZED_EGRESS"}:
+        risk = "HIGH"
+    elif set(indicators) & {"DNS_ANOMALY", "NETWORK_PROBE", "SMB_WRITE"}:
+        risk = "MEDIUM"
+    else:  # closed indicator set makes this defensive rather than reachable
+        risk = "LOW"
+    recommendations = ("WARN", "PROPOSE_BLOCK") if risk in {"HIGH", "CRITICAL"} else ("WARN",)
+    try:
+        audit("network_threat_classified", {
+            "event_id": observation.event_id,
+            "tenant_id": tenant_id,
+            "device_ref": observation.device_ref,
+            "protocol": observation.protocol,
+            "direction": observation.direction,
+            "risk": risk,
+            "indicators": indicators,
+            "evidence_ref": observation.evidence_ref,
+            "trust": "UNTRUSTED_DATA",
+            "mode": "DRY_RUN",
+            "action": "DETECT_ONLY",
+            "deployment": "DISABLED",
+            "response_executed": False,
+            "authority_granted": False,
+        })
+    except Exception as exc:
+        raise NetworkObservationDenied("EVIDENCE_WRITE_FAILED") from exc
+    return NetworkThreatFinding(
+        observation.event_id, tenant_id, observation.device_ref,
+        observation.protocol, observation.direction, indicators, risk,
+        recommendations,
     )

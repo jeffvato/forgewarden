@@ -54,7 +54,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-NET-003 — Network anomaly and threat classification
 - Requirement: FW-NET exact supplied-fact evaluation
-- State: READY
+- State: REVIEW
 - Priority: P0
 - Dependencies: FW-NET-002
 - Approval: Jeff authorized the ordered FW-NET phase using small bounded candidates.
