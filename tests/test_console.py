@@ -8,11 +8,18 @@ import threading
 import subprocess
 from http import HTTPStatus
 from http.server import ThreadingHTTPServer
-from swarm.console import addon_audit_snapshot, addon_snapshot, approval_snapshot, canonical_evidence_activity_snapshot, dispatch_plan, evidence_snapshot, harness_activity_snapshot, incident_activity_snapshot, installation_snapshot, job_detail, jobs_snapshot, load_profiles, policy_ticket_activity_snapshot, ConsoleHandler
+from swarm.console import addon_audit_snapshot, addon_snapshot, approval_snapshot, canonical_evidence_activity_snapshot, dispatch_plan, evidence_snapshot, harness_activity_snapshot, incident_activity_snapshot, installation_snapshot, job_detail, jobs_snapshot, load_profiles, model_mcp_activity_snapshot, policy_ticket_activity_snapshot, ConsoleHandler
 from swarm.core import SwarmError
 from swarm.mission_control_demo import DEMO_SCENARIO_ID, mission_control_demo_snapshot
 
 class ConsoleTests(unittest.TestCase):
+    def test_model_mcp_provider_has_honest_empty_and_unavailable_states(self):
+        self.assertEqual(model_mcp_activity_snapshot()["data_mode"], "EMPTY")
+        unavailable = model_mcp_activity_snapshot(lambda: (_ for _ in ()).throw(RuntimeError("offline")))
+        self.assertEqual(unavailable["data_mode"], "UNAVAILABLE")
+        self.assertFalse(unavailable["safety"]["model_invoked"])
+        self.assertFalse(unavailable["safety"]["tool_executed"])
+
     def test_harness_activity_provider_has_honest_empty_and_unavailable_states(self):
         self.assertEqual(harness_activity_snapshot()["data_mode"], "EMPTY")
         self.assertEqual(harness_activity_snapshot(lambda: (_ for _ in ()).throw(RuntimeError("offline")))["data_mode"], "UNAVAILABLE")
@@ -222,6 +229,13 @@ class ConsoleTests(unittest.TestCase):
             policy_ticket = json.loads(resp.read().decode())
             self.assertEqual(policy_ticket["data_mode"], "EMPTY")
             self.assertFalse(policy_ticket["safety"]["ticket_consumed"])
+            conn.request("GET", "/api/model-mcp-activity")
+            resp = conn.getresponse()
+            self.assertEqual(resp.status, HTTPStatus.OK)
+            model_mcp = json.loads(resp.read().decode())
+            self.assertEqual(model_mcp["data_mode"], "EMPTY")
+            self.assertFalse(model_mcp["safety"]["model_invoked"])
+            self.assertFalse(model_mcp["safety"]["tool_executed"])
             conn.request("GET", "/api/jobs/not%20a%20job")
             resp = conn.getresponse()
             self.assertEqual(resp.status, HTTPStatus.BAD_REQUEST)

@@ -4,8 +4,11 @@ import pytest
 
 from swarm.harness_context import BudgetAdmission, BudgetUsage
 from swarm.harness_task import HarnessTask, TaskStatus
+from swarm.harness_models import ApprovedModelCandidate
+from swarm.harness_risk import AssuranceTier
+from swarm.mcp_gateway import MCPGatewaySafetyState, MCPToolCatalogEntry
 from swarm.harness_worker import WorkerRegistration, WorkerRole, WorkerTransport
-from swarm.mission_control import MissionControlError, PolicyTicketActivity, project_ai_security, project_mission_control, serialize_evidence_activity, serialize_harness_activity, serialize_incident_activity, serialize_policy_ticket_activity
+from swarm.mission_control import MissionControlError, ModelMCPActivity, PolicyTicketActivity, project_ai_security, project_mission_control, serialize_evidence_activity, serialize_harness_activity, serialize_incident_activity, serialize_model_mcp_activity, serialize_policy_ticket_activity
 from swarm.action_ticket import ActionTicket
 from swarm.policy_gate import PolicyContext, PolicyDecision
 from swarm.evidence import EvidenceRecord, evidence_record_sha256, validate_evidence_envelope
@@ -269,6 +272,49 @@ def test_policy_ticket_activity_rejects_missing_mismatched_consumed_or_denied_ti
         serialize_policy_ticket_activity(replace(value, ticket=replace(value.ticket, consumed_at=160)))
     with pytest.raises(MissionControlError, match="denied"):
         serialize_policy_ticket_activity(replace(value, decision=PolicyDecision(False, "RULE_NOT_FOUND")))
+
+
+def model_candidate(candidate_id="model-one", tenant="tenant-a", approved=True, available=True):
+    return ApprovedModelCandidate(candidate_id, tenant, "provider-a", "model-a", "local", AssuranceTier.T1, (WorkerRole.CODE_WRITER,), ("INTERNAL",), ("repo.read",), 100, "fw-evid/model-one", approved, available)
+
+
+def model_mcp_activity():
+    return ModelMCPActivity("tenant-a", (model_candidate(), model_candidate("model-two", available=False)), (MCPToolCatalogEntry("tenant-a", "repo.read", "repo.read", "TRUSTED_READ_ONLY", True),), MCPGatewaySafetyState("HEALTHY", "ENGAGED"))
+
+
+def test_model_mcp_activity_projects_registry_and_catalog_without_authority():
+    payload = serialize_model_mcp_activity(model_mcp_activity())
+    assert payload["data_mode"] == "CANONICAL"
+    assert payload["view"]["models"][0]["approval_status"] == "APPROVED"
+    assert payload["view"]["models"][1]["availability"] == "UNAVAILABLE"
+    assert payload["view"]["tools"][0]["lease_status"] == "NOT_PRESENT"
+    assert payload["safety"]["model_invoked"] is False
+    assert payload["safety"]["tool_executed"] is False
+    assert serialize_model_mcp_activity(None)["data_mode"] == "EMPTY"
+
+
+def test_model_mcp_activity_rejects_unsafe_cross_tenant_duplicates_and_secrets():
+    value = model_mcp_activity()
+    with pytest.raises(MissionControlError, match="unsafe"):
+        serialize_model_mcp_activity(replace(value, gateway_safety=MCPGatewaySafetyState("UNHEALTHY", "ENGAGED")))
+    with pytest.raises(MissionControlError, match="crosses tenants"):
+        serialize_model_mcp_activity(replace(value, tools=(MCPToolCatalogEntry("tenant-b", "repo.read", "repo.read", "TRUSTED_READ_ONLY", True),)))
+    with pytest.raises(MissionControlError, match="duplicate"):
+        serialize_model_mcp_activity(replace(value, models=(value.models[0], value.models[0])))
+    forged = object.__new__(ApprovedModelCandidate)
+    for name in value.models[0].__dataclass_fields__:
+        object.__setattr__(forged, name, getattr(value.models[0], name))
+    object.__setattr__(forged, "provider", "api_key=secret-value")
+    with pytest.raises(MissionControlError, match="reconstruction"):
+        serialize_model_mcp_activity(replace(value, models=(forged,)))
+
+
+def test_model_mcp_activity_bounds_registry_and_catalog():
+    value = model_mcp_activity()
+    with pytest.raises(MissionControlError, match="unsafe"):
+        serialize_model_mcp_activity(replace(value, models=tuple(model_candidate(f"model-{index}") for index in range(129))))
+    with pytest.raises(MissionControlError, match="unsafe"):
+        serialize_model_mcp_activity(replace(value, tools=tuple(MCPToolCatalogEntry("tenant-a", f"tool-{index}", "repo.read", "TRUSTED_READ_ONLY", True) for index in range(129))))
 
 
 def ai_bundle():

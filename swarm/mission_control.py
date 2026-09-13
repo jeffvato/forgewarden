@@ -14,6 +14,8 @@ from .asoc import MUTATING_ACTIONS, READ_ONLY_ACTIONS
 from .evidence import EvidenceContractError, EvidenceEnvelope, EvidenceRecord, evidence_record_sha256, validate_evidence_envelope
 from .action_ticket import ActionTicket, ActionTicketError
 from .policy_gate import PolicyContext, PolicyDecision, PolicyInvariantError
+from .harness_models import ApprovedModelCandidate, HarnessModelError
+from .mcp_gateway import MCPGatewayError, MCPGatewaySafetyState, MCPToolCatalogEntry
 from .soc import SOCAttackStoryProjection, SOCDryRunLifecycle, SOCIncidentProjection, SOCIncidentTimeline, SOCPlaybookProposal, SOCPlaybookStep, SOCTimelineEntry
 
 
@@ -74,6 +76,63 @@ class PolicyTicketActivity:
     kill_switch: str = "ENGAGED"
     deployment: str = "DISABLED"
     mutation_allowed: bool = False
+
+
+@dataclass(frozen=True)
+class ModelMCPActivity:
+    """Read-only canonical registry/catalog facts for operator visibility."""
+
+    tenant_id: str
+    models: tuple[ApprovedModelCandidate, ...]
+    tools: tuple[MCPToolCatalogEntry, ...]
+    gateway_safety: MCPGatewaySafetyState
+    kill_switch: str = "ENGAGED"
+    deployment: str = "DISABLED"
+    mutation_allowed: bool = False
+
+
+def serialize_model_mcp_activity(activity: ModelMCPActivity | None) -> dict[str, Any]:
+    """Serialize model and MCP metadata without routing or tool execution authority."""
+    base = {"schema_version": 1, "safety": {"mutation_allowed": False, "deployment": "DISABLED", "kill_switch": "ENGAGED", "model_invoked": False, "tool_executed": False}}
+    if activity is None:
+        return {**base, "data_mode": "EMPTY", "data_label": "NO CANONICAL MODEL OR MCP ACTIVITY", "view": None}
+    if (
+        not isinstance(activity, ModelMCPActivity) or not _TENANT.fullmatch(activity.tenant_id)
+        or not isinstance(activity.models, tuple) or not 1 <= len(activity.models) <= 128
+        or not isinstance(activity.tools, tuple) or len(activity.tools) > 128
+        or not isinstance(activity.gateway_safety, MCPGatewaySafetyState)
+        or activity.gateway_safety.health_state != "HEALTHY" or activity.gateway_safety.kill_switch_state != "ENGAGED"
+        or activity.kill_switch != "ENGAGED" or activity.deployment != "DISABLED" or activity.mutation_allowed
+    ):
+        raise MissionControlError("model and MCP activity is malformed or unsafe")
+    try:
+        models = tuple(ApprovedModelCandidate(**asdict(item)) for item in activity.models)
+        tools = tuple(MCPToolCatalogEntry(**asdict(item)) for item in activity.tools)
+    except (HarnessModelError, MCPGatewayError, TypeError) as exc:
+        raise MissionControlError("model or MCP canonical reconstruction failed") from exc
+    if models != activity.models or tools != activity.tools:
+        raise MissionControlError("model or MCP canonical reconstruction mismatch")
+    if any(item.tenant_id != activity.tenant_id for item in models + tools):
+        raise MissionControlError("model or MCP activity crosses tenants")
+    if len({item.candidate_id for item in models}) != len(models) or len({item.tool for item in tools}) != len(tools):
+        raise MissionControlError("model or MCP activity contains duplicate identities")
+    visible = tuple(value for item in models for value in (item.candidate_id, item.provider, item.model_id, item.environment, item.registry_evidence_reference, *item.allowed_data_classifications, *item.allowed_tools)) + tuple(value for item in tools for value in (item.tool, item.capability, item.trust_level))
+    if any(len(value.encode()) > 1000 or _SECRET.search(value) for value in visible):
+        raise MissionControlError("model or MCP activity is secret-bearing or excessive")
+    return {
+        **base, "data_mode": "CANONICAL", "data_label": "CANONICAL READ-ONLY MODEL BROKER AND MCP ACTIVITY",
+        "view": {"tenant_id": activity.tenant_id, "gateway_health": "HEALTHY", "gateway_kill_switch": "ENGAGED",
+                 "models": tuple({"candidate_id": item.candidate_id, "provider": item.provider, "model_id": item.model_id,
+                                  "environment": item.environment, "assurance_tier": item.assurance_tier.name,
+                                  "registry_evidence_reference": item.registry_evidence_reference,
+                                  "approval_status": "APPROVED" if item.approved else "UNAPPROVED",
+                                  "availability": "AVAILABLE" if item.available else "UNAVAILABLE",
+                                  "invocation_authorized": False} for item in models),
+                 "tools": tuple({"tool": item.tool, "capability": item.capability, "trust_level": item.trust_level,
+                                 "enabled": item.enabled, "lease_status": "NOT_PRESENT", "tool_executed": False} for item in tools),
+                 "mutation_allowed": False, "deployment": "DISABLED", "kill_switch": "ENGAGED",
+                 "model_invoked": False, "tool_executed": False},
+    }
 
 
 def serialize_policy_ticket_activity(activity: PolicyTicketActivity | None) -> dict[str, Any]:

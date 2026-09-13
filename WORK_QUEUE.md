@@ -1394,7 +1394,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-UX-011 — Canonical Model Broker and MCP activity provider
 - Requirement: Mission Control incremental backend integration
-- State: READY
+- State: REVIEW
 - Priority: P0
 - Dependencies: FW-UX-010, FW-HARNESS-016, and FW-MCP-05
 - Approval: Jeff authorized the mapped Mission Control backend integration sequence; this unit may expose existing sanitized local read-only Model Broker and MCP Gateway projections only.

@@ -149,3 +149,20 @@ signature verification.
 The provider returns explicit `CANONICAL`, `EMPTY`, and `UNAVAILABLE` states.
 It exposes explanatory facts only and contains no policy evaluator, approval,
 ticket issue/consume/revoke, key, response, recovery, or deployment callback.
+
+## Canonical Model Broker and MCP activity provider
+
+The `/api/model-mcp-activity` endpoint projects existing Approved Model
+Registry candidates and MCP Gateway catalog entries for one tenant. It reports
+provider/model identity, assurance tier, approval and availability, catalog
+tool/capability trust, enabled state, and the canonical gateway safety state.
+Mission Control labels model invocation and tool execution as not performed;
+the canonical catalog has no lease binding, so it reports `NOT_PRESENT`
+instead of inventing one.
+
+The adapter returns explicit `CANONICAL`, `EMPTY`, and `UNAVAILABLE` states and
+rejects malformed, cross-tenant, duplicate, secret-bearing, excessive, unhealthy,
+deployment-enabled, or kill-switch-cleared projections. It exposes no routing,
+fallback, registry mutation, model invocation, MCP discovery, lease creation,
+tool execution, credentials, network transport, policy, approval, response,
+recovery, or deployment callback.
