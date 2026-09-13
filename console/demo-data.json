@@ -1,0 +1,515 @@
+{
+  "actions": [
+    {
+      "action": "Agent lease revoked",
+      "status": "SIMULATED",
+      "target": "build-agent-27"
+    },
+    {
+      "action": "Endpoint isolated",
+      "status": "SIMULATED",
+      "target": "LT-0442"
+    },
+    {
+      "action": "Identity token revoked",
+      "status": "SIMULATED",
+      "target": "jean.ellis"
+    },
+    {
+      "action": "Recovery snapshot selected",
+      "status": "SIMULATED",
+      "target": "LT-0442"
+    }
+  ],
+  "ai_security": {
+    "actions_denied_today": 17,
+    "active_agents": 33,
+    "agent": {
+      "authority": "BOUNDED / REVOKED",
+      "evidence": [
+        "EVID-DEMO-7F31",
+        "EVID-DEMO-AI-004"
+      ],
+      "id": "build-agent-27",
+      "incident": "INC-DEMO-2047",
+      "lease": "LEASE-DEMO-88",
+      "mcp": "build-tools-demo / ACCESS DENIED",
+      "model": "Approved security-critical coding model",
+      "proposal": "REVOKE_LEASE / PROPOSE_ONLY",
+      "risk_score": 87,
+      "session": "SESSION-DEMO-44",
+      "task": "HARNESS-DEMO-842",
+      "ticket": "AT-DEMO-119",
+      "tools": [
+        "repository:bounded-read",
+        "tests:approved"
+      ]
+    },
+    "prompt_injection_signals": 3,
+    "risk": "ELEVATED / CONTROLLED",
+    "suspended_agents": 1,
+    "timeline": [
+      {
+        "detail": "Within declared task scope",
+        "state": "ALLOWED",
+        "time": "14:04",
+        "title": "Repository read requested"
+      },
+      {
+        "detail": "Poisoned retrieval source",
+        "state": "ELEVATED",
+        "time": "14:05",
+        "title": "Prompt-injection signal correlated"
+      },
+      {
+        "detail": "Outside assigned lease",
+        "state": "DENIED",
+        "time": "14:06",
+        "title": "Shell capability requested"
+      },
+      {
+        "detail": "Self-authority expansion prohibited",
+        "state": "DENIED",
+        "time": "14:06",
+        "title": "Expanded lease requested"
+      },
+      {
+        "detail": "Risk threshold exceeded",
+        "state": "BLOCKED",
+        "time": "14:07",
+        "title": "Unapproved MCP tool requested"
+      },
+      {
+        "detail": "Deterministic policy output; not executed",
+        "state": "PROPOSE_ONLY",
+        "time": "14:07",
+        "title": "Lease revocation proposed"
+      }
+    ]
+  },
+  "assets": [
+    {
+      "detail": "1 isolated",
+      "label": "Endpoints",
+      "value": 1204
+    },
+    {
+      "detail": "90 healthy",
+      "label": "Servers",
+      "value": 92
+    },
+    {
+      "detail": "1 token revoked",
+      "label": "Identities",
+      "value": 1487
+    },
+    {
+      "detail": "1 suspended",
+      "label": "AI agents",
+      "value": 34
+    },
+    {
+      "detail": "1 access denied",
+      "label": "MCP servers",
+      "value": 11
+    }
+  ],
+  "attack_story": [
+    {
+      "domain": "EMAIL",
+      "state": "DETECTED",
+      "time": "14:01",
+      "title": "Malicious attachment opened"
+    },
+    {
+      "domain": "IDENTITY",
+      "state": "CORRELATED",
+      "time": "14:03",
+      "title": "Access token used from a new session"
+    },
+    {
+      "domain": "AI AGENT",
+      "state": "ELEVATED",
+      "time": "14:05",
+      "title": "Prompt-injection indicators observed"
+    },
+    {
+      "domain": "FW-HARNESS",
+      "state": "DENIED",
+      "time": "14:06",
+      "title": "Shell and expanded MCP authority denied"
+    },
+    {
+      "domain": "FW-AID",
+      "state": "CONTAINED",
+      "time": "14:07",
+      "title": "Agent lease revoked and session suspended"
+    },
+    {
+      "domain": "RANSOMGUARD",
+      "state": "CONTAINED",
+      "time": "14:07",
+      "title": "Abnormal mass file operations stopped"
+    },
+    {
+      "domain": "RECOVERY",
+      "state": "READY",
+      "time": "14:08",
+      "title": "Known-good recovery snapshot located"
+    }
+  ],
+  "data_mode": "DEMO",
+  "demo_tour": [
+    {
+      "detail": "See the environment and current critical incident",
+      "label": "Mission Control",
+      "step": "01",
+      "view": "mission"
+    },
+    {
+      "detail": "Follow the cross-domain compromise chronology",
+      "label": "Attack Story",
+      "step": "02",
+      "view": "incident"
+    },
+    {
+      "detail": "Inspect denied authority and agent isolation",
+      "label": "AI Defense",
+      "step": "03",
+      "view": "aid"
+    },
+    {
+      "detail": "Trace routing, budgets, validation and review",
+      "label": "Harness Assurance",
+      "step": "04",
+      "view": "harness"
+    },
+    {
+      "detail": "Explain the deterministic denial and human gate",
+      "label": "Policy Decision",
+      "step": "05",
+      "view": "policy"
+    },
+    {
+      "detail": "Close with provenance and recovery readiness",
+      "label": "Evidence & Recovery",
+      "step": "06",
+      "view": "evidence"
+    }
+  ],
+  "evidence": {
+    "bundle_id": "EVID-DEMO-7F31",
+    "chain_status": "SIMULATED / NOT CRYPTOGRAPHICALLY VERIFIED",
+    "chronology": [
+      {
+        "actor": "build-agent-27",
+        "event": "Prompt-injection signal admitted",
+        "hash": "demo:19be8a",
+        "source": "FW-AID",
+        "time": "14:05:02"
+      },
+      {
+        "actor": "policy-engine",
+        "event": "Authority expansion denied",
+        "hash": "demo:2d04c1",
+        "source": "FW-ROOT/Z3",
+        "time": "14:06:11"
+      },
+      {
+        "actor": "harness-controller",
+        "event": "Lease revocation proposed",
+        "hash": "demo:44af90",
+        "source": "FW-HARNESS",
+        "time": "14:07:04"
+      },
+      {
+        "actor": "incident-correlator",
+        "event": "Attack story checkpointed",
+        "hash": "demo:7f31c4",
+        "source": "FW-SOC",
+        "time": "14:08:00"
+      }
+    ],
+    "records": 28,
+    "related_ticket": "AT-DEMO-119",
+    "tenant": "northstar-demo"
+  },
+  "executive": {
+    "attention": "Review one simulated Action Ticket before its 14:27Z expiry",
+    "biggest_risk": "AI-assisted credential abuse",
+    "headline": "Protected. Recoverable. In control.",
+    "outcomes": [
+      {
+        "detail": "Across endpoint, identity and AI",
+        "label": "Threats blocked today",
+        "value": 47
+      },
+      {
+        "detail": "No authority expansion",
+        "label": "AI actions denied",
+        "value": 17
+      },
+      {
+        "detail": "Host isolated in simulation",
+        "label": "Ransomware attempts stopped",
+        "value": 1
+      },
+      {
+        "detail": "Token revocation simulated",
+        "label": "High-risk identities",
+        "value": 1
+      }
+    ],
+    "recoverability": "88% / READY",
+    "summary": "ForgeWarden stopped a coordinated AI and endpoint attack while preserving human authority."
+  },
+  "governance": {
+    "policy": {
+      "action": "EXPAND_TOOL_AUTHORITY",
+      "approval": "SECURITY ADMIN REQUIRED",
+      "blast_radius": "ONE AGENT / ONE TASK",
+      "decision": "DENY",
+      "engine": "FW-ROOT / DETERMINISTIC",
+      "id": "AI-AUTHORITY-017",
+      "lease_duration": "20 MINUTES",
+      "reason": "Requested capability exceeds the signed work lease",
+      "resource": "MCP:build-tools-demo",
+      "subject": "build-agent-27"
+    },
+    "ticket": {
+      "authority": "Security Administrator",
+      "expires": "2026-09-11 14:27Z",
+      "id": "AT-DEMO-119",
+      "operation": "REVOKE AGENT LEASE",
+      "requester": "FW-AID policy adapter",
+      "scope": "LEASE-DEMO-88",
+      "signature": "SIMULATED / NOT VERIFIED",
+      "status": "AUTHORIZED / NOT EXECUTED",
+      "target": "build-agent-27"
+    }
+  },
+  "harness": {
+    "budget": {
+      "calls": "2 / 3",
+      "diff": "4 / 5 files",
+      "elapsed": "11m / 20m",
+      "limit": 100,
+      "tokens": "18.4k / 30k",
+      "unit": "percent",
+      "used": 64
+    },
+    "capabilities": [
+      "repository:bounded-read",
+      "patch:scoped-write",
+      "tests:approved"
+    ],
+    "commit": "demo:7f31c4a",
+    "escalation": [
+      {
+        "from": "T2",
+        "reason": "Authority-boundary validation failure",
+        "time": "14:06",
+        "to": "T3"
+      }
+    ],
+    "lease": "LEASE-DEMO-88 / REVOKED",
+    "lease_scope": "4 files \u00b7 20 minutes \u00b7 no network",
+    "model": "Approved security-critical coding model",
+    "model_registry": "MODEL-DEMO-SEC-01 / APPROVED",
+    "phase": "ACCEPTED",
+    "requester": "jean.ellis",
+    "requester_identity": "FW-ID-DEMO-117",
+    "review": "APPROVE / LOW (SIMULATED)",
+    "reviewer": "Independent read-only reviewer",
+    "risk_score": 72,
+    "risk_tier": "T3",
+    "routing_reason": "AI security and authority-boundary scope",
+    "task_id": "HARNESS-DEMO-842",
+    "tenant": "northstar-demo",
+    "tools": [
+      "scoped file editor",
+      "approved test runner"
+    ],
+    "validation": "PASSED (SIMULATED)",
+    "workflow": [
+      "TASK",
+      "CLASSIFY",
+      "AUTHORIZE",
+      "MODEL",
+      "EXECUTE",
+      "TEST",
+      "REVIEW",
+      "ACCEPT"
+    ]
+  },
+  "implementation": {
+    "ai_intrusion_defense": "TESTED_FIXTURE_ONLY",
+    "containment_execution": "PLANNED",
+    "demo_scenario": "TESTED",
+    "incident_correlation": "PARTIAL",
+    "mission_control_ui": "DEMO_AVAILABLE",
+    "production_backend": "NOT_CONNECTED"
+  },
+  "incident": {
+    "affected": [
+      "LT-0442",
+      "jean.ellis",
+      "build-agent-27"
+    ],
+    "confidence": "HIGH",
+    "detections": [
+      {
+        "confidence": "HIGH",
+        "name": "Agent authority expansion",
+        "source": "FW-AID"
+      },
+      {
+        "confidence": "HIGH",
+        "name": "Abnormal mass file operations",
+        "source": "RANSOMGUARD"
+      },
+      {
+        "confidence": "MEDIUM",
+        "name": "Access token anomaly",
+        "source": "IDENTITY"
+      }
+    ],
+    "id": "INC-DEMO-2047",
+    "mitre": [
+      "T1566.001 Spearphishing Attachment",
+      "T1078 Valid Accounts",
+      "T1486 Data Encrypted for Impact"
+    ],
+    "recovery": {
+      "checkpoint": "REC-DEMO-LT0442-18",
+      "execution": "NOT EXECUTED",
+      "integrity": "SIMULATED VERIFICATION",
+      "state": "READY / SIMULATED"
+    },
+    "severity": "CRITICAL",
+    "status": "CONTAINED",
+    "summary": "A poisoned email led to token abuse and abnormal agent requests. Deterministic controls denied expansion before endpoint ransomware behavior was isolated.",
+    "title": "Agent manipulation preceded ransomware activity"
+  },
+  "mcp": [
+    {
+      "agents": [
+        "build-agent-27"
+      ],
+      "denials": 2,
+      "id": "MCP-DEMO-BUILD",
+      "lease": "LEASE-DEMO-88 / REVOKED",
+      "name": "build-tools-demo",
+      "security": "AUTHORITY EXPANSION BLOCKED",
+      "status": "GUARDED",
+      "tools": [
+        "repository read",
+        "approved tests"
+      ],
+      "trust": "RESTRICTED"
+    },
+    {
+      "agents": [
+        "soc-agent-04"
+      ],
+      "denials": 0,
+      "id": "MCP-DEMO-EVID",
+      "lease": "LEASE-DEMO-91 / ACTIVE",
+      "name": "evidence-reader-demo",
+      "security": "NO FINDINGS",
+      "status": "AVAILABLE",
+      "tools": [
+        "evidence lookup"
+      ],
+      "trust": "APPROVED READ-ONLY"
+    }
+  ],
+  "models": [
+    {
+      "availability": "AVAILABLE",
+      "classification": "INTERNAL",
+      "cost": "$ / LOW",
+      "id": "MODEL-DEMO-FAST-01",
+      "latency": "1.2s",
+      "name": "Routine engineering model",
+      "provider": "Demo Provider A",
+      "status": "APPROVED",
+      "tier": "T1"
+    },
+    {
+      "availability": "AVAILABLE",
+      "classification": "RESTRICTED",
+      "cost": "$$$ / CONTROLLED",
+      "id": "MODEL-DEMO-SEC-01",
+      "latency": "3.8s",
+      "name": "Security-critical coding model",
+      "provider": "Demo Provider B",
+      "status": "APPROVED",
+      "tier": "T3"
+    },
+    {
+      "availability": "AVAILABLE",
+      "classification": "PUBLIC",
+      "cost": "$$ / MEDIUM",
+      "id": "MODEL-DEMO-ALT-03",
+      "latency": "2.6s",
+      "name": "General reasoning model",
+      "provider": "Demo Provider C",
+      "status": "RESTRICTED",
+      "tier": "T2"
+    },
+    {
+      "availability": "PROVIDER OFFLINE",
+      "classification": "INTERNAL",
+      "cost": "NO CALL",
+      "id": "MODEL-DEMO-OFF-04",
+      "latency": "\u2014",
+      "name": "External review model",
+      "provider": "Demo Provider D",
+      "status": "UNAVAILABLE",
+      "tier": "T3"
+    }
+  ],
+  "posture": {
+    "dimensions": [
+      {
+        "label": "Endpoint health",
+        "value": 91
+      },
+      {
+        "label": "Identity risk",
+        "value": 76
+      },
+      {
+        "label": "AI / agent risk",
+        "value": 73
+      },
+      {
+        "label": "Recovery readiness",
+        "value": 88
+      }
+    ],
+    "label": "CONTROLLED RISK",
+    "score": 82,
+    "trend": "+6 after containment"
+  },
+  "provenance": {
+    "cryptographic_verification_performed": false,
+    "generated_at": "2026-09-11T14:08:00Z",
+    "live_backend_connected": false,
+    "source": "FORGEWARDEN_DETERMINISTIC_DEMO_PROVIDER"
+  },
+  "safety": {
+    "deployment": "DISABLED",
+    "kill_switch": "ENGAGED",
+    "mode": "DRY_RUN",
+    "mutation_allowed": false
+  },
+  "scenario": {
+    "id": "DEMO-AI-RANSOM-001",
+    "name": "Compromised AI agent + ransomware attempt",
+    "organization": "Northstar Fabrication Group",
+    "status": "SIMULATED_INCIDENT"
+  },
+  "schema_version": 1
+}

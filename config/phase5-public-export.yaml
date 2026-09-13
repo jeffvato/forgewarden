@@ -23,6 +23,7 @@ tracks:
     includes_private_core: false
     allowlist:
       - console/app.js
+      - console/demo-data.json
       - console/index.html
       - console/styles.css
       - swarm/mission_control_demo.py

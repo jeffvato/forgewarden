@@ -92,6 +92,12 @@ class ConsoleTests(unittest.TestCase):
         first["assets"][0]["value"] = 0
         self.assertEqual(second["assets"][0]["value"], 1204)
 
+    def test_bundled_demo_data_exactly_matches_canonical_demo_provider(self):
+        bundled = json.loads(
+            (Path(__file__).parents[1] / "console" / "demo-data.json").read_text(
+                encoding="utf-8"))
+        self.assertEqual(bundled, mission_control_demo_snapshot())
+
     def test_console_exposes_navigation_and_status_accessibility_hooks(self):
         html = (Path(__file__).parents[1] / "console" / "index.html").read_text(encoding="utf-8")
         script = (Path(__file__).parents[1] / "console" / "app.js").read_text(encoding="utf-8")
@@ -100,6 +106,8 @@ class ConsoleTests(unittest.TestCase):
         self.assertIn("setAttribute('aria-current','page')", script)
         self.assertIn("removeAttribute('aria-current')", script)
         self.assertIn("class MissionControlClient", script)
+        self.assertIn("class DemoProvider", script)
+        self.assertNotIn(">JB</div>", html)
         self.assertIn("function validateSnapshot", script)
         self.assertIn("s.safety?.mutation_allowed!==false", script)
         self.assertIn("DEMO ENVIRONMENT", html)

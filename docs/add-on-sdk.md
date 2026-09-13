@@ -1,16 +1,15 @@
-# Forgewarden add-on SDK
+# ForgeWarden add-on manifest contract
 
-Use `swarm.addon_sdk.scaffold()` to create a local add-on package with a
-least-privilege manifest, a relative entrypoint, and a canonical digest.
+The current public SDK candidate contains the standalone add-on manifest
+schema and this contract documentation. It does not include executable client
+code or depend on ForgeWarden private Core modules.
 
-```python
-from pathlib import Path
-from swarm.addon_sdk import scaffold
+An add-on manifest declares the package name, version, relative entrypoint,
+requested capabilities, and content digest. Producing a conforming document
+does not install, load, authorize, or execute an add-on. Admission remains a
+separate deterministic ForgeWarden decision.
 
-package = scaffold(Path("./my-addon"), "my-addon", "1.0.0")
-```
-
-The scaffold is a review artifact. It does not install or execute the add-on.
-Before installation, review the manifest, run the add-on security tests, and
-use the local add-on lifecycle manager. Network, shell, Git, production, and
-credential access are not available to the generated package.
+Before any future installation, validate the manifest against the bundled
+schema, verify the package digest, complete add-on security review, and use the
+authorized lifecycle controller. Network, shell, Git, production, credential,
+and deployment authority are absent from this public contract candidate.

@@ -125,7 +125,9 @@ async function testDualProviderClient(){
   assert.equal((await new MissionControlClient().snapshot()).core,null);
   global.fetch=async url=>url==='/api/canonical-activity'?Promise.reject(new Error('offline')):{ok:true,json:async()=>payload(url)};
   const evidenceUnavailable=await new MissionControlClient().snapshot(); assert.equal(evidenceUnavailable.evidence,null); renderEvidenceActivity(evidenceUnavailable.evidence); assert.equal(elements['evidence-live-state'].textContent,'CANONICAL EVIDENCE ACTIVITY UNAVAILABLE');
-  global.fetch=async url=>({ok:url!=='/api/mission-control',json:async()=>payload(url)});
-  await assert.rejects(()=>new MissionControlClient().snapshot(),/Mission Control demo provider unavailable/);
+  global.fetch=async url=>({ok:url==='/demo-data.json',json:async()=>payload(url)});
+  const fallback=await new MissionControlClient().snapshot(); assert.equal(fallback.scenario.data_mode,'DEMO'); assert.equal(fallback.core,null);
+  global.fetch=async()=>({ok:false,json:async()=>({})});
+  await assert.rejects(()=>new MissionControlClient().snapshot(),/local Demo data unavailable/);
 }
 testDualProviderClient().then(()=>console.log('frontend contract and rendering boundaries passed')).catch(error=>{console.error(error);process.exitCode=1;});
