@@ -2,7 +2,7 @@ import pytest
 
 from dataclasses import replace
 
-from swarm.browser_email import BrowserEmailFixtureDenied, classify_dangerous_delivery, classify_phishing_spoof, normalize_browser_email_fixture
+from swarm.browser_email import BrowserEmailFixtureDenied, classify_dangerous_delivery, classify_oauth_consent_abuse, classify_phishing_spoof, normalize_browser_email_fixture
 
 
 def browser_fixture(**overrides):
@@ -185,6 +185,38 @@ def test_dangerous_delivery_revalidates_tenant_authority_and_evidence():
         classify_dangerous_delivery(replace(observation, mode="LIVE"), tenant_id="tenant-a", audit=lambda *_args: None)
     with pytest.raises(BrowserEmailFixtureDenied, match="EVIDENCE_WRITE_FAILED"):
         classify_dangerous_delivery(
+            observation, tenant_id="tenant-a",
+            audit=lambda *_args: (_ for _ in ()).throw(RuntimeError("offline")),
+        )
+
+
+def test_oauth_consent_abuse_is_exact_high_warn_only_and_evidence_minimized():
+    evidence = []
+    observation = normalized(email_fixture(
+        sender="private@fixture.test", urls=["https://private.fixture.test/consent"],
+        related_indicators=["OAUTH_CONSENT_ABUSE"],
+    ))
+    finding = classify_oauth_consent_abuse(
+        observation, tenant_id="tenant-a", audit=lambda *args: evidence.append(args),
+    )
+    assert finding.signals == ("OAUTH_CONSENT_ABUSE",)
+    assert finding.confidence == "HIGH" and finding.recommendations == ("WARN",)
+    assert finding.mode == "DRY_RUN" and finding.action == "DETECT_ONLY"
+    assert evidence[0][0] == "browser_email_oauth_consent_abuse_classified"
+    assert evidence[0][1]["response_executed"] is False
+    assert "urls" not in evidence[0][1] and "sender" not in evidence[0][1]
+
+
+def test_oauth_consent_classifier_denies_tenant_authority_and_evidence_failures():
+    benign = normalized(browser_fixture(related_indicators=["PHISHING_DOMAIN"]))
+    assert classify_oauth_consent_abuse(benign, tenant_id="tenant-a", audit=lambda *_args: None) is None
+    observation = normalized(browser_fixture(related_indicators=["OAUTH_CONSENT_ABUSE"]))
+    with pytest.raises(BrowserEmailFixtureDenied, match="TENANT_MISMATCH"):
+        classify_oauth_consent_abuse(observation, tenant_id="tenant-b", audit=lambda *_args: None)
+    with pytest.raises(BrowserEmailFixtureDenied, match="OBSERVATION_AUTHORITY_INVALID"):
+        classify_oauth_consent_abuse(replace(observation, action="BLOCK"), tenant_id="tenant-a", audit=lambda *_args: None)
+    with pytest.raises(BrowserEmailFixtureDenied, match="EVIDENCE_WRITE_FAILED"):
+        classify_oauth_consent_abuse(
             observation, tenant_id="tenant-a",
             audit=lambda *_args: (_ for _ in ()).throw(RuntimeError("offline")),
         )

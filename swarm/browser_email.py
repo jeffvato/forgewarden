@@ -242,3 +242,33 @@ def classify_dangerous_delivery(
     return BrowserEmailFinding(
         observation.event_id, expected_tenant, ordered_signals, confidence,
     )
+
+
+def classify_oauth_consent_abuse(
+    observation: BrowserEmailObservation, *, tenant_id: str,
+    audit: Callable[[str, dict[str, Any]], None],
+) -> BrowserEmailFinding | None:
+    """Classify an exact caller-supplied OAuth-consent indicator without acting."""
+    expected_tenant, indicators, _auth_failures = _validated_observation(
+        observation, tenant_id, audit,
+    )
+    if "OAUTH_CONSENT_ABUSE" not in indicators:
+        return None
+    try:
+        audit("browser_email_oauth_consent_abuse_classified", {
+            "event_id": observation.event_id,
+            "tenant_id": expected_tenant,
+            "signals": ["OAUTH_CONSENT_ABUSE"],
+            "confidence": "HIGH",
+            "recommendations": ["WARN"],
+            "trust": "UNTRUSTED_DATA",
+            "mode": "DRY_RUN",
+            "action": "DETECT_ONLY",
+            "response_executed": False,
+            "deployment": "DISABLED",
+        })
+    except Exception as exc:
+        raise BrowserEmailFixtureDenied("EVIDENCE_WRITE_FAILED") from exc
+    return BrowserEmailFinding(
+        observation.event_id, expected_tenant, ("OAUTH_CONSENT_ABUSE",), "HIGH",
+    )
