@@ -1,0 +1,348 @@
+{
+  "architecture_validation": {
+    "invariant_ids": [
+      "FW-INV-001",
+      "FW-INV-002",
+      "FW-INV-003",
+      "FW-INV-004",
+      "FW-INV-005",
+      "FW-INV-006",
+      "FW-INV-007",
+      "FW-INV-008",
+      "FW-INV-009"
+    ],
+    "owners": {
+      "agent_authority": "FW-ASOC",
+      "ai_agent_defense": "FW-AID",
+      "compliance": "FW-COMP",
+      "cryptographic_authority": "FW-KEYS / FW-ROOT",
+      "evidence": "FW-EVID",
+      "identity": "FW-ID",
+      "mcp_access": "MCP Gateway",
+      "model_selection": "Model Broker",
+      "normalized_events": "canonical ForgeWarden Event Schema",
+      "operations": "FW-OPS",
+      "policy_decisions": "FW-ROOT/Z3",
+      "recovery": "FW-REC",
+      "soc_incidents": "FW-SOC"
+    },
+    "passed": true
+  },
+  "canonical_ownership": {
+    "agent_authority": {
+      "implementation": "swarm.asoc.CapabilityAuthorizer",
+      "owner": "FW-ASOC",
+      "status": "IMPLEMENTED"
+    },
+    "ai_agent_defense": {
+      "implementation": "swarm.ai_agent_defense DeterministicAIThreatClassifier / AICrossDomainCorrelator / AIContainmentProposalRegistry",
+      "owner": "FW-AID",
+      "status": "IMPLEMENTED"
+    },
+    "compliance": {
+      "implementation": "swarm.compliance ControlMapping / ComplianceEvidenceAdapter / ControlAssessmentObservation",
+      "owner": "FW-COMP",
+      "status": "IMPLEMENTED"
+    },
+    "cryptographic_authority": {
+      "implementation": "swarm.keys.SecretHandleRegistry / swarm.asoc.HMACLeaseSigner",
+      "owner": "FW-KEYS / FW-ROOT",
+      "status": "IMPLEMENTED_PARTIAL"
+    },
+    "evidence": {
+      "implementation": "swarm.evidence.EvidenceEnvelope / EvidenceLedger / CanonicalAuditEvidenceStore with swarm.core.AuditLog",
+      "owner": "FW-EVID",
+      "status": "IMPLEMENTED"
+    },
+    "identity": {
+      "implementation": "swarm.identity.IdentityRecord",
+      "owner": "FW-ID",
+      "status": "IMPLEMENTED_PARTIAL"
+    },
+    "mcp_access": {
+      "implementation": "swarm.mcp_gateway.MCPGateway",
+      "owner": "MCP Gateway",
+      "status": "IMPLEMENTED"
+    },
+    "model_selection": {
+      "implementation": "swarm.model_broker.ModelBroker",
+      "owner": "Model Broker",
+      "status": "IMPLEMENTED"
+    },
+    "normalized_events": {
+      "implementation": "swarm.normalized_events.NormalizedEventStore",
+      "owner": "canonical ForgeWarden Event Schema",
+      "status": "IMPLEMENTED_PARTIAL"
+    },
+    "operations": {
+      "implementation": "swarm.operations / swarm.operations_capacity / swarm.mission_control.OperationsContinuityView",
+      "owner": "FW-OPS",
+      "status": "IMPLEMENTED"
+    },
+    "policy_decisions": {
+      "implementation": "swarm.policy_gate.DeterministicPolicy",
+      "owner": "FW-ROOT/Z3",
+      "status": "IMPLEMENTED_PARTIAL"
+    },
+    "recovery": {
+      "implementation": "swarm.recovery RecoveryCheckpoint / ResumeAdmission",
+      "owner": "FW-REC",
+      "status": "IMPLEMENTED"
+    },
+    "soc_incidents": {
+      "implementation": "swarm.soc.SOCIncidentProjection",
+      "owner": "FW-SOC",
+      "status": "IMPLEMENTED_PARTIAL"
+    }
+  },
+  "checks": {
+    "architecture_ownership": true,
+    "build": true,
+    "configuration": true,
+    "golden_path": true,
+    "invariant_manifest": true,
+    "repository": true,
+    "startup": true,
+    "tests": true
+  },
+  "commands": {
+    "golden_path": {
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_data_security.py",
+        "tests/test_mission_control.py",
+        "tests/test_action_ticket.py"
+      ],
+      "output": "........................................................................ [ 58%]\n...................................................                      [100%]\n123 passed in 0.56s\n",
+      "passed": true,
+      "returncode": 0
+    },
+    "tests": {
+      "command": [
+        "/usr/bin/python3",
+        "-m",
+        "pytest",
+        "-q"
+      ],
+      "output": "............................. [ 14%]\n........................................................................ [ 17%]\n........................................................................ [ 21%]\n........................................................................ [ 25%]\n........................................................................ [ 28%]\n........................................................................ [ 32%]\n........................................................................ [ 35%]\n........................................................................ [ 39%]\n........................................................................ [ 42%]\n........................................................................ [ 46%]\n........................................................................ [ 50%]\n........................................................................ [ 53%]\n...s.................................................................... [ 57%]\n........................................................................ [ 60%]\n........................................................................ [ 64%]\n........................................................................ [ 67%]\n........................................................................ [ 71%]\n........................................................................ [ 75%]\n........................................................................ [ 78%]\n........................................................................ [ 82%]\n........................................................................ [ 85%]\n........................................................................ [ 89%]\n........................................................................ [ 92%]\n........................................................................ [ 96%]\n......................................................................   [100%]\n2013 passed, 1 skipped in 72.47s (0:01:12)\n",
+      "passed": true,
+      "returncode": 0
+    }
+  },
+  "decision": "YELLOW",
+  "dependency_check": {
+    "command": [
+      "/usr/bin/python3",
+      "-m",
+      "pip",
+      "check"
+    ],
+    "output": "oslo-serialization 5.4.0 requires tzdata, which is not installed.\noslo-utils 7.1.0 requires tzdata, which is not installed.\n",
+    "passed": false,
+    "returncode": 1
+  },
+  "findings": [
+    {
+      "area": "dependencies",
+      "reason": "pip check reports missing or incompatible packages",
+      "severity": "YELLOW"
+    }
+  ],
+  "functionality": [
+    {
+      "component": "swarm.core / swarm.autonomous_loop",
+      "dependencies": [
+        "policy_gate",
+        "AuditLog",
+        "Git"
+      ],
+      "golden_path": "A partial monitor/review dry-run path",
+      "integration_tests": "PASS",
+      "last_validated_commit": "5044231dafc490b2d8b56141b3bb4e44c541c918",
+      "limitations": "no production deployment; live mutation disabled",
+      "requirement_id": "FW-CORE",
+      "state": "Proven",
+      "unit_tests": "PASS",
+      "user_surface": "local runner and console"
+    },
+    {
+      "component": "swarm.asoc",
+      "dependencies": [
+        "FW-ID reference",
+        "FW-ROOT deterministic policy",
+        "Action Tickets",
+        "Model Broker",
+        "MCP Gateway",
+        "Audit sink"
+      ],
+      "golden_path": "PASS: canonical authorization plus replay, kill-switch, recovery, and cross-tenant denials",
+      "integration_tests": "PASS",
+      "last_validated_commit": "5044231dafc490b2d8b56141b3bb4e44c541c918",
+      "limitations": "in-memory single-process dry-run registries; external service adapters and a full Z3 solver remain future work",
+      "requirement_id": "FW-ASOC-01",
+      "state": "Proven",
+      "unit_tests": "PASS",
+      "user_surface": "internal authorization interface"
+    },
+    {
+      "component": "swarm.asoc.AggregateBlastRadiusLedger / WorkBudgetLedger / LeaseRegistry",
+      "dependencies": [
+        "DeterministicPolicy",
+        "Action Tickets",
+        "CapabilityAuthorizer",
+        "Audit sink",
+        "recovery controls"
+      ],
+      "golden_path": "PASS: aggregate caps, bounded delegation, and lease/tenant work budgets with recovery and concurrency denials",
+      "integration_tests": "PASS",
+      "last_validated_commit": "5044231dafc490b2d8b56141b3bb4e44c541c918",
+      "limitations": "in-memory single-process DRY_RUN scope; broader ASOC orchestration remains future work",
+      "requirement_id": "FW-ASOC-02",
+      "state": "Proven",
+      "unit_tests": "PASS",
+      "user_surface": "internal authorization interface"
+    },
+    {
+      "component": "swarm.identity.IdentityRecord / IdentityRegistry / DelegatedProviderIdentity",
+      "dependencies": [
+        "FW-KEYS opaque references",
+        "FW-EVID sink",
+        "FW-HARNESS worker admission"
+      ],
+      "golden_path": "PASS: tenant-bound registration, provider-reference binding, worker admission, revocation and replay denial",
+      "integration_tests": "PASS",
+      "last_validated_commit": "5044231dafc490b2d8b56141b3bb4e44c541c918",
+      "limitations": "in-memory DRY_RUN metadata only; no real authentication, federation, OAuth exchange, credential resolution, device trust or production identity service",
+      "requirement_id": "FW-ID",
+      "state": "Proven",
+      "unit_tests": "PASS",
+      "user_surface": "internal identity and worker-binding interface"
+    },
+    {
+      "component": "swarm.keys.SecretHandleRegistry with identity/harness and TrustedSignatureCatalog consumers",
+      "dependencies": [
+        "FW-ID owner reference",
+        "FW-EVID sink",
+        "trusted backend boundary"
+      ],
+      "golden_path": "PASS: registration, activation, exact consumer binding, lifecycle invalidation, generation replay denial, and Evidence minimization",
+      "integration_tests": "PASS",
+      "last_validated_commit": "5044231dafc490b2d8b56141b3bb4e44c541c918",
+      "limitations": "in-memory metadata only; no backend, vault, HSM, material resolution, authentication, key generation, signing or encryption authority",
+      "requirement_id": "FW-KEYS",
+      "state": "Proven",
+      "unit_tests": "PASS",
+      "user_surface": "internal opaque secret-handle lifecycle interface"
+    },
+    {
+      "component": "swarm.evidence with harness and accepted-work adapters plus swarm.core.AuditLog",
+      "dependencies": [
+        "domain payload validators",
+        "tenant identity references",
+        "restricted local AuditLog"
+      ],
+      "golden_path": "PASS: validated payload digest, tenant chain, durable append, restart reconstruction, replay and tamper denial",
+      "integration_tests": "PASS",
+      "last_validated_commit": "5044231dafc490b2d8b56141b3bb4e44c541c918",
+      "limitations": "local unsigned DRY_RUN evidence only; no retention execution, cryptographic signing, replication, external storage or export",
+      "requirement_id": "FW-EVID",
+      "state": "Proven",
+      "unit_tests": "PASS",
+      "user_surface": "internal canonical Evidence lifecycle"
+    },
+    {
+      "component": "swarm.recovery",
+      "dependencies": [
+        "RecoveryCheckpoint",
+        "private atomic persistence",
+        "FW-EVID sink",
+        "trusted Git/Evidence facts",
+        "kill switch"
+      ],
+      "golden_path": "PASS: checkpoint persistence, restart reconstruction, exact resume admission, Evidence-first retry, replay/tamper denial",
+      "integration_tests": "PASS",
+      "last_validated_commit": "5044231dafc490b2d8b56141b3bb4e44c541c918",
+      "limitations": "local metadata-only DRY_RUN coordination; no restore, rollback, restart, repair, deletion, containment, deployment, filesystem, process or response execution",
+      "requirement_id": "FW-REC",
+      "state": "Proven",
+      "unit_tests": "PASS",
+      "user_surface": "internal recovery admission metadata"
+    },
+    {
+      "component": "swarm.compliance",
+      "dependencies": [
+        "FW-ID references",
+        "FW-EVID ledger",
+        "policy/test fact references"
+      ],
+      "golden_path": "PASS: tenant-bound mapping, canonical Evidence admission, bounded assessment, replay/substitution/expiry/durability denial",
+      "integration_tests": "PASS",
+      "last_validated_commit": "5044231dafc490b2d8b56141b3bb4e44c541c918",
+      "limitations": "local in-memory metadata-only DRY_RUN proof; no certification, attestation, external reporting, control execution or continuous-compliance claim",
+      "requirement_id": "FW-COMP",
+      "state": "Proven",
+      "unit_tests": "PASS",
+      "user_surface": "internal compliance mapping metadata"
+    },
+    {
+      "component": "swarm.ai_agent_defense / swarm.normalized_events / swarm.mission_control",
+      "dependencies": [
+        "FW-ENDPOINT fixtures",
+        "FW-ID/FW-KEYS references",
+        "NormalizedEventStore",
+        "FW-SOC",
+        "FW-EVID",
+        "FW-HARNESS",
+        "Mission Control"
+      ],
+      "golden_path": "PASS: fixture-only harness and endpoint attribution through detection, correlation, proposal, Evidence, and Mission Control",
+      "integration_tests": "PASS",
+      "last_validated_commit": "5044231dafc490b2d8b56141b3bb4e44c541c918",
+      "limitations": "caller-supplied DRY_RUN metadata only; no live sensor, credential access, network/process control, containment execution, recovery execution, or deployment authority",
+      "requirement_id": "FW-AID",
+      "state": "Proven",
+      "unit_tests": "PASS",
+      "user_surface": "Mission Control canonical read-only AI Security projection"
+    },
+    {
+      "component": "swarm.operations / swarm.operations_capacity / swarm.mission_control",
+      "dependencies": [
+        "FW-EVID sink",
+        "FW-REC checkpoint/resume",
+        "FW-ENDPOINT capacity facts",
+        "Mission Control"
+      ],
+      "golden_path": "PASS: health and pressure Evidence through restart reconstruction, resume admission, and read-only operator projection",
+      "integration_tests": "PASS",
+      "last_validated_commit": "5044231dafc490b2d8b56141b3bb4e44c541c918",
+      "limitations": "local caller-supplied DRY_RUN metadata only; no live telemetry, HA/DR coordination, service/process control, retention movement, rollback execution, or deployment",
+      "requirement_id": "FW-OPS",
+      "state": "Proven",
+      "unit_tests": "PASS",
+      "user_surface": "Mission Control canonical read-only operations continuity projection"
+    },
+    {
+      "component": "swarm.integrity",
+      "dependencies": [
+        "Git",
+        "Python",
+        "pytest",
+        "documentation registry"
+      ],
+      "golden_path": "first baseline path established",
+      "integration_tests": "IN_PROGRESS",
+      "last_validated_commit": "5044231dafc490b2d8b56141b3bb4e44c541c918",
+      "limitations": "database migration checks are not applicable to this repository yet",
+      "requirement_id": "FW-INTEGRITY",
+      "state": "Implemented",
+      "unit_tests": "PASS",
+      "user_surface": "integrity gate report"
+    }
+  ],
+  "head": "5044231dafc490b2d8b56141b3bb4e44c541c918",
+  "missing_canonical_owners": [],
+  "schema_version": "1"
+}

@@ -1,0 +1,36 @@
+{
+  "adjudication": null,
+  "candidate_commit": "b13d22b08698a7413d4e2a29c8dfa43f4d9cc9bc",
+  "deployment": "DISABLED",
+  "job_id": "phase2a-b13d22b08698a7413d4e2a29",
+  "kill_switch": "ENGAGED",
+  "mutation_allowed": false,
+  "reviews": [
+    {
+      "provider": "ANYTHINGLLM",
+      "result": {
+        "blocking_findings": [],
+        "job_id": "phase2a-b13d22b08698a7413d4e2a29",
+        "non_blocking_notes": [
+          "The `run_data_security_dry_run_lifecycle` function correctly composes the four stages in the required deterministic order.",
+          "The `project_data_security` function enforces strict binding validation and secret screening before returning the view.",
+          "Mission Control views are correctly frozen and do not expose mutation or authority capabilities."
+        ],
+        "proposed_rules": [
+          "Ensure all lifecycle stages validate tenant and event ID consistency before proceeding to the next stage."
+        ],
+        "reasoning_summary": "The commit implements the FW-DSPM-006 lifecycle composition and Mission Control projection. The `run_data_security_dry_run_lifecycle` function correctly chains observation normalization, classification, reference binding, and DLP proposal generation, ensuring deterministic ordering and preserving tenant/event/data/location/identity/risk/policy bindings. The `project_data_security` function enforces strict validation of these bindings, ensures no authority or response execution, and sanitizes output by rejecting secret-bearing or excessive values. Lower-risk or invalid paths are correctly stopped before the proposal stage, as evidenced by the test `test_data_security_lifecycle_stops_before_proposal_for_lower_risk`. The tests cover the main acceptance criteria, including ordering, binding preservation, secret screening, and authority denial. The risk is low as the changes are additive, read-only, and strictly validated.",
+        "reviewed_commit": "b13d22b08698a7413d4e2a29c8dfa43f4d9cc9bc",
+        "risk": "LOW",
+        "tests_missing": [
+          "Test for `project_data_security` rejecting a lifecycle where `observation.event_id` does not match `finding.event_id` (currently only checked via set length, but specific mismatch rejection path for ID drift is implicitly covered but could be explicit).",
+          "Test for `project_data_security` rejecting a lifecycle where `binding.risk` does not match `finding.risk` (covered in tamper test, but ensure specific risk mismatch is tested independently of other fields).",
+          "Test for `project_data_security` handling `data_mode` other than CANONICAL or DEMO (covered in invalid type mode test, but ensure specific rejection of unknown modes is explicit)."
+        ],
+        "verdict": "APPROVE"
+      },
+      "state": "REVIEW_RETURNED"
+    }
+  ],
+  "state": "REVIEW_REQUIRED"
+}

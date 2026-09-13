@@ -1,0 +1,29 @@
+{
+  "adjudication": null,
+  "candidate_commit": "5044231dafc490b2d8b56141b3bb4e44c541c918",
+  "deployment": "DISABLED",
+  "job_id": "phase2a-5044231dafc490b2d8b56141",
+  "kill_switch": "ENGAGED",
+  "mutation_allowed": false,
+  "reviews": [
+    {
+      "provider": "ANYTHINGLLM",
+      "result": {
+        "blocking_findings": [],
+        "job_id": "phase2a-5044231dafc490b2d8b56141",
+        "non_blocking_notes": [
+          "Documentation updates in SWARM_STATUS.md and WORK_QUEUE.md accurately reflect the test-only repair scope.",
+          "The new test function correctly isolates three distinct drift scenarios (event ID, risk level, data mode) to ensure independent denial verification."
+        ],
+        "proposed_rules": [],
+        "reasoning_summary": "The patch is a test-only repair that adds explicit assertions for independent projection denials regarding event-ID drift, binding risk drift, and UNKNOWN data mode. It does not alter runtime behavior or authority. The validation passed 123 tests. The changes are minimal, focused, and align with the requested proofs for FW-DSPM-006.",
+        "reviewed_commit": "5044231dafc490b2d8b56141b3bb4e44c541c918",
+        "risk": "LOW",
+        "tests_missing": [],
+        "verdict": "APPROVE"
+      },
+      "state": "APPROVED"
+    }
+  ],
+  "state": "APPROVED"
+}

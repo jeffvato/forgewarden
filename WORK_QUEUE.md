@@ -20,6 +20,18 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 
 Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical implementation is not new work. FWQ-0008 VALIDATED preserves a provenance caveat, not a request to rebuild or automatically repeat review. FWQ-0012–0016 are reconciled DONE from existing implementation and recorded proof.
 
+### FW-GOV-001 — High-assurance ownership and bounded route
+- Requirement: FW-GOV canonical ownership inventory
+- State: READY
+- Priority: P0
+- Dependencies: FW-DSPM-006, FW-HARNESS, FW-ID, FW-KEYS, FW-EVID
+- Approval: Jeff authorized the ordered FW-GOV phase through the continuing heartbeat.
+- Description: Map existing Approved Model Registry, deterministic Model Broker, tenant/data-class/environment admission, Evidence, policy, and offline boundaries and define the first missing bounded high-assurance contract.
+- Target path: docs/fw-gov-inventory.md
+- Allowed paths: docs/fw-gov-inventory.md, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: git diff --check HEAD^ HEAD and deterministic repository/source/test/evidence inventory
+- Acceptance criteria: canonical owners and substantive stable-ID implementation route are explicit; no opaque router, provider activation, credential, live ATO/FedRAMP claim, deployment, sovereign infrastructure, model invocation, authority expansion, or security downgrade is added.
+
 ### FW-DSPM-001 — Data security posture ownership and bounded route
 - Requirement: FW-DSPM canonical ownership inventory
 - State: DONE
@@ -87,7 +99,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-DSPM-006 — Integrated lifecycle and Mission Control projection
 - Requirement: FW-DSPM accepted-stage composition and operator visibility
-- State: REPAIR
+- State: DONE
 - Priority: P0
 - Dependencies: FW-DSPM-005
 - Approval: Jeff authorized the ordered FW-DSPM phase through the continuing heartbeat.
@@ -96,6 +108,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 - Allowed paths: swarm/data_security.py, swarm/mission_control.py, tests/test_data_security.py, tests/test_mission_control.py, WORK_QUEUE.md, SWARM_STATUS.md
 - Test command: python3 -m pytest -q tests/test_data_security.py tests/test_mission_control.py tests/test_action_ticket.py
 - Acceptance criteria: one deterministic lifecycle preserves exact ordering and bindings; lower-risk/failure paths stop early; visibility owns no content, state, callbacks, tickets, DLP enforcement, or response authority.
+- Completion evidence: implementation candidate `b13d22b08698a7413d4e2a29c8dfa43f4d9cc9bc`; test-only repair `5044231dafc490b2d8b56141b3bb4e44c541c918`. Exact AnythingLLM/Qwen APPROVE/LOW requested direct event-ID, risk, and data-mode drift proofs; exact repair job `phase2a-5044231dafc490b2d8b56141` closed all three and returned APPROVE/LOW with no blockers or missing tests. Focused validation passed 123 tests and the full suite passed 2013 with 1 skipped. Product Integrity passed every hard check and the Golden Path, with only the pre-existing `tzdata` dependency YELLOW. Evidence: `docs/fw-dspm-006-qwen-review.json`, `docs/fw-dspm-006-qwen-repair-review.json`, `docs/fw-dspm-006-integrity.json`.
 
 ### FW-ASM-001 — External attack-surface ownership and bounded route
 - Requirement: FW-ASM canonical ownership inventory
