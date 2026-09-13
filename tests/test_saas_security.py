@@ -68,6 +68,8 @@ def test_saas_observation_evidence_failure_denies_output():
     (["UNSAFE_THIRD_PARTY_APP"], "MEDIUM"),
     (["RISKY_OAUTH_CONSENT", "EXCESSIVE_PRIVILEGE"], "HIGH"),
     (["AI_APP_DATA_ACCESS", "PUBLIC_SHARE"], "HIGH"),
+    (["SUSPICIOUS_SIGN_IN", "EXCESSIVE_PRIVILEGE"], "HIGH"),
+    (["SUSPICIOUS_SIGN_IN", "UNSAFE_THIRD_PARTY_APP"], "MEDIUM"),
 ])
 def test_saas_classifier_is_exact_deterministic_and_warn_only(indicators, confidence):
     evidence = []
@@ -96,6 +98,12 @@ def test_saas_classifier_revalidates_tenant_authority_shape_and_evidence():
         classify_saas_observation(replace(observation, action="DISABLE_APP"), tenant_id="tenant-a", audit=lambda *_args: None)
     with pytest.raises(SaaSObservationDenied, match="OBSERVATION_INVALID"):
         classify_saas_observation(replace(observation, related_indicators=("UNKNOWN",)), tenant_id="tenant-a", audit=lambda *_args: None)
+    for indicators in ((), tuple("DORMANT_ACCOUNT" for _ in range(17))):
+        with pytest.raises(SaaSObservationDenied, match="OBSERVATION_INVALID"):
+            classify_saas_observation(
+                replace(observation, related_indicators=indicators),
+                tenant_id="tenant-a", audit=lambda *_args: None,
+            )
     with pytest.raises(SaaSObservationDenied, match="OBSERVATION_INVALID"):
         classify_saas_observation(replace(observation, observed_at_epoch=True), tenant_id="tenant-a", audit=lambda *_args: None)
     with pytest.raises(SaaSObservationDenied, match="EVIDENCE_WRITE_FAILED"):

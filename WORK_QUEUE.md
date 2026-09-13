@@ -22,7 +22,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-SAAS-003 — Deterministic SaaS posture and threat classification
 - Requirement: FW-SAAS exact indicator evaluation
-- State: REVIEW
+- State: REPAIR
 - Priority: P0
 - Dependencies: FW-SAAS-002
 - Approval: Jeff authorized the ordered FW-SAAS phase using small bounded candidates.
