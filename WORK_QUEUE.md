@@ -1710,7 +1710,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FWQ-0081 — Allowlisted sanitized public-export candidate
 - Requirement: Phase 5 clean public SDK/demo candidate construction
-- State: READY
+- State: DONE
 - Priority: P0
 - Dependencies: FWQ-0080
 - Approval: Jeff approved the public assurance plan and identifier stripping. This task may create only a local disposable candidate; publication and visibility changes remain disabled.
@@ -1727,6 +1727,28 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - create no Git remote, public repository, license decision, entitlement/billing path, credential, network call, deployment, or authority.
 - Expected validation: one focused Linux proof, exact independent read-only review, then one full suite and Product Integrity Gate after approval.
 - Security considerations: the candidate remains local and disposable; a later release controller and explicit operator approval must independently establish a new single-commit repository and any visibility change.
+- Completion evidence: exact final candidate `5eed7726651a66931ffdaa2bc0f2cb293b65d20f`. Two fresh AnythingLLM/Qwen component reviews `phase2a-c07dc39551cd4b59dbae3212` and `phase2a-459607c3ff04a0ce5d0efd0f` bound to that same full SHA inspected the complete final policy/admission/helpers and builder/sanitizer/cleanup/tests in bounded source chunks; both returned APPROVE/LOW with no blockers or missing tests. Focused 41, full 2199/1, and Product Integrity hard checks/15 integrity/41 export proofs passed. PUBLIC_SDK contains only standalone add-on SDK documentation/schema; SOURCE_AVAILABLE_DEMO contains the Mission Control frontend and deterministic Demo provider. Both are exact allowlists, private-Core-free, identifier-scanned, history-free local disposable candidates. No Git repository/remote, license, public visibility, network, credential, billing, deployment, or authority was created.
+
+### FWQ-0082 — Public-candidate dependency provenance and SBOM proof
+- Requirement: Phase 5 dependency, supply-chain, and release provenance
+- State: READY
+- Priority: P0
+- Dependencies: FWQ-0081
+- Approval: Jeff approved the public assurance plan. Offline provenance and SBOM candidate generation is authorized; license selection and publication remain disabled.
+- Description: Prove the exact sanitized SDK/demo candidate dependency closure and generate bounded machine-readable provenance/SBOM candidates without making a license or production claim.
+- Target path: swarm/phase5_release_provenance.py
+- Allowed paths: swarm/phase5_release_provenance.py, config/phase5-release-provenance.yaml, schemas/phase5-release-provenance.schema.json, tests/test_phase5_release_provenance.py, docs/phase5-release-readiness.md, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python3 -m pytest -q tests/test_phase5_release_provenance.py tests/test_phase5_release_candidate.py
+- Acceptance criteria:
+  - consume only an exact FWQ-0081 candidate manifest whose source commit, track, policy hash, file paths, sizes, and digests validate;
+  - deterministically classify every shipped code import/reference as standard-library, local included file, declared third-party component, or denied unresolved dependency;
+  - reject undeclared, ranged, mutable, remote, URL-loaded, private-Core, cross-track, unlicensed/unknown-origin, duplicate, tampered, excessive, or secret-bearing dependency facts;
+  - emit bounded SPDX-compatible or equivalent candidate metadata with publication DISABLED, license fields NOASSERTION while legal decisions remain unselected, exact file/component digests, provenance source, and no personal/cloud/operational identifiers;
+  - prove the standalone PUBLIC_SDK and SOURCE_AVAILABLE_DEMO dependency closure offline, with no package installation, registry lookup, network/provider call, credential, billing, Git remote, publication, deployment, or authority;
+  - keep legal, chain-of-title, trademark/media, dependency-review, and Customer Root release gates pending and fail closed if any output implies clearance or production readiness.
+- Expected validation: one focused Linux proof, exact independent read-only review, then one full suite and Product Integrity Gate after approval.
+- Security considerations: SBOM/provenance output is evidence for a future release decision only; it cannot select a license, waive third-party obligations, publish, deploy, or authorize access.
+
 
 ### FW-API-001 — Canonical tenant-bound read-only request admission
 - Requirement: FW-API versioned least-privilege API/SDK contract
