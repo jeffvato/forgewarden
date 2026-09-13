@@ -11,6 +11,9 @@ import json
 import re
 from typing import Any, Callable, Mapping
 
+from .harness_models import ApprovedModelCandidate
+from .harness_risk import AssuranceTier
+
 
 MAX_PROFILE_BYTES = 16 * 1024
 _FIELDS = frozenset({
@@ -61,6 +64,28 @@ class HighAssuranceAuthorizationProfile:
     source_trust: str = "CALLER_SUPPLIED_UNTRUSTED"
     mode: str = "DRY_RUN"
     deployment: str = "DISABLED"
+    authority_granted: bool = False
+
+
+@dataclass(frozen=True)
+class HighAssuranceModelAdmission:
+    profile_id: str
+    tenant_id: str
+    security_boundary: str
+    candidate_id: str
+    provider: str
+    model_id: str
+    environment: str
+    data_classification: str
+    required_assurance_tier: str
+    candidate_assurance_tier: str
+    authorization_state: str
+    profile_evidence_ref: str
+    registry_evidence_ref: str
+    disposition: str = "METADATA_ADMITTED"
+    mode: str = "DRY_RUN"
+    deployment: str = "DISABLED"
+    invocation_authorized: bool = False
     authority_granted: bool = False
 
 
@@ -155,4 +180,85 @@ def normalize_high_assurance_profile(
         "1", profile_id, tenant_id, boundary, environment, classes, tier,
         auth_state, ato, fedramp, impact, sovereign, offline, start, end,
         evidence_ref,
+    )
+
+
+def admit_high_assurance_model(
+    profile: HighAssuranceAuthorizationProfile,
+    candidate: ApprovedModelCandidate,
+    *,
+    tenant_id: str,
+    security_boundary: str,
+    environment: str,
+    data_classification: str,
+    now_epoch: int,
+    audit: Callable[[str, dict[str, Any]], None],
+) -> HighAssuranceModelAdmission:
+    """Compose an exact profile and registry candidate without invoking a model."""
+    if (
+        not isinstance(profile, HighAssuranceAuthorizationProfile)
+        or not isinstance(candidate, ApprovedModelCandidate)
+        or not callable(audit)
+    ):
+        raise HighAssuranceProfileDenied("MODEL_ADMISSION_INVALID")
+    if (
+        profile.source_trust != "CALLER_SUPPLIED_UNTRUSTED"
+        or profile.mode != "DRY_RUN" or profile.deployment != "DISABLED"
+        or profile.authority_granted is not False
+    ):
+        raise HighAssuranceProfileDenied("PROFILE_AUTHORITY_INVALID")
+    if not isinstance(tenant_id, str) or not _TENANT.fullmatch(tenant_id):
+        raise HighAssuranceProfileDenied("TENANT_INVALID")
+    if profile.tenant_id != tenant_id or candidate.tenant_id != tenant_id:
+        raise HighAssuranceProfileDenied("TENANT_MISMATCH")
+    expected_boundary = _tenant_ref(
+        security_boundary, _BOUNDARY, tenant_id, "SECURITY_BOUNDARY_INVALID",
+    )
+    if profile.security_boundary != expected_boundary:
+        raise HighAssuranceProfileDenied("SECURITY_BOUNDARY_MISMATCH")
+    if environment != profile.environment or candidate.environment.upper() != environment:
+        raise HighAssuranceProfileDenied("ENVIRONMENT_MISMATCH")
+    if (
+        not isinstance(data_classification, str)
+        or data_classification not in profile.data_classifications
+        or data_classification not in candidate.allowed_data_classifications
+    ):
+        raise HighAssuranceProfileDenied("DATA_CLASSIFICATION_MISMATCH")
+    if (
+        not isinstance(now_epoch, int) or isinstance(now_epoch, bool)
+        or not profile.valid_from_epoch <= now_epoch < profile.valid_until_epoch
+    ):
+        raise HighAssuranceProfileDenied("PROFILE_STALE")
+    if profile.authorization_state != "EVIDENCE_BOUND" or profile.ato_reference is None:
+        raise HighAssuranceProfileDenied("PROFILE_NOT_AUTHORIZED")
+    required_tier = AssuranceTier[profile.minimum_assurance_tier]
+    if candidate.assurance_tier < required_tier:
+        raise HighAssuranceProfileDenied("ASSURANCE_DOWNGRADE_DENIED")
+    if not candidate.approved or not candidate.available:
+        raise HighAssuranceProfileDenied("MODEL_NOT_APPROVED_OR_AVAILABLE")
+    try:
+        audit("high_assurance_model_admitted", {
+            "profile_id": profile.profile_id, "tenant_id": tenant_id,
+            "security_boundary": expected_boundary,
+            "candidate_id": candidate.candidate_id,
+            "provider": candidate.provider, "model_id": candidate.model_id,
+            "environment": environment,
+            "data_classification": data_classification,
+            "required_assurance_tier": required_tier.name,
+            "candidate_assurance_tier": candidate.assurance_tier.name,
+            "authorization_state": profile.authorization_state,
+            "profile_evidence_ref": profile.evidence_ref,
+            "registry_evidence_ref": candidate.registry_evidence_reference,
+            "mode": "DRY_RUN", "deployment": "DISABLED",
+            "invocation_authorized": False, "authority_granted": False,
+            "opaque_router_consulted": False,
+        })
+    except Exception as exc:
+        raise HighAssuranceProfileDenied("EVIDENCE_WRITE_FAILED") from exc
+    return HighAssuranceModelAdmission(
+        profile.profile_id, tenant_id, expected_boundary, candidate.candidate_id,
+        candidate.provider, candidate.model_id, environment, data_classification,
+        required_tier.name, candidate.assurance_tier.name,
+        profile.authorization_state, profile.evidence_ref,
+        candidate.registry_evidence_reference,
     )

@@ -1,8 +1,11 @@
-from dataclasses import FrozenInstanceError
+from dataclasses import FrozenInstanceError, replace
 
 import pytest
 
-from swarm.high_assurance import HighAssuranceProfileDenied, normalize_high_assurance_profile
+from swarm.high_assurance import HighAssuranceProfileDenied, admit_high_assurance_model, normalize_high_assurance_profile
+from swarm.harness_models import ApprovedModelCandidate
+from swarm.harness_risk import AssuranceTier
+from swarm.harness_worker import WorkerRole
 
 
 def profile(**changes):
@@ -87,3 +90,71 @@ def test_profile_denies_secret_material_non_json_oversize_and_evidence_failure()
 def test_profile_denies_invalid_expected_boundary(tenant_id, now_epoch):
     with pytest.raises(HighAssuranceProfileDenied):
         normalize_high_assurance_profile(profile(), tenant_id=tenant_id, now_epoch=now_epoch, audit=lambda *_: None)
+
+
+def admitted_profile(**changes):
+    return normalize_high_assurance_profile(profile(**changes), tenant_id="tenant-a", now_epoch=150, audit=lambda *_: None)
+
+
+def candidate(**changes):
+    values = {
+        "candidate_id": "approved-reviewer", "tenant_id": "tenant-a",
+        "provider": "approved-provider", "model_id": "approved-model",
+        "environment": "government", "assurance_tier": AssuranceTier.T3,
+        "allowed_roles": (WorkerRole.READ_ONLY_REVIEWER,),
+        "allowed_data_classifications": ("CONFIDENTIAL", "RESTRICTED"),
+        "allowed_tools": ("source.read",), "estimated_cost_microunits": 10,
+        "registry_evidence_reference": "fw-evid/tenant-a/model/approved-reviewer",
+        "approved": True, "available": True,
+    }
+    values.update(changes)
+    return ApprovedModelCandidate(**values)
+
+
+def admission(profile_value=None, candidate_value=None, **changes):
+    arguments = {
+        "tenant_id": "tenant-a", "security_boundary": "fw-boundary/tenant-a/government",
+        "environment": "GOVERNMENT", "data_classification": "RESTRICTED",
+        "now_epoch": 150, "audit": lambda *_: None,
+    }
+    arguments.update(changes)
+    return admit_high_assurance_model(profile_value or admitted_profile(), candidate_value or candidate(), **arguments)
+
+
+def test_exact_profile_and_registry_candidate_admit_metadata_without_invocation():
+    evidence = []
+    result = admission(audit=lambda *args: evidence.append(args))
+    assert result.required_assurance_tier == "T3" and result.candidate_assurance_tier == "T3"
+    assert result.disposition == "METADATA_ADMITTED"
+    assert result.mode == "DRY_RUN" and result.deployment == "DISABLED"
+    assert result.invocation_authorized is False and result.authority_granted is False
+    assert evidence[0][1]["opaque_router_consulted"] is False
+    with pytest.raises(FrozenInstanceError):
+        result.invocation_authorized = True
+
+
+@pytest.mark.parametrize("profile_changes,candidate_changes,call_changes,reason", [
+    ({}, {"tenant_id": "tenant-b"}, {}, "TENANT_MISMATCH"),
+    ({}, {}, {"tenant_id": "tenant-b"}, "TENANT_MISMATCH"),
+    ({}, {}, {"security_boundary": "fw-boundary/tenant-a/other"}, "SECURITY_BOUNDARY_MISMATCH"),
+    ({}, {"environment": "commercial"}, {}, "ENVIRONMENT_MISMATCH"),
+    ({}, {}, {"environment": "COMMERCIAL"}, "ENVIRONMENT_MISMATCH"),
+    ({}, {"allowed_data_classifications": ("CONFIDENTIAL",)}, {}, "DATA_CLASSIFICATION_MISMATCH"),
+    ({}, {}, {"data_classification": "CLASSIFIED"}, "DATA_CLASSIFICATION_MISMATCH"),
+    ({"minimum_assurance_tier": "T4"}, {}, {}, "ASSURANCE_DOWNGRADE_DENIED"),
+    ({}, {"approved": False}, {}, "MODEL_NOT_APPROVED_OR_AVAILABLE"),
+    ({}, {"available": False}, {}, "MODEL_NOT_APPROVED_OR_AVAILABLE"),
+    ({"authorization_state": "PENDING", "ato_reference": None, "fedramp_state": "IN_PROCESS", "dod_impact_level": "NOT_APPLICABLE"}, {}, {}, "PROFILE_NOT_AUTHORIZED"),
+    ({}, {}, {"now_epoch": 200}, "PROFILE_STALE"),
+])
+def test_model_admission_denies_mismatch_downgrade_stale_or_unapproved(profile_changes, candidate_changes, call_changes, reason):
+    with pytest.raises(HighAssuranceProfileDenied, match=reason):
+        admission(admitted_profile(**profile_changes), candidate(**candidate_changes), **call_changes)
+
+
+def test_model_admission_denies_forged_profile_authority_and_evidence_failure():
+    forged = replace(admitted_profile(), authority_granted=True)
+    with pytest.raises(HighAssuranceProfileDenied, match="PROFILE_AUTHORITY_INVALID"):
+        admission(forged)
+    with pytest.raises(HighAssuranceProfileDenied, match="EVIDENCE_WRITE_FAILED"):
+        admission(audit=lambda *_: (_ for _ in ()).throw(OSError("offline")))
