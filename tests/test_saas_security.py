@@ -242,7 +242,9 @@ def test_saas_response_proposal_consumes_exact_ticket_and_remains_inert():
 @pytest.mark.parametrize("overrides,reason", [
     ({"kill_switch_state": "CLEAR"}, "KILL_SWITCH_NOT_ENGAGED"),
     ({"target_ref": "fw-resource/tenant-b/app-1"}, "PROPOSAL_REF_INVALID"),
+    ({"target_ref": "resource-without-canonical-prefix"}, "PROPOSAL_REF_INVALID"),
     ({"policy_decision_ref": "fw-policy/tenant-b/decision-1"}, "PROPOSAL_REF_INVALID"),
+    ({"policy_decision_ref": "policy-without-canonical-prefix"}, "PROPOSAL_REF_INVALID"),
     ({"subject_agent_id": "agent-2"}, "ACTION_TICKET_DENIED"),
     ({"policy_version": "policy-v2"}, "ACTION_TICKET_DENIED"),
 ])
@@ -252,10 +254,14 @@ def test_saas_response_proposal_rejects_authority_and_tenant_mismatch(overrides,
 
 
 def test_saas_response_proposal_requires_high_confidence_and_evidence():
-    with pytest.raises(SaaSObservationDenied, match="PROPOSAL_SOURCE_INVALID"):
-        propose_saas_app_disable(
-            replace(_correlation(), confidence="MEDIUM"), **_proposal_args(),
-        )
+    for changes in (
+        {"confidence": "MEDIUM"}, {"trust": "TRUSTED_DATA"},
+        {"mode": "EXECUTE"}, {"action": "REMEDIATE"},
+    ):
+        with pytest.raises(SaaSObservationDenied, match="PROPOSAL_SOURCE_INVALID"):
+            propose_saas_app_disable(
+                replace(_correlation(), **changes), **_proposal_args(),
+            )
     with pytest.raises(SaaSObservationDenied, match="EVIDENCE_WRITE_FAILED"):
         propose_saas_app_disable(
             _correlation(), **_proposal_args(
