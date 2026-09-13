@@ -61,7 +61,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FW-GOV-004 — Sovereign/offline and approved-equivalent failover
 - Requirement: FW-GOV provider-failure and environment continuity policy
-- State: READY
+- State: DONE
 - Priority: P0
 - Dependencies: FW-GOV-003
 - Approval: Jeff authorized the ordered FW-GOV phase through the continuing heartbeat.
@@ -70,10 +70,11 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 - Allowed paths: swarm/high_assurance.py, tests/test_high_assurance.py, WORK_QUEUE.md, SWARM_STATUS.md
 - Test command: python3 -m pytest -q tests/test_high_assurance.py tests/test_harness_models.py
 - Acceptance criteria: provider/model/environment failure cannot downgrade assurance; offline-required profiles deny remote candidates; no eligible equivalent returns the canonical fail-closed reason without invocation.
+- Completion evidence: exact candidate `49ab75cf40281e9e635427089fa02216551e64d2`; focused validation passed 100. AnythingLLM was unavailable, then explicitly authorized exact Claude fallback job `phase2a-49ab75cf40281e9e63542708` returned APPROVE/LOW with no blockers or missing tests. Full validation and Product Integrity each passed 2080 tests with 1 skipped; focused Golden Path passed 100. Every hard integrity check passed, with YELLOW only for pre-existing `tzdata`. Evidence: `docs/fw-gov-004-qwen-review.json`, `docs/fw-gov-004-claude-review.json`, `docs/fw-gov-004-integrity.json`.
 
 ### FW-GOV-005 — Evidence and Mission Control projection
 - Requirement: FW-GOV canonical chronology and operator visibility
-- State: BLOCKED
+- State: READY
 - Priority: P0
 - Dependencies: FW-GOV-004, FW-EVID
 - Approval: Jeff authorized the ordered FW-GOV phase through the continuing heartbeat.

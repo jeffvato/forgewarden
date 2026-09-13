@@ -1,0 +1,37 @@
+{
+  "adjudication": null,
+  "candidate_commit": "49ab75cf40281e9e635427089fa02216551e64d2",
+  "deployment": "DISABLED",
+  "job_id": "phase2a-49ab75cf40281e9e63542708",
+  "kill_switch": "ENGAGED",
+  "mutation_allowed": false,
+  "reviews": [
+    {
+      "provider": "CLAUDE",
+      "result": {
+        "blocking_findings": [],
+        "job_id": "phase2a-49ab75cf40281e9e63542708",
+        "non_blocking_notes": [
+          "Patch adds two new functions and supporting dataclasses with comprehensive validation",
+          "All validation is deterministic with fail-closed semantics",
+          "Immutability enforced via frozen dataclasses with mode=DRY_RUN, deployment=DISABLED, invocation_authorized=False throughout",
+          "Tenant-bound validation applied consistently to all identifiers and evidence references",
+          "Offline profile environment enforcement prevents remote candidate selection",
+          "Evidence reference validation applied to both failure metadata and candidate equivalents",
+          "Audit logging captures full decision chain without side effects",
+          "Test coverage includes malformation, cross-tenant, staleness, downgrade, unapproved, and availability denial scenarios",
+          "Selection algorithm correctly implements same-or-higher assurance tier filtering with lowest-cost tie-break",
+          "No provider retries, no invocation authority, no deployment enabled in any path"
+        ],
+        "proposed_rules": [],
+        "reasoning_summary": "Commit 49ab75cf implements approved failover candidate selection within bounded scope: normalize_high_assurance_failure() validates failure metadata as CALLER_SUPPLIED_UNTRUSTED with evidence-first design (audit before return); select_high_assurance_failover() filters candidates by approval, availability, tenant, environment, assurance tier (same-or-higher), data classification, and evidence reference before selecting minimum cost. Both functions operate in immutable DRY_RUN mode with invocation and deployment disabled. Validation is deterministic: explicit type checks reject non-int/bool, regex patterns validate tenant-bound identifiers, set membership checks enforce allowed values, range checks verify timestamps within profile validity and not future, environment matching prevents remote candidate selection for offline profiles. Failure cases properly raise canonical NO_APPROVED_MODEL_AVAILABLE_FOR_REQUIRED_ASSURANCE_LEVEL when eligible set is empty. Tests confirm immutability, evidence-first behavior, cross-tenant rejection, staleness detection, downgrade rejection, unapproved/unavailable rejection, authority validation, and offline profile handling. No side effects beyond audit calls. Patch is narrow, focused, and adds no logic to existing functions. Deterministic checks pass. No blocking findings.",
+        "reviewed_commit": "49ab75cf40281e9e635427089fa02216551e64d2",
+        "risk": "LOW",
+        "tests_missing": [],
+        "verdict": "APPROVE"
+      },
+      "state": "APPROVED"
+    }
+  ],
+  "state": "APPROVED"
+}
