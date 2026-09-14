@@ -3244,6 +3244,23 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - preserve DRY_RUN, DETECT_ONLY, activation DISABLED, service installation NOT_AUTHORIZED, and all no-authority boundaries.
 - Completion evidence: exact candidate `1daf3512d69b4aef3a7e1c59f95b3fe75fc36c62`; focused 8 passed; AnythingLLM outage followed by exact Claude fallback review job `phase2a-1daf3512d69b4aef3a7e1c59` APPROVE/LOW with no blockers or missing tests; full 307 passed/1 skipped and Product Integrity passed all hard checks and Golden Path. No live installation, service launch, endpoint, blocking, quarantine, credential, network, deployment, remediation, recovery, or response authority was added.
 
+### FWQ-0092 — ForgeWarden Sentinel installer-artifact projection
+- Requirement: FW-AV packaging handoff boundary
+- State: DONE
+- Priority: P1
+- Dependencies: FWQ-0091
+- Approval: Jeff authorized continuing Sentinel while preserving activation gates.
+- Description: Provide a deterministic, metadata-only projection that binds a platform-specific staged Sentinel artifact name to the validated packaging-manifest digest.
+- Target path: swarm/av_service.py
+- Allowed paths: swarm/av_service.py, tests/test_av_service.py
+- Test command: python3 -m pytest -q tests/test_av_service.py
+- Acceptance criteria:
+  - artifact name is derived only from the validated platform and carries an explicit dry-run marker;
+  - projection digest equals the canonical packaging-manifest digest;
+  - activation remains DISABLED, service installation remains NOT_AUTHORIZED, and deployment remains DISABLED;
+  - method creates no files, launches no service, and adds no endpoint, process, filesystem, network, credential, blocking, quarantine, remediation, recovery, or response authority.
+- Completion evidence: exact candidate `fd3b2f5b9aafa201242ac0b6120b8e20aa7409ae`; focused 8 passed; AnythingLLM outage followed by exact Claude fallback review job `phase2a-fd3b2f5b9aafa201242ac0b6` APPROVE/LOW with no blockers or missing tests; full 307 passed/1 skipped and Product Integrity passed all hard checks and Golden Path. No artifact creation, installation, service launch, endpoint, blocking, quarantine, credential, network, deployment, remediation, recovery, or response authority was added.
+
 FWQ-0019 through FWQ-0062 were repetitive successor/population placeholders. They are retired rather than treated as executable work. FWQ-0008 already has implementation and follow-up hardening; FWQ-0009 has recorded acceptance and unchanged source/tests. Neither is a new implementation task. FWQ-0017/0018 successor references are historical and do not authorize recreating FWQ-0019. The completion audit supersedes stale next-task prose.
 ## Future queue population
 
