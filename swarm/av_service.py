@@ -143,6 +143,30 @@ class AVProtectionService:
             audit=audit,
         )
 
+    def activation_readiness_gate(self, *, rollback_checkpoint: str, approval_reference: str) -> dict[str, Any]:
+        """Evaluate activation prerequisites without granting activation authority."""
+        if not isinstance(rollback_checkpoint, str) or not rollback_checkpoint.strip():
+            raise AVServiceContractError("rollback checkpoint is required")
+        if not isinstance(approval_reference, str) or not approval_reference.strip():
+            raise AVServiceContractError("approval reference is required")
+        service = self.service_readiness_projection()
+        response = self.response_contract_projection()
+        return {
+            "decision": "NOT_READY",
+            "reason": "ACTIVATION_REQUIRES_SEPARATE_AUTHORIZATION",
+            "manifest_digest": self.packaging_manifest_digest(),
+            "rollback_checkpoint": rollback_checkpoint.strip(),
+            "approval_reference": approval_reference.strip(),
+            "service_installation": service["installation"],
+            "launch": service["launch"],
+            "blocking": response["blocking"],
+            "quarantine": response["quarantine"],
+            "kill_switch": response["kill_switch"],
+            "deployment": response["deployment"],
+            "mode": response["mode"],
+            "action": response["action"],
+        }
+
     def release_readiness_projection(self) -> dict[str, Any]:
         """Return explicit Sentinel release status without implying production readiness."""
         return {

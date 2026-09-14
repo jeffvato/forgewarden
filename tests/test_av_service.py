@@ -102,6 +102,22 @@ def test_endpoint_fixture_admission_fails_closed_on_tamper_and_replay():
     assert service.status()["metrics"].rejected_records == 2
 
 
+def test_activation_readiness_gate_fails_closed_without_authority():
+    service = AVProtectionService(profile(), DryRunSensorPipeline(NormalizedEventStore(lambda *_: None)))
+    gate = service.activation_readiness_gate(rollback_checkpoint="REC-001", approval_reference="APR-001")
+    assert gate["decision"] == "NOT_READY"
+    assert gate["reason"] == "ACTIVATION_REQUIRES_SEPARATE_AUTHORIZATION"
+    assert gate["service_installation"] == "NOT_AUTHORIZED"
+    assert gate["launch"] == "NOT_AUTHORIZED"
+    assert gate["blocking"] == "POLICY_GATE_REQUIRED"
+    assert gate["quarantine"] == "PROPOSAL_ONLY"
+    assert gate["kill_switch"] == "ENGAGED"
+    with pytest.raises(AVServiceContractError, match="rollback checkpoint"):
+        service.activation_readiness_gate(rollback_checkpoint="", approval_reference="APR-001")
+    with pytest.raises(AVServiceContractError, match="approval reference"):
+        service.activation_readiness_gate(rollback_checkpoint="REC-001", approval_reference="")
+
+
 def test_release_readiness_projection_is_honest_and_activation_disabled():
     service = AVProtectionService(profile(), DryRunSensorPipeline(NormalizedEventStore(lambda *_: None)))
     projection = service.release_readiness_projection()
