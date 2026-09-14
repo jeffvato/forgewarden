@@ -85,6 +85,19 @@ class AVProtectionService:
         except SensorAdapterDenied:
             raise
 
+    def ingest_batch(self, records: list[Mapping[str, Any]], *, source: str, now_epoch: int):
+        """Ingest one bounded caller-supplied batch through the canonical pipeline."""
+        try:
+            return self._pipeline.ingest_batch(
+                records,
+                source=source,
+                tenant_id=self.profile.tenant_id,
+                device_id=self.profile.device_id,
+                now_epoch=now_epoch,
+            )
+        except SensorAdapterDenied:
+            raise
+
     def status(self) -> dict[str, Any]:
         metrics = self._pipeline.metrics()
         return {

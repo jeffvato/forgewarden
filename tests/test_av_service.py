@@ -44,6 +44,24 @@ def test_service_reuses_canonical_fixture_pipeline_and_exposes_status_only():
     assert status["metrics"].accepted_records == 1
 
 
+def test_service_ingest_batch_reuses_bounded_pipeline_and_tenant_binding():
+    service = AVProtectionService(profile(), DryRunSensorPipeline(NormalizedEventStore(lambda *_: None)))
+    records = [
+        {
+            "event_id": f"batch-{index}", "tenant_id": "tenant-a", "device_id": "device-a",
+            "observed_at_epoch": 10 + index, "event_type": "FILE_LIFECYCLE", "source": "WINDOWS_SENSOR",
+            "metadata": {"operation": "CREATE"}, "process_ancestry": [],
+            "related_indicators": [], "evidence_ref": f"fw-evid/tenant-a/batch-{index}",
+        }
+        for index in range(2)
+    ]
+    observations = service.ingest_batch(records, source="WINDOWS_SENSOR", now_epoch=20)
+    assert len(observations) == 2
+    assert service.status()["metrics"].accepted_batches == 1
+    records[1]["tenant_id"] = "tenant-b"
+    with pytest.raises(Exception):
+        service.ingest_batch(records, source="WINDOWS_SENSOR", now_epoch=20)
+
 def test_local_user_mode_allows_preferences_but_never_service_stop():
     service = AVProtectionService(profile(enterprise=False), DryRunSensorPipeline(NormalizedEventStore(lambda *_: None)))
     status = service.status()
