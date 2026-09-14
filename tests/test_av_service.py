@@ -102,6 +102,19 @@ def test_endpoint_fixture_admission_fails_closed_on_tamper_and_replay():
     assert service.status()["metrics"].rejected_records == 2
 
 
+def test_release_readiness_projection_is_honest_and_activation_disabled():
+    service = AVProtectionService(profile(), DryRunSensorPipeline(NormalizedEventStore(lambda *_: None)))
+    projection = service.release_readiness_projection()
+    assert projection["implementation"] == "TESTED"
+    assert projection["security_validation"] == "FIXTURE_ONLY"
+    assert projection["production_readiness"] == "NOT_READY"
+    assert projection["live_sensors"] == "DISABLED"
+    assert projection["automatic_blocking"] == "DISABLED"
+    assert projection["quarantine_execution"] == "DISABLED"
+    assert projection["deployment"] == "DISABLED"
+    assert projection["kill_switch"] == "ENGAGED"
+
+
 def test_mission_control_projection_is_labeled_read_only_and_safe():
     service = AVProtectionService(profile(), DryRunSensorPipeline(NormalizedEventStore(lambda *_: None)))
     projection = service.mission_control_projection()

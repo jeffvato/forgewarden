@@ -143,6 +143,23 @@ class AVProtectionService:
             audit=audit,
         )
 
+    def release_readiness_projection(self) -> dict[str, Any]:
+        """Return explicit Sentinel release status without implying production readiness."""
+        return {
+            "component": "ForgeWarden Sentinel",
+            "implementation": "TESTED",
+            "security_validation": "FIXTURE_ONLY",
+            "production_readiness": "NOT_READY",
+            "live_sensors": "DISABLED",
+            "service_installation": "NOT_AUTHORIZED",
+            "automatic_blocking": "DISABLED",
+            "quarantine_execution": "DISABLED",
+            "deployment": "DISABLED",
+            "kill_switch": "ENGAGED",
+            "mode": "DRY_RUN",
+            "action": "DETECT_ONLY",
+        }
+
     def mission_control_projection(self) -> dict[str, Any]:
         """Return a read-only, clearly labeled Sentinel operator projection."""
         status = self.status()
