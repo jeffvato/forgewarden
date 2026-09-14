@@ -1,5 +1,7 @@
 # ForgeWarden Swarm Status
 
+- 2026-09-14: FWQ-0112 reviewer fallback failure diagnostics accepted at exact candidate 3118a3e442693b61ed10a9e1bc0416cad3969c2d. The exact review runner now records stable redacted reason codes for exact-result/schema invalidity, rate limiting, missing configuration, transport failure, and unknown provider failure without retaining provider prose or secrets; invalid/unavailable results remain non-approving and fallback order is unchanged. Focused 21 passed; AnythingLLM/Qwen exact review returned APPROVE/LOW with no blockers or missing tests. Full suite 307 passed/1 skipped and Product Integrity passed all hard checks, with only the pre-existing tzdata dependency YELLOW. Next bounded work remains FWQ-0103 Sentinel production-readiness projection; no activation is authorized.
+
 - 2026-09-14: FWQ-0111 full multi-provider reviewer fallback proof accepted at exact candidate cf83cf5cc133a8baf9c1da30ba5bde19e6de0841. The test exercises AnythingLLM/Qwen, Claude, OpenRouter, NVIDIA, and Azure in order under bounded sequential fallback and stops at the first valid approval without live calls. AnythingLLM/Qwen exact review returned APPROVE/LOW with no blockers or missing tests. Focused 17, full suite, and Product Integrity passed.
 
 

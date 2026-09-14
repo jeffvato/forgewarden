@@ -18,6 +18,18 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 
 ## Active queue
 
+### FWQ-0112 — Reviewer fallback failure diagnostics
+- Requirement: FW-HARNESS provider availability and exact-result diagnostics
+- State: DONE
+- Priority: P0
+- Dependencies: FWQ-0111
+- Approval: bounded reliability continuation under the active FW-HARNESS sequence.
+- Description: Classify read-only reviewer failures into stable redacted categories while preserving exact SHA/schema validation and fail-closed sequential fallback.
+- Target paths: swarm/review_runner.py, tests/test_review_runner.py
+- Acceptance criteria: exact-result/schema failures, rate limits, configuration failures, transport failures, and unknown provider failures are distinguishable without retaining provider prose or secrets; any unavailable or invalid result remains non-approving; fallback order and writer/reviewer separation remain unchanged.
+- Completion evidence: exact candidate `3118a3e442693b61ed10a9e1bc0416cad3969c2d`; focused review-runner validation 21 passed; AnythingLLM/Qwen exact review returned APPROVE/LOW with no blockers or missing tests; full suite 307 passed/1 skipped; Product Integrity Gate passed all hard checks with existing `tzdata` dependency YELLOW only.
+
+
 Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical implementation is not new work. FWQ-0008 VALIDATED preserves a provenance caveat, not a request to rebuild or automatically repeat review. FWQ-0012–0016 are reconciled DONE from existing implementation and recorded proof.
 
 ### FW-GOV-001 — High-assurance ownership and bounded route
