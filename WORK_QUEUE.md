@@ -3441,7 +3441,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ### FWQ-0103 — Sentinel production activation readiness gate
 - Requirement: FW-AV production activation boundary
-- State: READY
+- State: DONE
 - Priority: P0
 - Dependencies: FWQ-0102, FW-ENDPOINT-05, FW-ROOT policy gate, FW-EVID lifecycle proof
 - Description: Validate the complete activation package and approval prerequisites for Sentinel without installing, launching, or enabling production endpoint enforcement.
@@ -3456,6 +3456,7 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - readiness output is deterministic, auditable, and does not install services, launch processes, access endpoints, credentials, network, or filesystem outside caller-supplied fixtures.
 - Required stop condition: stop before any service installation, launch, live sensor connection, automatic blocking, quarantine execution, deployment, or authority expansion.
 - Expected evidence: focused readiness and negative-path tests, exact reviewed commit, full suite and Product Integrity Gate after approval, and explicit NOT_READY/activation-disabled status until a later authorized execution task.
+- Completion evidence: reconciled by the accepted FWQ-0104 through FWQ-0110 readiness-gate implementation sequence. The canonical `AVProtectionService.activation_readiness_gate` now validates bounded rollback/approval references, optional canonical packaging-manifest integrity, tenant/device scope, service/response safety states, and returns deterministic `NOT_READY` without installation, launch, live sensors, blocking, quarantine, deployment, or authority. Focused readiness proofs, exact reviews, full-suite validation, and Product Integrity passed across the dependent checkpoints; Sentinel remains DRY_RUN/DETECT_ONLY with activation disabled.
 
 ### FWQ-0104 — Sentinel activation readiness gate evaluator
 - Requirement: FW-AV production activation boundary
