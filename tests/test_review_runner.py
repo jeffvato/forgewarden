@@ -220,6 +220,30 @@ def test_sequential_fallback_does_not_override_primary_rejection(repo_fixture: P
     assert result["state"] == "REVIEW_REQUIRED"
 
 
+def test_sequential_fallback_walks_full_approved_provider_chain(repo_fixture: Path):
+    sha = repo_fixture.joinpath(".candidate-sha").read_text().strip()
+    calls = []
+    def unavailable(name):
+        def runner(snapshot, job_id, commit, context):
+            calls.append(name)
+            raise RuntimeError(name + " unavailable")
+        return runner
+    def approved(snapshot, job_id, commit, context):
+        calls.append("AZURE")
+        return {"job_id": job_id, "reviewed_commit": commit, "verdict": "APPROVE", "risk": "LOW",
+                "blocking_findings": [], "non_blocking_notes": [], "tests_missing": [],
+                "reasoning_summary": "full-chain fallback approval", "proposed_rules": []}
+    result = run_review_cycle(
+        repo_fixture, sha, "phase2a-" + "f" * 24, "review",
+        anythingllm_runner=unavailable("ANYTHINGLLM"), claude_runner=unavailable("CLAUDE"),
+        openrouter_runner=unavailable("OPENROUTER"), nvidia_runner=unavailable("NVIDIA"),
+        azure_runner=approved, reviewers=("ANYTHINGLLM", "CLAUDE", "OPENROUTER", "NVIDIA", "AZURE"),
+        sequential_fallback=True,
+    )
+    assert calls == ["ANYTHINGLLM", "CLAUDE", "OPENROUTER", "NVIDIA", "AZURE"]
+    assert result["state"] == "APPROVED"
+
+
 def test_review_cycle_supports_explicit_claude_only_mode(repo_fixture: Path):
     sha = repo_fixture.joinpath(".candidate-sha").read_text().strip()
 
