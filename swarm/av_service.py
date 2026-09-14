@@ -158,3 +158,14 @@ class AVProtectionService:
         manifest = self.validate_packaging_manifest(self.packaging_manifest())
         encoded = json.dumps(manifest, sort_keys=True, separators=(",", ":")).encode("utf-8")
         return hashlib.sha256(encoded).hexdigest()
+
+    def installer_artifact_projection(self) -> dict[str, Any]:
+        """Describe a staged artifact binding without creating or installing it."""
+        manifest = self.validate_packaging_manifest(self.packaging_manifest())
+        return {
+            "artifact_name": f"forgewarden-sentinel-{manifest['platform'].lower()}-dry-run.manifest",
+            "manifest_digest": self.packaging_manifest_digest(),
+            "activation": manifest["activation"],
+            "service_installation": manifest["service_installation"],
+            "deployment": "DISABLED",
+        }

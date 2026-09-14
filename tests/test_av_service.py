@@ -89,6 +89,12 @@ def test_packaging_manifest_validation_rejects_tampering_and_accepts_exact_profi
     assert len(digest) == 64
     assert digest == service.packaging_manifest_digest()
     assert digest == "1665fe746aee77cd77b6c3a48eb4145ce69665cac095b866fcb1dc2b8e05b261"
+    projection = service.installer_artifact_projection()
+    assert projection["artifact_name"] == "forgewarden-sentinel-windows-dry-run.manifest"
+    assert projection["manifest_digest"] == digest
+    assert projection["activation"] == "DISABLED"
+    assert projection["service_installation"] == "NOT_AUTHORIZED"
+    assert projection["deployment"] == "DISABLED"
 
 
 def test_service_resource_limits_and_invalid_profile_fail_closed():
