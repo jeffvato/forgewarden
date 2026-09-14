@@ -1,6 +1,9 @@
+import hashlib
+
 import pytest
 
 from swarm.av_service import AVProtectionService, AVServiceContractError, AVServiceProfile
+from swarm.anti_malware import AcceptedCatalogScanner, ScanFinding
 from swarm.normalized_events import NormalizedEventStore
 from swarm.sensor_adapter import DryRunSensorPipeline
 
@@ -50,6 +53,35 @@ def test_service_scan_artifact_requires_canonical_scanner_and_audit():
         service.scan_artifact(object(), artifact_id="artifact-1", content=b"fixture", report_id="report-1", audit=lambda *_: None, now_epoch=10)
     with pytest.raises(AVServiceContractError, match="scanner is invalid"):
         service.scan_artifact(object(), artifact_id="artifact-1", content=b"fixture", report_id="report-1", audit=None, now_epoch=10)
+
+
+def test_service_scan_artifact_returns_canonical_dry_run_report_and_records_evidence():
+    service = AVProtectionService(profile(), DryRunSensorPipeline(NormalizedEventStore(lambda *_: None)))
+    scanner = object.__new__(AcceptedCatalogScanner)
+    content = b"fixture"
+    scanner.scan = lambda **kwargs: ScanFinding(
+        tenant_id=kwargs["tenant_id"], artifact_id=kwargs["artifact_id"],
+        sha256=hashlib.sha256(kwargs["content"]).hexdigest(), byte_count=len(kwargs["content"]),
+        status="CLEAN", signature_ids=(), content_indicator_ids=(), catalog_id="catalog",
+        catalog_version="1.0.0", catalog_snapshot_sha256="a" * 64, publishers=("FW Labs",),
+    )
+    events = []
+    report = service.scan_artifact(
+        scanner, artifact_id="artifact-1", content=content, report_id="report-1",
+        audit=lambda event, evidence: events.append((event, evidence)), now_epoch=10,
+    )
+    assert report.tenant_id == "tenant-a"
+    assert report.status == "CLEAN"
+    assert report.mode == "DRY_RUN"
+    assert report.action == "DETECT_ONLY"
+    assert events[0][0] == "anti_malware_scan_report_created"
+    assert events[0][1]["tenant_id"] == "tenant-a"
+
+    with pytest.raises(AVServiceContractError, match="audit sink is invalid"):
+        service.scan_artifact(
+            scanner, artifact_id="artifact-2", content=content, report_id="report-2",
+            audit=None, now_epoch=10,
+        )
 
 def test_service_readiness_projection_is_platform_bound_and_non_installing():
     windows = AVProtectionService(profile(), DryRunSensorPipeline(NormalizedEventStore(lambda *_: None)))
