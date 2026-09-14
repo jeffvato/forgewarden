@@ -158,6 +158,8 @@ def test_linux_pilot_readiness_is_metadata_only_and_fail_closed():
         AVProtectionService(profile(), DryRunSensorPipeline(NormalizedEventStore(lambda *_: None))).linux_pilot_readiness(pilot_id="pilot", rollback_checkpoint="REC")
     with pytest.raises(AVServiceContractError, match="pilot_id"):
         service.linux_pilot_readiness(pilot_id="pilot\nforged", rollback_checkpoint="REC")
+    with pytest.raises(AVServiceContractError, match="packaging manifest"):
+        service.linux_pilot_readiness(pilot_id="pilot-002", rollback_checkpoint="REC-002", manifest={"activation": "ENABLED"})
 
 
 def test_release_readiness_projection_is_honest_and_activation_disabled():
