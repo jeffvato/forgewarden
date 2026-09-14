@@ -174,7 +174,10 @@ class AVProtectionService:
         }
 
     def linux_pilot_package_readiness(self, package: Mapping[str, Any]) -> dict[str, Any]:
-        """Validate caller-supplied Linux pilot metadata without host access."""
+        """Validate caller-supplied Linux pilot metadata without host access.
+
+        This gate is intentionally non-authorizing: every result remains NOT_READY.
+        """
         if self.profile.platform != "LINUX":
             raise AVServiceContractError("Linux pilot requires a LINUX service profile")
         if not isinstance(package, Mapping):
