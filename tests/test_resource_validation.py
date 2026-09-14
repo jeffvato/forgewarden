@@ -14,3 +14,13 @@ def test_cross_platform_requires_exact_platform_coverage(budgets):
 def test_resource_limits_fail_closed(field,value):
     values=DEFAULT_BUDGETS[0].__dict__ | {field:value}
     with pytest.raises(ResourceValidationError): ResourceBudget(**values)
+
+def test_resource_budget_rejects_unsupported_platform_and_non_integer_values():
+    with pytest.raises(ResourceValidationError):
+        ResourceBudget("MACOS", 50, 1024, 900, 32, 2000)
+    with pytest.raises(ResourceValidationError):
+        ResourceBudget("WINDOWS", True, 1024, 900, 32, 2000)
+
+def test_cross_platform_rejects_non_budget_entries():
+    with pytest.raises(ResourceValidationError):
+        validate_cross_platform_budgets((DEFAULT_BUDGETS[0], object()))
