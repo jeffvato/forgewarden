@@ -3261,6 +3261,23 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - method creates no files, launches no service, and adds no endpoint, process, filesystem, network, credential, blocking, quarantine, remediation, recovery, or response authority.
 - Completion evidence: exact candidate `fd3b2f5b9aafa201242ac0b6120b8e20aa7409ae`; focused 8 passed; AnythingLLM outage followed by exact Claude fallback review job `phase2a-fd3b2f5b9aafa201242ac0b6` APPROVE/LOW with no blockers or missing tests; full 307 passed/1 skipped and Product Integrity passed all hard checks and Golden Path. No artifact creation, installation, service launch, endpoint, blocking, quarantine, credential, network, deployment, remediation, recovery, or response authority was added.
 
+### FWQ-0093 — AnythingLLM/Groq bounded reviewer output contract
+- Requirement: FW-HARNESS independent review reliability
+- State: DONE
+- Priority: P1
+- Dependencies: FWQ-0092
+- Approval: Jeff requested investigation of intermittent AnythingLLM failures before switching providers.
+- Description: Bound AnythingLLM/Qwen reviewer responses to compact JSON so Groq's configured output ceiling is respected while preserving exact-commit review and deterministic fallback.
+- Target path: swarm/anythingllm_adapter.py
+- Allowed paths: swarm/anythingllm_adapter.py, tests/test_anythingllm_adapter.py
+- Test command: python3 -m pytest -q tests/test_anythingllm_adapter.py
+- Acceptance criteria:
+  - reviewer prompt requires reasoning_summary under 120 words and total output under 700 tokens;
+  - regression asserts the bound is present in every bridge invocation;
+  - exact SHA/job/schema validation and read-only/no-authority boundaries remain unchanged;
+  - provider failure still fails closed and invokes configured Claude fallback without silent model substitution.
+- Completion evidence: exact candidate `bd6ac8c2aae6d7a723269314591ca83697fe3b09`; focused 12 passed; AnythingLLM unavailable and exact Claude fallback review job `phase2a-bd6ac8c2aae6d7a723269314` returned APPROVE/LOW with no blockers or missing tests; full 307 passed/1 skipped and Product Integrity passed all hard checks and Golden Path. Credential-free preflight returned READY and a live low-cost probe returned a valid schema response. No provider replacement, credential, tool, network, deployment, or authority change was made.
+
 FWQ-0019 through FWQ-0062 were repetitive successor/population placeholders. They are retired rather than treated as executable work. FWQ-0008 already has implementation and follow-up hardening; FWQ-0009 has recorded acceptance and unchanged source/tests. Neither is a new implementation task. FWQ-0017/0018 successor references are historical and do not authorize recreating FWQ-0019. The completion audit supersedes stale next-task prose.
 ## Future queue population
 
