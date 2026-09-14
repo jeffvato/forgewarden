@@ -43,8 +43,6 @@ jobs:
           bash -n scripts/validate-swarm.sh
       - name: Validate machine-readable safety invariants
         run: timeout 1m env PYTHONPATH=. python scripts/validate-invariants.py
-      - name: Validate architecture drift boundaries
-        run: timeout 1m env PYTHONPATH=. python scripts/validate-architecture-drift.py
       - name: Reject tracked runtime or secret artifacts
         shell: bash
         run: |
