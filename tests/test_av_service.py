@@ -52,6 +52,19 @@ def test_local_user_mode_allows_preferences_but_never_service_stop():
     assert status["local_policy_change_allowed"] is True
 
 
+def test_tray_projection_is_labeled_and_never_exposes_stop_or_execution_controls():
+    enterprise = AVProtectionService(profile(), DryRunSensorPipeline(NormalizedEventStore(lambda *_: None)))
+    local = AVProtectionService(profile(enterprise=False), DryRunSensorPipeline(NormalizedEventStore(lambda *_: None)))
+    assert enterprise.tray_projection()["product"] == "ForgeWarden Sentinel"
+    assert enterprise.tray_projection()["mode"] == "DEMO/DRY_RUN"
+    assert enterprise.tray_projection()["show_preferences"] is False
+    assert local.tray_projection()["show_preferences"] is True
+    for projection in (enterprise.tray_projection(), local.tray_projection()):
+        assert projection["show_stop_control"] is False
+        assert projection["show_quarantine_execution"] is False
+        assert projection["show_deployment_control"] is False
+
+
 def test_service_resource_limits_and_invalid_profile_fail_closed():
     with pytest.raises(AVServiceContractError, match="max_queue_events"):
         AVServiceProfile("tenant-a", "device-a", "LINUX", True, "STATUS_ONLY", max_queue_events=1025)

@@ -105,3 +105,20 @@ class AVProtectionService:
             },
             "metrics": metrics,
         }
+
+    def tray_projection(self) -> dict[str, Any]:
+        """Return a labeled tray view with policy-limited controls."""
+        status = self.status()
+        return {
+            "product": "ForgeWarden Sentinel",
+            "mode": "DEMO/DRY_RUN",
+            "tenant_id": status["tenant_id"],
+            "device_id": status["device_id"],
+            "platform": status["platform"],
+            "protection_state": "DETECT_ONLY",
+            "management": status["service_control"],
+            "show_preferences": status["local_policy_change_allowed"],
+            "show_stop_control": False,
+            "show_quarantine_execution": False,
+            "show_deployment_control": False,
+        }
