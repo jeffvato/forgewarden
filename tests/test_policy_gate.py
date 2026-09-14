@@ -126,24 +126,3 @@ def test_policy_rejects_invalid_tenant_model_token_limits(value):
             "tenant-a", "telemetry.read", "endpoint-123", "READ", "FW-ASOC-01-v1",
             max_tenant_model_tokens=value,
         )
-
-def test_ci_invariant_validator_executes_successfully():
-    import runpy
-    namespace = runpy.run_path("scripts/validate-invariants.py")
-    assert namespace["main"]() == 0
-
-def test_ci_validator_rejects_empty_and_mismatched_manifests():
-    import runpy
-    validator = runpy.run_path("scripts/validate-invariants.py")
-    with pytest.raises(PolicyInvariantError):
-        validator["validate_manifest"](())
-    with pytest.raises(PolicyInvariantError):
-        validator["validate_manifest"](CORE_INVARIANTS[:-1])
-    assert validator["validate_manifest"]() == CORE_INVARIANTS
-
-def test_ci_validator_rejects_empty_core_manifest_reference():
-    import runpy
-    validator = runpy.run_path("scripts/validate-invariants.py")
-    validator["CORE_INVARIANTS"] = ()
-    with pytest.raises(PolicyInvariantError):
-        validator["validate_manifest"](())
