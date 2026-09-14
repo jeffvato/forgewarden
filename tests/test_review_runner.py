@@ -175,6 +175,27 @@ def test_sequential_fallback_uses_claude_after_anythingllm_is_unavailable(repo_f
     assert result["state"] == "APPROVED"
 
 
+def test_sequential_fallback_accepts_primary_without_requiring_fallback(repo_fixture: Path):
+    sha = repo_fixture.joinpath(".candidate-sha").read_text().strip()
+    calls = []
+    def approved(snapshot, job_id, commit, context):
+        calls.append("ANYTHINGLLM")
+        return {"job_id": job_id, "reviewed_commit": commit, "verdict": "APPROVE", "risk": "LOW",
+                "blocking_findings": [], "non_blocking_notes": [], "tests_missing": [],
+                "reasoning_summary": "primary approval", "proposed_rules": []}
+    def should_not_run(*args):
+        calls.append("CLAUDE")
+        raise AssertionError("fallback must not run after primary approval")
+    result = run_review_cycle(
+        repo_fixture, sha, "phase2a-" + "d" * 24, "review",
+        anythingllm_runner=approved, claude_runner=should_not_run,
+        reviewers=("ANYTHINGLLM", "CLAUDE"), required_reviewers=("CLAUDE",),
+        sequential_fallback=True,
+    )
+    assert calls == ["ANYTHINGLLM"]
+    assert result["state"] == "APPROVED"
+
+
 def test_sequential_fallback_does_not_override_primary_rejection(repo_fixture: Path):
     sha = repo_fixture.joinpath(".candidate-sha").read_text().strip()
     calls = []

@@ -215,12 +215,21 @@ def run_review_cycle(
                     adjudication = _review_record("CLAUDE_ADJUDICATION", result=final_result)
                 except Exception as exc:
                     adjudication = _review_record("CLAUDE_ADJUDICATION", error=redact(str(exc)))
-    required_records = [record for record in records if record["provider"] in required]
-    optional_records = [record for record in records if record["provider"] not in required]
-    approved = bool(adjudication and adjudication["state"] == "APPROVED") or (
-        all(record["state"] == "APPROVED" for record in required_records)
-        and all(record["state"] in {"APPROVED", "UNAVAILABLE"} for record in optional_records)
-    )
+    if sequential_fallback:
+        # Sequential mode is a primary/fallback policy, not a multi-review
+        # quorum. A valid primary approval is sufficient; a fallback is
+        # eligible only when every earlier provider was unavailable. A
+        # substantive rejection is never bypassed by a later provider.
+        first_rejection = next((record for record in records if record["state"] not in {"APPROVED", "UNAVAILABLE"}), None)
+        selected = next((record for record in records if record["state"] != "UNAVAILABLE"), None)
+        approved = first_rejection is None and selected is not None and selected["state"] == "APPROVED"
+    else:
+        required_records = [record for record in records if record["provider"] in required]
+        optional_records = [record for record in records if record["provider"] not in required]
+        approved = bool(adjudication and adjudication["state"] == "APPROVED") or (
+            all(record["state"] == "APPROVED" for record in required_records)
+            and all(record["state"] in {"APPROVED", "UNAVAILABLE"} for record in optional_records)
+        )
     return {
         "state": "APPROVED" if approved else "REVIEW_REQUIRED",
         "candidate_commit": commit,
