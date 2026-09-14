@@ -88,6 +88,7 @@ def test_packaging_manifest_validation_rejects_tampering_and_accepts_exact_profi
     digest = service.packaging_manifest_digest()
     assert len(digest) == 64
     assert digest == service.packaging_manifest_digest()
+    assert digest == "1665fe746aee77cd77b6c3a48eb4145ce69665cac095b866fcb1dc2b8e05b261"
 
 
 def test_service_resource_limits_and_invalid_profile_fail_closed():
