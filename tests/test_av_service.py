@@ -4,6 +4,7 @@ import pytest
 
 from swarm.av_service import AVProtectionService, AVServiceContractError, AVServiceProfile
 from swarm.anti_malware import AcceptedCatalogScanner, ScanFinding
+from swarm.endpoint_fixtures import EndpointFixtureDenied
 from swarm.normalized_events import NormalizedEventStore
 from swarm.sensor_adapter import DryRunSensorPipeline
 
@@ -92,12 +93,13 @@ def test_endpoint_fixture_admission_fails_closed_on_tamper_and_replay():
         "process_ancestry": [], "related_indicators": [], "evidence_ref": "fw-evid/tenant-a/replay-1",
     }
     service.ingest_fixture(fixture, source="WINDOWS_SENSOR", now_epoch=10)
-    with pytest.raises(Exception, match="EVENT_ID_DUPLICATE"):
+    with pytest.raises(EndpointFixtureDenied, match="EVENT_ID_DUPLICATE"):
         service.ingest_fixture(fixture, source="WINDOWS_SENSOR", now_epoch=10)
     tampered = dict(fixture, event_id="tampered-1", artifact={"name": "sample.bin", "unexpected": "value"})
-    with pytest.raises(Exception, match="metadata_INVALID"):
+    with pytest.raises(EndpointFixtureDenied, match="metadata_INVALID"):
         service.ingest_fixture(tampered, source="WINDOWS_SENSOR", now_epoch=10)
     assert service.status()["metrics"].accepted_records == 1
+    assert service.status()["metrics"].rejected_records == 2
 
 
 def test_mission_control_projection_is_labeled_read_only_and_safe():
