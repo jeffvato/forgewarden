@@ -83,6 +83,8 @@ def test_packaging_manifest_validation_rejects_tampering_and_accepts_exact_profi
     altered["activation"] = "ENABLED"
     with pytest.raises(AVServiceContractError, match="does not match"):
         service.validate_packaging_manifest(altered)
+    with pytest.raises(AVServiceContractError, match="manifest is invalid"):
+        service.validate_packaging_manifest([("product", "ForgeWarden Sentinel")])
 
 
 def test_service_resource_limits_and_invalid_profile_fail_closed():
