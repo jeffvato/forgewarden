@@ -58,6 +58,30 @@ def test_review_cycle_classifies_exact_result_failure_without_approving(repo_fix
     assert all(item["reason_code"] == "EXACT_RESULT_INVALID" for item in result["reviews"])
 
 
+def test_review_cycle_classifies_unknown_failure_as_provider_failed(repo_fixture: Path):
+    sha = repo_fixture.joinpath(".candidate-sha").read_text().strip()
+
+    def failed(snapshot, job_id, commit, context):
+        raise RuntimeError("unexpected reviewer state")
+
+    result = run_review_cycle(repo_fixture, sha, "phase2a-" + "3" * 24, "review",
+                              claude_runner=failed, gemini_runner=failed)
+    assert result["state"] == "REVIEW_REQUIRED"
+    assert all(item["reason_code"] == "PROVIDER_FAILED" for item in result["reviews"])
+
+
+def test_review_cycle_classifies_commit_mismatch_as_exact_result_invalid(repo_fixture: Path):
+    sha = repo_fixture.joinpath(".candidate-sha").read_text().strip()
+
+    def failed(snapshot, job_id, commit, context):
+        raise RuntimeError("reviewed commit mismatch: expected exact candidate")
+
+    result = run_review_cycle(repo_fixture, sha, "phase2a-" + "4" * 24, "review",
+                              claude_runner=failed, gemini_runner=failed)
+    assert result["state"] == "REVIEW_REQUIRED"
+    assert all(item["reason_code"] == "EXACT_RESULT_INVALID" for item in result["reviews"])
+
+
 def test_review_cycle_classifies_rate_limit_without_exposing_provider_details(repo_fixture: Path):
     sha = repo_fixture.joinpath(".candidate-sha").read_text().strip()
 
