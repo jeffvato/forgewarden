@@ -44,6 +44,13 @@ def test_service_reuses_canonical_fixture_pipeline_and_exposes_status_only():
     assert status["metrics"].accepted_records == 1
 
 
+def test_service_scan_artifact_requires_canonical_scanner_and_audit():
+    service = AVProtectionService(profile(), DryRunSensorPipeline(NormalizedEventStore(lambda *_: None)))
+    with pytest.raises(AVServiceContractError, match="scanner is invalid"):
+        service.scan_artifact(object(), artifact_id="artifact-1", content=b"fixture", report_id="report-1", audit=lambda *_: None, now_epoch=10)
+    with pytest.raises(AVServiceContractError, match="scanner is invalid"):
+        service.scan_artifact(object(), artifact_id="artifact-1", content=b"fixture", report_id="report-1", audit=None, now_epoch=10)
+
 def test_service_readiness_projection_is_platform_bound_and_non_installing():
     windows = AVProtectionService(profile(), DryRunSensorPipeline(NormalizedEventStore(lambda *_: None)))
     linux = AVProtectionService(

@@ -102,6 +102,35 @@ class AVProtectionService:
         except SensorAdapterDenied:
             raise
 
+    def scan_artifact(
+        self,
+        scanner: object,
+        *,
+        artifact_id: str,
+        content: bytes,
+        report_id: str,
+        audit: Any,
+        now_epoch: int,
+    ):
+        """Scan caller-supplied bytes through the canonical scanner and report owner."""
+        from .anti_malware import AcceptedCatalogScanner, create_scan_report
+        if not isinstance(scanner, AcceptedCatalogScanner):
+            raise AVServiceContractError("scanner is invalid")
+        if not callable(audit):
+            raise AVServiceContractError("audit sink is invalid")
+        finding = scanner.scan(
+            tenant_id=self.profile.tenant_id,
+            artifact_id=artifact_id,
+            content=content,
+            now_epoch=now_epoch,
+        )
+        return create_scan_report(
+            tenant_id=self.profile.tenant_id,
+            report_id=report_id,
+            findings=(finding,),
+            audit=audit,
+        )
+
     def status(self) -> dict[str, Any]:
         metrics = self._pipeline.metrics()
         return {
