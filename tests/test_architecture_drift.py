@@ -1,7 +1,8 @@
 from pathlib import Path
+import os
+import subprocess
 import pytest
 from swarm.architecture_drift import ArchitectureDriftError, find_provider_bypasses, validate_repository
-
 ROOT = Path(__file__).resolve().parents[1]
 
 def test_repository_has_no_direct_provider_bypasses():
@@ -15,5 +16,8 @@ def test_provider_bypass_is_detected_outside_adapter_allowlist(tmp_path):
         validate_repository(tmp_path)
 
 def test_ci_entrypoint_is_present():
-    assert (ROOT / 'scripts' / 'validate-architecture-drift.py').is_file()
+    assert (ROOT / "scripts" / "validate-architecture-drift.py").is_file()
 
+def test_ci_entrypoint_executes_successfully():
+    result = subprocess.run(["python3", "scripts/validate-architecture-drift.py"], cwd=ROOT, env=os.environ | {"PYTHONPATH": str(ROOT)}, capture_output=True, text=True)
+    assert result.returncode == 0
