@@ -131,3 +131,12 @@ def test_ci_invariant_validator_executes_successfully():
     import runpy
     namespace = runpy.run_path("scripts/validate-invariants.py")
     assert namespace["main"]() == 0
+
+def test_ci_validator_rejects_empty_and_mismatched_manifests():
+    import runpy
+    validator = runpy.run_path("scripts/validate-invariants.py")
+    with pytest.raises(PolicyInvariantError):
+        validator["validate_manifest"](())
+    with pytest.raises(PolicyInvariantError):
+        validator["validate_manifest"](CORE_INVARIANTS[:-1])
+    assert validator["validate_manifest"]() == CORE_INVARIANTS

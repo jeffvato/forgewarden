@@ -2,11 +2,15 @@
 """Validate ForgeWarden's canonical safety-invariant manifest for CI."""
 from swarm.policy_gate import CORE_INVARIANTS, DEPLOYMENT_DISABLED, KILL_SWITCH_ENGAGED, SAFE_MODE, PolicyInvariantError, validate_invariant_manifest, validate_safety_evidence
 
+def validate_manifest(invariants=CORE_INVARIANTS):
+    validated = validate_invariant_manifest(invariants)
+    if len(validated) != len(CORE_INVARIANTS):
+        raise PolicyInvariantError("invariant manifest count is invalid")
+    return validated
+
 def main() -> int:
     try:
-        invariants = validate_invariant_manifest()
-        if not invariants:
-            raise PolicyInvariantError("invariant manifest is empty")
+        invariants = validate_manifest()
         validate_safety_evidence({"mode": SAFE_MODE, "deployment": DEPLOYMENT_DISABLED, "kill_switch": KILL_SWITCH_ENGAGED, "mutation_allowed": False}, require_kill_switch=True)
     except PolicyInvariantError as exc:
         print(f"invariant validation failed: {exc}")
