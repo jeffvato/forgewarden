@@ -1,5 +1,8 @@
 # ForgeWarden Swarm Status
 
+- 2026-09-14: Sentinel adversarial endpoint fixture proofs accepted at exact repaired candidate 18cbe39855e5d2c02722f7c83e532c6f1169c471. Replay and malformed-metadata attempts now have specific EndpointFixtureDenied regression coverage, rejection metrics are asserted, and no partial acceptance is possible. AnythingLLM identified broad assertions; the repair received exact Claude APPROVE/LOW with no blockers or missing tests. Focused 17, full suite, and Product Integrity passed. Next Sentinel unit is release-evidence and production-readiness gating, still DRY_RUN/DETECT_ONLY.
+
+
 - 2026-09-14: FW-AV Sentinel Mission Control projection accepted at exact candidate d4c08ddb6249cf650be81cdf1f39f30f0804fbf3. Sentinel now exposes labeled read-only operator state including LIVE_BACKEND_NOT_CONNECTED, DRY_RUN_DETECT_ONLY, service readiness, inert response contract, resource budget, and metrics. AnythingLLM and exact Claude fallback returned APPROVE/LOW with no blockers or missing tests. Focused 16, full suite, and Product Integrity passed. No live endpoint or response authority was added. Next Sentinel unit is adversarial, performance, restart/recovery, and false-positive proof coverage.
 
 

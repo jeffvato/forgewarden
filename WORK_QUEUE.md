@@ -3395,6 +3395,22 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no live endpoint or response authority is added.
 - Completion evidence: exact candidate d4c08ddb6249cf650be81cdf1f39f30f0804fbf3; focused 16 passed; AnythingLLM and exact Claude fallback returned APPROVE/LOW with no blockers or missing tests; full suite and Product Integrity Gate passed.
 
+### FWQ-0101 — Sentinel adversarial endpoint fixture proofs
+- Requirement: FW-AV endpoint fail-closed assurance
+- State: DONE
+- Priority: P0
+- Dependencies: FWQ-0100
+- Description: Prove deterministic replay and tamper rejection with no partial acceptance and bounded rejection metrics.
+- Target path: tests/test_av_service.py
+- Allowed paths: tests/test_av_service.py
+- Test command: python3 -m pytest -q tests/test_av_service.py
+- Acceptance criteria:
+  - duplicate event IDs are rejected with EndpointFixtureDenied;
+  - malformed metadata is rejected with EndpointFixtureDenied;
+  - accepted and rejected metrics remain deterministic;
+  - no live endpoint or response authority is added.
+- Completion evidence: repaired exact candidate 18cbe39855e5d2c02722f7c83e532c6f1169c471; focused 17 passed; exact Claude review APPROVE/LOW with no blockers or missing tests; full suite and Product Integrity Gate passed.
+
 FWQ-0019 through FWQ-0062 were repetitive successor/population placeholders. They are retired rather than treated as executable work. FWQ-0008 already has implementation and follow-up hardening; FWQ-0009 has recorded acceptance and unchanged source/tests. Neither is a new implementation task. FWQ-0017/0018 successor references are historical and do not authorize recreating FWQ-0019. The completion audit supersedes stale next-task prose.
 ## Future queue population
 
