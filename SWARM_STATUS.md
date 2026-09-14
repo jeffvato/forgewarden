@@ -1,5 +1,8 @@
 # ForgeWarden Swarm Status
 
+- 2026-09-14: FW-AV Sentinel dry-run endpoint fixture integration accepted at exact candidate aaad7fcf9090d53e3bf4c9cf72736bef46e9106f. Sentinel and DryRunSensorPipeline now expose normalized caller-supplied fixture admission through canonical NormalizedEventStore Evidence and bounded metrics, with platform, tenant, and device fail-closed checks. AnythingLLM returned a truncated-patch rejection; exact Claude review of the full committed files returned APPROVE/LOW with no blockers or missing tests. Focused 14, full suite, and Product Integrity passed. DRY_RUN/DETECT_ONLY and no live endpoint/response authority remain intact. Next unit is deterministic detection-engine wiring.
+
+
 - 2026-09-14: FW-AV Sentinel canonical scan-report handoff accepted at exact candidate d21ea982b1e20af94731bde4398354242f30afe6. AVProtectionService.scan_artifact now admits only the canonical AcceptedCatalogScanner, propagates tenant identity into the canonical AntiMalwareScanReport/FW-EVID path, and fails closed on invalid scanner or audit inputs. AnythingLLM and exact Claude fallback returned APPROVE/LOW with no blockers or missing tests after repair. Focused 13, full suite, and Product Integrity passed. Reports remain DRY_RUN/DETECT_ONLY with no live endpoint authority. Next Sentinel unit is dry-run endpoint observation integration.
 
 

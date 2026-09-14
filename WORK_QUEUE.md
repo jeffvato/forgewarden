@@ -3347,6 +3347,22 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - regression coverage proves success, tenant propagation, Evidence recording, and invalid audit rejection.
 - Completion evidence: exact candidate d21ea982b1e20af94731bde4398354242f30afe6; focused 13 passed; AnythingLLM and exact Claude fallback returned APPROVE/LOW with no blockers or missing tests; full suite and Product Integrity Gate passed.
 
+### FWQ-0098 — ForgeWarden Sentinel dry-run endpoint fixture integration
+- Requirement: FW-AV endpoint observation boundary
+- State: DONE
+- Priority: P0
+- Dependencies: FWQ-0097
+- Description: Expose normalized caller-supplied endpoint fixtures through Sentinel and the canonical DryRunSensorPipeline/NormalizedEventStore seam.
+- Target path: swarm/av_service.py
+- Allowed paths: swarm/av_service.py, swarm/sensor_adapter.py, tests/test_av_service.py
+- Test command: python3 -m pytest -q tests/test_av_service.py
+- Acceptance criteria:
+  - platform, tenant, and device boundaries fail closed before admission;
+  - normalized fixtures use canonical NormalizedEventStore Evidence and bounded metrics;
+  - DRY_RUN/DETECT_ONLY remains enforced and no live endpoint or response authority is added;
+  - success and mismatch regression tests pass.
+- Completion evidence: exact candidate aaad7fcf9090d53e3bf4c9cf72736bef46e9106f; focused 14 passed; exact Claude fallback review APPROVE/LOW with no blockers or missing tests after AnythingLLM returned a truncated-patch false rejection; full suite and Product Integrity Gate passed.
+
 FWQ-0019 through FWQ-0062 were repetitive successor/population placeholders. They are retired rather than treated as executable work. FWQ-0008 already has implementation and follow-up hardening; FWQ-0009 has recorded acceptance and unchanged source/tests. Neither is a new implementation task. FWQ-0017/0018 successor references are historical and do not authorize recreating FWQ-0019. The completion audit supersedes stale next-task prose.
 ## Future queue population
 
