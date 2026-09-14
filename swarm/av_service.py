@@ -122,3 +122,22 @@ class AVProtectionService:
             "show_quarantine_execution": False,
             "show_deployment_control": False,
         }
+
+    def packaging_manifest(self) -> dict[str, Any]:
+        """Describe a staged Sentinel package without authorizing installation."""
+        return {
+            "product": "ForgeWarden Sentinel",
+            "manifest_version": 1,
+            "platform": self.profile.platform,
+            "management": "ENTERPRISE_CENTRAL" if self.profile.enterprise_managed else "LOCAL_LIMITED",
+            "tray_mode": self.profile.tray_mode,
+            "mode": "DRY_RUN",
+            "action": "DETECT_ONLY",
+            "activation": "DISABLED",
+            "service_installation": "NOT_AUTHORIZED",
+            "resource_budget": {
+                "max_memory_mb": self.profile.max_memory_mb,
+                "max_cpu_percent": self.profile.max_cpu_percent,
+                "max_queue_events": self.profile.max_queue_events,
+            },
+        }

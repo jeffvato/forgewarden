@@ -65,6 +65,16 @@ def test_tray_projection_is_labeled_and_never_exposes_stop_or_execution_controls
         assert projection["show_deployment_control"] is False
 
 
+def test_packaging_manifest_is_staged_and_activation_disabled():
+    service = AVProtectionService(profile(), DryRunSensorPipeline(NormalizedEventStore(lambda *_: None)))
+    manifest = service.packaging_manifest()
+    assert manifest["product"] == "ForgeWarden Sentinel"
+    assert manifest["activation"] == "DISABLED"
+    assert manifest["service_installation"] == "NOT_AUTHORIZED"
+    assert manifest["mode"] == "DRY_RUN"
+    assert manifest["action"] == "DETECT_ONLY"
+
+
 def test_service_resource_limits_and_invalid_profile_fail_closed():
     with pytest.raises(AVServiceContractError, match="max_queue_events"):
         AVServiceProfile("tenant-a", "device-a", "LINUX", True, "STATUS_ONLY", max_queue_events=1025)
