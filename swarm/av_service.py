@@ -141,3 +141,12 @@ class AVProtectionService:
                 "max_queue_events": self.profile.max_queue_events,
             },
         }
+
+    def validate_packaging_manifest(self, manifest: Mapping[str, Any]) -> dict[str, Any]:
+        """Validate staged metadata against this profile without installing it."""
+        expected = self.packaging_manifest()
+        if not isinstance(manifest, Mapping):
+            raise AVServiceContractError("packaging manifest is invalid")
+        if dict(manifest) != expected:
+            raise AVServiceContractError("packaging manifest does not match service profile")
+        return dict(expected)

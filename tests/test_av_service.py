@@ -75,6 +75,16 @@ def test_packaging_manifest_is_staged_and_activation_disabled():
     assert manifest["action"] == "DETECT_ONLY"
 
 
+def test_packaging_manifest_validation_rejects_tampering_and_accepts_exact_profile():
+    service = AVProtectionService(profile(), DryRunSensorPipeline(NormalizedEventStore(lambda *_: None)))
+    manifest = service.packaging_manifest()
+    assert service.validate_packaging_manifest(manifest) == manifest
+    altered = dict(manifest)
+    altered["activation"] = "ENABLED"
+    with pytest.raises(AVServiceContractError, match="does not match"):
+        service.validate_packaging_manifest(altered)
+
+
 def test_service_resource_limits_and_invalid_profile_fail_closed():
     with pytest.raises(AVServiceContractError, match="max_queue_events"):
         AVServiceProfile("tenant-a", "device-a", "LINUX", True, "STATUS_ONLY", max_queue_events=1025)
