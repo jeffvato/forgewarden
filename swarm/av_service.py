@@ -173,6 +173,44 @@ class AVProtectionService:
             "action": response["action"],
         }
 
+    def linux_pilot_readiness(self, *, pilot_id: str, rollback_checkpoint: str, manifest: Mapping[str, Any] | None = None) -> dict[str, Any]:
+        """Validate one Linux pilot package without installing or launching it."""
+        if self.profile.platform != "LINUX":
+            raise AVServiceContractError("Linux pilot requires a LINUX service profile")
+        for name, value in (("pilot_id", pilot_id), ("rollback checkpoint", rollback_checkpoint)):
+            if not isinstance(value, str) or not value.strip() or len(value) > 256 or "\n" in value or "\r" in value:
+                raise AVServiceContractError(f"{name} is required")
+        if manifest is not None:
+            self.validate_packaging_manifest(manifest)
+        service = self.service_readiness_projection()
+        response = self.response_contract_projection()
+        checks = {
+            "manifest": "VALID",
+            "service_identity": service["run_as"],
+            "startup": service["startup"],
+            "installation": service["installation"],
+            "launch": service["launch"],
+            "telemetry": "CALLER_SUPPLIED_ONLY",
+            "evidence": "CANONICAL_FW_EVID",
+            "rollback": rollback_checkpoint.strip(),
+            "kill_switch": response["kill_switch"],
+            "enforcement": response["blocking"],
+            "quarantine": response["quarantine"],
+            "mission_control": "READ_ONLY_PROJECTION",
+        }
+        return {
+            "decision": "NOT_READY",
+            "reason": "PILOT_REQUIRES_SEPARATE_ACTIVATION_AUTHORIZATION",
+            "pilot_id": pilot_id.strip(),
+            "tenant_id": self.profile.tenant_id,
+            "device_id": self.profile.device_id,
+            "checks": checks,
+            "mode": self.profile.mode,
+            "action": self.profile.action,
+            "deployment": response["deployment"],
+            "authority_granted": False,
+        }
+
     def release_readiness_projection(self) -> dict[str, Any]:
         """Return explicit Sentinel release status without implying production readiness."""
         return {

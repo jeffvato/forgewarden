@@ -140,6 +140,26 @@ def test_activation_readiness_gate_fails_closed_without_authority():
         service.activation_readiness_gate(rollback_checkpoint="REC-001", approval_reference="")
 
 
+def test_linux_pilot_readiness_is_metadata_only_and_fail_closed():
+    service = AVProtectionService(
+        AVServiceProfile("tenant-a", "device-a", "LINUX", True, "STATUS_ONLY"),
+        DryRunSensorPipeline(NormalizedEventStore(lambda *_: None)),
+    )
+    result = service.linux_pilot_readiness(pilot_id="pilot-001", rollback_checkpoint="REC-001", manifest=service.packaging_manifest())
+    assert result["decision"] == "NOT_READY"
+    assert result["authority_granted"] is False
+    assert result["checks"] == {
+        "manifest": "VALID", "service_identity": "forgewarden-sentinel", "startup": "DISABLED",
+        "installation": "NOT_AUTHORIZED", "launch": "NOT_AUTHORIZED", "telemetry": "CALLER_SUPPLIED_ONLY",
+        "evidence": "CANONICAL_FW_EVID", "rollback": "REC-001", "kill_switch": "ENGAGED",
+        "enforcement": "POLICY_GATE_REQUIRED", "quarantine": "PROPOSAL_ONLY", "mission_control": "READ_ONLY_PROJECTION",
+    }
+    with pytest.raises(AVServiceContractError, match="Linux pilot"):
+        AVProtectionService(profile(), DryRunSensorPipeline(NormalizedEventStore(lambda *_: None))).linux_pilot_readiness(pilot_id="pilot", rollback_checkpoint="REC")
+    with pytest.raises(AVServiceContractError, match="pilot_id"):
+        service.linux_pilot_readiness(pilot_id="pilot\nforged", rollback_checkpoint="REC")
+
+
 def test_release_readiness_projection_is_honest_and_activation_disabled():
     service = AVProtectionService(profile(), DryRunSensorPipeline(NormalizedEventStore(lambda *_: None)))
     projection = service.release_readiness_projection()
