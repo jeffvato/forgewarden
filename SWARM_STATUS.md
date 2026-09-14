@@ -1,5 +1,8 @@
 # ForgeWarden Swarm Status
 
+- 2026-09-14: FWQ-0106 Sentinel staged-manifest readiness binding accepted at exact candidate 4d8d72b8d21bcfa9c37383eeae823fc5ba6917cf. Activation readiness now validates an optional supplied packaging manifest against the canonical Sentinel profile and fails closed on tampered activation metadata while preserving NOT_READY/DRY_RUN/DETECT_ONLY. AnythingLLM/Qwen exact review returned APPROVE/LOW with no blockers or missing tests. Focused 19, full suite, and Product Integrity passed. No installation, launch, live sensor, blocking, quarantine, deployment, or authority was added.
+
+
 - 2026-09-14: Sentinel readiness-gate proof hardening accepted at exact candidate 5210fea8c43480f16fe0070f977c8f8868b10024. Tests now assert canonical manifest-digest propagation and strict non-string reference rejection while preserving NOT_READY and activation-disabled behavior. AnythingLLM/Qwen returned APPROVE/LOW with no blockers or missing tests. Focused 19, full suite, and Product Integrity passed.
 
 
