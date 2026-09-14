@@ -122,6 +122,8 @@ def test_activation_readiness_gate_fails_closed_without_authority():
     assert gate["quarantine"] == "PROPOSAL_ONLY"
     assert gate["kill_switch"] == "ENGAGED"
     assert gate["manifest_digest"] == service.packaging_manifest_digest()
+    assert gate["tenant_id"] == "tenant-a"
+    assert gate["device_id"] == "device-a"
     with pytest.raises(AVServiceContractError, match="rollback checkpoint"):
         service.activation_readiness_gate(rollback_checkpoint=123, approval_reference="APR-001")
     with pytest.raises(AVServiceContractError, match="approval reference"):

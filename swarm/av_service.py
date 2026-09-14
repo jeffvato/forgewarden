@@ -159,6 +159,8 @@ class AVProtectionService:
             "decision": "NOT_READY",
             "reason": "ACTIVATION_REQUIRES_SEPARATE_AUTHORIZATION",
             "manifest_digest": self.packaging_manifest_digest(),
+            "tenant_id": self.profile.tenant_id,
+            "device_id": self.profile.device_id,
             "rollback_checkpoint": rollback_checkpoint.strip(),
             "approval_reference": approval_reference.strip(),
             "service_installation": service["installation"],
