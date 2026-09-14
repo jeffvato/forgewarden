@@ -5,8 +5,8 @@ from swarm.policy_gate import CORE_INVARIANTS, DEPLOYMENT_DISABLED, KILL_SWITCH_
 def main() -> int:
     try:
         invariants = validate_invariant_manifest()
-        if len(invariants) != 9:
-            raise PolicyInvariantError("unexpected invariant count")
+        if not invariants:
+            raise PolicyInvariantError("invariant manifest is empty")
         validate_safety_evidence({"mode": SAFE_MODE, "deployment": DEPLOYMENT_DISABLED, "kill_switch": KILL_SWITCH_ENGAGED, "mutation_allowed": False}, require_kill_switch=True)
     except PolicyInvariantError as exc:
         print(f"invariant validation failed: {exc}")

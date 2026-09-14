@@ -126,3 +126,8 @@ def test_policy_rejects_invalid_tenant_model_token_limits(value):
             "tenant-a", "telemetry.read", "endpoint-123", "READ", "FW-ASOC-01-v1",
             max_tenant_model_tokens=value,
         )
+
+def test_ci_invariant_validator_executes_successfully():
+    import runpy
+    namespace = runpy.run_path("scripts/validate-invariants.py")
+    assert namespace["main"]() == 0
