@@ -77,8 +77,12 @@ class AnythingLLMReviewer:
             raise AnythingLLMError("AnythingLLM bridge unavailable")
         if len(completed.stdout) > self.config.max_output_bytes:
             raise AnythingLLMError("AnythingLLM response exceeds its bound")
+        raw_output = completed.stdout.decode("utf-8", errors="strict").strip()
+        if raw_output.startswith("```") and raw_output.endswith("```"):
+            lines = raw_output.splitlines()
+            raw_output = "\n".join(lines[1:-1]).strip()
         try:
-            result = json.loads(completed.stdout.decode("utf-8"))
+            result = json.loads(raw_output)
         except (UnicodeDecodeError, json.JSONDecodeError) as exc:
             raise AnythingLLMError("AnythingLLM returned invalid JSON") from exc
         if not isinstance(result, dict):
