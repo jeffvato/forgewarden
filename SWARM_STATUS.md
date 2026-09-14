@@ -1,5 +1,8 @@
 # ForgeWarden Swarm Status
 
+- 2026-09-14: Sentinel readiness control-character proof accepted at exact candidate 0847a0fae637a9b0f53c1e84a97d185bfa6950d8. Carriage-return injection coverage now complements newline and length-boundary checks. AnythingLLM was unavailable; exact Claude fallback approved LOW with no blockers or missing tests. Focused 19, full suite, and Product Integrity passed. No production behavior or activation authority changed.
+
+
 - 2026-09-14: Sentinel readiness reference-boundary hardening accepted at exact candidate c8229a8c216d6be025db873ad030d65e53a19881. Rollback and approval references are now bounded to 256 characters and reject newline/carriage-return injection while readiness remains NOT_READY and activation authority absent. AnythingLLM/Qwen exact review returned APPROVE/LOW with no blockers; focused 19, full suite, and Product Integrity passed.
 
 

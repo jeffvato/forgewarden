@@ -3507,6 +3507,21 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - readiness remains NOT_READY and grants no activation authority.
 - Completion evidence: exact candidate c8229a8c216d6be025db873ad030d65e53a19881; focused 19 passed; AnythingLLM/Qwen exact review APPROVE/LOW with no blockers; full suite and Product Integrity Gate passed.
 
+### FWQ-0108 — Sentinel readiness control-character proof
+- Requirement: FW-AV production activation boundary
+- State: DONE
+- Priority: P0
+- Dependencies: FWQ-0107
+- Description: Complete control-character rejection coverage for activation rollback references.
+- Target path: tests/test_av_service.py
+- Allowed paths: tests/test_av_service.py
+- Test command: python3 -m pytest -q tests/test_av_service.py
+- Acceptance criteria:
+  - carriage-return injection is rejected with AVServiceContractError;
+  - no production behavior or activation authority changes;
+  - readiness remains fail-closed and NOT_READY.
+- Completion evidence: exact candidate 0847a0fae637a9b0f53c1e84a97d185bfa6950d8; focused 19 passed; AnythingLLM unavailable, exact Claude fallback APPROVE/LOW with no blockers or missing tests; full suite and Product Integrity Gate passed.
+
 FWQ-0019 through FWQ-0062 were repetitive successor/population placeholders. They are retired rather than treated as executable work. FWQ-0008 already has implementation and follow-up hardening; FWQ-0009 has recorded acceptance and unchanged source/tests. Neither is a new implementation task. FWQ-0017/0018 successor references are historical and do not authorize recreating FWQ-0019. The completion audit supersedes stale next-task prose.
 ## Future queue population
 
