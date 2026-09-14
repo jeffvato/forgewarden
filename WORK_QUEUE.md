@@ -3538,6 +3538,21 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - non-sequential reviewer/quorum behavior is unchanged and exact SHA/job/schema validation remains enforced.
 - Completion evidence: exact candidate b5ef23f3f68b642fac2e0fb25430288aa9a4f6f5; focused 16 passed; AnythingLLM/Qwen exact review APPROVE/LOW with no blockers or missing tests; full suite and Product Integrity Gate passed.
 
+### FWQ-0110 — Sentinel readiness tenant/device scope binding
+- Requirement: FW-AV production activation boundary
+- State: DONE
+- Priority: P0
+- Dependencies: FWQ-0109
+- Description: Bind activation-readiness metadata to the Sentinel profile tenant and device scope.
+- Target path: swarm/av_service.py
+- Allowed paths: swarm/av_service.py, tests/test_av_service.py
+- Test command: python3 -m pytest -q tests/test_av_service.py
+- Acceptance criteria:
+  - readiness output includes the exact profile tenant and device identifiers;
+  - output remains read-only, NOT_READY, DRY_RUN, and DETECT_ONLY;
+  - no activation, installation, launch, endpoint, or response authority is granted.
+- Completion evidence: exact candidate e1e0634947f764b38f46978636f9e9fc4c8bd83e; AnythingLLM was unavailable and the repaired sequential fallback invoked exact Claude, which returned APPROVE/LOW with no blockers or missing tests; full suite and Product Integrity Gate passed.
+
 FWQ-0019 through FWQ-0062 were repetitive successor/population placeholders. They are retired rather than treated as executable work. FWQ-0008 already has implementation and follow-up hardening; FWQ-0009 has recorded acceptance and unchanged source/tests. Neither is a new implementation task. FWQ-0017/0018 successor references are historical and do not authorize recreating FWQ-0019. The completion audit supersedes stale next-task prose.
 ## Future queue population
 

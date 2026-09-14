@@ -1,5 +1,8 @@
 # ForgeWarden Swarm Status
 
+- 2026-09-14: FWQ-0110 Sentinel readiness tenant/device scope binding accepted at exact candidate e1e0634947f764b38f46978636f9e9fc4c8bd83e. Readiness metadata now includes the exact profile tenant and device scope while remaining read-only, NOT_READY, DRY_RUN, and DETECT_ONLY. AnythingLLM was unavailable; the repaired sequential fallback invoked exact Claude, which returned APPROVE/LOW with no blockers or missing tests. Full suite and Product Integrity passed. No activation or response authority was added.
+
+
 - 2026-09-14: FWQ-0109 fixed sequential reviewer fallback acceptance at exact candidate b5ef23f3f68b642fac2e0fb25430288aa9a4f6f5. The runner now accepts a valid primary review without requiring the fallback, advances only on provider unavailability, and never lets a later provider bypass a substantive rejection; non-sequential quorum behavior remains unchanged. AnythingLLM/Qwen exact review returned APPROVE/LOW with no blockers or missing tests. Focused 16, full suite, and Product Integrity passed.
 
 
