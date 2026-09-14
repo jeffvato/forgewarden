@@ -42,6 +42,33 @@ def test_markdown_json_fence_is_accepted_without_relaxing_schema():
     result = AnythingLLMReviewer(AnythingLLMConfig(), runner=lambda *_a, **_k: subprocess.CompletedProcess([], 0, fenced, b"")).run(None, JOB, COMMIT, "review")
     assert result["reviewed_commit"] == COMMIT
 
+def test_invalid_json_inside_markdown_fence_is_rejected():
+    output = b"```json\n{not-json}\n```"
+    reviewer = AnythingLLMReviewer(
+        AnythingLLMConfig(),
+        runner=lambda *args, **kwargs: subprocess.CompletedProcess(args[0], 0, output, b""),
+    )
+    with pytest.raises(AnythingLLMError, match="invalid JSON"):
+        reviewer.run(object(), JOB, COMMIT, "review")
+
+def test_fence_with_extra_text_is_rejected():
+    output = b"preface\n```json\n{}\n```"
+    reviewer = AnythingLLMReviewer(
+        AnythingLLMConfig(),
+        runner=lambda *args, **kwargs: subprocess.CompletedProcess(args[0], 0, output, b""),
+    )
+    with pytest.raises(AnythingLLMError, match="invalid JSON"):
+        reviewer.run(object(), JOB, COMMIT, "review")
+
+def test_missing_closing_fence_is_rejected_explicitly():
+    output = b"```json\n{}"
+    reviewer = AnythingLLMReviewer(
+        AnythingLLMConfig(),
+        runner=lambda *args, **kwargs: subprocess.CompletedProcess(args[0], 0, output, b""),
+    )
+    with pytest.raises(AnythingLLMError, match="incomplete JSON fence"):
+        reviewer.run(object(), JOB, COMMIT, "review")
+
 def test_windows_bridge_requires_exact_firewall_protection_for_wildcard_listener():
     bridge = (Path(__file__).parents[1] / "scripts" / "anythingllm-review-bridge.ps1").read_text()
     assert "ForgeWarden - Block AnythingLLM network access" in bridge

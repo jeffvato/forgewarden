@@ -302,7 +302,7 @@ def test_cli_autonomous_loop_run_persists_without_dispatch_when_step_bound_is_ze
         return adapter
     monkeypatch.setattr("swarm.cli.ExactReviewAdapter", capture_adapter)
     assert main() == 0
-    assert selected_reviewers == [("ANYTHINGLLM",)]
+    assert selected_reviewers == [("ANYTHINGLLM", "CLAUDE")]
     payload = json.loads(capsys.readouterr().out)
     assert payload["stop_reason"] == "STEP_BOUND_REACHED"
     assert (state_dir / "autonomous-loop.json").is_file()

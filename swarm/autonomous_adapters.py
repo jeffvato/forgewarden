@@ -63,15 +63,16 @@ class ExactReviewAdapter:
     """Use the existing independent review runner and convert its evidence."""
 
     def __init__(self, context: str, *, allow_external_review: bool = False, reviewers: tuple[str, ...] = ("ANYTHINGLLM",)):
-        if reviewers != ("ANYTHINGLLM",):
-            raise ValueError("autonomous review requires AnythingLLM/Qwen under D-026")
+        if reviewers not in (("ANYTHINGLLM",), ("ANYTHINGLLM", "CLAUDE")):
+            raise ValueError("autonomous review requires AnythingLLM/Qwen, optionally with Claude fallback")
         self.context = context
         self.allow_external_review = allow_external_review
         self.reviewers = reviewers
 
     def review(self, task: TaskSpec, commit: str, lease: WorkerLease) -> dict[str, ReviewResult]:
         job_id = "phase2a-" + hashlib.sha256(task.task_id.encode("utf-8")).hexdigest()[:24]
-        result = run_review_cycle(Path(lease.repository), commit, job_id, self.context, allow_external_review=self.allow_external_review, reviewers=self.reviewers, required_reviewers=("ANYTHINGLLM",), adjudicate_disagreements=True, sequential_fallback=False)
+        fallback_profile = self.reviewers == ("ANYTHINGLLM", "CLAUDE")
+        result = run_review_cycle(Path(lease.repository), commit, job_id, self.context, allow_external_review=self.allow_external_review, reviewers=self.reviewers, required_reviewers=(("CLAUDE",) if fallback_profile else ("ANYTHINGLLM",)), adjudicate_disagreements=(not fallback_profile), sequential_fallback=fallback_profile)
         if result["state"] != "APPROVED":
             unavailable = [item for item in result.get("reviews", ()) if item.get("state") == "UNAVAILABLE"]
             if unavailable:
@@ -108,9 +109,9 @@ class ExactReviewAdapter:
                 self.context,
                 allow_external_review=self.allow_external_review,
                 reviewers=self.reviewers,
-                required_reviewers=("ANYTHINGLLM",),
-                adjudicate_disagreements=True,
-                sequential_fallback=False,
+                required_reviewers=(("CLAUDE",) if self.reviewers == ("ANYTHINGLLM", "CLAUDE") else ("ANYTHINGLLM",)),
+                adjudicate_disagreements=(self.reviewers != ("ANYTHINGLLM", "CLAUDE")),
+                sequential_fallback=(self.reviewers == ("ANYTHINGLLM", "CLAUDE")),
             )
             if result["state"] == "APPROVED":
                 return "PASSED"

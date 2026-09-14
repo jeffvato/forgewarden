@@ -151,6 +151,54 @@ def test_sequential_fallback_uses_gemini_only_after_claude_is_unavailable(repo_f
     assert result["reviews"][1]["state"] == "APPROVED"
 
 
+def test_sequential_fallback_uses_claude_after_anythingllm_is_unavailable(repo_fixture: Path):
+    sha = repo_fixture.joinpath(".candidate-sha").read_text().strip()
+    calls = []
+
+    def unavailable(snapshot, job_id, commit, context):
+        calls.append("ANYTHINGLLM")
+        raise RuntimeError("AnythingLLM usage limit reached")
+
+    def approved(snapshot, job_id, commit, context):
+        calls.append("CLAUDE")
+        return {"job_id": job_id, "reviewed_commit": commit, "verdict": "APPROVE", "risk": "LOW",
+                "blocking_findings": [], "non_blocking_notes": [], "tests_missing": [],
+                "reasoning_summary": "fallback approval", "proposed_rules": []}
+
+    result = run_review_cycle(
+        repo_fixture, sha, "phase2a-" + "b" * 24, "review",
+        anythingllm_runner=unavailable, claude_runner=approved,
+        reviewers=("ANYTHINGLLM", "CLAUDE"), required_reviewers=("CLAUDE",),
+        sequential_fallback=True,
+    )
+    assert calls == ["ANYTHINGLLM", "CLAUDE"]
+    assert result["state"] == "APPROVED"
+
+
+def test_sequential_fallback_does_not_override_primary_rejection(repo_fixture: Path):
+    sha = repo_fixture.joinpath(".candidate-sha").read_text().strip()
+    calls = []
+
+    def rejected(snapshot, job_id, commit, context):
+        calls.append("ANYTHINGLLM")
+        return {"job_id": job_id, "reviewed_commit": commit, "verdict": "REJECT", "risk": "MEDIUM",
+                "blocking_findings": ["finding"], "non_blocking_notes": [], "tests_missing": [],
+                "reasoning_summary": "rejected", "proposed_rules": []}
+
+    def should_not_run(*args):
+        calls.append("CLAUDE")
+        raise AssertionError("fallback must not replace a substantive rejection")
+
+    result = run_review_cycle(
+        repo_fixture, sha, "phase2a-" + "c" * 24, "review",
+        anythingllm_runner=rejected, claude_runner=should_not_run,
+        reviewers=("ANYTHINGLLM", "CLAUDE"), required_reviewers=("CLAUDE",),
+        sequential_fallback=True,
+    )
+    assert calls == ["ANYTHINGLLM"]
+    assert result["state"] == "REVIEW_REQUIRED"
+
+
 def test_review_cycle_supports_explicit_claude_only_mode(repo_fixture: Path):
     sha = repo_fixture.joinpath(".candidate-sha").read_text().strip()
 

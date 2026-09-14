@@ -191,7 +191,7 @@ def run_review_cycle(
         # do not spend fallback quota while Claude is healthy, and do not wait
         # for Claude before using Gemini after a bounded Claude failure. The
         # general review command retains concurrent independent reviewers.
-        if sequential_fallback and providers and providers[0][0] == "CLAUDE":
+        if sequential_fallback and providers:
             first = invoke_provider(*providers[0])
             records = [first]
             if first["state"] == "UNAVAILABLE":

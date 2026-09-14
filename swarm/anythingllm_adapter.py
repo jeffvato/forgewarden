@@ -78,8 +78,10 @@ class AnythingLLMReviewer:
         if len(completed.stdout) > self.config.max_output_bytes:
             raise AnythingLLMError("AnythingLLM response exceeds its bound")
         raw_output = completed.stdout.decode("utf-8", errors="strict").strip()
-        if raw_output.startswith("```") and raw_output.endswith("```"):
+        if raw_output.startswith("```"):
             lines = raw_output.splitlines()
+            if len(lines) < 3 or lines[-1].strip() != "```":
+                raise AnythingLLMError("AnythingLLM returned an incomplete JSON fence")
             raw_output = "\n".join(lines[1:-1]).strip()
         try:
             result = json.loads(raw_output)
