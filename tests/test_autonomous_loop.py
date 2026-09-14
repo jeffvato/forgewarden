@@ -1105,3 +1105,37 @@ def test_autonomous_anythingllm_review_uses_real_exact_contract(tmp_path, monkey
             adapter.review(task, sha, lease)
         assert adapter.resolve_review(task, lease).startswith("REPAIRABLE:")
     assert calls == ["ANYTHINGLLM", "ANYTHINGLLM"]
+
+
+def test_default_autonomous_profile_configures_sequential_claude_fallback(monkeypatch, tmp_path):
+    task = TaskSpec("FWQ-FALLBACK", "Core review", "review", initial_state="REVIEW")
+    lease = WorkerLease("review", task.task_id, "session", str(tmp_path), (), "REVIEW", (), time.time() + 60)
+    captured = {}
+
+    def cycle(*args, **kwargs):
+        captured.update(kwargs)
+        return {"state": "REVIEW_REQUIRED", "reviews": [{"provider": "ANYTHINGLLM", "state": "UNAVAILABLE", "error": "outage"}, {"provider": "CLAUDE", "state": "UNAVAILABLE", "error": "fallback outage"}]}
+
+    monkeypatch.setattr(autonomous_adapters, "run_review_cycle", cycle)
+    with pytest.raises(ReviewUnavailable):
+        ExactReviewAdapter("review").review(task, "a" * 40, lease)
+    assert captured["reviewers"] == ("ANYTHINGLLM", "CLAUDE")
+    assert captured["required_reviewers"] == ("CLAUDE",)
+    assert captured["sequential_fallback"] is True
+
+
+def test_default_profile_accepts_claude_after_anythingllm_outage(monkeypatch, tmp_path):
+    task = TaskSpec("FWQ-FALLBACK-OK", "Core review", "review", initial_state="REVIEW")
+    lease = WorkerLease("review", task.task_id, "session", str(tmp_path), (), "REVIEW", (), time.time() + 60)
+    payload = {"job_id": "phase2a-" + "0" * 24, "reviewed_commit": "a" * 40, "verdict": "APPROVE", "risk": "LOW", "blocking_findings": [], "non_blocking_notes": [], "tests_missing": [], "reasoning_summary": "fallback", "proposed_rules": []}
+    monkeypatch.setattr(autonomous_adapters, "run_review_cycle", lambda *args, **kwargs: {"state": "APPROVED", "reviews": [{"provider": "ANYTHINGLLM", "state": "UNAVAILABLE", "error": "429"}, {"provider": "CLAUDE", "state": "APPROVED", "result": payload}]})
+    result = ExactReviewAdapter("review").review(task, "a" * 40, lease)
+    assert result["CLAUDE"].disposition == "APPROVED"
+
+
+def test_default_profile_preserves_anythingllm_rejection(monkeypatch, tmp_path):
+    task = TaskSpec("FWQ-FALLBACK-REJECT", "Core review", "review", initial_state="REVIEW")
+    lease = WorkerLease("review", task.task_id, "session", str(tmp_path), (), "REVIEW", (), time.time() + 60)
+    monkeypatch.setattr(autonomous_adapters, "run_review_cycle", lambda *args, **kwargs: {"state": "REVIEW_REQUIRED", "reviews": [{"provider": "ANYTHINGLLM", "state": "REVIEW_RETURNED", "result": {"verdict": "REJECT", "risk": "MEDIUM", "blocking_findings": ["finding"], "tests_missing": []}}]})
+    with pytest.raises(RuntimeError, match="did not approve"):
+        ExactReviewAdapter("review").review(task, "a" * 40, lease)

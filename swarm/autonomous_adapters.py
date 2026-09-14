@@ -90,6 +90,8 @@ class ExactReviewAdapter:
             }
         reviews: dict[str, ReviewResult] = {}
         for item in result["reviews"]:
+            if item.get("state") == "UNAVAILABLE":
+                continue
             payload = item.get("result")
             if item.get("state") != "APPROVED" or not isinstance(payload, dict):
                 raise RuntimeError("review evidence is incomplete")
