@@ -3427,6 +3427,24 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - projection grants no activation or response authority.
 - Completion evidence: exact candidate 1e7fb03d1b564a66e4d5205c5f82281ade416666; focused 18 passed; exact AnythingLLM review APPROVE/LOW with no blockers or missing tests; full suite and Product Integrity Gate passed.
 
+### FWQ-0103 — Sentinel production activation readiness gate
+- Requirement: FW-AV production activation boundary
+- State: READY
+- Priority: P0
+- Dependencies: FWQ-0102, FW-ENDPOINT-05, FW-ROOT policy gate, FW-EVID lifecycle proof
+- Description: Validate the complete activation package and approval prerequisites for Sentinel without installing, launching, or enabling production endpoint enforcement.
+- Target path: swarm/av_service.py
+- Allowed paths: swarm/av_service.py, swarm/installation.py, tests/test_av_service.py, docs/fw-av-windows-linux-delivery-plan.md
+- Test command: python3 -m pytest -q tests/test_av_service.py
+- Acceptance criteria:
+  - Windows SCM and Linux systemd artifacts are validated against the signed/staged manifest and least-privilege identities;
+  - startup, live sensor hooks, automatic blocking, quarantine execution, and deployment remain explicitly disabled until the activation gate;
+  - activation requires explicit policy decision, Evidence reference, kill-switch check, tenant/device scope, rollback checkpoint, and human approval where required;
+  - failed, stale, mismatched, or incomplete prerequisites fail closed;
+  - readiness output is deterministic, auditable, and does not install services, launch processes, access endpoints, credentials, network, or filesystem outside caller-supplied fixtures.
+- Required stop condition: stop before any service installation, launch, live sensor connection, automatic blocking, quarantine execution, deployment, or authority expansion.
+- Expected evidence: focused readiness and negative-path tests, exact reviewed commit, full suite and Product Integrity Gate after approval, and explicit NOT_READY/activation-disabled status until a later authorized execution task.
+
 FWQ-0019 through FWQ-0062 were repetitive successor/population placeholders. They are retired rather than treated as executable work. FWQ-0008 already has implementation and follow-up hardening; FWQ-0009 has recorded acceptance and unchanged source/tests. Neither is a new implementation task. FWQ-0017/0018 successor references are historical and do not authorize recreating FWQ-0019. The completion audit supersedes stale next-task prose.
 ## Future queue population
 

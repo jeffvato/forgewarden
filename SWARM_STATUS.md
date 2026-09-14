@@ -1,5 +1,8 @@
 # ForgeWarden Swarm Status
 
+- 2026-09-14: Defined FWQ-0103 as the next bounded task: Sentinel production activation readiness gate. It validates staged Windows SCM/Linux systemd artifacts, approval prerequisites, Evidence references, kill-switch state, rollback checkpoints, and fail-closed negative paths while keeping live sensors, service installation, automatic blocking, quarantine execution, and deployment disabled. No activation work has begun.
+
+
 - 2026-09-14: Sentinel release evidence and readiness projection accepted at exact candidate 1e7fb03d1b564a66e4d5205c5f82281ade416666. The service now explicitly reports TESTED, FIXTURE_ONLY, and NOT_READY states, with live sensors, installation, blocking, quarantine execution, deployment disabled, and kill switch engaged. AnythingLLM exact review returned APPROVE/LOW with no blockers or missing tests. Focused 18, full suite, and Product Integrity passed. No activation or response authority was added. The bounded Sentinel sequence is complete for current DRY_RUN/DETECT_ONLY scope.
 
 
