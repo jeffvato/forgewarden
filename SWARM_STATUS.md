@@ -1,5 +1,8 @@
 # ForgeWarden Swarm Status
 
+- 2026-09-14: Sentinel readiness reference-boundary hardening accepted at exact candidate c8229a8c216d6be025db873ad030d65e53a19881. Rollback and approval references are now bounded to 256 characters and reject newline/carriage-return injection while readiness remains NOT_READY and activation authority absent. AnythingLLM/Qwen exact review returned APPROVE/LOW with no blockers; focused 19, full suite, and Product Integrity passed.
+
+
 - 2026-09-14: FWQ-0106 Sentinel staged-manifest readiness binding accepted at exact candidate 4d8d72b8d21bcfa9c37383eeae823fc5ba6917cf. Activation readiness now validates an optional supplied packaging manifest against the canonical Sentinel profile and fails closed on tampered activation metadata while preserving NOT_READY/DRY_RUN/DETECT_ONLY. AnythingLLM/Qwen exact review returned APPROVE/LOW with no blockers or missing tests. Focused 19, full suite, and Product Integrity passed. No installation, launch, live sensor, blocking, quarantine, deployment, or authority was added.
 
 
