@@ -3177,6 +3177,23 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no live endpoint hook, service installation, process/filesystem/network operation, credential access, automatic blocking, quarantine execution, deployment, remediation, recovery, or response authority is added.
 - Completion evidence: implementation `6191fb6156940dcc5c099c79cff64187d6d60643`; focused 32 passed across AV service and reviewer-boundary tests; exact AnythingLLM primary outage followed by Claude fallback job `phase2a-6191fb6156940dcc5c099c79` APPROVE/LOW with no blockers or missing tests; full 307 passed/1 skipped and Product Integrity passed all hard checks and Golden Path with existing YELLOW-only findings.
 
+### FWQ-0088 — ForgeWarden Sentinel tray status projection
+- Requirement: FW-AV operator presentation boundary
+- State: DONE
+- Priority: P1
+- Dependencies: FWQ-0087
+- Approval: Jeff approved the Sentinel product direction and enterprise/local tray distinction.
+- Description: Expose a reusable, labeled tray projection over bounded AV service status without granting local service control or response authority.
+- Target path: swarm/av_service.py
+- Allowed paths: swarm/av_service.py, tests/test_av_service.py
+- Test command: python3 -m pytest -q tests/test_av_service.py
+- Acceptance criteria:
+  - projection identifies ForgeWarden Sentinel and explicitly labels DEMO/DRY_RUN and DETECT_ONLY;
+  - enterprise profiles expose status-only behavior while local profiles expose only limited preferences;
+  - stop, quarantine-execution, and deployment controls are disabled for every profile;
+  - projection reuses canonical AVService status and adds no endpoint, process, filesystem, network, credential, blocking, quarantine, remediation, recovery, deployment, or response authority.
+- Completion evidence: exact implementation `1c3be356805d3382d8cf78ee05cd94ca39351bea`; focused 6 passed; exact AnythingLLM/Qwen review job `phase2a-1c3be356805d3382d8cf78ee` APPROVE/LOW with no blockers or missing tests; full 307 passed/1 skipped and Product Integrity passed all hard checks and Golden Path.
+
 FWQ-0019 through FWQ-0062 were repetitive successor/population placeholders. They are retired rather than treated as executable work. FWQ-0008 already has implementation and follow-up hardening; FWQ-0009 has recorded acceptance and unchanged source/tests. Neither is a new implementation task. FWQ-0017/0018 successor references are historical and do not authorize recreating FWQ-0019. The completion audit supersedes stale next-task prose.
 ## Future queue population
 
