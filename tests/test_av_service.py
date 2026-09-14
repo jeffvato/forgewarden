@@ -83,6 +83,23 @@ def test_service_scan_artifact_returns_canonical_dry_run_report_and_records_evid
             audit=None, now_epoch=10,
         )
 
+def test_endpoint_fixture_admission_fails_closed_on_tamper_and_replay():
+    service = AVProtectionService(profile(), DryRunSensorPipeline(NormalizedEventStore(lambda *_: None)))
+    fixture = {
+        "event_id": "replay-1", "tenant_id": "tenant-a", "device_id": "device-a",
+        "observed_at_epoch": 10, "event_type": "FILE_LIFECYCLE", "source": "WINDOWS_SENSOR",
+        "artifact": {"name": "sample.bin", "operation": "CREATE"},
+        "process_ancestry": [], "related_indicators": [], "evidence_ref": "fw-evid/tenant-a/replay-1",
+    }
+    service.ingest_fixture(fixture, source="WINDOWS_SENSOR", now_epoch=10)
+    with pytest.raises(Exception, match="EVENT_ID_DUPLICATE"):
+        service.ingest_fixture(fixture, source="WINDOWS_SENSOR", now_epoch=10)
+    tampered = dict(fixture, event_id="tampered-1", artifact={"name": "sample.bin", "unexpected": "value"})
+    with pytest.raises(Exception, match="metadata_INVALID"):
+        service.ingest_fixture(tampered, source="WINDOWS_SENSOR", now_epoch=10)
+    assert service.status()["metrics"].accepted_records == 1
+
+
 def test_mission_control_projection_is_labeled_read_only_and_safe():
     service = AVProtectionService(profile(), DryRunSensorPipeline(NormalizedEventStore(lambda *_: None)))
     projection = service.mission_control_projection()
