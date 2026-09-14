@@ -148,6 +148,8 @@ def test_linux_pilot_readiness_is_metadata_only_and_fail_closed():
     result = service.linux_pilot_readiness(pilot_id="pilot-001", rollback_checkpoint="REC-001", manifest=service.packaging_manifest())
     assert result["decision"] == "NOT_READY"
     assert result["authority_granted"] is False
+    assert result["mode"] == "DRY_RUN"
+    assert result["action"] == "DETECT_ONLY"
     assert result["checks"] == {
         "manifest": "VALID", "service_identity": "forgewarden-sentinel", "startup": "DISABLED",
         "installation": "NOT_AUTHORIZED", "launch": "NOT_AUTHORIZED", "telemetry": "CALLER_SUPPLIED_ONLY",
