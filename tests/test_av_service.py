@@ -155,6 +155,11 @@ def test_linux_pilot_package_readiness_reports_missing_and_validates_scope():
     assert ready["authority_granted"] is False
     mismatched = dict(package, device_id="device-b")
     assert service.linux_pilot_package_readiness(mismatched)["reason"] == "PILOT_SCOPE_MISMATCH"
+    assert service.linux_pilot_package_readiness(dict(package, signed_manifest="not-json"))["reason"] == "SIGNED_MANIFEST_INVALID"
+    assert service.linux_pilot_package_readiness(dict(package, staging_path=123))["reason"] == "INVALID_PILOT_PREREQUISITE"
+    windows = AVProtectionService(profile(), DryRunSensorPipeline(NormalizedEventStore(lambda *_: None)))
+    with pytest.raises(AVServiceContractError, match="Linux pilot"):
+        windows.linux_pilot_package_readiness(package)
 
 
 def test_linux_pilot_readiness_is_metadata_only_and_fail_closed():
