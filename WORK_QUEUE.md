@@ -3295,6 +3295,24 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no live sensor, endpoint hook, process/filesystem/network access, credential, blocking, quarantine, deployment, remediation, recovery, or response authority is added.
 - Completion evidence: exact candidate `6b109cbab6361d98ce319b9a6a8db954ac08658a`; focused 9 passed; AnythingLLM outage followed by exact Claude fallback review job `phase2a-6b109cbab6361d98ce319b9a` APPROVE/LOW with no blockers or missing tests; full 307 passed/1 skipped and Product Integrity passed all hard checks and Golden Path. No live endpoint capability was activated.
 
+### FWQ-0095 — ForgeWarden Sentinel Windows/Linux service-readiness projection
+- Requirement: FW-AV service packaging and least-privilege boundary
+- State: DONE
+- Priority: P0
+- Dependencies: FWQ-0094
+- Approval: Jeff approved completion of the Sentinel sequence in order while preserving activation gates.
+- Description: Define deterministic Windows SCM/Linux systemd readiness metadata with least-privilege run identities, disabled startup, bounded restart behavior, and explicit non-installation state.
+- Target path: swarm/av_service.py
+- Allowed paths: swarm/av_service.py, tests/test_av_service.py
+- Test command: python3 -m pytest -q tests/test_av_service.py
+- Acceptance criteria:
+  - platform selects SCM or SYSTEMD and the corresponding non-root service identity;
+  - startup remains DISABLED with bounded-on-failure restart policy capped at three attempts;
+  - installation and launch remain NOT_AUTHORIZED;
+  - regression covers Windows escaping, Linux identity, and all existing DRY_RUN/DETECT_ONLY/no-authority boundaries;
+  - no service installation, process launch, endpoint hook, blocking, quarantine, credentials, network, deployment, remediation, recovery, or response authority is added.
+- Completion evidence: exact repaired candidate `9e89076961c932a5bbd39c90202d33025b34b6df`; focused 10 passed; AnythingLLM outage followed by exact Claude fallback review job `phase2a-9e89076961c932a5bbd39c90` APPROVE/LOW with no blockers or missing tests; full 307 passed/1 skipped and Product Integrity passed all hard checks and Golden Path. No live service was installed or launched.
+
 FWQ-0019 through FWQ-0062 were repetitive successor/population placeholders. They are retired rather than treated as executable work. FWQ-0008 already has implementation and follow-up hardening; FWQ-0009 has recorded acceptance and unchanged source/tests. Neither is a new implementation task. FWQ-0017/0018 successor references are historical and do not authorize recreating FWQ-0019. The completion audit supersedes stale next-task prose.
 ## Future queue population
 
