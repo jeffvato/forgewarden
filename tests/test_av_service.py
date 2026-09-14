@@ -83,6 +83,16 @@ def test_service_scan_artifact_returns_canonical_dry_run_report_and_records_evid
             audit=None, now_epoch=10,
         )
 
+def test_mission_control_projection_is_labeled_read_only_and_safe():
+    service = AVProtectionService(profile(), DryRunSensorPipeline(NormalizedEventStore(lambda *_: None)))
+    projection = service.mission_control_projection()
+    assert projection["data_mode"] == "LIVE_BACKEND_NOT_CONNECTED"
+    assert projection["phase"] == "DRY_RUN_DETECT_ONLY"
+    assert projection["service"]["installation"] == "NOT_AUTHORIZED"
+    assert projection["response"]["blocking"] == "POLICY_GATE_REQUIRED"
+    assert projection["operator_controls"] == {"read_only": True, "stop_allowed": False, "policy_change_allowed": False}
+
+
 def test_response_contract_projection_is_inert_and_policy_gated():
     service = AVProtectionService(profile(), DryRunSensorPipeline(NormalizedEventStore(lambda *_: None)))
     projection = service.response_contract_projection()

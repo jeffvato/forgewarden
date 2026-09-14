@@ -143,6 +143,23 @@ class AVProtectionService:
             audit=audit,
         )
 
+    def mission_control_projection(self) -> dict[str, Any]:
+        """Return a read-only, clearly labeled Sentinel operator projection."""
+        status = self.status()
+        return {
+            "product": "ForgeWarden Sentinel",
+            "data_mode": "LIVE_BACKEND_NOT_CONNECTED",
+            "phase": "DRY_RUN_DETECT_ONLY",
+            "platform": status["platform"],
+            "tenant_id": status["tenant_id"],
+            "device_id": status["device_id"],
+            "service": self.service_readiness_projection(),
+            "response": self.response_contract_projection(),
+            "resource_budget": status["resource_budget"],
+            "metrics": status["metrics"],
+            "operator_controls": {"read_only": True, "stop_allowed": False, "policy_change_allowed": False},
+        }
+
     def status(self) -> dict[str, Any]:
         metrics = self._pipeline.metrics()
         return {
