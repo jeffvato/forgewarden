@@ -172,6 +172,22 @@ class AVProtectionService:
         encoded = json.dumps(manifest, sort_keys=True, separators=(",", ":")).encode("utf-8")
         return hashlib.sha256(encoded).hexdigest()
 
+    def service_readiness_projection(self) -> dict[str, Any]:
+        """Describe platform service readiness without installing or launching it."""
+        manifest = self.validate_packaging_manifest(self.packaging_manifest())
+        windows = manifest["platform"] == "WINDOWS"
+        return {
+            "service_name": "ForgeWardenSentinel",
+            "manager": "SCM" if windows else "SYSTEMD",
+            "run_as": "NT AUTHORITY\LocalService" if windows else "forgewarden-sentinel",
+            "startup": "DISABLED",
+            "restart_policy": "BOUNDED_ON_FAILURE",
+            "max_restart_attempts": 3,
+            "installation": "NOT_AUTHORIZED",
+            "launch": "NOT_AUTHORIZED",
+            "manifest_digest": self.packaging_manifest_digest(),
+        }
+
     def installer_artifact_projection(self) -> dict[str, Any]:
         """Describe a staged artifact binding without creating or installing it."""
         manifest = self.validate_packaging_manifest(self.packaging_manifest())

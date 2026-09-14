@@ -44,6 +44,27 @@ def test_service_reuses_canonical_fixture_pipeline_and_exposes_status_only():
     assert status["metrics"].accepted_records == 1
 
 
+def test_service_readiness_projection_is_platform_bound_and_non_installing():
+    windows = AVProtectionService(profile(), DryRunSensorPipeline(NormalizedEventStore(lambda *_: None)))
+    linux = AVProtectionService(
+        AVServiceProfile("tenant-a", "device-a", "LINUX", True, "STATUS_ONLY"),
+        DryRunSensorPipeline(NormalizedEventStore(lambda *_: None)),
+    )
+    for service, manager, run_as in (
+        (windows, "SCM", "NT AUTHORITY\\LocalService"),
+        (linux, "SYSTEMD", "forgewarden-sentinel"),
+    ):
+        projection = service.service_readiness_projection()
+        assert projection["service_name"] == "ForgeWardenSentinel"
+        assert projection["manager"] == manager
+        assert projection["run_as"] == run_as
+        assert projection["startup"] == "DISABLED"
+        assert projection["restart_policy"] == "BOUNDED_ON_FAILURE"
+        assert projection["max_restart_attempts"] == 3
+        assert projection["installation"] == "NOT_AUTHORIZED"
+        assert projection["launch"] == "NOT_AUTHORIZED"
+        assert projection["manifest_digest"] == service.packaging_manifest_digest()
+
 def test_service_ingest_batch_reuses_bounded_pipeline_and_tenant_binding():
     service = AVProtectionService(profile(), DryRunSensorPipeline(NormalizedEventStore(lambda *_: None)))
     records = [
