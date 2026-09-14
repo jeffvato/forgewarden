@@ -105,6 +105,15 @@ def test_endpoint_fixture_admission_fails_closed_on_tamper_and_replay():
 def test_activation_readiness_gate_fails_closed_without_authority():
     service = AVProtectionService(profile(), DryRunSensorPipeline(NormalizedEventStore(lambda *_: None)))
     gate = service.activation_readiness_gate(rollback_checkpoint="REC-001", approval_reference="APR-001")
+    assert service.activation_readiness_gate(
+        rollback_checkpoint="REC-001", approval_reference="APR-001",
+        manifest=service.packaging_manifest(),
+    )["decision"] == "NOT_READY"
+    tampered_manifest = dict(service.packaging_manifest(), activation="ENABLED")
+    with pytest.raises(AVServiceContractError, match="packaging manifest"):
+        service.activation_readiness_gate(
+            rollback_checkpoint="REC-001", approval_reference="APR-001", manifest=tampered_manifest,
+        )
     assert gate["decision"] == "NOT_READY"
     assert gate["reason"] == "ACTIVATION_REQUIRES_SEPARATE_AUTHORIZATION"
     assert gate["service_installation"] == "NOT_AUTHORIZED"

@@ -143,12 +143,14 @@ class AVProtectionService:
             audit=audit,
         )
 
-    def activation_readiness_gate(self, *, rollback_checkpoint: str, approval_reference: str) -> dict[str, Any]:
+    def activation_readiness_gate(self, *, rollback_checkpoint: str, approval_reference: str, manifest: Mapping[str, Any] | None = None) -> dict[str, Any]:
         """Evaluate activation prerequisites without granting activation authority."""
         if not isinstance(rollback_checkpoint, str) or not rollback_checkpoint.strip():
             raise AVServiceContractError("rollback checkpoint is required")
         if not isinstance(approval_reference, str) or not approval_reference.strip():
             raise AVServiceContractError("approval reference is required")
+        if manifest is not None:
+            self.validate_packaging_manifest(manifest)
         service = self.service_readiness_projection()
         response = self.response_contract_projection()
         return {
