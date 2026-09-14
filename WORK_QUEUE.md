@@ -18,6 +18,18 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 
 ## Active queue
 
+### FWQ-0114 — Linux Sentinel pilot package prerequisite gate
+- Requirement: FW-AV Sentinel bounded pilot productionization
+- State: DONE
+- Priority: P0
+- Dependencies: FWQ-0113
+- Approval: Jeff authorized preparation and validation for one tenant and one approved Linux device, with no activation.
+- Description: Validate caller-supplied tenant/device, staging path, least-privilege service identity, signed manifest, rollback checkpoint, FW-EVID destination, policy/Action Ticket reference, and maintenance window.
+- Target paths: swarm/av_service.py, tests/test_av_service.py
+- Acceptance criteria: missing, malformed, scope-mismatched, non-Linux, and invalid-manifest metadata fails closed; valid metadata remains NOT_READY with DRY_RUN/DETECT_ONLY, installation/launch/enforcement/quarantine disabled, and authority false. No secrets or host access are used.
+- Completion evidence: exact candidate `e3bb713c0d268bf6ad6e4e9e0590566227fc7410`; focused Sentinel tests 21 passed; AnythingLLM/Qwen exact review APPROVE/LOW with no blockers or missing tests; full suite 307 passed/1 skipped; Product Integrity passed all hard checks with existing `tzdata` dependency YELLOW only.
+
+
 ### FWQ-0113 — Linux Sentinel bounded pilot readiness
 - Requirement: FW-AV Sentinel pilot productionization boundary
 - State: DONE
