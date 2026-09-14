@@ -140,6 +140,23 @@ def test_activation_readiness_gate_fails_closed_without_authority():
         service.activation_readiness_gate(rollback_checkpoint="REC-001", approval_reference="")
 
 
+def test_linux_pilot_package_readiness_reports_missing_and_validates_scope():
+    service = AVProtectionService(
+        AVServiceProfile("tenant-a", "device-a", "LINUX", True, "STATUS_ONLY"),
+        DryRunSensorPipeline(NormalizedEventStore(lambda *_: None)),
+    )
+    missing = service.linux_pilot_package_readiness({"tenant_id": "tenant-a"})
+    assert missing["reason"] == "MISSING_PILOT_PREREQUISITES"
+    assert "device_id" in missing["missing"]
+    package = {"tenant_id": "tenant-a", "device_id": "device-a", "staging_path": "/srv/forgewarden-stage", "service_identity": "forgewarden-sentinel", "signed_manifest": __import__("json").dumps(service.packaging_manifest()), "rollback_checkpoint": "REC-001", "evidence_destination": "fw-evid/tenant-a", "policy_ticket": "AT-001", "maintenance_window": "2026-09-15T01:00Z"}
+    ready = service.linux_pilot_package_readiness(package)
+    assert ready["reason"] == "PILOT_REQUIRES_SEPARATE_ACTIVATION_AUTHORIZATION"
+    assert ready["installation"] == "NOT_AUTHORIZED"
+    assert ready["authority_granted"] is False
+    mismatched = dict(package, device_id="device-b")
+    assert service.linux_pilot_package_readiness(mismatched)["reason"] == "PILOT_SCOPE_MISMATCH"
+
+
 def test_linux_pilot_readiness_is_metadata_only_and_fail_closed():
     service = AVProtectionService(
         AVServiceProfile("tenant-a", "device-a", "LINUX", True, "STATUS_ONLY"),

@@ -173,6 +173,31 @@ class AVProtectionService:
             "action": response["action"],
         }
 
+    def linux_pilot_package_readiness(self, package: Mapping[str, Any]) -> dict[str, Any]:
+        """Validate caller-supplied Linux pilot metadata without host access."""
+        if self.profile.platform != "LINUX":
+            raise AVServiceContractError("Linux pilot requires a LINUX service profile")
+        if not isinstance(package, Mapping):
+            raise AVServiceContractError("pilot package metadata is invalid")
+        required = ("tenant_id", "device_id", "staging_path", "service_identity", "signed_manifest", "rollback_checkpoint", "evidence_destination", "policy_ticket", "maintenance_window")
+        missing = [key for key in required if key not in package]
+        if missing:
+            return {"decision": "NOT_READY", "reason": "MISSING_PILOT_PREREQUISITES", "missing": missing, "authority_granted": False, "mode": "DRY_RUN", "action": "DETECT_ONLY"}
+        for key in required:
+            value = package[key]
+            limit = 4096 if key == "signed_manifest" else 256
+            if not isinstance(value, str) or not value.strip() or len(value) > limit or "\n" in value or "\r" in value:
+                return {"decision": "NOT_READY", "reason": "INVALID_PILOT_PREREQUISITE", "invalid": [key], "authority_granted": False, "mode": "DRY_RUN", "action": "DETECT_ONLY"}
+        if package["tenant_id"] != self.profile.tenant_id or package["device_id"] != self.profile.device_id:
+            return {"decision": "NOT_READY", "reason": "PILOT_SCOPE_MISMATCH", "authority_granted": False, "mode": "DRY_RUN", "action": "DETECT_ONLY"}
+        if package["service_identity"] != "forgewarden-sentinel":
+            return {"decision": "NOT_READY", "reason": "SERVICE_IDENTITY_MISMATCH", "authority_granted": False, "mode": "DRY_RUN", "action": "DETECT_ONLY"}
+        try:
+            self.validate_packaging_manifest(json.loads(package["signed_manifest"]))
+        except (json.JSONDecodeError, AVServiceContractError):
+            return {"decision": "NOT_READY", "reason": "SIGNED_MANIFEST_INVALID", "authority_granted": False, "mode": "DRY_RUN", "action": "DETECT_ONLY"}
+        return {"decision": "NOT_READY", "reason": "PILOT_REQUIRES_SEPARATE_ACTIVATION_AUTHORIZATION", "missing": [], "authority_granted": False, "mode": "DRY_RUN", "action": "DETECT_ONLY", "installation": "NOT_AUTHORIZED", "launch": "NOT_AUTHORIZED", "enforcement": "DISABLED", "quarantine": "DISABLED"}
+
     def linux_pilot_readiness(self, *, pilot_id: str, rollback_checkpoint: str, manifest: Mapping[str, Any] | None = None) -> dict[str, Any]:
         """Validate one Linux pilot package without installing or launching it."""
         if self.profile.platform != "LINUX":
