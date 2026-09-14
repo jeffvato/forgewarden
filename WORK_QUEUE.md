@@ -3379,6 +3379,22 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - regression proves the complete inert projection.
 - Completion evidence: exact candidate c800b14be53ad2a40af39fbe4a8135710419f637; focused 15 passed; AnythingLLM and exact Claude fallback returned APPROVE/LOW with no blockers or missing tests; full suite and Product Integrity Gate passed.
 
+### FWQ-0100 — ForgeWarden Sentinel Mission Control projection
+- Requirement: FW-AV operator visibility boundary
+- State: DONE
+- Priority: P0
+- Dependencies: FWQ-0099
+- Description: Expose a labeled read-only Sentinel status projection for Mission Control.
+- Target path: swarm/av_service.py
+- Allowed paths: swarm/av_service.py, tests/test_av_service.py
+- Test command: python3 -m pytest -q tests/test_av_service.py
+- Acceptance criteria:
+  - projection identifies LIVE_BACKEND_NOT_CONNECTED and DRY_RUN_DETECT_ONLY;
+  - service readiness, response contract, resource budget, and metrics are visible;
+  - operator controls remain read-only with stop and policy changes denied;
+  - no live endpoint or response authority is added.
+- Completion evidence: exact candidate d4c08ddb6249cf650be81cdf1f39f30f0804fbf3; focused 16 passed; AnythingLLM and exact Claude fallback returned APPROVE/LOW with no blockers or missing tests; full suite and Product Integrity Gate passed.
+
 FWQ-0019 through FWQ-0062 were repetitive successor/population placeholders. They are retired rather than treated as executable work. FWQ-0008 already has implementation and follow-up hardening; FWQ-0009 has recorded acceptance and unchanged source/tests. Neither is a new implementation task. FWQ-0017/0018 successor references are historical and do not authorize recreating FWQ-0019. The completion audit supersedes stale next-task prose.
 ## Future queue population
 
