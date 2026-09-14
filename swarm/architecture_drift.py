@@ -33,3 +33,5 @@ def validate_repository(root: Path) -> None:
     findings=find_provider_bypasses(root)
     if findings:
         raise ArchitectureDriftError("provider bypasses detected: " + ", ".join(findings))
+
+# CI invokes validate_repository through scripts/validate-architecture-drift.py.

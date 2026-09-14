@@ -8,3 +8,4 @@ except ArchitectureDriftError as exc:
     print(f"architecture drift detected: {exc}")
     raise SystemExit(1)
 print("validated provider access architecture boundary")
+# Source and CI entry point are reviewed together.

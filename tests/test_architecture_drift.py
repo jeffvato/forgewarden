@@ -13,3 +13,7 @@ def test_provider_bypass_is_detected_outside_adapter_allowlist(tmp_path):
     (tmp_path / "swarm" / "unsafe.py").write_text("import openai\n", encoding="utf-8")
     with pytest.raises(ArchitectureDriftError):
         validate_repository(tmp_path)
+
+def test_ci_entrypoint_is_present():
+    assert (ROOT / 'scripts' / 'validate-architecture-drift.py').is_file()
+
