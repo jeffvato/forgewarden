@@ -60,7 +60,8 @@ class AnythingLLMReviewer:
             f"You are an independent read-only code reviewer using configured model {self.config.model}. "
             f"Review only Phase 2A job {job_id} and exact commit {commit}. "
             "Return only one JSON object matching this schema; do not use tools, request secrets, mutate files, "
-            "authorize deployment, or claim a different model identity.\nSchema:\n"
+            "authorize deployment, or claim a different model identity. "
+            "Keep reasoning_summary under 120 words and return a compact JSON response under 700 output tokens.\nSchema:\n"
             + json.dumps(schema(job_id, commit), separators=(",", ":"))
             + "\nReview context:\n" + prompt
         ).encode("utf-8")

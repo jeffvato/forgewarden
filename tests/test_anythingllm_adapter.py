@@ -20,6 +20,7 @@ def test_bridge_invocation_is_fixed_bounded_and_exact(monkeypatch):
     assert seen["command"][:6]==[r"/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe","-NoLogo","-NoProfile","-NonInteractive","-ExecutionPolicy","Bypass"]
     assert seen["command"][-4:]==["-Workspace","n8n","-SessionId",JOB]
     assert seen["command"][7].startswith("C:\\") and seen["command"][7].endswith("anythingllm-review-bridge.ps1")
+    assert b"under 700 output tokens" in seen["kwargs"]["input"]
     assert b"exact patch" in seen["kwargs"]["input"]
     assert set(seen["kwargs"]["env"])=={"SystemRoot","WINDIR"}
 
