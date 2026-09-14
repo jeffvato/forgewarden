@@ -3313,6 +3313,23 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no service installation, process launch, endpoint hook, blocking, quarantine, credentials, network, deployment, remediation, recovery, or response authority is added.
 - Completion evidence: exact repaired candidate `9e89076961c932a5bbd39c90202d33025b34b6df`; focused 10 passed; AnythingLLM outage followed by exact Claude fallback review job `phase2a-9e89076961c932a5bbd39c90` APPROVE/LOW with no blockers or missing tests; full 307 passed/1 skipped and Product Integrity passed all hard checks and Golden Path. No live service was installed or launched.
 
+### FWQ-0096 — ForgeWarden Sentinel platform-bound sensor admission
+- Requirement: FW-AV endpoint-observation boundary
+- State: DONE
+- Priority: P0
+- Dependencies: FWQ-0095, FW-ENDPOINT-05
+- Approval: Jeff approved completion of the Sentinel sequence in order while preserving activation gates.
+- Description: Bind Sentinel observation sources to the service platform so Windows and Linux profiles cannot consume the other platform’s event stream.
+- Target path: swarm/av_service.py
+- Allowed paths: swarm/av_service.py, tests/test_av_service.py
+- Test command: python3 -m pytest -q tests/test_av_service.py
+- Acceptance criteria:
+  - Windows profiles accept only WINDOWS_SENSOR and Linux profiles only LINUX_SENSOR;
+  - mismatched sources fail closed before single or batch pipeline admission;
+  - existing tenant/device, DRY_RUN/DETECT_ONLY, kill-switch, and no-authority boundaries remain intact;
+  - no live sensor, endpoint hook, process/filesystem/network access, credential, blocking, quarantine, deployment, remediation, recovery, or response authority is added.
+- Completion evidence: exact candidate `dbea426c2eef079488ec32fe8211ff5204680592`; focused 11 passed; exact AnythingLLM/Qwen review job `phase2a-dbea426c2eef079488ec32fe` APPROVE/LOW with no blockers or missing tests; full 307 passed/1 skipped and Product Integrity passed all hard checks and Golden Path. No live endpoint capability was activated.
+
 FWQ-0019 through FWQ-0062 were repetitive successor/population placeholders. They are retired rather than treated as executable work. FWQ-0008 already has implementation and follow-up hardening; FWQ-0009 has recorded acceptance and unchanged source/tests. Neither is a new implementation task. FWQ-0017/0018 successor references are historical and do not authorize recreating FWQ-0019. The completion audit supersedes stale next-task prose.
 ## Future queue population
 
