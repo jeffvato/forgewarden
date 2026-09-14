@@ -83,6 +83,17 @@ def test_service_scan_artifact_returns_canonical_dry_run_report_and_records_evid
             audit=None, now_epoch=10,
         )
 
+def test_response_contract_projection_is_inert_and_policy_gated():
+    service = AVProtectionService(profile(), DryRunSensorPipeline(NormalizedEventStore(lambda *_: None)))
+    projection = service.response_contract_projection()
+    assert projection == {
+        "mode": "DRY_RUN", "action": "DETECT_ONLY",
+        "automatic_blocking": False, "quarantine_execution": False,
+        "blocking": "POLICY_GATE_REQUIRED", "quarantine": "PROPOSAL_ONLY",
+        "activation": "DISABLED", "deployment": "DISABLED", "kill_switch": "ENGAGED",
+    }
+
+
 def test_service_readiness_projection_is_platform_bound_and_non_installing():
     windows = AVProtectionService(profile(), DryRunSensorPipeline(NormalizedEventStore(lambda *_: None)))
     linux = AVProtectionService(

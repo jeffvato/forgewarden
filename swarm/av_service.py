@@ -233,6 +233,20 @@ class AVProtectionService:
             "manifest_digest": self.packaging_manifest_digest(),
         }
 
+    def response_contract_projection(self) -> dict[str, Any]:
+        """Describe inert policy-gated response contracts without executing them."""
+        return {
+            "mode": self.profile.mode,
+            "action": self.profile.action,
+            "automatic_blocking": False,
+            "quarantine_execution": False,
+            "blocking": "POLICY_GATE_REQUIRED",
+            "quarantine": "PROPOSAL_ONLY",
+            "activation": "DISABLED",
+            "deployment": "DISABLED",
+            "kill_switch": "ENGAGED",
+        }
+
     def installer_artifact_projection(self) -> dict[str, Any]:
         """Describe a staged artifact binding without creating or installing it."""
         manifest = self.validate_packaging_manifest(self.packaging_manifest())
