@@ -41,6 +41,8 @@ jobs:
           bash -n packaging/hermes-swarm
           bash -n packaging/hermes-swarm-mcp
           bash -n scripts/validate-swarm.sh
+      - name: Validate machine-readable safety invariants
+        run: timeout 1m env PYTHONPATH=. python scripts/validate-invariants.py
       - name: Reject tracked runtime or secret artifacts
         shell: bash
         run: |
