@@ -179,7 +179,7 @@ class AVProtectionService:
         return {
             "service_name": "ForgeWardenSentinel",
             "manager": "SCM" if windows else "SYSTEMD",
-            "run_as": "NT AUTHORITY\LocalService" if windows else "forgewarden-sentinel",
+            "run_as": "NT AUTHORITY\\LocalService" if windows else "forgewarden-sentinel",
             "startup": "DISABLED",
             "restart_policy": "BOUNDED_ON_FAILURE",
             "max_restart_attempts": 3,
