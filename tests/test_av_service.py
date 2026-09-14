@@ -85,6 +85,9 @@ def test_packaging_manifest_validation_rejects_tampering_and_accepts_exact_profi
         service.validate_packaging_manifest(altered)
     with pytest.raises(AVServiceContractError, match="manifest is invalid"):
         service.validate_packaging_manifest([("product", "ForgeWarden Sentinel")])
+    digest = service.packaging_manifest_digest()
+    assert len(digest) == 64
+    assert digest == service.packaging_manifest_digest()
 
 
 def test_service_resource_limits_and_invalid_profile_fail_closed():

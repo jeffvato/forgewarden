@@ -8,6 +8,8 @@ and flow through the canonical ``DryRunSensorPipeline``.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import hashlib
+import json
 from typing import Any, Mapping
 
 from .sensor_adapter import DryRunSensorPipeline, SensorAdapterDenied
@@ -150,3 +152,9 @@ class AVProtectionService:
         if dict(manifest) != expected:
             raise AVServiceContractError("packaging manifest does not match service profile")
         return dict(expected)
+
+    def packaging_manifest_digest(self) -> str:
+        """Return a stable digest for the validated staged manifest."""
+        manifest = self.validate_packaging_manifest(self.packaging_manifest())
+        encoded = json.dumps(manifest, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        return hashlib.sha256(encoded).hexdigest()
