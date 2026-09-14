@@ -78,6 +78,20 @@ def _extract_archive(repository: Path, commit: str, destination: Path) -> None:
     validate_snapshot_symlinks(destination)
 
 
+def _failure_code(error: str) -> str:
+    """Classify provider failure without retaining secrets or provider prose."""
+    lowered = error.lower()
+    if any(token in lowered for token in ("sha", "schema", "json", "contract", "job id", "commit mismatch", "forbidden fields")):
+        return "EXACT_RESULT_INVALID"
+    if any(token in lowered for token in ("429", "rate limit", "daily call limit", "usage limit", "retry-after")):
+        return "RATE_LIMITED"
+    if any(token in lowered for token in ("api key", "credential", "endpoint", "deployment", "configured", "unavailable")):
+        return "NOT_CONFIGURED"
+    if any(token in lowered for token in ("timeout", "timed out", "connection", "network", "urlopen", "transport")):
+        return "TRANSPORT_FAILED"
+    return "PROVIDER_FAILED"
+
+
 def _review_record(provider: str, result: dict[str, Any] | None = None, error: str | None = None) -> dict[str, Any]:
     if result is not None:
         return {
@@ -85,7 +99,11 @@ def _review_record(provider: str, result: dict[str, Any] | None = None, error: s
             "state": "APPROVED" if result.get("verdict") == "APPROVE" and result.get("risk") == "LOW" and not result.get("blocking_findings") and not result.get("tests_missing") else "REVIEW_RETURNED",
             "result": result,
         }
-    return {"provider": provider, "state": "UNAVAILABLE", "error": str(error or "review failed")[:2000]}
+    detail = redact(str(error or "review failed"))[:2000]
+    reason_code = _failure_code(detail)
+    # Preserve only the stable diagnostic category at the provider boundary;
+    # raw transport/provider text may contain tokens, prompts, or account data.
+    return {"provider": provider, "state": "UNAVAILABLE", "reason_code": reason_code, "error": f"{provider} review unavailable ({reason_code})"}
 
 
 def run_review_cycle(

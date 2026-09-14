@@ -41,6 +41,34 @@ def test_review_cycle_records_provider_failure_without_approving(repo_fixture: P
     assert result["state"] == "REVIEW_REQUIRED"
     assert result["mutation_allowed"] is False
     assert result["reviews"][1]["state"] == "UNAVAILABLE"
+    assert result["reviews"][1]["reason_code"] == "NOT_CONFIGURED"
+
+
+def test_review_cycle_classifies_exact_result_failure_without_approving(repo_fixture: Path):
+    sha = repo_fixture.joinpath(".candidate-sha").read_text().strip()
+
+    def malformed(snapshot, job_id, commit, context):
+        return {"job_id": job_id, "reviewed_commit": "0" * 40, "verdict": "APPROVE", "risk": "LOW",
+                "blocking_findings": [], "non_blocking_notes": [], "tests_missing": [],
+                "reasoning_summary": "malformed exact result", "proposed_rules": []}
+
+    result = run_review_cycle(repo_fixture, sha, "phase2a-" + "1" * 24, "review",
+                              claude_runner=malformed, gemini_runner=malformed)
+    assert result["state"] == "REVIEW_REQUIRED"
+    assert all(item["reason_code"] == "EXACT_RESULT_INVALID" for item in result["reviews"])
+
+
+def test_review_cycle_classifies_rate_limit_without_exposing_provider_details(repo_fixture: Path):
+    sha = repo_fixture.joinpath(".candidate-sha").read_text().strip()
+
+    def limited(snapshot, job_id, commit, context):
+        raise RuntimeError("429 rate limit; Authorization Bearer secret-value")
+
+    result = run_review_cycle(repo_fixture, sha, "phase2a-" + "2" * 24, "review",
+                              claude_runner=limited, gemini_runner=limited)
+    assert result["state"] == "REVIEW_REQUIRED"
+    assert all(item["reason_code"] == "RATE_LIMITED" for item in result["reviews"])
+    assert all("secret-value" not in item["error"] for item in result["reviews"])
 
 
 def test_review_cycle_rejects_provider_result_for_different_commit(repo_fixture: Path):
@@ -406,7 +434,7 @@ def test_adjudication_retains_exact_snapshot_until_finished(repo_fixture, outcom
     else:
         assert result["state"] == "REVIEW_REQUIRED"
         assert result["adjudication"]["state"] == "UNAVAILABLE"
-        assert "after inspection" in result["adjudication"]["error"]
+        assert result["adjudication"]["reason_code"] == "NOT_CONFIGURED"
 
 
 def test_review_cycle_supports_exact_bound_azure_reviewer(repo_fixture):
