@@ -140,3 +140,10 @@ def test_ci_validator_rejects_empty_and_mismatched_manifests():
     with pytest.raises(PolicyInvariantError):
         validator["validate_manifest"](CORE_INVARIANTS[:-1])
     assert validator["validate_manifest"]() == CORE_INVARIANTS
+
+def test_ci_validator_rejects_empty_core_manifest_reference():
+    import runpy
+    validator = runpy.run_path("scripts/validate-invariants.py")
+    validator["CORE_INVARIANTS"] = ()
+    with pytest.raises(PolicyInvariantError):
+        validator["validate_manifest"](())
