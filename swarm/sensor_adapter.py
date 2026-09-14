@@ -128,6 +128,29 @@ class DryRunSensorPipeline:
             )
         return observation
 
+    def ingest_fixture(
+        self, fixture: Mapping[str, Any], *, source: str, tenant_id: str,
+        device_id: str, now_epoch: int,
+    ) -> EndpointObservation:
+        """Admit one caller-supplied normalized endpoint fixture."""
+        try:
+            observation = self._store.admit_fixture(
+                fixture, tenant_id=tenant_id, device_id=device_id,
+                source=source, now_epoch=now_epoch,
+            )
+        except Exception:
+            with self._metrics_lock:
+                self._rejected_records += 1
+            raise
+        with self._metrics_lock:
+            self._accepted_records += 1
+            self._peak_batch_size = max(self._peak_batch_size, 1)
+            self._peak_queued_events = max(
+                self._peak_queued_events,
+                self._store.queued_count(tenant_id=tenant_id, device_id=device_id),
+            )
+        return observation
+
     def ingest_batch(
         self, records: list[Mapping[str, Any]], *, source: str, tenant_id: str,
         device_id: str, now_epoch: int,

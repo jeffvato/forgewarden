@@ -119,6 +119,24 @@ def test_service_rejects_sensor_source_for_wrong_platform():
     with pytest.raises(AVServiceContractError, match="source does not match"):
         service.ingest_batch([record], source="LINUX_SENSOR", now_epoch=10)
 
+def test_service_ingest_fixture_reuses_canonical_normalized_event_store():
+    events = []
+    service = AVProtectionService(profile(), DryRunSensorPipeline(NormalizedEventStore(lambda event, data: events.append((event, data)))))
+    fixture = {
+        "event_id": "fixture-1", "tenant_id": "tenant-a", "device_id": "device-a",
+        "observed_at_epoch": 10, "event_type": "FILE_LIFECYCLE", "source": "WINDOWS_SENSOR",
+        "artifact": {"name": "sample.bin", "operation": "CREATE"},
+        "process_ancestry": [], "related_indicators": [], "evidence_ref": "fw-evid/tenant-a/fixture-1",
+    }
+    observation = service.ingest_fixture(fixture, source="WINDOWS_SENSOR", now_epoch=10)
+    assert observation.event_id == "fixture-1"
+    assert observation.mode == "DRY_RUN"
+    assert observation.action == "DETECT_ONLY"
+    assert events[0][0] == "endpoint_event_admitted"
+    with pytest.raises(AVServiceContractError, match="source does not match"):
+        service.ingest_fixture(fixture, source="LINUX_SENSOR", now_epoch=10)
+
+
 def test_service_ingest_batch_reuses_bounded_pipeline_and_tenant_binding():
     service = AVProtectionService(profile(), DryRunSensorPipeline(NormalizedEventStore(lambda *_: None)))
     records = [

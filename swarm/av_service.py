@@ -87,6 +87,18 @@ class AVProtectionService:
         except SensorAdapterDenied:
             raise
 
+    def ingest_fixture(self, fixture: Mapping[str, Any], *, source: str, now_epoch: int):
+        """Admit one explicit normalized endpoint fixture through the canonical pipeline."""
+        if source != f"{self.profile.platform}_SENSOR":
+            raise AVServiceContractError("sensor source does not match service platform")
+        try:
+            return self._pipeline.ingest_fixture(
+                fixture, source=source, tenant_id=self.profile.tenant_id,
+                device_id=self.profile.device_id, now_epoch=now_epoch,
+            )
+        except SensorAdapterDenied:
+            raise
+
     def ingest_batch(self, records: list[Mapping[str, Any]], *, source: str, now_epoch: int):
         """Ingest one bounded caller-supplied batch through the canonical pipeline."""
         if source != f"{self.profile.platform}_SENSOR":
