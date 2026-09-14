@@ -1,5 +1,8 @@
 # ForgeWarden Swarm Status
 
+- 2026-09-14: FW-AV Sentinel inert response-contract projection accepted at exact candidate c800b14be53ad2a40af39fbe4a8135710419f637. Sentinel now exposes deterministic POLICY_GATE_REQUIRED blocking and PROPOSAL_ONLY quarantine states while activation/deployment remain disabled and the kill switch engaged. AnythingLLM and exact Claude fallback returned APPROVE/LOW with no blockers or missing tests. Focused 15, full suite, and Product Integrity passed. No response execution authority was added. Next Sentinel unit is policy-gated automatic blocking and reversible quarantine contract work, still inert until separately activated.
+
+
 - 2026-09-14: FW-AV Sentinel dry-run endpoint fixture integration accepted at exact candidate aaad7fcf9090d53e3bf4c9cf72736bef46e9106f. Sentinel and DryRunSensorPipeline now expose normalized caller-supplied fixture admission through canonical NormalizedEventStore Evidence and bounded metrics, with platform, tenant, and device fail-closed checks. AnythingLLM returned a truncated-patch rejection; exact Claude review of the full committed files returned APPROVE/LOW with no blockers or missing tests. Focused 14, full suite, and Product Integrity passed. DRY_RUN/DETECT_ONLY and no live endpoint/response authority remain intact. Next unit is deterministic detection-engine wiring.
 
 
