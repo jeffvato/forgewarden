@@ -3227,6 +3227,23 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - preserve DRY_RUN, DETECT_ONLY, activation DISABLED, service installation NOT_AUTHORIZED, and all existing no-authority boundaries.
 - Completion evidence: exact candidate `6ce25c70a6861d62e5ea23e69b639dcec9186fc6`; focused 8 passed; exact AnythingLLM/Qwen review job `phase2a-6ce25c70a6861d62e5ea23e6` returned APPROVE/LOW with no blockers or missing tests; full 307 passed/1 skipped and Product Integrity passed all hard checks and Golden Path. No live installation, service launch, endpoint, blocking, quarantine, credential, network, deployment, remediation, recovery, or response authority was added.
 
+### FWQ-0091 — ForgeWarden Sentinel packaging-manifest digest
+- Requirement: FW-AV packaging integrity boundary
+- State: DONE
+- Priority: P1
+- Dependencies: FWQ-0090
+- Approval: Jeff authorized continuing Sentinel while preserving activation gates.
+- Description: Bind a stable SHA-256 digest to the validated staged Sentinel packaging manifest so future artifact handoffs can detect serialization or metadata drift.
+- Target path: swarm/av_service.py
+- Allowed paths: swarm/av_service.py, tests/test_av_service.py
+- Test command: python3 -m pytest -q tests/test_av_service.py
+- Acceptance criteria:
+  - digest canonicalizes the validated manifest with deterministic JSON ordering and compact separators;
+  - digest is a 64-character SHA-256 value and remains stable for the same profile;
+  - regression pins the known digest for the canonical Windows enterprise fixture;
+  - preserve DRY_RUN, DETECT_ONLY, activation DISABLED, service installation NOT_AUTHORIZED, and all no-authority boundaries.
+- Completion evidence: exact candidate `1daf3512d69b4aef3a7e1c59f95b3fe75fc36c62`; focused 8 passed; AnythingLLM outage followed by exact Claude fallback review job `phase2a-1daf3512d69b4aef3a7e1c59` APPROVE/LOW with no blockers or missing tests; full 307 passed/1 skipped and Product Integrity passed all hard checks and Golden Path. No live installation, service launch, endpoint, blocking, quarantine, credential, network, deployment, remediation, recovery, or response authority was added.
+
 FWQ-0019 through FWQ-0062 were repetitive successor/population placeholders. They are retired rather than treated as executable work. FWQ-0008 already has implementation and follow-up hardening; FWQ-0009 has recorded acceptance and unchanged source/tests. Neither is a new implementation task. FWQ-0017/0018 successor references are historical and do not authorize recreating FWQ-0019. The completion audit supersedes stale next-task prose.
 ## Future queue population
 
