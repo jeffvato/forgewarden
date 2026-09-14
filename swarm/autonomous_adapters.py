@@ -62,7 +62,7 @@ def run_deterministic_tests(task: TaskSpec, result: WorkerResult, repository: Wo
 class ExactReviewAdapter:
     """Use the existing independent review runner and convert its evidence."""
 
-    def __init__(self, context: str, *, allow_external_review: bool = False, reviewers: tuple[str, ...] = ("ANYTHINGLLM",)):
+    def __init__(self, context: str, *, allow_external_review: bool = False, reviewers: tuple[str, ...] = ("ANYTHINGLLM", "CLAUDE")):
         if reviewers not in (("ANYTHINGLLM",), ("ANYTHINGLLM", "CLAUDE")):
             raise ValueError("autonomous review requires AnythingLLM/Qwen, optionally with Claude fallback")
         self.context = context

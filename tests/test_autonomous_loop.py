@@ -302,7 +302,7 @@ def test_cli_autonomous_loop_run_persists_without_dispatch_when_step_bound_is_ze
         return adapter
     monkeypatch.setattr("swarm.cli.ExactReviewAdapter", capture_adapter)
     assert main() == 0
-    assert selected_reviewers == [("ANYTHINGLLM",)]
+    assert selected_reviewers == [("ANYTHINGLLM", "CLAUDE")]
     payload = json.loads(capsys.readouterr().out)
     assert payload["stop_reason"] == "STEP_BOUND_REACHED"
     assert (state_dir / "autonomous-loop.json").is_file()
@@ -1090,7 +1090,7 @@ def test_autonomous_anythingllm_review_uses_real_exact_contract(tmp_path, monkey
         return canonical_review_cycle(*args, **kwargs, anythingllm_runner=anythingllm, gemini_runner=forbidden)
 
     monkeypatch.setattr(autonomous_adapters, "run_review_cycle", invoke)
-    adapter = ExactReviewAdapter("Review fixture read-only")
+    adapter = ExactReviewAdapter("Review fixture read-only", reviewers=("ANYTHINGLLM",))
     if outcome == "APPROVE":
         result = adapter.review(task, sha, lease)
         assert set(result) == {"ANYTHINGLLM"}
