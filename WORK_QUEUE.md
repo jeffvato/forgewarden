@@ -3411,6 +3411,22 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no live endpoint or response authority is added.
 - Completion evidence: repaired exact candidate 18cbe39855e5d2c02722f7c83e532c6f1169c471; focused 17 passed; exact Claude review APPROVE/LOW with no blockers or missing tests; full suite and Product Integrity Gate passed.
 
+### FWQ-0102 — Sentinel release evidence and readiness projection
+- Requirement: FW-AV release assurance boundary
+- State: DONE
+- Priority: P0
+- Dependencies: FWQ-0101
+- Description: Publish an explicit Sentinel readiness projection that distinguishes tested fixture capability from production readiness.
+- Target path: swarm/av_service.py
+- Allowed paths: swarm/av_service.py, tests/test_av_service.py
+- Test command: python3 -m pytest -q tests/test_av_service.py
+- Acceptance criteria:
+  - implementation is labeled TESTED and security validation FIXTURE_ONLY;
+  - production readiness is NOT_READY and live sensors/service installation remain disabled or unauthorized;
+  - automatic blocking, quarantine execution, deployment, and kill switch states are explicit;
+  - projection grants no activation or response authority.
+- Completion evidence: exact candidate 1e7fb03d1b564a66e4d5205c5f82281ade416666; focused 18 passed; exact AnythingLLM review APPROVE/LOW with no blockers or missing tests; full suite and Product Integrity Gate passed.
+
 FWQ-0019 through FWQ-0062 were repetitive successor/population placeholders. They are retired rather than treated as executable work. FWQ-0008 already has implementation and follow-up hardening; FWQ-0009 has recorded acceptance and unchanged source/tests. Neither is a new implementation task. FWQ-0017/0018 successor references are historical and do not authorize recreating FWQ-0019. The completion audit supersedes stale next-task prose.
 ## Future queue population
 
