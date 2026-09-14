@@ -3522,6 +3522,22 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - readiness remains fail-closed and NOT_READY.
 - Completion evidence: exact candidate 0847a0fae637a9b0f53c1e84a97d185bfa6950d8; focused 19 passed; AnythingLLM unavailable, exact Claude fallback APPROVE/LOW with no blockers or missing tests; full suite and Product Integrity Gate passed.
 
+### FWQ-0109 — Deterministic sequential reviewer fallback repair
+- Requirement: FW-HARNESS independent review reliability
+- State: DONE
+- Priority: P0
+- Dependencies: FWQ-0108
+- Description: Correct sequential reviewer acceptance so a valid primary approval is accepted, an unavailable primary can use an approved fallback, and substantive rejection cannot be bypassed.
+- Target path: swarm/review_runner.py
+- Allowed paths: swarm/review_runner.py, tests/test_review_runner.py
+- Test command: python3 -m pytest -q tests/test_review_runner.py
+- Acceptance criteria:
+  - primary APPROVE/LOW completes sequential review without invoking fallback;
+  - unavailable primary advances to the next configured provider and accepts only its valid APPROVE/LOW result;
+  - substantive rejection remains REVIEW_REQUIRED and never triggers replacement approval;
+  - non-sequential reviewer/quorum behavior is unchanged and exact SHA/job/schema validation remains enforced.
+- Completion evidence: exact candidate b5ef23f3f68b642fac2e0fb25430288aa9a4f6f5; focused 16 passed; AnythingLLM/Qwen exact review APPROVE/LOW with no blockers or missing tests; full suite and Product Integrity Gate passed.
+
 FWQ-0019 through FWQ-0062 were repetitive successor/population placeholders. They are retired rather than treated as executable work. FWQ-0008 already has implementation and follow-up hardening; FWQ-0009 has recorded acceptance and unchanged source/tests. Neither is a new implementation task. FWQ-0017/0018 successor references are historical and do not authorize recreating FWQ-0019. The completion audit supersedes stale next-task prose.
 ## Future queue population
 

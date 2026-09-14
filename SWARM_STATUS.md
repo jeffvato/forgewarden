@@ -1,5 +1,8 @@
 # ForgeWarden Swarm Status
 
+- 2026-09-14: FWQ-0109 fixed sequential reviewer fallback acceptance at exact candidate b5ef23f3f68b642fac2e0fb25430288aa9a4f6f5. The runner now accepts a valid primary review without requiring the fallback, advances only on provider unavailability, and never lets a later provider bypass a substantive rejection; non-sequential quorum behavior remains unchanged. AnythingLLM/Qwen exact review returned APPROVE/LOW with no blockers or missing tests. Focused 16, full suite, and Product Integrity passed.
+
+
 - 2026-09-14: Sentinel readiness control-character proof accepted at exact candidate 0847a0fae637a9b0f53c1e84a97d185bfa6950d8. Carriage-return injection coverage now complements newline and length-boundary checks. AnythingLLM was unavailable; exact Claude fallback approved LOW with no blockers or missing tests. Focused 19, full suite, and Product Integrity passed. No production behavior or activation authority changed.
 
 
