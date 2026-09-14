@@ -3330,6 +3330,23 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no live sensor, endpoint hook, process/filesystem/network access, credential, blocking, quarantine, deployment, remediation, recovery, or response authority is added.
 - Completion evidence: exact candidate `dbea426c2eef079488ec32fe8211ff5204680592`; focused 11 passed; exact AnythingLLM/Qwen review job `phase2a-dbea426c2eef079488ec32fe` APPROVE/LOW with no blockers or missing tests; full 307 passed/1 skipped and Product Integrity passed all hard checks and Golden Path. No live endpoint capability was activated.
 
+### FWQ-0097 — ForgeWarden Sentinel canonical scan-report handoff
+- Requirement: FW-AV detector-to-Evidence boundary
+- State: DONE
+- Priority: P0
+- Dependencies: FWQ-0096
+- Approval: Jeff approved the existing AcceptedCatalogScanner -> FW-EVID -> AntiMalwareScanReport handoff for Sentinel, preserving DRY_RUN/DETECT_ONLY.
+- Description: Connect the Sentinel service seam to the canonical AcceptedCatalogScanner and AntiMalwareScanReport owners for caller-supplied artifact scans.
+- Target path: swarm/av_service.py
+- Allowed paths: swarm/av_service.py, tests/test_av_service.py
+- Test command: python3 -m pytest -q tests/test_av_service.py
+- Acceptance criteria:
+  - only an AcceptedCatalogScanner is admitted; invalid scanner or Evidence sink inputs fail closed;
+  - tenant-bound findings are passed to canonical create_scan_report and Evidence records the report;
+  - successful reports remain DRY_RUN/DETECT_ONLY with no new authority;
+  - regression coverage proves success, tenant propagation, Evidence recording, and invalid audit rejection.
+- Completion evidence: exact candidate d21ea982b1e20af94731bde4398354242f30afe6; focused 13 passed; AnythingLLM and exact Claude fallback returned APPROVE/LOW with no blockers or missing tests; full suite and Product Integrity Gate passed.
+
 FWQ-0019 through FWQ-0062 were repetitive successor/population placeholders. They are retired rather than treated as executable work. FWQ-0008 already has implementation and follow-up hardening; FWQ-0009 has recorded acceptance and unchanged source/tests. Neither is a new implementation task. FWQ-0017/0018 successor references are historical and do not authorize recreating FWQ-0019. The completion audit supersedes stale next-task prose.
 ## Future queue population
 
