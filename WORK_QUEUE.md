@@ -3461,6 +3461,21 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
   - no installation, launch, live sensor, blocking, quarantine, deployment, or authority action occurs.
 - Completion evidence: exact candidate 3ccd5dafcc5ea6f42e509a76c3613e8f982b6e4e; focused 19 passed; exact AnythingLLM/Qwen review APPROVE/LOW with no blockers or missing tests; full suite and Product Integrity Gate passed.
 
+### FWQ-0105 — Sentinel readiness-gate proof hardening
+- Requirement: FW-AV production activation boundary
+- State: DONE
+- Priority: P0
+- Dependencies: FWQ-0104
+- Description: Strengthen readiness-gate regression coverage for manifest digest propagation and strict reference types.
+- Target path: tests/test_av_service.py
+- Allowed paths: tests/test_av_service.py
+- Test command: python3 -m pytest -q tests/test_av_service.py
+- Acceptance criteria:
+  - manifest digest is asserted against the canonical packaging digest;
+  - non-string rollback and approval references fail closed with AVServiceContractError;
+  - NOT_READY and activation-disabled semantics remain unchanged.
+- Completion evidence: exact candidate 5210fea8c43480f16fe0070f977c8f8868b10024; focused 19 passed; AnythingLLM/Qwen review APPROVE/LOW with no blockers or missing tests; full suite and Product Integrity Gate passed.
+
 FWQ-0019 through FWQ-0062 were repetitive successor/population placeholders. They are retired rather than treated as executable work. FWQ-0008 already has implementation and follow-up hardening; FWQ-0009 has recorded acceptance and unchanged source/tests. Neither is a new implementation task. FWQ-0017/0018 successor references are historical and do not authorize recreating FWQ-0019. The completion audit supersedes stale next-task prose.
 ## Future queue population
 

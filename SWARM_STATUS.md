@@ -1,5 +1,8 @@
 # ForgeWarden Swarm Status
 
+- 2026-09-14: Sentinel readiness-gate proof hardening accepted at exact candidate 5210fea8c43480f16fe0070f977c8f8868b10024. Tests now assert canonical manifest-digest propagation and strict non-string reference rejection while preserving NOT_READY and activation-disabled behavior. AnythingLLM/Qwen returned APPROVE/LOW with no blockers or missing tests. Focused 19, full suite, and Product Integrity passed.
+
+
 - 2026-09-14: FWQ-0104 Sentinel activation readiness gate evaluator accepted at exact candidate 3ccd5dafcc5ea6f42e509a76c3613e8f982b6e4e. The evaluator requires bounded rollback and approval references, propagates manifest/service/response/kill-switch/deployment states, and always returns NOT_READY pending separate authorization. AnythingLLM/Qwen exact review returned APPROVE/LOW with no blockers or missing tests. Focused 19, full suite, and Product Integrity passed. No installation, launch, live sensor, blocking, quarantine, deployment, or authority action occurs.
 
 
