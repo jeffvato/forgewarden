@@ -127,6 +127,10 @@ def test_activation_readiness_gate_fails_closed_without_authority():
     with pytest.raises(AVServiceContractError, match="approval reference"):
         service.activation_readiness_gate(rollback_checkpoint="REC-001", approval_reference=123)
     with pytest.raises(AVServiceContractError, match="rollback checkpoint"):
+        service.activation_readiness_gate(rollback_checkpoint="R" * 257, approval_reference="APR-001")
+    with pytest.raises(AVServiceContractError, match="approval reference"):
+        service.activation_readiness_gate(rollback_checkpoint="REC-001", approval_reference="APR-001\nforged")
+    with pytest.raises(AVServiceContractError, match="rollback checkpoint"):
         service.activation_readiness_gate(rollback_checkpoint="", approval_reference="APR-001")
     with pytest.raises(AVServiceContractError, match="approval reference"):
         service.activation_readiness_gate(rollback_checkpoint="REC-001", approval_reference="")
