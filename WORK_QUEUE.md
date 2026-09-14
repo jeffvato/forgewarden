@@ -3160,6 +3160,23 @@ Completion reconciliation: see `docs/completion-audit-2026-09-09.md`. Historical
 
 ## Queue cleanup
 
+### FWQ-0087 — ForgeWarden Sentinel bounded protection-service contract
+- Requirement: FW-AV service boundary
+- State: DONE
+- Priority: P0
+- Dependencies: FWQ-0086, FW-ENDPOINT-05, FW-EVID
+- Approval: Jeff authorized completion of the antivirus portion while preserving existing DRY_RUN and authority gates.
+- Description: Define the low-resource Windows/Linux Sentinel protection-service contract over the existing caller-supplied sensor pipeline, with enterprise centralized control and limited local preferences.
+- Target path: swarm/av_service.py
+- Allowed paths: swarm/av_service.py, tests/test_av_service.py
+- Test command: python3 -m pytest -q tests/test_av_service.py
+- Acceptance criteria:
+  - profiles enforce tenant/device/platform identity, bounded memory/CPU/queue limits, fixed DRY_RUN/DETECT_ONLY mode, and valid enterprise/local control semantics;
+  - enterprise non-root users cannot stop the service or alter policy, while local users can access only the explicitly limited preference projection;
+  - caller-supplied events route through the existing DryRunSensorPipeline and reject malformed profiles, over-bound resources, queue overflow, and unauthorized control;
+  - no live endpoint hook, service installation, process/filesystem/network operation, credential access, automatic blocking, quarantine execution, deployment, remediation, recovery, or response authority is added.
+- Completion evidence: implementation `6191fb6156940dcc5c099c79cff64187d6d60643`; focused 32 passed across AV service and reviewer-boundary tests; exact AnythingLLM primary outage followed by Claude fallback job `phase2a-6191fb6156940dcc5c099c79` APPROVE/LOW with no blockers or missing tests; full 307 passed/1 skipped and Product Integrity passed all hard checks and Golden Path with existing YELLOW-only findings.
+
 FWQ-0019 through FWQ-0062 were repetitive successor/population placeholders. They are retired rather than treated as executable work. FWQ-0008 already has implementation and follow-up hardening; FWQ-0009 has recorded acceptance and unchanged source/tests. Neither is a new implementation task. FWQ-0017/0018 successor references are historical and do not authorize recreating FWQ-0019. The completion audit supersedes stale next-task prose.
 ## Future queue population
 
