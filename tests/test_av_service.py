@@ -58,6 +58,8 @@ def test_service_readiness_projection_is_platform_bound_and_non_installing():
         assert projection["service_name"] == "ForgeWardenSentinel"
         assert projection["manager"] == manager
         assert projection["run_as"] == run_as
+        if manager == "SCM":
+            assert projection["run_as"].count("\\") == 1
         assert projection["startup"] == "DISABLED"
         assert projection["restart_policy"] == "BOUNDED_ON_FAILURE"
         assert projection["max_restart_attempts"] == 3
