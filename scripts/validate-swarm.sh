@@ -35,6 +35,7 @@ case "${1:---portable}" in
       "$ROOT/tests/test_paths.py" \
       "$ROOT/tests/test_quality_review.py" \
       "$ROOT/tests/test_repository_hygiene.py" \
+      "$ROOT/tests/test_ci_workflows.py" \
       "$ROOT/tests/test_systemd_scope.py::SystemdScopeSafetyTests" \
       "$ROOT/tests/test_systemd_unit.py" \
       "$ROOT/tests/test_phase2b_profiles.py" \
@@ -55,6 +56,9 @@ case "${1:---portable}" in
       "$ROOT/tests/test_installation.py" \
       "$ROOT/tests/test_prerequisites.py" \
       "$ROOT/tests/test_install_smoke.py" \
+      "$ROOT/tests/test_harness_models.py" \
+      "$ROOT/tests/test_harness_spend.py" \
+      "$ROOT/tests/test_harness_cloud_plan.py" \
       "$ROOT/tests/test_console.py" \
       "$ROOT/tests/test_addon_catalog.py"
     ;;

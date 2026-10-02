@@ -1,9 +1,10 @@
-# Azure Container Apps console packaging
+# Retired Azure Container Apps console design
 
-This package hosts the Forgewarden read-only management console as a dedicated
-Azure Container App. It is separate from the `fw-vuln-job` Container Apps Job,
-which is a scheduled vulnerability-intelligence worker, and separate from
-Microsoft Foundry, which supplies optional AI resources rather than web hosting.
+This document preserves the former packaging design for local reference only.
+The hosted Azure console, `fw-vuln-job`, and their Azure resources are retired
+and unavailable; no current repository workflow builds or deploys them. The
+remaining console and vulnerability-image Dockerfiles are local, non-deployed
+artifacts. Microsoft Foundry is not an active hosting or execution target.
 
 ## Local validation
 
@@ -19,14 +20,14 @@ curl --fail http://127.0.0.1:8787/api/status
 The console remains plan-only and deployment-disabled inside the image. The
 container listens on port `8787`; `/api/status` is the bounded health check.
 
-## Azure deployment shape — preparation only
+## Historical Azure deployment shape — inactive
 
-Microsoft documents `az containerapp up` for deploying a Python web app from
-local source or an existing image. The eventual target should be a new named
-Container App in the existing `fw-vuln-env`, for example
-`forgewarden-console-dev`; it must not update `fw-vuln-job`.
+The former design considered a dedicated Container App in `fw-vuln-env`,
+separate from `fw-vuln-job`. Neither resource is an active or approved target.
+This historical description is not a deployment plan or evidence that those
+resources still exist.
 
-The exact mutation command is intentionally not included until the app name,
-image digest, ingress/authentication policy, health/observation window, and
-rollback revision are separately approved. Foundry resources are optional
-backend dependencies and must not be used as the console hosting target.
+No mutation command is included. Restoring Azure hosting would require a new,
+explicitly authorized design and review covering cost, identity, image digest,
+ingress/authentication policy, observation, and rollback. Local image
+validation does not authorize publishing, hosting, or deployment.
