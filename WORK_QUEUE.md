@@ -18,6 +18,20 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 
 ## Active queue
 
+### FWQ-0115 — Linux Sentinel pilot prerequisite reference hardening
+- Requirement: FW-AV Sentinel bounded pilot productionization
+- State: BLOCKED
+- Priority: P0
+- Dependencies: FWQ-0114
+- Approval: Jeff authorized definition on 2026-10-02. Implementation requires separate Customer Root authorization and remains blocked.
+- Description: Harden caller-supplied Linux pilot prerequisite references while preserving the existing metadata-only, non-authorizing readiness boundary.
+- Target paths: swarm/av_service.py, tests/test_av_service.py
+- Allowed paths: swarm/av_service.py, tests/test_av_service.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test command: python -m pytest -q tests/test_av_service.py
+- Acceptance criteria: the staging path is a normalized absolute POSIX path rooted at `/srv/forgewarden-stage` and rejects traversal, normalization drift, control characters, and overlong values without filesystem access; rollback, Evidence, policy-ticket, and maintenance-window references are bounded and control-character-safe; Evidence and policy references use existing tenant-bound canonical formats; the maintenance window is strict caller-supplied UTC RFC3339 metadata with no scheduler or clock authority; invalid input returns a deterministic NOT_READY reason without echoing raw values; valid input remains NOT_READY, DRY_RUN, DETECT_ONLY, and non-authorizing with installation, launch, enforcement, quarantine, and deployment disabled.
+- Stop condition: stop before artifact creation, filesystem staging, package installation, service launch, sensor connection, enforcement, quarantine, deployment, credential use, network access, or any authority expansion.
+
+
 ### FWQ-0114 — Linux Sentinel pilot package prerequisite gate
 - Requirement: FW-AV Sentinel bounded pilot productionization
 - State: DONE
