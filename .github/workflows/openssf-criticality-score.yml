@@ -11,18 +11,20 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: openssf-criticality-score-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   criticality-score:
     name: Calculate criticality score
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
 
     steps:
       - name: Install OpenSSF Criticality Score
         shell: bash
-        run: |
-          set -euo pipefail
-          go install github.com/ossf/criticality_score/v2/cmd/criticality_score@v2.0.4
+        run: timeout 5m go install github.com/ossf/criticality_score/v2/cmd/criticality_score@v2.0.4
 
       - name: Calculate ForgeWarden criticality score
         shell: bash
@@ -31,7 +33,7 @@ jobs:
         run: |
           set -euo pipefail
           SCORE_BIN="$(go env GOPATH)/bin/criticality_score"
-          "$SCORE_BIN" \
+          timeout 4m "$SCORE_BIN" \
             -depsdev-disable \
             -format json \
             "https://github.com/${GITHUB_REPOSITORY}" \
