@@ -1,0 +1,115 @@
+name: ForgeWarden cloud build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "23 */6 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: forgewarden-cloud-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Portable build and evidence
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out ForgeWarden
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.12"
+
+      - name: Install test dependencies
+        run: timeout 5m python -m pip install --disable-pip-version-check -r requirements-test.txt
+
+      - name: Validate safety invariants
+        run: timeout 1m env PYTHONPATH=. python scripts/validate-invariants.py
+
+      - name: Validate architecture boundaries
+        run: timeout 1m env PYTHONPATH=. python scripts/validate-architecture-drift.py
+
+      - name: Run portable deterministic suite
+        run: timeout 8m bash scripts/validate-swarm.sh --portable
+
+      - name: Validate Mission Control frontend
+        run: timeout 2m node --test tests/test_console_frontend.js
+
+      - name: Build read-only evidence
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          env PYTHONPATH=. python -m swarm.cli quality-review \
+            --repository . \
+            --output artifacts/quality-review.json
+          env PYTHONPATH=. python -m swarm.cli codebase-index-build \
+            --repository . \
+            --index-path artifacts/codebase-index.json \
+            --revision "${GITHUB_SHA}"
+          env PYTHONPATH=. python -m swarm.cli index-evidence \
+            --quality-report artifacts/quality-review.json \
+            --repository . \
+            --index-path artifacts/codebase-index.json \
+            --revision "${GITHUB_SHA}" \
+            --actor github-actions-cloud-build \
+            --output artifacts/index-evidence.json
+
+      - name: Write build manifest
+        env:
+          BUILD_EVENT: ${{ github.event_name }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          payload = {
+              "schema_version": 1,
+              "repository": os.environ["GITHUB_REPOSITORY"],
+              "commit": os.environ["GITHUB_SHA"],
+              "event": os.environ["BUILD_EVENT"],
+              "mode": "DRY_RUN",
+              "deployment": "DISABLED",
+              "mutation_allowed": False,
+              "source_of_truth": "main",
+          }
+          Path("artifacts/cloud-build-manifest.json").write_text(
+              json.dumps(payload, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          PY
+
+      - name: Check tracked patch whitespace
+        run: timeout 1m git diff --check HEAD
+
+      - name: Publish build summary
+        run: |
+          {
+            echo "## ForgeWarden cloud build"
+            echo
+            echo "- Commit: \`${GITHUB_SHA}\`"
+            echo "- Mode: DRY_RUN"
+            echo "- Deployment: DISABLED"
+            echo "- Mutation authority: none"
+            echo "- Portable deterministic validation: passed"
+            echo "- Read-only evidence artifacts: generated"
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Upload build evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: forgewarden-cloud-build-${{ github.run_number }}
+          path: artifacts/
+          if-no-files-found: error
+          retention-days: 14
