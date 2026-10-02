@@ -4,10 +4,13 @@ Date: 2026-10-01
 
 ## Canonical repository
 
-- Repository: `jeffvato/forgewarden-swarm`
+- Repository: `jeffvato/forgewarden`
 - Canonical branch: `main`
-- Canonical baseline commit: `dfa7fb8d4ebece6c0661d0bd49e67ecf49e4ed8d`
-- Planned final repository name: `jeffvato/forgewarden`
+- Pre-rename consolidation checkpoint: `dfa7fb8d4ebece6c0661d0bd49e67ecf49e4ed8d`
+- The repository was renamed from `jeffvato/forgewarden-swarm` to
+  `jeffvato/forgewarden` after that checkpoint. The checkpoint is historical;
+  determine the current canonical `main` commit from GitHub rather than treating
+  this record as a moving status file.
 
 ## Hermes lineage
 
@@ -29,7 +32,7 @@ No repositories, branches, files, or commits were deleted during consolidation.
 
 Preservation branches were created before cleanup:
 
-- `jeffvato/forgewarden-swarm:preservation/pre-consolidation-2026-10-01`
+- `jeffvato/forgewarden:preservation/pre-consolidation-2026-10-01`
   -> `dfa7fb8d4ebece6c0661d0bd49e67ecf49e4ed8d`
 - `jeffvato/hermes-coding-swarm:preservation/pre-consolidation-2026-10-01`
   -> `595557ce15048e11f8aa8a7e94ee201c8772f668`
@@ -59,5 +62,6 @@ it is not a competing source of truth for ForgeWarden.
 - `fwq/*`: queue/work-item branches.
 - `preservation/*`: historical rollback points; do not rewrite.
 
-Repository rename, default-branch changes, or archival actions must preserve
-Git history and should occur only after verifying references and integrations.
+Future repository renames, default-branch changes, or archival actions must
+preserve Git history and should occur only after verifying references and
+integrations.
