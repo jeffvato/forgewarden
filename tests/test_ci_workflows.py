@@ -9,6 +9,8 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW_ROOT = ROOT / ".github" / "workflows"
 VALIDATION = WORKFLOW_ROOT / "swarm-validation.yml"
+PORTABLE_VALIDATOR = ROOT / "scripts" / "validate-swarm.sh"
+RETIRED_VULNERABILITY_PUBLISHER = WORKFLOW_ROOT / "build-vulnerability-image.yml"
 ACTION_REF = re.compile(r"^[^\s@]+@[0-9a-f]{40}$")
 
 
@@ -60,7 +62,6 @@ def test_validation_runs_current_required_local_proofs():
     text = VALIDATION.read_text(encoding="utf-8")
     required = (
         "bash scripts/validate-swarm.sh --portable",
-        "python -m pytest -q",
         "node --test tests/test_console_frontend.js",
         "git diff --check HEAD",
         "python -m swarm.cli quality-review",
@@ -69,6 +70,24 @@ def test_validation_runs_current_required_local_proofs():
     )
     for command in required:
         assert command in text
+
+    portable = PORTABLE_VALIDATOR.read_text(encoding="utf-8")
+    assert '"$PYTHON" -m pytest -q' in portable
+    assert '"$ROOT/tests/test_ci_workflows.py"' in portable
+
+
+def test_retired_azure_vulnerability_publisher_stays_absent():
+    assert not RETIRED_VULNERABILITY_PUBLISHER.exists()
+    forbidden = (
+        "azure/login@",
+        "id-token: write",
+        "az acr build",
+        "dockerfile.vulnerability-job",
+    )
+    for path in sorted(WORKFLOW_ROOT.glob("*.yml")):
+        text = path.read_text(encoding="utf-8").lower()
+        for marker in forbidden:
+            assert marker not in text, f"{path}: retired Azure publisher marker {marker!r}"
 
 
 def test_pull_request_workflows_do_not_receive_write_permissions():
