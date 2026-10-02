@@ -22,15 +22,17 @@ The latest preserved Hermes `main` commit at consolidation time was:
 `595557ce15048e11f8aa8a7e94ee201c8772f668`
 
 That exact commit exists in the ForgeWarden history. Comparing it to the
-ForgeWarden canonical baseline shows ForgeWarden is 1,073 commits ahead and
-0 commits behind. Therefore no Hermes changes need to be merged into
-ForgeWarden to preserve current work.
+ForgeWarden pre-rename consolidation checkpoint shows ForgeWarden is 1,073
+commits ahead and 0 commits behind. Therefore no Hermes changes need to be
+merged into ForgeWarden to preserve current work.
 
 ## Preservation points
 
 No repositories, branches, files, or commits were deleted during consolidation.
 
-Preservation branches were created before cleanup:
+Preservation branches were created before cleanup. On 2026-10-02, read-only
+remote ref checks in the repository owner's authenticated Git context confirmed
+both exact bindings below; no credential material was displayed or recorded:
 
 - `jeffvato/forgewarden:preservation/pre-consolidation-2026-10-01`
   -> `dfa7fb8d4ebece6c0661d0bd49e67ecf49e4ed8d`
