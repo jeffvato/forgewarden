@@ -10,7 +10,6 @@ ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW_ROOT = ROOT / ".github" / "workflows"
 VALIDATION = WORKFLOW_ROOT / "swarm-validation.yml"
 PORTABLE_VALIDATOR = ROOT / "scripts" / "validate-swarm.sh"
-RETIRED_VULNERABILITY_PUBLISHER = WORKFLOW_ROOT / "build-vulnerability-image.yml"
 ACTION_REF = re.compile(r"^[^\s@]+@[0-9a-f]{40}$")
 
 
@@ -20,8 +19,21 @@ def load_workflow(path: Path) -> dict:
     return value
 
 
+def workflow_paths(root: Path = WORKFLOW_ROOT) -> list[Path]:
+    return sorted((*root.glob("*.yml"), *root.glob("*.yaml")))
+
+
+def test_workflow_inventory_includes_both_supported_extensions(tmp_path):
+    yml = tmp_path / "one.yml"
+    yaml_path = tmp_path / "two.yaml"
+    ignored = tmp_path / "three.txt"
+    for path in (yml, yaml_path, ignored):
+        path.write_text("name: fixture\n", encoding="utf-8")
+    assert workflow_paths(tmp_path) == [yml, yaml_path]
+
+
 def test_all_external_actions_are_immutable_commit_pins():
-    workflows = sorted(WORKFLOW_ROOT.glob("*.yml"))
+    workflows = workflow_paths()
     assert workflows
     for path in workflows:
         workflow = load_workflow(path)
@@ -77,21 +89,22 @@ def test_validation_runs_current_required_local_proofs():
 
 
 def test_retired_azure_vulnerability_publisher_stays_absent():
-    assert not RETIRED_VULNERABILITY_PUBLISHER.exists()
+    assert not (WORKFLOW_ROOT / "build-vulnerability-image.yml").exists()
+    assert not (WORKFLOW_ROOT / "build-vulnerability-image.yaml").exists()
     forbidden = (
         "azure/login@",
         "id-token: write",
         "az acr build",
         "dockerfile.vulnerability-job",
     )
-    for path in sorted(WORKFLOW_ROOT.glob("*.yml")):
+    for path in workflow_paths():
         text = path.read_text(encoding="utf-8").lower()
         for marker in forbidden:
             assert marker not in text, f"{path}: retired Azure publisher marker {marker!r}"
 
 
 def test_pull_request_workflows_do_not_receive_write_permissions():
-    for path in sorted(WORKFLOW_ROOT.glob("*.yml")):
+    for path in workflow_paths():
         workflow = load_workflow(path)
         if "pull_request" not in workflow.get("on", {}):
             continue
