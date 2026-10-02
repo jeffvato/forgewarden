@@ -9,6 +9,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW_ROOT = ROOT / ".github" / "workflows"
 VALIDATION = WORKFLOW_ROOT / "swarm-validation.yml"
+CRITICALITY_SCORE = WORKFLOW_ROOT / "openssf-criticality-score.yml"
 PORTABLE_VALIDATOR = ROOT / "scripts" / "validate-swarm.sh"
 ACTION_REF = re.compile(r"^[^\s@]+@[0-9a-f]{40}$")
 
@@ -112,3 +113,23 @@ def test_pull_request_workflows_do_not_receive_write_permissions():
         for job_name, job in workflow.get("jobs", {}).items():
             permissions = job.get("permissions", inherited)
             assert "write" not in permissions.values(), f"{path}/{job_name}"
+
+
+def test_criticality_score_workflow_is_bounded_read_only_and_pinned():
+    workflow = load_workflow(CRITICALITY_SCORE)
+    assert workflow["permissions"] == {"contents": "read"}
+    assert "pull_request" not in workflow["on"]
+    assert workflow["concurrency"]["cancel-in-progress"] == "true"
+
+    job = workflow["jobs"]["criticality-score"]
+    assert job["runs-on"] == "ubuntu-24.04"
+    assert int(job["timeout-minutes"]) == 10
+    assert job.get("permissions", workflow["permissions"]) == {"contents": "read"}
+
+    text = CRITICALITY_SCORE.read_text(encoding="utf-8")
+    assert "criticality_score@v2.0.4" in text
+    assert "criticality_score@latest" not in text
+    assert "GITHUB_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}" in text
+    assert "-depsdev-disable" in text
+    assert "timeout 5m go install" in text
+    assert 'timeout 4m "$SCORE_BIN"' in text
