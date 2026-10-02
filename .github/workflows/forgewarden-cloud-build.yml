@@ -56,12 +56,12 @@ jobs:
             --output artifacts/quality-review.json
           env PYTHONPATH=. python -m swarm.cli codebase-index-build \
             --repository . \
-            --index-path artifacts/codebase-index.json \
+            --index-path /tmp/forgewarden-codebase-index.json \
             --revision "${GITHUB_SHA}"
           env PYTHONPATH=. python -m swarm.cli index-evidence \
             --quality-report artifacts/quality-review.json \
             --repository . \
-            --index-path artifacts/codebase-index.json \
+            --index-path /tmp/forgewarden-codebase-index.json \
             --revision "${GITHUB_SHA}" \
             --actor github-actions-cloud-build \
             --output artifacts/index-evidence.json
