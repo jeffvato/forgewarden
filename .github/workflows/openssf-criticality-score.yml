@@ -1,0 +1,50 @@
+name: OpenSSF Criticality Score
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 8 * * 1"
+  push:
+    paths:
+      - ".github/workflows/openssf-criticality-score.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: openssf-criticality-score-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  criticality-score:
+    name: Calculate criticality score
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Install OpenSSF Criticality Score
+        shell: bash
+        run: timeout 5m go install github.com/ossf/criticality_score/v2/cmd/criticality_score@v2.0.4
+
+      - name: Calculate ForgeWarden criticality score
+        shell: bash
+        env:
+          GITHUB_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          SCORE_BIN="$(go env GOPATH)/bin/criticality_score"
+          timeout 4m "$SCORE_BIN" \
+            -depsdev-disable \
+            -format json \
+            "https://github.com/${GITHUB_REPOSITORY}" \
+            | tee criticality-score.json
+
+          {
+            echo "## OpenSSF Criticality Score"
+            echo
+            echo "Repository: https://github.com/${GITHUB_REPOSITORY}"
+            echo
+            echo '~~~json'
+            cat criticality-score.json
+            echo '~~~'
+          } >> "${GITHUB_STEP_SUMMARY}"

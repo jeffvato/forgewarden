@@ -9,6 +9,8 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW_ROOT = ROOT / ".github" / "workflows"
 VALIDATION = WORKFLOW_ROOT / "swarm-validation.yml"
+CRITICALITY_SCORE = WORKFLOW_ROOT / "openssf-criticality-score.yml"
+PORTABLE_VALIDATOR = ROOT / "scripts" / "validate-swarm.sh"
 ACTION_REF = re.compile(r"^[^\s@]+@[0-9a-f]{40}$")
 
 
@@ -18,8 +20,21 @@ def load_workflow(path: Path) -> dict:
     return value
 
 
+def workflow_paths(root: Path = WORKFLOW_ROOT) -> list[Path]:
+    return sorted((*root.glob("*.yml"), *root.glob("*.yaml")))
+
+
+def test_workflow_inventory_includes_both_supported_extensions(tmp_path):
+    yml = tmp_path / "one.yml"
+    yaml_path = tmp_path / "two.yaml"
+    ignored = tmp_path / "three.txt"
+    for path in (yml, yaml_path, ignored):
+        path.write_text("name: fixture\n", encoding="utf-8")
+    assert workflow_paths(tmp_path) == [yml, yaml_path]
+
+
 def test_all_external_actions_are_immutable_commit_pins():
-    workflows = sorted(WORKFLOW_ROOT.glob("*.yml"))
+    workflows = workflow_paths()
     assert workflows
     for path in workflows:
         workflow = load_workflow(path)
@@ -60,7 +75,6 @@ def test_validation_runs_current_required_local_proofs():
     text = VALIDATION.read_text(encoding="utf-8")
     required = (
         "bash scripts/validate-swarm.sh --portable",
-        "python -m pytest -q",
         "node --test tests/test_console_frontend.js",
         "git diff --check HEAD",
         "python -m swarm.cli quality-review",
@@ -70,9 +84,28 @@ def test_validation_runs_current_required_local_proofs():
     for command in required:
         assert command in text
 
+    portable = PORTABLE_VALIDATOR.read_text(encoding="utf-8")
+    assert '"$PYTHON" -m pytest -q' in portable
+    assert '"$ROOT/tests/test_ci_workflows.py"' in portable
+
+
+def test_retired_azure_vulnerability_publisher_stays_absent():
+    assert not (WORKFLOW_ROOT / "build-vulnerability-image.yml").exists()
+    assert not (WORKFLOW_ROOT / "build-vulnerability-image.yaml").exists()
+    forbidden = (
+        "azure/login@",
+        "id-token: write",
+        "az acr build",
+        "dockerfile.vulnerability-job",
+    )
+    for path in workflow_paths():
+        text = path.read_text(encoding="utf-8").lower()
+        for marker in forbidden:
+            assert marker not in text, f"{path}: retired Azure publisher marker {marker!r}"
+
 
 def test_pull_request_workflows_do_not_receive_write_permissions():
-    for path in sorted(WORKFLOW_ROOT.glob("*.yml")):
+    for path in workflow_paths():
         workflow = load_workflow(path)
         if "pull_request" not in workflow.get("on", {}):
             continue
@@ -80,3 +113,23 @@ def test_pull_request_workflows_do_not_receive_write_permissions():
         for job_name, job in workflow.get("jobs", {}).items():
             permissions = job.get("permissions", inherited)
             assert "write" not in permissions.values(), f"{path}/{job_name}"
+
+
+def test_criticality_score_workflow_is_bounded_read_only_and_pinned():
+    workflow = load_workflow(CRITICALITY_SCORE)
+    assert workflow["permissions"] == {"contents": "read"}
+    assert "pull_request" not in workflow["on"]
+    assert workflow["concurrency"]["cancel-in-progress"] == "true"
+
+    job = workflow["jobs"]["criticality-score"]
+    assert job["runs-on"] == "ubuntu-24.04"
+    assert int(job["timeout-minutes"]) == 10
+    assert job.get("permissions", workflow["permissions"]) == {"contents": "read"}
+
+    text = CRITICALITY_SCORE.read_text(encoding="utf-8")
+    assert "criticality_score@v2.0.4" in text
+    assert "criticality_score@latest" not in text
+    assert "GITHUB_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}" in text
+    assert "-depsdev-disable" in text
+    assert "timeout 5m go install" in text
+    assert 'timeout 4m "$SCORE_BIN"' in text

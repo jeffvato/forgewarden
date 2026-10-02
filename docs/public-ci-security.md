@@ -22,9 +22,12 @@ changes to the kill switch.
   validation for least privilege, time bounds, required proofs, and checkout
   credential handling.
 
-The workflow intentionally performs no deployment and does not change the
-separate vulnerability-image publishing workflow. `DRY_RUN`, deployment
-`DISABLED`, and the engaged kill switch remain product invariants.
+The workflow intentionally performs no deployment. The separate hosted Azure
+vulnerability-image publishing workflow is retired and unavailable; Azure
+resources are not an active publishing target. The local read-only
+vulnerability tooling and `Dockerfile.vulnerability-job` remain non-deployed
+artifacts. `DRY_RUN`, deployment `DISABLED`, and the engaged kill switch remain
+product invariants.
 
 ## Operator-controlled protections
 
