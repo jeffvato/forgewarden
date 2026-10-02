@@ -55,6 +55,8 @@ case "${1:---portable}" in
       "$ROOT/tests/test_installation.py" \
       "$ROOT/tests/test_prerequisites.py" \
       "$ROOT/tests/test_install_smoke.py" \
+      "$ROOT/tests/test_harness_models.py" \
+      "$ROOT/tests/test_harness_spend.py" \
       "$ROOT/tests/test_console.py" \
       "$ROOT/tests/test_addon_catalog.py"
     ;;
