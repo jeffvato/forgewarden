@@ -23,8 +23,7 @@ MAX_QUEUE_EVENTS = 1024
 _PILOT_STAGING_ROOT = "/srv/forgewarden-stage"
 _EVIDENCE_REFERENCE = re.compile(r"^fw-evid/([a-z][a-z0-9_.-]{0,127})/[a-z][a-z0-9_.:/-]{0,191}$")
 _POLICY_REFERENCE = re.compile(r"^fw-policy/([a-z][a-z0-9_.-]{0,127})/[a-z][a-z0-9_.:/-]{0,191}$")
-_ACTION_TICKET_REFERENCE = re.compile(r"^AT-[A-Za-z0-9][A-Za-z0-9_.-]{0,252}$")
-_UTC_RFC3339 = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,6})?)?Z$")
+_UTC_RFC3339 = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?Z$")
 
 
 class AVServiceContractError(ValueError):
@@ -214,8 +213,9 @@ class AVProtectionService:
         if evidence_match is None or evidence_match.group(1) != self.profile.tenant_id:
             return {"decision": "NOT_READY", "reason": "EVIDENCE_DESTINATION_INVALID", "authority_granted": False, "mode": "DRY_RUN", "action": "DETECT_ONLY"}
         policy_match = _POLICY_REFERENCE.fullmatch(package["policy_ticket"])
-        if ((policy_match is not None and policy_match.group(1) != self.profile.tenant_id)
-                or (policy_match is None and _ACTION_TICKET_REFERENCE.fullmatch(package["policy_ticket"]) is None)):
+        policy_ticket = package["policy_ticket"]
+        if ((policy_ticket.startswith("fw-policy/") and policy_match is None)
+                or (policy_match is not None and policy_match.group(1) != self.profile.tenant_id)):
             return {"decision": "NOT_READY", "reason": "POLICY_TICKET_INVALID", "authority_granted": False, "mode": "DRY_RUN", "action": "DETECT_ONLY"}
         maintenance_window = package["maintenance_window"]
         if _UTC_RFC3339.fullmatch(maintenance_window) is None:

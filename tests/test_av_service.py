@@ -148,11 +148,12 @@ def test_linux_pilot_package_readiness_reports_missing_and_validates_scope():
     missing = service.linux_pilot_package_readiness({"tenant_id": "tenant-a"})
     assert missing["reason"] == "MISSING_PILOT_PREREQUISITES"
     assert "device_id" in missing["missing"]
-    package = {"tenant_id": "tenant-a", "device_id": "device-a", "staging_path": "/srv/forgewarden-stage", "service_identity": "forgewarden-sentinel", "signed_manifest": __import__("json").dumps(service.packaging_manifest()), "rollback_checkpoint": "REC-001", "evidence_destination": "fw-evid/tenant-a/pilot/metadata", "policy_ticket": "AT-001", "maintenance_window": "2026-09-15T01:00Z"}
+    package = {"tenant_id": "tenant-a", "device_id": "device-a", "staging_path": "/srv/forgewarden-stage", "service_identity": "forgewarden-sentinel", "signed_manifest": __import__("json").dumps(service.packaging_manifest()), "rollback_checkpoint": "REC-001", "evidence_destination": "fw-evid/tenant-a/pilot/metadata", "policy_ticket": "AT-001", "maintenance_window": "2026-09-15T01:00:00Z"}
     ready = service.linux_pilot_package_readiness(package)
     assert ready["reason"] == "PILOT_REQUIRES_SEPARATE_ACTIVATION_AUTHORIZATION"
     assert ready["installation"] == "NOT_AUTHORIZED"
     assert ready["authority_granted"] is False
+    assert service.linux_pilot_package_readiness(dict(package, policy_ticket="ticket-1"))["reason"] == "PILOT_REQUIRES_SEPARATE_ACTIVATION_AUTHORIZATION"
     mismatched = dict(package, device_id="device-b")
     assert service.linux_pilot_package_readiness(mismatched)["reason"] == "PILOT_SCOPE_MISMATCH"
     assert service.linux_pilot_package_readiness(dict(package, signed_manifest="not-json"))["reason"] == "SIGNED_MANIFEST_INVALID"
@@ -172,12 +173,17 @@ def test_linux_pilot_package_readiness_rejects_untrusted_prerequisite_references
     cases = (
         ("staging_path", "/srv/forgewarden-stage/../escape", "STAGING_PATH_INVALID"),
         ("staging_path", "/srv/other", "STAGING_PATH_INVALID"),
+        ("staging_path", "/srv/forgewarden-stage-evil", "STAGING_PATH_INVALID"),
+        ("staging_path", "/srv/forgewarden-stage//pilot-a", "STAGING_PATH_INVALID"),
+        ("staging_path", "/srv/forgewarden-stage\\pilot-a", "STAGING_PATH_INVALID"),
         ("staging_path", "/srv/forgewarden-stage/\tmasked", "INVALID_PILOT_PREREQUISITE"),
+        ("rollback_checkpoint", "R" * 257, "INVALID_PILOT_PREREQUISITE"),
         ("evidence_destination", "fw-evid/tenant-b/pilot/metadata", "EVIDENCE_DESTINATION_INVALID"),
         ("evidence_destination", "fw-evid/tenant-a", "EVIDENCE_DESTINATION_INVALID"),
         ("policy_ticket", "fw-policy/tenant-b/pilot-001", "POLICY_TICKET_INVALID"),
-        ("policy_ticket", "ticket-001", "POLICY_TICKET_INVALID"),
-        ("maintenance_window", "2026-09-15T01:00+00:00", "MAINTENANCE_WINDOW_INVALID"),
+        ("policy_ticket", "fw-policy/tenant-a", "POLICY_TICKET_INVALID"),
+        ("maintenance_window", "2026-09-15T01:00Z", "MAINTENANCE_WINDOW_INVALID"),
+        ("maintenance_window", "2026-09-15T01:00:00+00:00", "MAINTENANCE_WINDOW_INVALID"),
         ("maintenance_window", "2026-02-30T01:00:00Z", "MAINTENANCE_WINDOW_INVALID"),
     )
     for key, value, reason in cases:
