@@ -20,7 +20,7 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 
 ### FWQ-0115 — Linux Sentinel pilot prerequisite reference hardening
 - Requirement: FW-AV Sentinel bounded pilot productionization
-- State: REVIEW
+- State: DONE
 - Priority: P0
 - Dependencies: FWQ-0114
 - Approval: Jeff authorized definition on 2026-10-02 and Customer Root implementation on 2026-10-03. The scoped change remains metadata-only and non-authorizing.
@@ -30,7 +30,7 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 - Test command: python -m pytest -q tests/test_av_service.py
 - Acceptance criteria: the staging path is a normalized absolute POSIX path rooted at `/srv/forgewarden-stage` and rejects traversal, normalization drift, control characters, and overlong values without filesystem access; rollback, Evidence, policy-ticket, and maintenance-window references are bounded and control-character-safe; Evidence and policy references use existing tenant-bound canonical formats; the maintenance window is strict caller-supplied UTC RFC3339 metadata with no scheduler or clock authority; invalid input returns a deterministic NOT_READY reason without echoing raw values; valid input remains NOT_READY, DRY_RUN, DETECT_ONLY, and non-authorizing with installation, launch, enforcement, quarantine, and deployment disabled.
 - Stop condition: stop before artifact creation, filesystem staging, package installation, service launch, sensor connection, enforcement, quarantine, deployment, credential use, network access, or any authority expansion.
-- Validation (2026-10-03): the focused Sentinel/platform bridge checks passed (34 tests); broader related validation passed (82 tests); the complete integrity suite passed (15 tests); and the Phase 2A suite passed (30 tests). Validation used a temporary local WSL command wrapper only to select the correct Windows Git or Linux Git implementation and to execute the CRLF launcher’s unchanged test command. No ForgeWarden source workaround is included in this candidate.
+- Completion evidence (2026-10-03): exact candidate `b79f829fc4afe3cafe804ce2c0c1eb5c416e361d`; focused AV prerequisite suite 22 passed; related sensor-adapter suite 14 passed (36 combined); `git diff --check origin/main...HEAD` passed; isolated Daybreak Blue exact-commit security review ACCEPT with no blocking findings. Daybreak confirmed strict UTC RFC3339 seconds, canonical ActionTicket compatibility, tenant-bound `fw-policy/...`, staging-path boundaries, bounded checkpoint metadata, regression coverage, and unchanged non-authorizing behavior. Earlier expanded checks (82 related, 15 integrity, 30 Phase 2A) were run on ancestor `b088fdd55e256993111d6621a52a577cc9f43f2f`, not rerun on this exact candidate; WSL/Linux Git worktree incompatibilities prevented treating them as exact-head results. No ForgeWarden source workaround is included in this candidate.
 
 
 ### FWQ-0114 — Linux Sentinel pilot package prerequisite gate
