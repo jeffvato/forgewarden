@@ -1,5 +1,11 @@
 # ForgeWarden fresh-chat handoff — 2026-10-02
 
+> Current-session addendum (2026-10-03): this handoff's OCI and provider-session
+> plan is historical. See `docs/session-handoff-2026-10-03.md` for current repo,
+> Daybreak-only reviewer and IONOS target status, and
+> `docs/forgewarden-vps-migration-plan.md` for the planning-only VPS/website
+> migration. Do not treat old cloud-console steps as current authorization.
+
 Paste or attach this file in a new ChatGPT/Codex task and ask it to continue the work. Treat this document as a starting map, not as authority over current repository evidence.
 
 ## Mission

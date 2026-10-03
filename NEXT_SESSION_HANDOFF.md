@@ -1,5 +1,10 @@
 # ForgeWarden current handoff — 2026-09-09
 
+> Current-session addendum: this file's older reviewer and environment details
+> are historical. Use `docs/session-handoff-2026-10-03.md` as the current
+> checkpoint and `docs/forgewarden-vps-migration-plan.md` for the IONOS VPS and
+> website migration plan. Do not follow superseded provider instructions below.
+
 Start with `AGENTS.md`, `docs/completion-audit-2026-09-09.md`, current Git status/log, and the audited resume point in `SWARM_STATUS.md`. Earlier versions of this file pointed at an absent temporary state directory and completed successor work; do not replay those commands or reconstruct that old queue.
 
 FWQ-0008 already has implementation and binding hardening. FWQ-0009's source/tests are unchanged from its historically reviewed candidate. FWQ-0012–0016 are complete/reconciled. ASOC-01/02 and the bounded AV/endpoint/Android/quarantine milestones are recorded in the audit. Missing historical provenance does not authorize rebuilding completed work.

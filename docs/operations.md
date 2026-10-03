@@ -1,5 +1,12 @@
 # Operations and handoff
 
+Current reviewer policy: D-027 makes Daybreak Blue the sole active exact-commit
+reviewer. Use the `daybreak-review` or default `review-cycle` route. It needs
+authorized OpenAI Daybreak access and may incur API charges; this documentation
+does not authorize a live request. Historical Claude/Gemini/AnythingLLM
+instructions below are not active reviewer routing. Do not enable deployment
+or move services based on these local operations examples.
+
 All commands are local WSL commands. Phase 1 is dry-run only.
 
 ```bash

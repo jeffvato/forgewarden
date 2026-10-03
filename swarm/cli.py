@@ -7,7 +7,6 @@ from pathlib import Path
 from .adapters import discover_commands, measure_resources, select_limits
 from .core import SwarmError
 from .baseline import run_controlled_baseline
-from .gemini_recovery import recover_gemini_review
 from .local_run import run_real_dry_run
 from .phase2a import disable_autonomous_dry_run, enable_autonomous_dry_run, engage_kill_switch, recover_terminal_abandoned, run_worker_job, safety_status, workflow_status
 from .paths import audit_root, runtime_root
@@ -32,7 +31,7 @@ from .integrity import run_product_integrity_gate, write_gate_report
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Local Hermes coding swarm (dry-run only)")
-    parser.add_argument("command", choices=["start", "stop", "status", "workflow-status", "kill-switch", "dry-run", "controlled-baseline", "gemini-review-recovery", "quality-review", "quality-apply-safe", "quality-audit", "release-inventory", "review-evidence", "claude-review", "review-cycle", "approval-create", "approval-verify", "approval-reconcile", "codebase-index-build", "codebase-index-query", "codebase-index-delete", "index-evidence", "vulnerability-evidence", "vulnerability-update", "integrity-gate", "phase2a-worker", "phase2a-recover-terminal", "console", "run", "autonomous-loop-status", "autonomous-loop-run", "autonomous-dry-run-status", "autonomous-dry-run-enable", "autonomous-dry-run-disable"], nargs="?", default="status")
+    parser.add_argument("command", choices=["start", "stop", "status", "workflow-status", "kill-switch", "dry-run", "controlled-baseline", "quality-review", "quality-apply-safe", "quality-audit", "release-inventory", "review-evidence", "daybreak-review", "review-cycle", "approval-create", "approval-verify", "approval-reconcile", "codebase-index-build", "codebase-index-query", "codebase-index-delete", "index-evidence", "vulnerability-evidence", "vulnerability-update", "integrity-gate", "phase2a-worker", "phase2a-recover-terminal", "console", "run", "autonomous-loop-status", "autonomous-loop-run", "autonomous-dry-run-status", "autonomous-dry-run-enable", "autonomous-dry-run-disable"], nargs="?", default="status")
     parser.add_argument("--state-dir", type=Path, default=Path(".swarm-state"))
     parser.add_argument("--runtime-root", type=Path)
     parser.add_argument("--audit-dir", type=Path)
@@ -72,7 +71,7 @@ def main() -> int:
     parser.add_argument("--decision", choices=["APPROVED", "REJECTED"])
     parser.add_argument("--ttl-seconds", type=int, default=3600)
     parser.add_argument("--consume", action="store_true")
-    parser.add_argument("--allow-external-review", action="store_true", help="allow the Gemini-compatible reviewer to contact its provider")
+    parser.add_argument("--allow-external-review", action="store_true", help="allow the configured read-only reviewer to contact its provider")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8787)
     args = parser.parse_args()
@@ -198,8 +197,8 @@ def main() -> int:
                 raise AutonomousLoopError("autonomous state directory must be outside the Git repository")
             args.state_dir.mkdir(parents=True, exist_ok=True)
             codex = CodexTaskAdapter(Path(__file__).resolve().parents[1] / "schemas/codex-result.schema.json", args.codex_executable or "/home/jeff/.local/bin/codex")
-            # D-026 requires AnythingLLM/Qwen; Claude and Gemini remain disabled.
-            configured_reviewers = tuple(manifest.get("reviewers", ("ANYTHINGLLM",)))
+            # D-027 requires Daybreak as the sole reviewer; no fallback is permitted.
+            configured_reviewers = tuple(manifest.get("reviewers", ("DAYBREAK",)))
             reviewer = ExactReviewAdapter(str(manifest.get("review_context", "ForgeWarden exact-commit review")), allow_external_review=args.allow_external_review, reviewers=configured_reviewers)
             orchestrator = AutonomousOrchestrator(args.state_dir / "autonomous-loop.json", args.repository, tuple(tasks), checkpoint_path=args.state_dir / "work-checkpoint.json", audit_path=args.state_dir / "execution-log.jsonl")
             result = orchestrator.run(dispatch=codex.dispatch, validate=lambda task, value: run_deterministic_tests(task, value, args.repository), commit=lambda task, value: git_controller.commit_worker_changes(task, value), review=lambda task, commit, lease: reviewer.review(task, commit, lease), review_resolver=lambda task, record: reviewer.resolve_review(task, WorkerLease("review", task.task_id, orchestrator.session_id, str(args.repository), task.allowed_paths, "REVIEW", (), 0)), max_steps=args.max_steps, plan_tasks=tuple(plan_tasks))
@@ -294,20 +293,20 @@ def main() -> int:
         except (OSError, ValueError) as exc:
             print(f"FAILED: {exc}")
             return 1
-    if args.command == "claude-review":
-        if not args.context_file or not args.job_id:
-            parser.error("claude-review requires --context-file and --job-id")
+    if args.command == "daybreak-review":
+        if not args.context_file or not args.job_id or not args.revision:
+            parser.error("daybreak-review requires --context-file, --job-id, and --revision (full commit SHA)")
         try:
             context_path = args.context_file.expanduser()
             if context_path.is_symlink() or any(parent.is_symlink() for parent in (context_path.parent, *context_path.parent.parents)):
-                raise ValueError("claude-review refuses symlinked context paths")
-            from .claude_adapter import MAX_CONTEXT_BYTES, run_claude
+                raise ValueError("daybreak-review refuses symlinked context paths")
             if not context_path.is_file():
-                raise ValueError("claude-review context file is missing")
-            if context_path.stat().st_size > MAX_CONTEXT_BYTES:
-                raise ValueError("claude-review context file exceeds the 24000-byte bound")
+                raise ValueError("daybreak-review context file is missing")
+            if context_path.stat().st_size > 24_000:
+                raise ValueError("daybreak-review context file exceeds the 24000-byte bound")
             from .core import read_restricted_bytes
-            result = run_claude(args.job_id, read_restricted_bytes(context_path, "Claude review context").decode("utf-8"), model=args.model)
+            from .verification_adapters import daybreak_adapter
+            result = daybreak_adapter().run(Path("."), args.job_id, args.revision, read_restricted_bytes(context_path, "Daybreak review context").decode("utf-8"))
             print(json.dumps(result, indent=2, sort_keys=True))
             return 0
         except (OSError, ValueError, SwarmError) as exc:

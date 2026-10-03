@@ -19,6 +19,82 @@ from .claude_verifier import schema
 from .core import SwarmError, redact, validate_contract
 
 
+class DaybreakReviewer:
+    """Read-only exact-commit reviewer using OpenAI Responses and Daybreak Blue."""
+
+    endpoint = "https://api.openai.com/v1/responses"
+    model = "gpt-daybreak-blue-latest"
+
+    def __init__(self, timeout: int = 90):
+        self.timeout = timeout
+
+    @staticmethod
+    def _schema(job_id: str, commit: str) -> dict[str, Any]:
+        return {
+            "type": "object", "additionalProperties": False,
+            "required": ["job_id", "reviewed_commit", "verdict", "risk", "blocking_findings", "non_blocking_notes", "tests_missing", "reasoning_summary", "proposed_rules"],
+            "properties": {
+                "job_id": {"type": "string", "enum": [job_id]},
+                "reviewed_commit": {"type": "string", "enum": [commit]},
+                "verdict": {"type": "string", "enum": ["APPROVE", "REJECT", "HUMAN_REQUIRED"]},
+                "risk": {"type": "string", "enum": ["LOW", "MEDIUM", "HIGH"]},
+                "blocking_findings": {"type": "array", "items": {"type": "string"}},
+                "non_blocking_notes": {"type": "array", "items": {"type": "string"}},
+                "tests_missing": {"type": "array", "items": {"type": "string"}},
+                "reasoning_summary": {"type": "string"},
+                "proposed_rules": {"type": "array", "items": {"type": "string"}},
+            },
+        }
+
+    def run(self, snapshot: Path, job_id: str, commit: str, prompt: str) -> dict[str, Any]:
+        del snapshot
+        if len(prompt.encode("utf-8")) > 24_000:
+            raise SwarmError("Daybreak review input exceeds the 24 KB inline bound")
+        api_key = os.environ.get("OPENAI_API_KEY", "")
+        if not api_key:
+            raise SwarmError("Daybreak OpenAI API key is unavailable")
+        # Singleton enums bind job/SHA while using the strict-output subset.
+        contract = self._schema(job_id, commit)
+        payload = {
+            "model": self.model,
+            "access_programs": {"cyber": "daybreak_blue"},
+            "input": [{"role": "user", "content": prompt + "\nReturn only the JSON review object."}],
+            "text": {"format": {"type": "json_schema", "name": "forgewarden_exact_review", "strict": True, "schema": contract}},
+            "max_output_tokens": 1800,
+        }
+        request = urllib.request.Request(
+            self.endpoint, data=json.dumps(payload).encode("utf-8"),
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json", "Accept": "application/json"},
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=self.timeout) as response:
+                body = json.loads(response.read(131_072).decode("utf-8"))
+        except (OSError, urllib.error.URLError, json.JSONDecodeError) as exc:
+            raise SwarmError(f"Daybreak Responses request failed: {redact(str(exc))[:400]}") from exc
+        if not isinstance(body, dict) or body.get("status") != "completed":
+            raise SwarmError("Daybreak Responses returned an incomplete review")
+        output = body.get("output_text")
+        if not isinstance(output, str):
+            chunks = [
+                part.get("text") for item in body.get("output", []) if isinstance(item, dict)
+                for part in item.get("content", []) if isinstance(part, dict) and part.get("type") == "output_text"
+            ]
+            output = "".join(value for value in chunks if isinstance(value, str))
+        try:
+            result = json.loads(output)
+        except (TypeError, json.JSONDecodeError) as exc:
+            raise SwarmError("Daybreak returned invalid structured review output") from exc
+        if not isinstance(result, dict):
+            raise SwarmError("Daybreak returned a non-object review")
+        validate_contract(result, "claude", expected_job_id=job_id, expected_commit=commit)
+        return result
+
+
+def daybreak_adapter() -> DaybreakReviewer:
+    return DaybreakReviewer()
+
+
 class VerificationAdapter:
     """Call an OpenAI-compatible reviewer without granting repository access."""
 

@@ -66,7 +66,7 @@ class SelfHostedHarnessRuntime:
         git.ensure_clean()
         review = ExactReviewAdapter(
             review_context, allow_external_review=allow_external_review,
-            reviewers=("ANYTHINGLLM",),
+            reviewers=("DAYBREAK",),
         )
         return cls(
             repository=repository,
@@ -143,9 +143,9 @@ class SelfHostedHarnessRuntime:
                 time.time() + 300,
             )
             results = self.reviewer(self.specs[task.task_id], commit_sha, lease)
-            if set(results) != {"ANYTHINGLLM"} or not isinstance(results["ANYTHINGLLM"], ReviewResult):
-                raise HarnessRuntimeError("required exact AnythingLLM/Qwen review is missing")
-            return results["ANYTHINGLLM"]
+            if set(results) != {"DAYBREAK"} or not isinstance(results["DAYBREAK"], ReviewResult):
+                raise HarnessRuntimeError("required exact Daybreak review is missing")
+            return results["DAYBREAK"]
 
         return controller.run(
             worker_executor=execute, validator=validate, committer=commit,

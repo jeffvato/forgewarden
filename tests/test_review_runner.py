@@ -35,6 +35,7 @@ def test_review_cycle_records_provider_failure_without_approving(repo_fixture: P
         sha,
         "phase2a-" + "b" * 24,
         "review",
+        reviewers=("CLAUDE", "GEMINI"),
         claude_runner=approved,
         gemini_runner=unavailable,
     )
@@ -53,6 +54,7 @@ def test_review_cycle_classifies_exact_result_failure_without_approving(repo_fix
                 "reasoning_summary": "malformed exact result", "proposed_rules": []}
 
     result = run_review_cycle(repo_fixture, sha, "phase2a-" + "1" * 24, "review",
+                              reviewers=("CLAUDE", "GEMINI"),
                               claude_runner=malformed, gemini_runner=malformed)
     assert result["state"] == "REVIEW_REQUIRED"
     assert all(item["reason_code"] == "EXACT_RESULT_INVALID" for item in result["reviews"])
@@ -65,6 +67,7 @@ def test_review_cycle_classifies_unknown_failure_as_provider_failed(repo_fixture
         raise RuntimeError("unexpected reviewer state")
 
     result = run_review_cycle(repo_fixture, sha, "phase2a-" + "3" * 24, "review",
+                              reviewers=("CLAUDE", "GEMINI"),
                               claude_runner=failed, gemini_runner=failed)
     assert result["state"] == "REVIEW_REQUIRED"
     assert all(item["reason_code"] == "PROVIDER_FAILED" for item in result["reviews"])
@@ -77,6 +80,7 @@ def test_review_cycle_classifies_commit_mismatch_as_exact_result_invalid(repo_fi
         raise RuntimeError("reviewed commit mismatch: expected exact candidate")
 
     result = run_review_cycle(repo_fixture, sha, "phase2a-" + "4" * 24, "review",
+                              reviewers=("CLAUDE", "GEMINI"),
                               claude_runner=failed, gemini_runner=failed)
     assert result["state"] == "REVIEW_REQUIRED"
     assert all(item["reason_code"] == "EXACT_RESULT_INVALID" for item in result["reviews"])
@@ -89,6 +93,7 @@ def test_review_cycle_classifies_rate_limit_without_exposing_provider_details(re
         raise RuntimeError("429 rate limit; Authorization Bearer secret-value")
 
     result = run_review_cycle(repo_fixture, sha, "phase2a-" + "2" * 24, "review",
+                              reviewers=("CLAUDE", "GEMINI"),
                               claude_runner=limited, gemini_runner=limited)
     assert result["state"] == "REVIEW_REQUIRED"
     assert all(item["reason_code"] == "RATE_LIMITED" for item in result["reviews"])
@@ -146,6 +151,7 @@ def test_review_cycle_uses_independent_provider_snapshots(repo_fixture: Path):
         sha,
         "phase2a-" + "d" * 24,
         "review",
+        reviewers=("CLAUDE", "GEMINI"),
         claude_runner=approved,
         gemini_runner=approved,
     )

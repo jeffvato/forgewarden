@@ -16,8 +16,11 @@ def test_rejection_requires_rationale_and_invalid_sha_rejected():
     with pytest.raises(ReviewHandoffError,match="full"): create_review_cycle("short")
     with pytest.raises(ReviewHandoffError,match="rationale"): record_review(create_review_cycle(SHA_A),result(disposition="REJECTED",rationale=""))
 def test_completion_requires_configured_reviewers_and_string_findings():
+    with pytest.raises(ReviewHandoffError,match="required reviewer evidence"):
+        complete_review_cycle(create_review_cycle(SHA_A))
+    daybreak_cycle=record_review(create_review_cycle(SHA_A),result("DAYBREAK"))
+    assert complete_review_cycle(daybreak_cycle).reviews["DAYBREAK"].disposition == "APPROVED"
     cycle=record_review(create_review_cycle(SHA_A),result())
-    with pytest.raises(ReviewHandoffError,match="required reviewer evidence"): complete_review_cycle(cycle)
     assert complete_review_cycle(cycle, required_roles={"CLAUDE"}).reviews["CLAUDE"].disposition == "APPROVED"
     qwen_cycle=record_review(create_review_cycle(SHA_A),result("ANYTHINGLLM"))
     assert complete_review_cycle(qwen_cycle, required_roles={"ANYTHINGLLM"}).reviews["ANYTHINGLLM"].disposition == "APPROVED"

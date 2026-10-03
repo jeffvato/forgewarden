@@ -21,9 +21,10 @@ The registry rejects profiles that weaken global restrictions. The dispatch
 endpoint returns `PLAN_ONLY` and `execution_started: false`; execution adapters
 must be added separately and must preserve these checks.
 
-Initial lanes are Codex/Forge for local implementation, Gemini/Sentinel for
-read-only review, Claude/Ledger for evidence and documentation audit, and
-Fable/Compass for read-only analysis.
+Current policy: Daybreak Blue is the only active exact-commit reviewer
+(D-027). Historical lane names below the console registry are not reviewer
+fallback authorization. Daybreak has no tools, source-write, deployment, or
+response authority.
 
 The console binds to loopback by default. Do not expose it publicly without a
 separately reviewed authentication and deployment design.

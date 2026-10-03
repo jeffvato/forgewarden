@@ -109,7 +109,7 @@ def test_kill_switch_authorization_stop_dispatches_nothing(tmp_path):
     assert calls == [] and result.durable_state["stop_reason"] == "SUPERVISOR_TERMINATED"
 
 
-def self_hosted_runtime(tmp_path, *, review_role="ANYTHINGLLM", validation=True):
+def self_hosted_runtime(tmp_path, *, review_role="DAYBREAK", validation=True):
     tmp_path.mkdir(parents=True, exist_ok=True)
     tasks = (canonical("FWQ-0100", 0), canonical("FWQ-0101", 1, ("FWQ-0100",)))
     specs = tuple(TaskSpec(value.task_id, value.requirement_id, value.description, dependencies=value.dependencies, priority=value.priority, allowed_paths=value.relevant_files, retry_budget=0, worker_type="CODEX", test_command=("pytest",)) for value in tasks)
@@ -208,7 +208,7 @@ def test_existing_adapter_constructor_rejects_dirty_git(tmp_path):
         SelfHostedHarnessRuntime.from_existing_adapters(repository=tmp_path, task_specs=(spec,), codex_executable="codex", codex_schema=tmp_path / "schema.json", review_context="fixture")
 
 
-def test_existing_adapter_constructor_selects_only_anythingllm(tmp_path, monkeypatch):
+def test_existing_adapter_constructor_selects_only_daybreak(tmp_path, monkeypatch):
     subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
     (tmp_path / "tracked.txt").write_text("clean\n")
     subprocess.run(["git", "-C", str(tmp_path), "add", "tracked.txt"], check=True)
@@ -226,10 +226,10 @@ def test_existing_adapter_constructor_selects_only_anythingllm(tmp_path, monkeyp
         repository=tmp_path, task_specs=(spec,), codex_executable="codex",
         codex_schema=tmp_path / "schema.json", review_context="fixture",
     )
-    assert selected["reviewers"] == ("ANYTHINGLLM",)
+    assert selected["reviewers"] == ("DAYBREAK",)
 
 
-def test_self_hosted_missing_anythingllm_reviewer_role_fails_closed(tmp_path):
+def test_self_hosted_missing_daybreak_reviewer_role_fails_closed(tmp_path):
     runtime, calls = self_hosted_runtime(tmp_path, review_role="CLAUDE")
     result = runtime.run(controller(tmp_path), max_steps=1)
     assert [item[0] for item in calls] == ["worker", "validate", "commit", "review"]

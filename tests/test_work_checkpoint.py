@@ -103,14 +103,14 @@ def test_no_change_accepted_checkpoint_reconciles_at_current_head():
     assert reconcile_checkpoint(checkpoint, SHA_A)["expected_commit"] == SHA_A
 
 
-def test_anythingllm_checkpoint_records_provider_without_fabricating_legacy_roles(tmp_path):
+def test_daybreak_checkpoint_records_provider_without_fabricating_legacy_roles(tmp_path):
     path = tmp_path / "checkpoint.json"
     checkpoint = _checkpoint(
         candidate_commit=SHA_B,
         accepted_commit=SHA_B,
         claude_review="NOT_USED",
         gemini_review="NOT_USED",
-        reviewer_evidence=("ANYTHINGLLM:APPROVED:LOW",),
+        reviewer_evidence=("DAYBREAK:APPROVED:LOW",),
     )
     write_checkpoint(path, checkpoint)
     assert load_checkpoint(path) == checkpoint

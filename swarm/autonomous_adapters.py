@@ -60,26 +60,26 @@ def run_deterministic_tests(task: TaskSpec, result: WorkerResult, repository: Wo
 
 
 class ExactReviewAdapter:
-    """Use the existing independent review runner and convert its evidence."""
+    """Use Daybreak as the sole independent reviewer and convert its evidence."""
 
-    def __init__(self, context: str, *, allow_external_review: bool = False, reviewers: tuple[str, ...] = ("ANYTHINGLLM",)):
-        if reviewers != ("ANYTHINGLLM",):
-            raise ValueError("autonomous review requires AnythingLLM/Qwen only")
+    def __init__(self, context: str, *, allow_external_review: bool = False, reviewers: tuple[str, ...] = ("DAYBREAK",)):
+        if reviewers != ("DAYBREAK",):
+            raise ValueError("autonomous review requires Daybreak only")
         self.context = context
         self.allow_external_review = allow_external_review
         self.reviewers = reviewers
 
     @staticmethod
-    def _anythingllm_record(result: dict[str, Any], *, expected_job_id: str, expected_commit: str) -> dict[str, Any]:
+    def _daybreak_record(result: dict[str, Any], *, expected_job_id: str, expected_commit: str) -> dict[str, Any]:
         reviews = result.get("reviews")
         if (
             not isinstance(reviews, (list, tuple))
             or len(reviews) != 1
             or not isinstance(reviews[0], dict)
-            or reviews[0].get("provider") != "ANYTHINGLLM"
+            or reviews[0].get("provider") != "DAYBREAK"
             or result.get("adjudication") is not None
         ):
-            raise RuntimeError("autonomous review returned evidence outside the AnythingLLM/Qwen policy")
+            raise RuntimeError("autonomous review returned evidence outside the Daybreak-only policy")
         review = reviews[0]
         if review.get("state") == "APPROVED":
             payload = review.get("result")
@@ -92,7 +92,7 @@ class ExactReviewAdapter:
                 or payload.get("blocking_findings") != []
                 or payload.get("tests_missing") != []
             ):
-                raise RuntimeError("AnythingLLM approval evidence failed exact binding or acceptance checks")
+                raise RuntimeError("Daybreak approval evidence failed exact binding or acceptance checks")
         return review
 
     def review(self, task: TaskSpec, commit: str, lease: WorkerLease) -> dict[str, ReviewResult]:
@@ -100,21 +100,21 @@ class ExactReviewAdapter:
         result = run_review_cycle(
             Path(lease.repository), commit, job_id, self.context,
             allow_external_review=self.allow_external_review,
-            reviewers=("ANYTHINGLLM",), required_reviewers=("ANYTHINGLLM",),
+            reviewers=("DAYBREAK",), required_reviewers=("DAYBREAK",),
             adjudicate_disagreements=False, sequential_fallback=False,
         )
-        review = self._anythingllm_record(result, expected_job_id=job_id, expected_commit=commit)
+        review = self._daybreak_record(result, expected_job_id=job_id, expected_commit=commit)
         if result["state"] != "APPROVED":
             if review.get("state") == "UNAVAILABLE":
-                detail = str(review.get("error", "AnythingLLM review unavailable"))
+                detail = str(review.get("error", "Daybreak review unavailable"))
                 raise ReviewUnavailable(f"independent exact-commit review resource unavailable: {detail[:1000]}")
             raise RuntimeError("independent exact-commit review did not approve: " + _review_failure_detail(result))
         payload = review.get("result")
         if review.get("state") != "APPROVED" or not isinstance(payload, dict):
-            raise RuntimeError("AnythingLLM review evidence is incomplete")
+            raise RuntimeError("Daybreak review evidence is incomplete")
         return {
-            "ANYTHINGLLM": ReviewResult(
-                "ANYTHINGLLM", commit, tuple(str(value) for value in payload.get("blocking_findings", [])),
+            "DAYBREAK": ReviewResult(
+                "DAYBREAK", commit, tuple(str(value) for value in payload.get("blocking_findings", [])),
                 str(payload["risk"]), "APPROVED", str(payload["reasoning_summary"]),
             )
         }
@@ -130,18 +130,18 @@ class ExactReviewAdapter:
                 job_id,
                 self.context,
                 allow_external_review=self.allow_external_review,
-                reviewers=("ANYTHINGLLM",),
-                required_reviewers=("ANYTHINGLLM",),
+                reviewers=("DAYBREAK",),
+                required_reviewers=("DAYBREAK",),
                 adjudicate_disagreements=False,
                 sequential_fallback=False,
             )
-            required_review = self._anythingllm_record(result, expected_job_id=job_id, expected_commit=task.review_commit)
+            required_review = self._daybreak_record(result, expected_job_id=job_id, expected_commit=task.review_commit)
             if result["state"] == "APPROVED":
                 if required_review.get("state") != "APPROVED":
-                    return "REPAIRABLE: approved review cycle lacks AnythingLLM approval evidence"
+                    return "REPAIRABLE: approved review cycle lacks Daybreak approval evidence"
                 return "PASSED"
             if required_review.get("state") == "UNAVAILABLE":
-                detail = required_review.get("error", "AnythingLLM review unavailable")
+                detail = required_review.get("error", "Daybreak review unavailable")
                 return "EXTERNAL: " + str(detail)[:1000]
             return "REPAIRABLE: " + _review_failure_detail(result)
         except Exception as exc:

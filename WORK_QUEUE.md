@@ -10,7 +10,7 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 
 - Only approved active-phase work may be claimed.
 - Codex is the sole application-code writer.
-- AnythingLLM/Qwen is the required independent read-only exact-commit reviewer under D-026. Claude and Gemini are disabled unless Jeff explicitly re-enables them; reviewer unavailability fails closed.
+- Daybreak Blue is the sole independent read-only exact-commit reviewer under D-027. Alternate reviewers and fallback are disabled; unavailability fails closed.
 - A task is DONE only when acceptance criteria, deterministic validation, and review requirements are satisfied.
 - Do not mark placeholders, interfaces without behavior, untested code, or documentation-only claims as complete.
 - If one task is blocked, record the blocker and move to another independent READY task when safe.
@@ -18,19 +18,21 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 
 ## Active queue
 
-### FWQ-0116 — Enforce D-026 reviewer policy in autonomous execution
+### FWQ-0116 — Wire Daybreak as the sole reviewer
 - Requirement: FW-HARNESS independent exact-commit review policy
 - State: REVIEW
 - Priority: P0
 - Dependencies: FWQ-0115
-- Approval: Jeff authorized defining and implementing this bounded policy-alignment task on 2026-10-03. D-026 is the active authority: AnythingLLM/Qwen is required; Claude and Gemini are disabled unless Jeff explicitly re-enables them.
-- Description: Ensure the autonomous and self-hosted paths use only the configured AnythingLLM/Qwen exact-commit review and that shared handoff/checkpoint owners accept and truthfully persist that evidence without breaking legacy checkpoint reads.
-- Target paths: AGENTS.md, swarm/cli.py, swarm/autonomous_adapters.py, swarm/harness_runtime.py, swarm/review_handoff.py, swarm/work_checkpoint.py, tests/test_autonomous_loop.py, tests/test_harness_controller.py, tests/test_review_handoff.py, tests/test_work_checkpoint.py
-- Allowed paths: AGENTS.md, swarm/cli.py, swarm/autonomous_adapters.py, swarm/harness_runtime.py, swarm/review_handoff.py, swarm/work_checkpoint.py, tests/test_autonomous_loop.py, tests/test_harness_controller.py, tests/test_review_handoff.py, tests/test_work_checkpoint.py, WORK_QUEUE.md, SWARM_STATUS.md
-- Test commands: python3 -m pytest -q tests/test_autonomous_loop.py tests/test_harness_controller.py tests/test_review_handoff.py tests/test_work_checkpoint.py tests/test_review_runner.py tests/test_continuation.py tests/test_swarm.py
-- Acceptance criteria: autonomous reviewer defaults to exactly ANYTHINGLLM; manifests selecting Claude, Gemini, or any alternate/mixed reviewer are rejected; autonomous adapter requests ANYTHINGLLM as the sole required reviewer with no fallback/adjudication; only sole valid AnythingLLM approval evidence can approve, and substituted/malformed provider or adjudication records fail closed; the self-hosted runtime selects and consumes AnythingLLM evidence; shared handoff accepts ANYTHINGLLM without weakening exact commit/disposition checks; accepted checkpoints persist explicit provider-attributed AnythingLLM evidence while retaining legacy Claude/Gemini fields and read compatibility; unavailable AnythingLLM remains an external blocker; generic review-runner provider support outside the autonomous path remains unchanged; no credential, network, deployment, or authority configuration is added.
-- Stop condition: do not invoke Claude/Gemini or substitute another provider; if the required exact AnythingLLM/Qwen review resource is unavailable at review time, preserve the candidate in REVIEW and stop without treating another model's approval as a substitute.
-- Validation (2026-10-03): the seven scoped/compatibility suites passed (197 tests); `python3 -m compileall -q swarm` and `git diff --check` passed. Product Integrity and the exact AnythingLLM/Qwen review remain pending for the immutable candidate.
+- Approval: Jeff directed Daybreak be wired as the only reviewer on 2026-10-03. D-027 is the active authority.
+- Description: Route autonomous and self-hosted exact-commit review through Daybreak Blue Responses API only; persist truthful Daybreak evidence while retaining legacy checkpoint reads.
+- Target paths: AGENTS.md, DECISIONS.md, ROADMAP.md, swarm/cli.py, swarm/autonomous_adapters.py, swarm/harness_runtime.py, swarm/review_runner.py, swarm/verification_adapters.py, swarm/review_handoff.py, swarm/work_checkpoint.py, tests/test_autonomous_loop.py, tests/test_harness_controller.py, tests/test_review_handoff.py, tests/test_work_checkpoint.py, tests/test_review_runner.py, tests/test_verification_adapters.py, tests/test_claude_cli.py
+- Allowed paths: AGENTS.md, DECISIONS.md, ROADMAP.md, README.md, FORGEWARDEN_FRESH_CHAT_HANDOFF_2026-10-02.md, NEXT_SESSION_HANDOFF.md, docs/fw-harness-inventory.md, docs/management-console.md, docs/operations.md, docs/forgewarden-vps-migration-plan.md, docs/session-handoff-2026-10-03.md, swarm/cli.py, swarm/autonomous_adapters.py, swarm/harness_runtime.py, swarm/review_runner.py, swarm/verification_adapters.py, swarm/review_handoff.py, swarm/work_checkpoint.py, tests/test_autonomous_loop.py, tests/test_harness_controller.py, tests/test_review_handoff.py, tests/test_work_checkpoint.py, tests/test_review_runner.py, tests/test_verification_adapters.py, tests/test_claude_cli.py, tests/test_continuation.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test commands: `python -m pytest -q tests/test_autonomous_loop.py tests/test_harness_controller.py tests/test_review_handoff.py tests/test_work_checkpoint.py tests/test_review_runner.py tests/test_verification_adapters.py tests/test_claude_cli.py tests/test_continuation.py tests/test_swarm.py`
+- Acceptance criteria: autonomous reviewer defaults to exactly DAYBREAK; manifests selecting any other/mixed reviewer are rejected; active adapter requests Daybreak as sole reviewer with no fallback/adjudication; exact job/SHA and strict structured output are enforced and only sole valid Daybreak APPROVE/LOW evidence can approve; self-hosted runtime and handoff select Daybreak; checkpoints store DAYBREAK evidence and still read legacy records; missing credentials/access and provider failures remain unavailable, never approval; provider transport is mocked in tests; no live API call, credentials, deployment, or authority expansion.
+- Stop condition: do not invoke another reviewer or send a live Daybreak API request during this task. Preserve candidate in REVIEW if a real exact Daybreak assessment is needed but not explicitly authorized.
+- Validation (2026-10-03): focused reviewer-routing/API/compatibility suites passed (212); `compileall` and `git diff --check` passed. Full-suite attempt produced 2,249 passed, 1 skipped, 35 failed, and 37 errors; WSL path resolution for this Windows-linked Git worktree and CRLF launcher execution block a trustworthy broad result. No live API call was made. Exact Daybreak review of the resulting candidate and a broad gate in a compatible checkout are pending; see `docs/session-handoff-2026-10-03.md`.
+- Cloud continuation (2026-10-03): Jeff wants Codex Cloud so repository work can continue with the PC off. No environment or GitHub connection was created. Wait for accepted exact-commit review/validation, then connect only the canonical private repo and publish a minimal no-secrets environment; see `docs/forgewarden-vps-migration-plan.md#codex-cloud-for-pc-independent-development`.
+- Follow-up targeted recheck after the cloud-plan docs: WSL `compileall`, `git diff --check`, and the eight relevant changed test modules completed; 185 passed. This recheck does not replace the previous broad-gate result or the pending exact Daybreak review.
 
 ### FWQ-0115 — Linux Sentinel pilot prerequisite reference hardening
 - Requirement: FW-AV Sentinel bounded pilot productionization

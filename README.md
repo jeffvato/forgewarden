@@ -1,11 +1,12 @@
-# Hermes + Codex + Gemini coding swarm (Phase 1)
+# ForgeWarden
 
 ![Forgewarden](docs/forgewarden-hero.jpg)
 
 
-This is a local-only, dry-run implementation of the setup-kit specification.
-It is intentionally independent of `~/n8n` and never edits, deploys, pushes,
-restarts, or contacts remote infrastructure.
+This repository contains ForgeWarden's local-first, DRY_RUN implementation.
+It is intentionally independent of `~/n8n`; production deployment remains
+disabled. Daybreak Blue is the sole active exact-commit reviewer under D-027.
+Claude, Gemini, AnythingLLM/Qwen, and other reviewers are not active fallbacks.
 
 Inspect Phase 2A state without changing it:
 
@@ -23,7 +24,7 @@ PYTHONPATH=. python3 -m swarm.cli console --host 127.0.0.1 --port 8787
 ```
 
 The console shows safety state and provides guardrail-checked, plan-only task
-routing across Codex/Forge, Gemini/Sentinel, Claude/Ledger, and Fable/Compass.
+routing across the configured lanes; it does not invoke an external model.
 See `docs/management-console.md`; it does not invoke models or expose a
 production control surface.
 
@@ -35,8 +36,9 @@ python3 -m unittest discover -s tests -v
 python3 -m swarm.cli --help
 ```
 
-The tests create a disposable Git repository, seed a low-risk defect, run a
-fake Codex writer and fake Gemini reviewer, and exercise rejection paths.
+The tests create disposable Git repositories, seed low-risk defects, run fake
+writers/reviewers, and exercise rejection paths. Daybreak transport tests are
+mocked; test runs do not call the paid API.
 No live repository is used.
 
 Every push and pull request runs the portable deterministic fixture suite on
@@ -61,7 +63,7 @@ It currently reports heuristic SAFE, CAREFUL, and RISKY findings, removes
 duplicate findings deterministically, and exposes the proposed review order;
 every finding has `auto_apply: false`. The orchestrator mechanically blocks
 RISKY findings for human review and requires a Codex-listed test change for
-CAREFUL findings; Gemini approval cannot override those gates. It does not
+CAREFUL findings; no reviewer can override those gates. It does not
 edit, commit, deploy, or invoke an external model. Python syntax-aware and
 conservative JavaScript/TypeScript detectors are included; unsupported
 languages still receive text-level checks only. The report declares this
@@ -113,7 +115,7 @@ PYTHONPATH=. python3 -m swarm.cli quality-audit \
   --job-id safe-review-001
 ```
 
-Combine the three read-only artifacts for a human or Gemini review handoff:
+Combine the three read-only artifacts for a human review handoff:
 
 ```bash
 PYTHONPATH=. python3 -m swarm.cli review-evidence \
@@ -151,7 +153,8 @@ and durable application audit refer to the same evidence hash.
 
 - Hermes owns job state and orchestration; it never edits application files.
 - Codex is the only writer and is confined to a temporary Git worktree.
-- Gemini reviews a separate read-only snapshot tied to the exact commit SHA.
+- Daybreak Blue is the sole active exact-commit reviewer and receives bounded
+  read-only input without tools or repository access.
 - Deterministic checks and policy gates override model opinions.
 - Learned rules are proposed separately and remain inactive in dry-run mode.
 - `DeploymentController` always raises in dry-run mode; there is no deployment

@@ -15,7 +15,7 @@ from typing import Any, Callable
 from . import claude_verifier
 from .adapters import GeminiAdapter, ResourceLimits
 from .core import SwarmError, read_restricted_bytes, redact, validate_contract, validate_snapshot_symlinks
-from .verification_adapters import nvidia_adapter, openrouter_adapter
+from .verification_adapters import daybreak_adapter, nvidia_adapter, openrouter_adapter
 from .azure_foundry_adapter import AzureFoundryConfig, AzureFoundryReviewer, azure_api_key, azure_cli_token, default_azure_credit_guard
 from .anythingllm_adapter import AnythingLLMConfig, AnythingLLMReviewer
 
@@ -119,7 +119,8 @@ def run_review_cycle(
     nvidia_runner: Callable[..., dict[str, Any]] | None = None,
     azure_runner: Callable[..., dict[str, Any]] | None = None,
     anythingllm_runner: Callable[..., dict[str, Any]] | None = None,
-    reviewers: tuple[str, ...] = ("CLAUDE", "GEMINI"),
+    daybreak_runner: Callable[..., dict[str, Any]] | None = None,
+    reviewers: tuple[str, ...] = ("DAYBREAK",),
     adjudicate_disagreements: bool = False,
     required_reviewers: tuple[str, ...] | None = None,
     sequential_fallback: bool = False,
@@ -137,10 +138,11 @@ def run_review_cycle(
     compact_patch = _git(repository, "show", "--format=fuller", "--stat", "--patch", "--unified=0", commit)
     inline_patch_context = context + "\n\nExact candidate patch from Git:\n" + patch
     anythingllm_context = context + "\n\nExact candidate patch from Git (zero unchanged context):\n" + compact_patch
+    daybreak_context = context + "\n\nExact candidate patch from Git (zero unchanged context):\n" + compact_patch
     patch_file_mode = len(inline_patch_context.encode("utf-8")) > 24_000 or "FULL_SNAPSHOT_READ_ONLY_REVIEW" in context
     review_context = (context + "\n\nExact candidate patch is available at EXACT_CANDIDATE.patch. Use only the read-only file viewer to inspect that exact patch.") if patch_file_mode else inline_patch_context
     requested = tuple(dict.fromkeys(reviewers))
-    supported = {"CLAUDE", "GEMINI", "OPENROUTER", "NVIDIA", "AZURE", "ANYTHINGLLM"}
+    supported = {"CLAUDE", "GEMINI", "OPENROUTER", "NVIDIA", "AZURE", "ANYTHINGLLM", "DAYBREAK"}
     if not requested or any(provider not in supported for provider in requested):
         raise ReviewRunnerError("reviewers must contain supported read-only providers")
     required = requested if required_reviewers is None else tuple(dict.fromkeys(required_reviewers))
@@ -188,7 +190,8 @@ def run_review_cycle(
                     azure = azure_cost_unavailable
 
         anythingllm = anythingllm_runner or (AnythingLLMReviewer(AnythingLLMConfig()).run if "ANYTHINGLLM" in requested else None)
-        provider_map = {"CLAUDE": claude, "GEMINI": gemini, "OPENROUTER": openrouter, "NVIDIA": nvidia, "AZURE": azure, "ANYTHINGLLM": anythingllm}
+        daybreak = daybreak_runner or (daybreak_adapter().run if "DAYBREAK" in requested else None)
+        provider_map = {"CLAUDE": claude, "GEMINI": gemini, "OPENROUTER": openrouter, "NVIDIA": nvidia, "AZURE": azure, "ANYTHINGLLM": anythingllm, "DAYBREAK": daybreak}
         providers = tuple((provider, provider_map[provider]) for provider in requested)
 
         def invoke_provider(provider: str, invoke: Callable[..., dict[str, Any]]) -> dict[str, Any]:
@@ -197,7 +200,7 @@ def run_review_cycle(
                 # the externalized snapshot patch, but its adapter owns a larger
                 # bounded prompt contract and will fail closed if inline content
                 # exceeds that limit. File-capable reviewers retain snapshot mode.
-                provider_context = anythingllm_context if provider == "ANYTHINGLLM" else review_context
+                provider_context = (anythingllm_context if provider == "ANYTHINGLLM" else daybreak_context if provider == "DAYBREAK" else review_context)
                 result = invoke(snapshots[provider], job_id, commit, provider_context)
                 contract_provider = provider.lower() if provider in {"CLAUDE", "GEMINI"} else "claude"
                 validate_contract(result, contract_provider, expected_job_id=job_id, expected_commit=commit)

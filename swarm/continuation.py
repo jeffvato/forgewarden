@@ -142,7 +142,8 @@ def run_bounded_work_unit(state: SupervisorState, stop_context: StopContext, che
             return ContinuationPlan(StopDecision(True, "REPAIR_REVIEW_FAILED", "repair and obtain fresh reviews"), plan.selection, "stop")
     evidence = {role: review for role, review in cycle.reviews.items()}
     findings = tuple(f"{role}|{review.disposition}|{review.severity}|{review.rationale}|{finding}" for role, review in sorted(evidence.items()) for finding in (review.findings or ("",)))
-    accepted = WorkUnitCheckpoint("ForgeWarden Core", task.task_id, repository_head, result.candidate_commit, result.candidate_commit, result.changed_files, result.validation, evidence["CLAUDE"].disposition, evidence["GEMINI"].disposition, findings, None, "advance queue")
+    daybreak = evidence["DAYBREAK"]
+    accepted = WorkUnitCheckpoint("ForgeWarden Core", task.task_id, repository_head, result.candidate_commit, result.candidate_commit, result.changed_files, result.validation, "NOT_USED", "NOT_USED", findings, None, "advance queue", (f"DAYBREAK:{daybreak.disposition}:{daybreak.severity}",))
     write_checkpoint(checkpoint_path, accepted)
     reconcile_checkpoint(load_checkpoint(checkpoint_path), result.candidate_commit)
     return ContinuationPlan(StopDecision(False, None, None), plan.selection, "accepted; advance queue")

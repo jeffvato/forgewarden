@@ -4,6 +4,11 @@ Date: 2026-09-09
 Inventory requirement: FW-HARNESS-001  
 Repository checkpoint inspected: `09442959fe64c3c33e01e23d1e60c2e32df13ba8`
 
+Policy update (2026-10-03): this is a historical architecture inventory. D-027
+supersedes its D-020/D-021 reviewer references for active routing; Daybreak
+Blue is now the sole active reviewer. Historical provider evidence remains
+unchanged and is not active fallback policy.
+
 ## Scope and conclusion
 
 ForgeWarden already contains the foundation of the permanent governed engineering harness. The existing trusted Python orchestration path must remain canonical. FW-HARNESS formalizes and incrementally consolidates it; it does not authorize a second controller, a second evidence system, production deployment, or broader model authority.

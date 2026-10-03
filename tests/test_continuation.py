@@ -22,7 +22,7 @@ def test_blocked_ready_work_does_not_claim_completion():
 def test_full_loop_success_and_review_failures(tmp_path):
     state=_state(_task("FWQ-0001"))
     result=WorkUnitResult(CANDIDATE_SHA,("x",),("ok",))
-    reviews=lambda sha:(ReviewResult("CLAUDE",sha,(),"LOW","APPROVED","ok"),ReviewResult("GEMINI",sha,(),"LOW","APPROVED","ok"))
+    reviews=lambda sha:(ReviewResult("DAYBREAK",sha,(),"LOW","APPROVED","ok"),)
     assert run_bounded_work_unit(state,StopContext(),tmp_path/"c.json",SHA,lambda _:result,lambda _:True,reviews).next_action == "accepted; advance queue"
     assert run_bounded_work_unit(state,StopContext(),tmp_path/"d.json",SHA,lambda _:object(),lambda _:True,reviews).stop.reason == "DISPATCH_RESULT_INVALID"
 def test_loop_missing_review_repair_and_restart(tmp_path):
@@ -31,15 +31,16 @@ def test_loop_missing_review_repair_and_restart(tmp_path):
     assert run_bounded_work_unit(state,StopContext(),tmp_path/"c.json",SHA,lambda _:result,lambda _:True,bad).stop.reason == "REVIEW_REPAIR_REQUIRED"
 def test_repair_review_failure_is_auditable(tmp_path):
     state=_state(_task("FWQ-0001")); result=WorkUnitResult(SHA,("x",),("ok",))
-    bad=lambda sha:(ReviewResult("CLAUDE",sha,(),"LOW","REJECTED","no"),ReviewResult("GEMINI",sha,(),"LOW","APPROVED","ok"))
+    bad=lambda sha:(ReviewResult("DAYBREAK",sha,(),"LOW","REJECTED","no"),)
     assert run_bounded_work_unit(state,StopContext(),tmp_path/"c.json",SHA,lambda _:result,lambda _:True,bad,lambda value:value).stop.reason == "REPAIR_REVIEW_FAILED"
 def test_accepted_checkpoint_preserves_actual_review_evidence(tmp_path):
     state=_state(_task("FWQ-0001")); result=WorkUnitResult(CANDIDATE_SHA,("x",),("ok",)); path=tmp_path/"c.json"
-    reviews=lambda sha:(ReviewResult("CLAUDE",sha,("low-note",),"LOW","FINDINGS","ok"),ReviewResult("GEMINI",sha,("gemini-note",),"LOW","APPROVED","ok"))
+    reviews=lambda sha:(ReviewResult("DAYBREAK",sha,("low-note",),"LOW","FINDINGS","ok"),)
     assert run_bounded_work_unit(state,StopContext(),path,SHA,lambda _:result,lambda _:True,reviews).next_action == "accepted; advance queue"
     checkpoint=load_checkpoint(path)
-    assert checkpoint.claude_review == "FINDINGS" and checkpoint.gemini_review == "APPROVED"
-    assert checkpoint.unresolved_findings == ("CLAUDE|FINDINGS|LOW|ok|low-note", "GEMINI|APPROVED|LOW|ok|gemini-note")
+    assert checkpoint.claude_review == "NOT_USED" and checkpoint.gemini_review == "NOT_USED"
+    assert checkpoint.reviewer_evidence == ("DAYBREAK:FINDINGS:LOW",)
+    assert checkpoint.unresolved_findings == ("DAYBREAK|FINDINGS|LOW|ok|low-note",)
 def test_callback_exceptions_are_structured_stops(tmp_path):
     state=_state(_task("FWQ-0001")); result=WorkUnitResult(SHA,("x",),("ok",)); ok=lambda sha:()
     assert run_bounded_work_unit(state,StopContext(),tmp_path/"a",SHA,lambda _:(_ for _ in ()).throw(RuntimeError()),lambda _:True,ok).stop.reason == "DISPATCH_EXCEPTION"

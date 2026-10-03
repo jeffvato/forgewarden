@@ -322,7 +322,7 @@ def test_cli_autonomous_loop_run_persists_without_dispatch_when_step_bound_is_ze
         return adapter
     monkeypatch.setattr("swarm.cli.ExactReviewAdapter", capture_adapter)
     assert main() == 0
-    assert selected_reviewers == [("ANYTHINGLLM",)]
+    assert selected_reviewers == [("DAYBREAK",)]
     payload = json.loads(capsys.readouterr().out)
     assert payload["stop_reason"] == "STEP_BOUND_REACHED"
     assert (state_dir / "autonomous-loop.json").is_file()
@@ -335,12 +335,12 @@ def test_cli_rejects_manifest_that_selects_disabled_reviewers(tmp_path: Path, ca
     subprocess.run(["git", "-C", str(tmp_path), "-c", "user.name=Test", "-c", "user.email=test@example.test", "commit", "-qm", "base"], check=True)
     manifest = tmp_path.parent / f"{tmp_path.name}-disabled-reviewer.json"
     manifest.write_text(json.dumps({
-        "reviewers": ["ANYTHINGLLM", "CLAUDE"],
+        "reviewers": ["DAYBREAK", "CLAUDE"],
         "tasks": [{"task_id": "FWQ-0001", "requirement": "Core test", "description": "bounded", "target_path": "allowed.py", "allowed_paths": ["allowed.py"]}],
     }), encoding="utf-8")
     monkeypatch.setattr(sys, "argv", ["swarm", "autonomous-loop-run", "--repository", str(tmp_path), "--task-manifest", str(manifest), "--state-dir", str(tmp_path.parent / f"{tmp_path.name}-state"), "--max-steps", "0"])
     assert main() == 1
-    assert "requires AnythingLLM/Qwen only" in capsys.readouterr().out
+    assert "requires Daybreak only" in capsys.readouterr().out
 
 
 def test_cli_run_refuses_manifest_that_bypasses_authoritative_queue(tmp_path: Path, capsys, monkeypatch):
@@ -881,9 +881,9 @@ def test_review_resolver_preserves_provider_unavailability_as_external(tmp_path:
     monkeypatch.setattr(
         autonomous_adapters,
         "run_review_cycle",
-        lambda *args, **kwargs: {"state": "REVIEW_REQUIRED", "reviews": [{"provider": "ANYTHINGLLM", "state": "UNAVAILABLE"}]},
+        lambda *args, **kwargs: {"state": "REVIEW_REQUIRED", "reviews": [{"provider": "DAYBREAK", "state": "UNAVAILABLE"}]},
     )
-    assert ExactReviewAdapter("review").resolve_review(task, lease) == "EXTERNAL: AnythingLLM review unavailable"
+    assert ExactReviewAdapter("review").resolve_review(task, lease) == "EXTERNAL: Daybreak review unavailable"
 
 
 def test_review_unavailability_preserves_provider_diagnostic(tmp_path: Path, monkeypatch):
@@ -892,9 +892,9 @@ def test_review_unavailability_preserves_provider_diagnostic(tmp_path: Path, mon
     monkeypatch.setattr(
         autonomous_adapters,
         "run_review_cycle",
-        lambda *args, **kwargs: {"state": "REVIEW_REQUIRED", "reviews": [{"provider": "ANYTHINGLLM", "state": "UNAVAILABLE", "error": "AnythingLLM reviewer timed out"}]},
+        lambda *args, **kwargs: {"state": "REVIEW_REQUIRED", "reviews": [{"provider": "DAYBREAK", "state": "UNAVAILABLE", "error": "Daybreak reviewer timed out"}]},
     )
-    assert ExactReviewAdapter("review").resolve_review(task, lease) == "EXTERNAL: AnythingLLM reviewer timed out"
+    assert ExactReviewAdapter("review").resolve_review(task, lease) == "EXTERNAL: Daybreak reviewer timed out"
 
 
 def test_external_review_diagnostic_is_persisted_and_bounded(tmp_path: Path):
@@ -917,7 +917,7 @@ def test_review_resolver_ignores_optional_provider_outage_when_claude_is_availab
         autonomous_adapters,
         "run_review_cycle",
         lambda *args, **kwargs: {"state": "REVIEW_REQUIRED", "reviews": [
-            {"provider": "ANYTHINGLLM", "state": "APPROVED"},
+            {"provider": "DAYBREAK", "state": "APPROVED"},
             {"provider": "OPENROUTER", "state": "UNAVAILABLE"},
         ]},
     )
@@ -929,11 +929,11 @@ def test_unexpected_gemini_result_cannot_replace_unavailable_anythingllm(tmp_pat
     lease = WorkerLease("review", task.task_id, "session", str(tmp_path), (), "REVIEW", (), time.time() + 60)
     payload = {"job_id": "phase2a-" + "0" * 24, "reviewed_commit": SHA_A, "verdict": "APPROVE", "risk": "LOW", "blocking_findings": [], "non_blocking_notes": [], "tests_missing": [], "reasoning_summary": "Gemini fallback approval", "proposed_rules": []}
     monkeypatch.setattr(autonomous_adapters, "run_review_cycle", lambda *args, **kwargs: {"state": "REVIEW_REQUIRED", "reviews": [
-        {"provider": "ANYTHINGLLM", "state": "UNAVAILABLE", "error": "usage limit reached"},
+        {"provider": "DAYBREAK", "state": "API access unavailable"},
         {"provider": "GEMINI", "state": "APPROVED", "result": payload},
     ]})
     adapter = ExactReviewAdapter("review")
-    with pytest.raises(RuntimeError, match="outside the AnythingLLM/Qwen policy"):
+    with pytest.raises(RuntimeError, match="outside the Daybreak-only policy"):
         adapter.review(task, SHA_A, lease)
     assert adapter.resolve_review(task, lease).startswith("REPAIRABLE: autonomous review returned evidence outside")
 
@@ -943,10 +943,10 @@ def test_unexpected_gemini_result_does_not_override_anythingllm_rejection(tmp_pa
     lease = WorkerLease("review", task.task_id, "session", str(tmp_path), (), "REVIEW", (), time.time() + 60)
     payload = {"job_id": "phase2a-" + "0" * 24, "reviewed_commit": SHA_A, "verdict": "APPROVE", "risk": "LOW", "blocking_findings": [], "non_blocking_notes": [], "tests_missing": [], "reasoning_summary": "Gemini fallback approval", "proposed_rules": []}
     monkeypatch.setattr(autonomous_adapters, "run_review_cycle", lambda *args, **kwargs: {"state": "REVIEW_REQUIRED", "reviews": [
-        {"provider": "ANYTHINGLLM", "state": "REVIEW_RETURNED", "result": {"verdict": "REJECT", "risk": "HIGH"}},
+        {"provider": "DAYBREAK", "state": "REVIEW_RETURNED", "result": {"verdict": "REJECT", "risk": "HIGH"}},
         {"provider": "GEMINI", "state": "APPROVED", "result": payload},
     ]})
-    with pytest.raises(RuntimeError, match="outside the AnythingLLM/Qwen policy"):
+    with pytest.raises(RuntimeError, match="outside the Daybreak-only policy"):
         ExactReviewAdapter("review").review(task, SHA_A, lease)
 
 
@@ -955,15 +955,15 @@ def test_exact_review_adapter_rejects_unconfigured_adjudication_evidence(tmp_pat
     lease = WorkerLease("review", task.task_id, "session", str(tmp_path), (), "REVIEW", (), time.time() + 60)
     payload = {"job_id": "phase2a-" + "0" * 24, "reviewed_commit": SHA_A, "verdict": "APPROVE", "risk": "LOW", "blocking_findings": [], "non_blocking_notes": [], "tests_missing": [], "reasoning_summary": "final", "proposed_rules": []}
     monkeypatch.setattr(autonomous_adapters, "run_review_cycle", lambda *args, **kwargs: {"state": "APPROVED", "reviews": [{"provider": "OPENROUTER", "state": "REVIEW_RETURNED", "result": payload}], "adjudication": {"provider": "CLAUDE_ADJUDICATION", "state": "APPROVED", "result": payload}})
-    with pytest.raises(RuntimeError, match="outside the AnythingLLM/Qwen policy"):
-        ExactReviewAdapter("review", reviewers=("ANYTHINGLLM",)).review(task, SHA_A, lease)
+    with pytest.raises(RuntimeError, match="outside the Daybreak-only policy"):
+        ExactReviewAdapter("review", reviewers=("DAYBREAK",)).review(task, SHA_A, lease)
 
 
 def test_exact_review_adapter_rechecks_qwen_job_and_commit_binding(tmp_path: Path, monkeypatch):
     task = TaskSpec("FWQ-0009", "Core review", "review", initial_state="REVIEW")
     lease = WorkerLease("review", task.task_id, "session", str(tmp_path), (), "REVIEW", (), time.time() + 60)
     payload = {"job_id": "phase2a-" + "0" * 24, "reviewed_commit": SHA_A, "verdict": "APPROVE", "risk": "LOW", "blocking_findings": [], "tests_missing": []}
-    monkeypatch.setattr(autonomous_adapters, "run_review_cycle", lambda *args, **kwargs: {"state": "APPROVED", "reviews": [{"provider": "ANYTHINGLLM", "state": "APPROVED", "result": payload}]})
+    monkeypatch.setattr(autonomous_adapters, "run_review_cycle", lambda *args, **kwargs: {"state": "APPROVED", "reviews": [{"provider": "DAYBREAK", "state": "APPROVED", "result": payload}]})
     with pytest.raises(RuntimeError, match="exact binding"):
         ExactReviewAdapter("review").review(task, SHA_A, lease)
 
@@ -1090,14 +1090,14 @@ def test_resume_restores_exact_review_commit_from_durable_task_state(tmp_path: P
     assert runner.status()["task_specs"]["FWQ-0013"]["review_commit"] == SHA_A
 
 
-@pytest.mark.parametrize("reviewers", [("GEMINI",), ("CLAUDE",), ("CLAUDE", "GEMINI"), ("OPENROUTER",), ("ANYTHINGLLM", "CLAUDE"), ()])
+@pytest.mark.parametrize("reviewers", [("GEMINI",), ("CLAUDE",), ("CLAUDE", "GEMINI"), ("OPENROUTER",), ("ANYTHINGLLM",), ("DAYBREAK", "CLAUDE"), ()])
 def test_autonomous_reviewer_configuration_rejects_legacy_fallback(reviewers):
-    with pytest.raises(ValueError, match="requires AnythingLLM/Qwen only"):
+    with pytest.raises(ValueError, match="requires Daybreak only"):
         ExactReviewAdapter("review", reviewers=reviewers)
 
 
 @pytest.mark.parametrize("outcome", ["APPROVE", "REJECT", "UNAVAILABLE", "STALE", "WRONG_JOB", "MISSING_TEST", "MEDIUM"])
-def test_autonomous_anythingllm_review_uses_real_exact_contract(tmp_path, monkeypatch, outcome):
+def test_autonomous_daybreak_review_uses_real_exact_contract(tmp_path, monkeypatch, outcome):
     from swarm.review_runner import run_review_cycle as canonical_review_cycle
 
     subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
@@ -1109,12 +1109,12 @@ def test_autonomous_anythingllm_review_uses_real_exact_contract(tmp_path, monkey
     lease = WorkerLease("review", task.task_id, "session", str(tmp_path), (), "REVIEW", (), time.time() + 60)
     calls = []
 
-    def anythingllm(snapshot, job_id, commit, context):
-        calls.append("ANYTHINGLLM")
+    def daybreak(snapshot, job_id, commit, context):
+        calls.append("DAYBREAK")
         assert (snapshot / "fixture.txt").read_text() == "review fixture\n"
         assert commit == sha and sha in context
         if outcome == "UNAVAILABLE":
-            raise RuntimeError("AnythingLLM usage unavailable")
+            raise RuntimeError("Daybreak API unavailable")
         return {"job_id": "phase2a-" + "0" * 24 if outcome == "WRONG_JOB" else job_id,
                 "reviewed_commit": SHA_B if outcome == "STALE" else commit,
                 "verdict": "REJECT" if outcome == "REJECT" else "APPROVE",
@@ -1127,18 +1127,18 @@ def test_autonomous_anythingllm_review_uses_real_exact_contract(tmp_path, monkey
         pytest.fail("autonomous review invoked a disabled reviewer")
 
     def invoke(*args, **kwargs):
-        assert kwargs["reviewers"] == ("ANYTHINGLLM",)
-        assert kwargs["required_reviewers"] == ("ANYTHINGLLM",)
+        assert kwargs["reviewers"] == ("DAYBREAK",)
+        assert kwargs["required_reviewers"] == ("DAYBREAK",)
         assert kwargs["sequential_fallback"] is False
         assert kwargs["adjudicate_disagreements"] is False
-        return canonical_review_cycle(*args, **kwargs, anythingllm_runner=anythingllm, claude_runner=forbidden, gemini_runner=forbidden)
+        return canonical_review_cycle(*args, **kwargs, daybreak_runner=daybreak, claude_runner=forbidden, gemini_runner=forbidden)
 
     monkeypatch.setattr(autonomous_adapters, "run_review_cycle", invoke)
-    adapter = ExactReviewAdapter("Review fixture read-only", reviewers=("ANYTHINGLLM",))
+    adapter = ExactReviewAdapter("Review fixture read-only", reviewers=("DAYBREAK",))
     if outcome == "APPROVE":
         result = adapter.review(task, sha, lease)
-        assert set(result) == {"ANYTHINGLLM"}
-        assert result["ANYTHINGLLM"].reviewed_commit == sha
+        assert set(result) == {"DAYBREAK"}
+        assert result["DAYBREAK"].reviewed_commit == sha
         assert adapter.resolve_review(task, lease) == "PASSED"
     elif outcome in {"UNAVAILABLE", "STALE", "WRONG_JOB"}:
         with pytest.raises(ReviewUnavailable):
@@ -1148,44 +1148,44 @@ def test_autonomous_anythingllm_review_uses_real_exact_contract(tmp_path, monkey
         with pytest.raises(RuntimeError, match="did not approve"):
             adapter.review(task, sha, lease)
         assert adapter.resolve_review(task, lease).startswith("REPAIRABLE:")
-    assert calls == ["ANYTHINGLLM", "ANYTHINGLLM"]
+    assert calls == ["DAYBREAK", "DAYBREAK"]
 
 
-def test_default_autonomous_profile_requires_only_anythingllm(monkeypatch, tmp_path):
+def test_default_autonomous_profile_requires_only_daybreak(monkeypatch, tmp_path):
     task = TaskSpec("FWQ-FALLBACK", "Core review", "review", initial_state="REVIEW")
     lease = WorkerLease("review", task.task_id, "session", str(tmp_path), (), "REVIEW", (), time.time() + 60)
     captured = {}
 
     def cycle(*args, **kwargs):
         captured.update(kwargs)
-        return {"state": "REVIEW_REQUIRED", "reviews": [{"provider": "ANYTHINGLLM", "state": "UNAVAILABLE", "error": "outage"}]}
+        return {"state": "REVIEW_REQUIRED", "reviews": [{"provider": "DAYBREAK", "state": "UNAVAILABLE", "error": "outage"}]}
 
     monkeypatch.setattr(autonomous_adapters, "run_review_cycle", cycle)
     with pytest.raises(ReviewUnavailable):
         ExactReviewAdapter("review").review(task, "a" * 40, lease)
-    assert captured["reviewers"] == ("ANYTHINGLLM",)
-    assert captured["required_reviewers"] == ("ANYTHINGLLM",)
+    assert captured["reviewers"] == ("DAYBREAK",)
+    assert captured["required_reviewers"] == ("DAYBREAK",)
     assert captured["sequential_fallback"] is False
     assert captured["adjudicate_disagreements"] is False
 
 
-def test_default_profile_does_not_accept_disabled_reviewer_after_anythingllm_outage(monkeypatch, tmp_path):
+def test_default_profile_does_not_accept_disabled_reviewer_after_daybreak_outage(monkeypatch, tmp_path):
     task = TaskSpec("FWQ-FALLBACK-OK", "Core review", "review", initial_state="REVIEW")
     lease = WorkerLease("review", task.task_id, "session", str(tmp_path), (), "REVIEW", (), time.time() + 60)
     captured = {}
     def cycle(*args, **kwargs):
         captured.update(kwargs)
-        return {"state": "REVIEW_REQUIRED", "reviews": [{"provider": "ANYTHINGLLM", "state": "UNAVAILABLE", "error": "429"}]}
+        return {"state": "REVIEW_REQUIRED", "reviews": [{"provider": "DAYBREAK", "state": "UNAVAILABLE", "error": "429"}]}
     monkeypatch.setattr(autonomous_adapters, "run_review_cycle", cycle)
     with pytest.raises(ReviewUnavailable):
         ExactReviewAdapter("review").review(task, "a" * 40, lease)
-    assert captured["reviewers"] == ("ANYTHINGLLM",)
+    assert captured["reviewers"] == ("DAYBREAK",)
     assert captured["sequential_fallback"] is False
 
 
-def test_default_profile_preserves_anythingllm_rejection(monkeypatch, tmp_path):
+def test_default_profile_preserves_daybreak_rejection(monkeypatch, tmp_path):
     task = TaskSpec("FWQ-FALLBACK-REJECT", "Core review", "review", initial_state="REVIEW")
     lease = WorkerLease("review", task.task_id, "session", str(tmp_path), (), "REVIEW", (), time.time() + 60)
-    monkeypatch.setattr(autonomous_adapters, "run_review_cycle", lambda *args, **kwargs: {"state": "REVIEW_REQUIRED", "reviews": [{"provider": "ANYTHINGLLM", "state": "REVIEW_RETURNED", "result": {"verdict": "REJECT", "risk": "MEDIUM", "blocking_findings": ["finding"], "tests_missing": []}}]})
+    monkeypatch.setattr(autonomous_adapters, "run_review_cycle", lambda *args, **kwargs: {"state": "REVIEW_REQUIRED", "reviews": [{"provider": "DAYBREAK", "state": "REVIEW_RETURNED", "result": {"verdict": "REJECT", "risk": "MEDIUM", "blocking_findings": ["finding"], "tests_missing": []}}]})
     with pytest.raises(RuntimeError, match="did not approve"):
         ExactReviewAdapter("review").review(task, "a" * 40, lease)

@@ -6,8 +6,8 @@ from types import MappingProxyType
 from typing import Mapping
 
 _SHA1 = re.compile(r"[0-9a-fA-F]{40}")
-_ROLES = frozenset({"ANYTHINGLLM", "CLAUDE", "GEMINI", "OPENROUTER", "NVIDIA"})
-_DEFAULT_ROLES = frozenset({"CLAUDE", "GEMINI"})
+_ROLES = frozenset({"DAYBREAK", "ANYTHINGLLM", "CLAUDE", "GEMINI", "OPENROUTER", "NVIDIA"})
+_DEFAULT_ROLES = frozenset({"DAYBREAK"})
 _SEVERITIES = frozenset({"LOW", "MEDIUM", "HIGH", "CRITICAL"})
 _DISPOSITIONS = frozenset({"APPROVED", "REJECTED", "FINDINGS"})
 class ReviewHandoffError(ValueError): pass
