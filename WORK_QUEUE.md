@@ -20,10 +20,10 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 
 ### FWQ-0115 — Linux Sentinel pilot prerequisite reference hardening
 - Requirement: FW-AV Sentinel bounded pilot productionization
-- State: BLOCKED
+- State: REVIEW
 - Priority: P0
 - Dependencies: FWQ-0114
-- Approval: Jeff authorized definition on 2026-10-02. Implementation requires separate Customer Root authorization and remains blocked.
+- Approval: Jeff authorized definition on 2026-10-02 and Customer Root implementation on 2026-10-03. The scoped change remains metadata-only and non-authorizing.
 - Description: Harden caller-supplied Linux pilot prerequisite references while preserving the existing metadata-only, non-authorizing readiness boundary.
 - Target paths: swarm/av_service.py, tests/test_av_service.py
 - Allowed paths: swarm/av_service.py, tests/test_av_service.py, WORK_QUEUE.md, SWARM_STATUS.md

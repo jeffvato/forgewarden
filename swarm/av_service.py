@@ -8,8 +8,11 @@ and flow through the canonical ``DryRunSensorPipeline``.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 import hashlib
 import json
+import posixpath
+import re
 from typing import Any, Mapping
 
 from .sensor_adapter import DryRunSensorPipeline, SensorAdapterDenied
@@ -17,6 +20,11 @@ from .sensor_adapter import DryRunSensorPipeline, SensorAdapterDenied
 MAX_MEMORY_MB = 256
 MAX_CPU_PERCENT = 20
 MAX_QUEUE_EVENTS = 1024
+_PILOT_STAGING_ROOT = "/srv/forgewarden-stage"
+_EVIDENCE_REFERENCE = re.compile(r"^fw-evid/([a-z][a-z0-9_.-]{0,127})/[a-z][a-z0-9_.:/-]{0,191}$")
+_POLICY_REFERENCE = re.compile(r"^fw-policy/([a-z][a-z0-9_.-]{0,127})/[a-z][a-z0-9_.:/-]{0,191}$")
+_ACTION_TICKET_REFERENCE = re.compile(r"^AT-[A-Za-z0-9][A-Za-z0-9_.-]{0,252}$")
+_UTC_RFC3339 = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,6})?)?Z$")
 
 
 class AVServiceContractError(ValueError):
@@ -189,12 +197,33 @@ class AVProtectionService:
         for key in required:
             value = package[key]
             limit = 4096 if key == "signed_manifest" else 256
-            if not isinstance(value, str) or not value.strip() or len(value) > limit or "\n" in value or "\r" in value:
+            if (not isinstance(value, str) or not value.strip() or len(value) > limit
+                    or any(ord(character) < 32 or ord(character) == 127 for character in value)):
                 return {"decision": "NOT_READY", "reason": "INVALID_PILOT_PREREQUISITE", "invalid": [key], "authority_granted": False, "mode": "DRY_RUN", "action": "DETECT_ONLY"}
         if package["tenant_id"] != self.profile.tenant_id or package["device_id"] != self.profile.device_id:
             return {"decision": "NOT_READY", "reason": "PILOT_SCOPE_MISMATCH", "authority_granted": False, "mode": "DRY_RUN", "action": "DETECT_ONLY"}
         if package["service_identity"] != "forgewarden-sentinel":
             return {"decision": "NOT_READY", "reason": "SERVICE_IDENTITY_MISMATCH", "authority_granted": False, "mode": "DRY_RUN", "action": "DETECT_ONLY"}
+        staging_path = package["staging_path"]
+        if (not staging_path.startswith(_PILOT_STAGING_ROOT)
+                or (staging_path != _PILOT_STAGING_ROOT
+                    and not staging_path.startswith(f"{_PILOT_STAGING_ROOT}/"))
+                or "\\" in staging_path or posixpath.normpath(staging_path) != staging_path):
+            return {"decision": "NOT_READY", "reason": "STAGING_PATH_INVALID", "authority_granted": False, "mode": "DRY_RUN", "action": "DETECT_ONLY"}
+        evidence_match = _EVIDENCE_REFERENCE.fullmatch(package["evidence_destination"])
+        if evidence_match is None or evidence_match.group(1) != self.profile.tenant_id:
+            return {"decision": "NOT_READY", "reason": "EVIDENCE_DESTINATION_INVALID", "authority_granted": False, "mode": "DRY_RUN", "action": "DETECT_ONLY"}
+        policy_match = _POLICY_REFERENCE.fullmatch(package["policy_ticket"])
+        if ((policy_match is not None and policy_match.group(1) != self.profile.tenant_id)
+                or (policy_match is None and _ACTION_TICKET_REFERENCE.fullmatch(package["policy_ticket"]) is None)):
+            return {"decision": "NOT_READY", "reason": "POLICY_TICKET_INVALID", "authority_granted": False, "mode": "DRY_RUN", "action": "DETECT_ONLY"}
+        maintenance_window = package["maintenance_window"]
+        if _UTC_RFC3339.fullmatch(maintenance_window) is None:
+            return {"decision": "NOT_READY", "reason": "MAINTENANCE_WINDOW_INVALID", "authority_granted": False, "mode": "DRY_RUN", "action": "DETECT_ONLY"}
+        try:
+            datetime.fromisoformat(f"{maintenance_window[:-1]}+00:00")
+        except ValueError:
+            return {"decision": "NOT_READY", "reason": "MAINTENANCE_WINDOW_INVALID", "authority_granted": False, "mode": "DRY_RUN", "action": "DETECT_ONLY"}
         try:
             self.validate_packaging_manifest(json.loads(package["signed_manifest"]))
         except (json.JSONDecodeError, AVServiceContractError):
