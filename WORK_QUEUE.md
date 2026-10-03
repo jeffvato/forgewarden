@@ -10,13 +10,27 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 
 - Only approved active-phase work may be claimed.
 - Codex is the sole application-code writer.
-- Claude Code or the authorized AnythingLLM/Qwen fallback reviews exact candidate commits and returns findings only. Gemini is not required or enabled for the active workflow (D-020/D-021).
+- AnythingLLM/Qwen is the required independent read-only exact-commit reviewer under D-026. Claude and Gemini are disabled unless Jeff explicitly re-enables them; reviewer unavailability fails closed.
 - A task is DONE only when acceptance criteria, deterministic validation, and review requirements are satisfied.
 - Do not mark placeholders, interfaces without behavior, untested code, or documentation-only claims as complete.
 - If one task is blocked, record the blocker and move to another independent READY task when safe.
 - Keep tasks bounded enough to implement, test, review, repair, and checkpoint coherently.
 
 ## Active queue
+
+### FWQ-0116 — Enforce D-026 reviewer policy in autonomous execution
+- Requirement: FW-HARNESS independent exact-commit review policy
+- State: REVIEW
+- Priority: P0
+- Dependencies: FWQ-0115
+- Approval: Jeff authorized defining and implementing this bounded policy-alignment task on 2026-10-03. D-026 is the active authority: AnythingLLM/Qwen is required; Claude and Gemini are disabled unless Jeff explicitly re-enables them.
+- Description: Ensure the autonomous and self-hosted paths use only the configured AnythingLLM/Qwen exact-commit review and that shared handoff/checkpoint owners accept and truthfully persist that evidence without breaking legacy checkpoint reads.
+- Target paths: AGENTS.md, swarm/cli.py, swarm/autonomous_adapters.py, swarm/harness_runtime.py, swarm/review_handoff.py, swarm/work_checkpoint.py, tests/test_autonomous_loop.py, tests/test_harness_controller.py, tests/test_review_handoff.py, tests/test_work_checkpoint.py
+- Allowed paths: AGENTS.md, swarm/cli.py, swarm/autonomous_adapters.py, swarm/harness_runtime.py, swarm/review_handoff.py, swarm/work_checkpoint.py, tests/test_autonomous_loop.py, tests/test_harness_controller.py, tests/test_review_handoff.py, tests/test_work_checkpoint.py, WORK_QUEUE.md, SWARM_STATUS.md
+- Test commands: python3 -m pytest -q tests/test_autonomous_loop.py tests/test_harness_controller.py tests/test_review_handoff.py tests/test_work_checkpoint.py tests/test_review_runner.py tests/test_continuation.py tests/test_swarm.py
+- Acceptance criteria: autonomous reviewer defaults to exactly ANYTHINGLLM; manifests selecting Claude, Gemini, or any alternate/mixed reviewer are rejected; autonomous adapter requests ANYTHINGLLM as the sole required reviewer with no fallback/adjudication; only sole valid AnythingLLM approval evidence can approve, and substituted/malformed provider or adjudication records fail closed; the self-hosted runtime selects and consumes AnythingLLM evidence; shared handoff accepts ANYTHINGLLM without weakening exact commit/disposition checks; accepted checkpoints persist explicit provider-attributed AnythingLLM evidence while retaining legacy Claude/Gemini fields and read compatibility; unavailable AnythingLLM remains an external blocker; generic review-runner provider support outside the autonomous path remains unchanged; no credential, network, deployment, or authority configuration is added.
+- Stop condition: do not invoke Claude/Gemini or substitute another provider; if the required exact AnythingLLM/Qwen review resource is unavailable at review time, preserve the candidate in REVIEW and stop without treating another model's approval as a substitute.
+- Validation (2026-10-03): the seven scoped/compatibility suites passed (197 tests); `python3 -m compileall -q swarm` and `git diff --check` passed. Product Integrity and the exact AnythingLLM/Qwen review remain pending for the immutable candidate.
 
 ### FWQ-0115 — Linux Sentinel pilot prerequisite reference hardening
 - Requirement: FW-AV Sentinel bounded pilot productionization

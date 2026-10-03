@@ -594,7 +594,33 @@ class AutonomousOrchestrator:
         return min(ready, key=lambda item: (item.priority, item.task_id)) if ready else None
 
     def _checkpoint(self, task: TaskSpec, state: Mapping[str, Any], *, starting: str, candidate: str | None, accepted: str | None, validation: tuple[str, ...], reviews: tuple[str, ...], next_action: str) -> None:
-        write_checkpoint(self.checkpoint_path, WorkUnitCheckpoint("ForgeWarden Core", task.task_id, starting, candidate, accepted, (), validation, reviews[0] if reviews else "not started", reviews[1] if len(reviews) > 1 else "not started", (), None, next_action))
+        legacy_reviews: dict[str, str] = {}
+        structured_reviews = bool(reviews)
+        for item in reviews:
+            parts = item.split(":")
+            if len(parts) != 3 or parts[0] not in {"ANYTHINGLLM", "CLAUDE", "GEMINI", "OPENROUTER", "NVIDIA"} or parts[1] not in {"APPROVED", "FINDINGS"} or parts[2] not in {"LOW", "MEDIUM", "HIGH", "CRITICAL"}:
+                structured_reviews = False
+                break
+            if parts[0] in {"CLAUDE", "GEMINI"}:
+                legacy_reviews[parts[0]] = parts[1]
+        if not structured_reviews:
+            legacy_reviews = {}
+        if not reviews:
+            claude_review = gemini_review = "PENDING"
+        elif structured_reviews:
+            claude_review = legacy_reviews.get("CLAUDE", "NOT_USED")
+            gemini_review = legacy_reviews.get("GEMINI", "NOT_USED")
+        else:
+            claude_review = reviews[0]
+            gemini_review = reviews[1] if len(reviews) > 1 else "NOT_USED"
+        write_checkpoint(
+            self.checkpoint_path,
+            WorkUnitCheckpoint(
+                "ForgeWarden Core", task.task_id, starting, candidate, accepted, (), validation,
+                claude_review, gemini_review,
+                (), None, next_action, reviewer_evidence=(reviews if structured_reviews else ()),
+            ),
+        )
 
     def run(self, *, dispatch: Callable[[TaskSpec, WorkerLease], WorkerResult], validate: Callable[[TaskSpec, WorkerResult], bool], commit: Callable[[TaskSpec, WorkerResult], str], review: Callable[[TaskSpec, str, WorkerLease], tuple[str, ...]], repair: Callable[[TaskSpec, WorkerResult, WorkerLease], WorkerResult] | None = None, max_steps: int | None = None, authorized: Callable[[], bool] | None = None, review_resolver: Callable[[TaskSpec, Mapping[str, Any]], str] | None = None, blocker_resolver: Callable[[TaskSpec, Mapping[str, Any]], bool] | None = None, plan_tasks: tuple[TaskSpec, ...] = (), accepted: Callable[[TaskSpec, str], None] | None = None) -> dict[str, Any]:
         self._enforce_safety()

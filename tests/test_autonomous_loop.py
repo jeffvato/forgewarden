@@ -14,6 +14,7 @@ import swarm.autonomous_adapters as autonomous_adapters
 from swarm.plan_derivation import derive_next_core_task
 from swarm.cli import main
 from swarm.review_handoff import ReviewResult
+from swarm.work_checkpoint import load_checkpoint, reconcile_checkpoint
 from test_supervisor_state import _write_control_files
 
 
@@ -74,6 +75,25 @@ def test_legacy_review_callback_accepts_one_approved_claude_result(tmp_path: Pat
         review=lambda task, sha, lease: ("APPROVED",),
     )
     assert state["completed_tasks"] == ["FWQ-0001"]
+
+
+def test_autonomous_loop_accepts_and_persists_anythingllm_review_without_legacy_attribution(tmp_path: Path):
+    task = TaskSpec("FWQ-0001", "Core review", "single")
+    runner = AutonomousOrchestrator(tmp_path / "run.json", tmp_path / "repo", (task,))
+    state = runner.run(
+        dispatch=lambda *_: WorkerResult(SHA_A, (), ("pytest",)),
+        validate=lambda *_: True,
+        commit=lambda _task, result: result.candidate_commit,
+        review=lambda _task, sha, _lease: {
+            "ANYTHINGLLM": ReviewResult("ANYTHINGLLM", sha, (), "LOW", "APPROVED", "exact Qwen evidence")
+        },
+    )
+    assert state["completed_tasks"] == ["FWQ-0001"]
+    checkpoint = load_checkpoint(runner.checkpoint_path)
+    assert checkpoint.claude_review == "NOT_USED"
+    assert checkpoint.gemini_review == "NOT_USED"
+    assert checkpoint.reviewer_evidence == ("ANYTHINGLLM:APPROVED:LOW",)
+    assert reconcile_checkpoint(checkpoint, SHA_A)["expected_commit"] == SHA_A
 
 
 def test_recover_restart_and_retry_then_continue(tmp_path: Path):
@@ -302,10 +322,25 @@ def test_cli_autonomous_loop_run_persists_without_dispatch_when_step_bound_is_ze
         return adapter
     monkeypatch.setattr("swarm.cli.ExactReviewAdapter", capture_adapter)
     assert main() == 0
-    assert selected_reviewers == [("ANYTHINGLLM", "CLAUDE")]
+    assert selected_reviewers == [("ANYTHINGLLM",)]
     payload = json.loads(capsys.readouterr().out)
     assert payload["stop_reason"] == "STEP_BOUND_REACHED"
     assert (state_dir / "autonomous-loop.json").is_file()
+
+
+def test_cli_rejects_manifest_that_selects_disabled_reviewers(tmp_path: Path, capsys, monkeypatch):
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    (tmp_path / "allowed.py").write_text("value = 1\n", encoding="utf-8")
+    subprocess.run(["git", "-C", str(tmp_path), "add", "allowed.py"], check=True)
+    subprocess.run(["git", "-C", str(tmp_path), "-c", "user.name=Test", "-c", "user.email=test@example.test", "commit", "-qm", "base"], check=True)
+    manifest = tmp_path.parent / f"{tmp_path.name}-disabled-reviewer.json"
+    manifest.write_text(json.dumps({
+        "reviewers": ["ANYTHINGLLM", "CLAUDE"],
+        "tasks": [{"task_id": "FWQ-0001", "requirement": "Core test", "description": "bounded", "target_path": "allowed.py", "allowed_paths": ["allowed.py"]}],
+    }), encoding="utf-8")
+    monkeypatch.setattr(sys, "argv", ["swarm", "autonomous-loop-run", "--repository", str(tmp_path), "--task-manifest", str(manifest), "--state-dir", str(tmp_path.parent / f"{tmp_path.name}-state"), "--max-steps", "0"])
+    assert main() == 1
+    assert "requires AnythingLLM/Qwen only" in capsys.readouterr().out
 
 
 def test_cli_run_refuses_manifest_that_bypasses_authoritative_queue(tmp_path: Path, capsys, monkeypatch):
@@ -846,9 +881,9 @@ def test_review_resolver_preserves_provider_unavailability_as_external(tmp_path:
     monkeypatch.setattr(
         autonomous_adapters,
         "run_review_cycle",
-        lambda *args, **kwargs: {"state": "REVIEW_REQUIRED", "reviews": [{"state": "UNAVAILABLE"}]},
+        lambda *args, **kwargs: {"state": "REVIEW_REQUIRED", "reviews": [{"provider": "ANYTHINGLLM", "state": "UNAVAILABLE"}]},
     )
-    assert ExactReviewAdapter("review").resolve_review(task, lease) == "EXTERNAL: AnythingLLM review record was not returned"
+    assert ExactReviewAdapter("review").resolve_review(task, lease) == "EXTERNAL: AnythingLLM review unavailable"
 
 
 def test_review_unavailability_preserves_provider_diagnostic(tmp_path: Path, monkeypatch):
@@ -889,7 +924,7 @@ def test_review_resolver_ignores_optional_provider_outage_when_claude_is_availab
     assert ExactReviewAdapter("review").resolve_review(task, lease).startswith("REPAIRABLE:")
 
 
-def test_gemini_approval_cannot_replace_unavailable_claude(tmp_path: Path, monkeypatch):
+def test_unexpected_gemini_result_cannot_replace_unavailable_anythingllm(tmp_path: Path, monkeypatch):
     task = TaskSpec("FWQ-0009", "Core review", "review", initial_state="REVIEW", review_commit=SHA_A)
     lease = WorkerLease("review", task.task_id, "session", str(tmp_path), (), "REVIEW", (), time.time() + 60)
     payload = {"job_id": "phase2a-" + "0" * 24, "reviewed_commit": SHA_A, "verdict": "APPROVE", "risk": "LOW", "blocking_findings": [], "non_blocking_notes": [], "tests_missing": [], "reasoning_summary": "Gemini fallback approval", "proposed_rules": []}
@@ -898,12 +933,12 @@ def test_gemini_approval_cannot_replace_unavailable_claude(tmp_path: Path, monke
         {"provider": "GEMINI", "state": "APPROVED", "result": payload},
     ]})
     adapter = ExactReviewAdapter("review")
-    with pytest.raises(ReviewUnavailable, match="usage limit reached"):
+    with pytest.raises(RuntimeError, match="outside the AnythingLLM/Qwen policy"):
         adapter.review(task, SHA_A, lease)
-    assert adapter.resolve_review(task, lease) == "EXTERNAL: usage limit reached"
+    assert adapter.resolve_review(task, lease).startswith("REPAIRABLE: autonomous review returned evidence outside")
 
 
-def test_claude_rejection_does_not_fall_back_to_gemini(tmp_path: Path, monkeypatch):
+def test_unexpected_gemini_result_does_not_override_anythingllm_rejection(tmp_path: Path, monkeypatch):
     task = TaskSpec("FWQ-0009", "Core review", "review", initial_state="REVIEW", review_commit=SHA_A)
     lease = WorkerLease("review", task.task_id, "session", str(tmp_path), (), "REVIEW", (), time.time() + 60)
     payload = {"job_id": "phase2a-" + "0" * 24, "reviewed_commit": SHA_A, "verdict": "APPROVE", "risk": "LOW", "blocking_findings": [], "non_blocking_notes": [], "tests_missing": [], "reasoning_summary": "Gemini fallback approval", "proposed_rules": []}
@@ -911,18 +946,26 @@ def test_claude_rejection_does_not_fall_back_to_gemini(tmp_path: Path, monkeypat
         {"provider": "ANYTHINGLLM", "state": "REVIEW_RETURNED", "result": {"verdict": "REJECT", "risk": "HIGH"}},
         {"provider": "GEMINI", "state": "APPROVED", "result": payload},
     ]})
-    with pytest.raises(RuntimeError, match="did not approve"):
+    with pytest.raises(RuntimeError, match="outside the AnythingLLM/Qwen policy"):
         ExactReviewAdapter("review").review(task, SHA_A, lease)
 
 
-def test_exact_review_adapter_uses_claude_adjudication_as_final_evidence(tmp_path: Path, monkeypatch):
+def test_exact_review_adapter_rejects_unconfigured_adjudication_evidence(tmp_path: Path, monkeypatch):
     task = TaskSpec("FWQ-0009", "Core review", "review", initial_state="REVIEW")
     lease = WorkerLease("review", task.task_id, "session", str(tmp_path), (), "REVIEW", (), time.time() + 60)
     payload = {"job_id": "phase2a-" + "0" * 24, "reviewed_commit": SHA_A, "verdict": "APPROVE", "risk": "LOW", "blocking_findings": [], "non_blocking_notes": [], "tests_missing": [], "reasoning_summary": "final", "proposed_rules": []}
     monkeypatch.setattr(autonomous_adapters, "run_review_cycle", lambda *args, **kwargs: {"state": "APPROVED", "reviews": [{"provider": "OPENROUTER", "state": "REVIEW_RETURNED", "result": payload}], "adjudication": {"provider": "CLAUDE_ADJUDICATION", "state": "APPROVED", "result": payload}})
-    result = ExactReviewAdapter("review", reviewers=("ANYTHINGLLM",)).review(task, SHA_A, lease)
-    assert set(result) == {"CLAUDE"}
-    assert result["CLAUDE"].rationale == "final"
+    with pytest.raises(RuntimeError, match="outside the AnythingLLM/Qwen policy"):
+        ExactReviewAdapter("review", reviewers=("ANYTHINGLLM",)).review(task, SHA_A, lease)
+
+
+def test_exact_review_adapter_rechecks_qwen_job_and_commit_binding(tmp_path: Path, monkeypatch):
+    task = TaskSpec("FWQ-0009", "Core review", "review", initial_state="REVIEW")
+    lease = WorkerLease("review", task.task_id, "session", str(tmp_path), (), "REVIEW", (), time.time() + 60)
+    payload = {"job_id": "phase2a-" + "0" * 24, "reviewed_commit": SHA_A, "verdict": "APPROVE", "risk": "LOW", "blocking_findings": [], "tests_missing": []}
+    monkeypatch.setattr(autonomous_adapters, "run_review_cycle", lambda *args, **kwargs: {"state": "APPROVED", "reviews": [{"provider": "ANYTHINGLLM", "state": "APPROVED", "result": payload}]})
+    with pytest.raises(RuntimeError, match="exact binding"):
+        ExactReviewAdapter("review").review(task, SHA_A, lease)
 
 
 def test_codex_task_adapter_dispatches_bounded_writer(tmp_path: Path, monkeypatch):
@@ -1047,9 +1090,9 @@ def test_resume_restores_exact_review_commit_from_durable_task_state(tmp_path: P
     assert runner.status()["task_specs"]["FWQ-0013"]["review_commit"] == SHA_A
 
 
-@pytest.mark.parametrize("reviewers", [("GEMINI",), ("CLAUDE",), ("CLAUDE", "GEMINI"), ("OPENROUTER",), ()])
+@pytest.mark.parametrize("reviewers", [("GEMINI",), ("CLAUDE",), ("CLAUDE", "GEMINI"), ("OPENROUTER",), ("ANYTHINGLLM", "CLAUDE"), ()])
 def test_autonomous_reviewer_configuration_rejects_legacy_fallback(reviewers):
-    with pytest.raises(ValueError, match="requires AnythingLLM/Qwen"):
+    with pytest.raises(ValueError, match="requires AnythingLLM/Qwen only"):
         ExactReviewAdapter("review", reviewers=reviewers)
 
 
@@ -1081,13 +1124,14 @@ def test_autonomous_anythingllm_review_uses_real_exact_contract(tmp_path, monkey
                 "reasoning_summary": "fixture review", "proposed_rules": []}
 
     def forbidden(*args, **kwargs):
-        pytest.fail("autonomous review invoked Gemini")
+        pytest.fail("autonomous review invoked a disabled reviewer")
 
     def invoke(*args, **kwargs):
         assert kwargs["reviewers"] == ("ANYTHINGLLM",)
         assert kwargs["required_reviewers"] == ("ANYTHINGLLM",)
         assert kwargs["sequential_fallback"] is False
-        return canonical_review_cycle(*args, **kwargs, anythingllm_runner=anythingllm, gemini_runner=forbidden)
+        assert kwargs["adjudicate_disagreements"] is False
+        return canonical_review_cycle(*args, **kwargs, anythingllm_runner=anythingllm, claude_runner=forbidden, gemini_runner=forbidden)
 
     monkeypatch.setattr(autonomous_adapters, "run_review_cycle", invoke)
     adapter = ExactReviewAdapter("Review fixture read-only", reviewers=("ANYTHINGLLM",))
@@ -1107,30 +1151,36 @@ def test_autonomous_anythingllm_review_uses_real_exact_contract(tmp_path, monkey
     assert calls == ["ANYTHINGLLM", "ANYTHINGLLM"]
 
 
-def test_default_autonomous_profile_configures_sequential_claude_fallback(monkeypatch, tmp_path):
+def test_default_autonomous_profile_requires_only_anythingllm(monkeypatch, tmp_path):
     task = TaskSpec("FWQ-FALLBACK", "Core review", "review", initial_state="REVIEW")
     lease = WorkerLease("review", task.task_id, "session", str(tmp_path), (), "REVIEW", (), time.time() + 60)
     captured = {}
 
     def cycle(*args, **kwargs):
         captured.update(kwargs)
-        return {"state": "REVIEW_REQUIRED", "reviews": [{"provider": "ANYTHINGLLM", "state": "UNAVAILABLE", "error": "outage"}, {"provider": "CLAUDE", "state": "UNAVAILABLE", "error": "fallback outage"}]}
+        return {"state": "REVIEW_REQUIRED", "reviews": [{"provider": "ANYTHINGLLM", "state": "UNAVAILABLE", "error": "outage"}]}
 
     monkeypatch.setattr(autonomous_adapters, "run_review_cycle", cycle)
     with pytest.raises(ReviewUnavailable):
         ExactReviewAdapter("review").review(task, "a" * 40, lease)
-    assert captured["reviewers"] == ("ANYTHINGLLM", "CLAUDE")
-    assert captured["required_reviewers"] == ("CLAUDE",)
-    assert captured["sequential_fallback"] is True
+    assert captured["reviewers"] == ("ANYTHINGLLM",)
+    assert captured["required_reviewers"] == ("ANYTHINGLLM",)
+    assert captured["sequential_fallback"] is False
+    assert captured["adjudicate_disagreements"] is False
 
 
-def test_default_profile_accepts_claude_after_anythingllm_outage(monkeypatch, tmp_path):
+def test_default_profile_does_not_accept_disabled_reviewer_after_anythingllm_outage(monkeypatch, tmp_path):
     task = TaskSpec("FWQ-FALLBACK-OK", "Core review", "review", initial_state="REVIEW")
     lease = WorkerLease("review", task.task_id, "session", str(tmp_path), (), "REVIEW", (), time.time() + 60)
-    payload = {"job_id": "phase2a-" + "0" * 24, "reviewed_commit": "a" * 40, "verdict": "APPROVE", "risk": "LOW", "blocking_findings": [], "non_blocking_notes": [], "tests_missing": [], "reasoning_summary": "fallback", "proposed_rules": []}
-    monkeypatch.setattr(autonomous_adapters, "run_review_cycle", lambda *args, **kwargs: {"state": "APPROVED", "reviews": [{"provider": "ANYTHINGLLM", "state": "UNAVAILABLE", "error": "429"}, {"provider": "CLAUDE", "state": "APPROVED", "result": payload}]})
-    result = ExactReviewAdapter("review").review(task, "a" * 40, lease)
-    assert result["CLAUDE"].disposition == "APPROVED"
+    captured = {}
+    def cycle(*args, **kwargs):
+        captured.update(kwargs)
+        return {"state": "REVIEW_REQUIRED", "reviews": [{"provider": "ANYTHINGLLM", "state": "UNAVAILABLE", "error": "429"}]}
+    monkeypatch.setattr(autonomous_adapters, "run_review_cycle", cycle)
+    with pytest.raises(ReviewUnavailable):
+        ExactReviewAdapter("review").review(task, "a" * 40, lease)
+    assert captured["reviewers"] == ("ANYTHINGLLM",)
+    assert captured["sequential_fallback"] is False
 
 
 def test_default_profile_preserves_anythingllm_rejection(monkeypatch, tmp_path):

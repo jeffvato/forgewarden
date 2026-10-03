@@ -18,6 +18,9 @@ _SHA1 = re.compile(r"[0-9a-fA-F]{40}")
 _TASK_ID = re.compile(r"FWQ-[0-9]{4}")
 _VERSION = 1
 MAX_CHECKPOINT_BYTES = 1_048_576
+_REVIEW_ROLES = frozenset({"ANYTHINGLLM", "CLAUDE", "GEMINI", "OPENROUTER", "NVIDIA"})
+_REVIEW_DISPOSITIONS = frozenset({"APPROVED", "FINDINGS"})
+_REVIEW_SEVERITIES = frozenset({"LOW", "MEDIUM", "HIGH", "CRITICAL"})
 
 
 class CheckpointError(ValueError):
@@ -38,6 +41,7 @@ class WorkUnitCheckpoint:
     unresolved_findings: tuple[str, ...]
     blocker: str | None
     next_action: str
+    reviewer_evidence: tuple[str, ...] = ()
 
 
 def _canonical(payload: object) -> bytes:
@@ -64,6 +68,18 @@ def _validate(checkpoint: WorkUnitCheckpoint) -> None:
         raise CheckpointError("changed files must be non-empty relative paths without traversal")
     if any(not isinstance(item, str) or not item.strip() for item in checkpoint.deterministic_validation) or any(not isinstance(item, str) or not item.strip() for item in (checkpoint.claude_review, checkpoint.gemini_review, checkpoint.next_action)):
         raise CheckpointError("checkpoint evidence fields must be non-empty")
+    seen_reviewers: set[str] = set()
+    for item in checkpoint.reviewer_evidence:
+        parts = item.split(":") if isinstance(item, str) else []
+        if (
+            len(parts) != 3
+            or parts[0] not in _REVIEW_ROLES
+            or parts[0] in seen_reviewers
+            or parts[1] not in _REVIEW_DISPOSITIONS
+            or parts[2] not in _REVIEW_SEVERITIES
+        ):
+            raise CheckpointError("reviewer evidence must contain unique role, disposition, and severity records")
+        seen_reviewers.add(parts[0])
     if checkpoint.blocker is not None and not isinstance(checkpoint.blocker, str):
         raise CheckpointError("blocker must be a string or null")
     if any(not isinstance(item, str) or not item for item in checkpoint.unresolved_findings):
@@ -85,10 +101,18 @@ def _payload(checkpoint: WorkUnitCheckpoint) -> dict[str, object]:
 
 
 def _review_findings_match(checkpoint: WorkUnitCheckpoint) -> bool:
-    reviews = {
-        "CLAUDE": checkpoint.claude_review.strip().upper(),
-        "GEMINI": checkpoint.gemini_review.strip().upper(),
-    }
+    if checkpoint.reviewer_evidence:
+        reviews = {
+            role: disposition
+            for role, disposition, _severity in (
+                item.split(":", 2) for item in checkpoint.reviewer_evidence
+            )
+        }
+    else:
+        reviews = {
+            "CLAUDE": checkpoint.claude_review.strip().upper(),
+            "GEMINI": checkpoint.gemini_review.strip().upper(),
+        }
     has_findings = False
     for item in checkpoint.unresolved_findings:
         role, disposition, severity, _rationale, finding = (
@@ -168,6 +192,7 @@ def load_checkpoint(path: Path) -> WorkUnitCheckpoint:
             changed_files=tuple(checkpoint_data["changed_files"]), deterministic_validation=tuple(checkpoint_data["deterministic_validation"]),
             claude_review=checkpoint_data["claude_review"], gemini_review=checkpoint_data["gemini_review"],
             unresolved_findings=tuple(checkpoint_data["unresolved_findings"]), blocker=checkpoint_data["blocker"], next_action=checkpoint_data["next_action"],
+            reviewer_evidence=tuple(checkpoint_data.get("reviewer_evidence", ())),
         )
     except (KeyError, TypeError) as exc:
         raise CheckpointError("checkpoint has invalid schema") from exc
@@ -197,8 +222,17 @@ def reconcile_checkpoint(checkpoint: WorkUnitCheckpoint, repository_head: str) -
         raise CheckpointError("checkpoint not accepted: candidate commit has not been accepted")
     if checkpoint.accepted_commit is not None and (
         not checkpoint.deterministic_validation
-        or checkpoint.claude_review.strip().upper() not in {"APPROVED", "FINDINGS"}
-        or checkpoint.gemini_review.strip().upper() not in {"APPROVED", "FINDINGS"}
+        or (
+            not checkpoint.reviewer_evidence
+            and (
+                checkpoint.claude_review.strip().upper() not in {"APPROVED", "FINDINGS"}
+                or checkpoint.gemini_review.strip().upper() not in {"APPROVED", "FINDINGS"}
+            )
+        )
+        or (
+            checkpoint.reviewer_evidence
+            and any(item.split(":", 2)[1] not in {"APPROVED", "FINDINGS"} for item in checkpoint.reviewer_evidence)
+        )
         or not _review_findings_match(checkpoint)
         or checkpoint.blocker is not None
         or checkpoint.next_action.strip().lower().startswith("dispatch")

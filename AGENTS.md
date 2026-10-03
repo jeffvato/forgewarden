@@ -10,8 +10,8 @@ Deployment remains disabled and any configured kill switch remains engaged.
 1. Jeff / Customer Root is the ultimate authority. Only Jeff may expand authority, authorize deployment, clear a kill switch, or approve actions reserved to Customer Root.
 2. The trusted ForgeWarden Python orchestrator owns deterministic workflow control, policy enforcement, allowed paths, hashes, tests, Git operations, resource limits, audit, cleanup, rollback, and work sequencing.
 3. Codex CLI is the sole application-code writer for the active Core plan. It may inspect, implement, repair, refactor, and test only within an approved bounded lease.
-4. Claude is an architecture, requirements, threat-model, and adversarial-review assistant. Claude returns findings and recommendations; it does not independently modify production source.
-5. Claude, OpenRouter, and NVIDIA are read-only verification providers. Claude adjudicates disagreements when needed; none may independently modify production source or create approval evidence outside the orchestrator contract.
+4. Claude is an architecture, requirements, threat-model, and adversarial-review assistant only when Jeff explicitly re-enables it under D-026; otherwise Claude and Gemini are disabled. No reviewer independently modifies production source.
+5. AnythingLLM with `qwen/qwen3.8-27b` is the required read-only exact-commit reviewer under D-026. The trusted runner must validate exact job-ID/SHA binding and schema and require APPROVE/LOW with no blocking findings or missing tests. Reviewer unavailability fails closed; no alternate model may substitute unless Jeff explicitly re-enables it. OpenRouter, NVIDIA, and other providers remain disabled unless separately authorized. No reviewer may independently modify production source or create approval evidence outside the orchestrator contract.
 6. Deterministic checks are authoritative. AI agents never gain authority merely by issuing instructions to one another.
 
 ## Persistent project state
@@ -43,8 +43,8 @@ For each bounded work unit:
 4. Run applicable formatter, lint, type/static checks, unit/integration/security/invariant tests, secret/dependency checks, and repository-specific validation.
 5. Run the FW-INTEGRITY Product Integrity Gate and applicable Golden Paths; distinguish not-yet-proven from broken and record any RED/YELLOW findings.
 6. Produce one coherent candidate commit using the approved Git workflow and record its exact hash.
-7. Obtain Claude Code architecture/adversarial read-only review of that exact candidate.
-8. Accept review only after exact job-ID/SHA and schema validation yields APPROVE/LOW with no blocking findings or missing tests. One qualifying AnythingLLM review using `qwen/qwen3.8-27b` satisfies the required reviewer gate under D-026. Claude and Gemini must not be invoked unless Jeff explicitly re-enables them. Preserve truthful provider attribution and exact job-ID/SHA/schema validation.
+7. Obtain the required AnythingLLM/Qwen read-only review of that exact candidate through the existing trusted adapter.
+8. Accept review only after exact job-ID/SHA and schema validation yields APPROVE/LOW with no blocking findings or missing tests. Claude and Gemini must not be invoked unless Jeff explicitly re-enables them under D-026; do not substitute another provider on Qwen unavailability. Preserve truthful provider attribution and exact job-ID/SHA/schema validation.
 9. Codex repairs legitimate findings, strengthens regression tests, reruns validation, and presents a new exact candidate when needed.
 10. Accept a work unit only when acceptance criteria and deterministic validation pass and no unresolved critical/high-confidence finding remains.
 11. Update `WORK_QUEUE.md` and `SWARM_STATUS.md`, then immediately claim the next READY task.

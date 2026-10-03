@@ -62,42 +62,62 @@ def run_deterministic_tests(task: TaskSpec, result: WorkerResult, repository: Wo
 class ExactReviewAdapter:
     """Use the existing independent review runner and convert its evidence."""
 
-    def __init__(self, context: str, *, allow_external_review: bool = False, reviewers: tuple[str, ...] = ("ANYTHINGLLM", "CLAUDE")):
-        if reviewers not in (("ANYTHINGLLM",), ("ANYTHINGLLM", "CLAUDE")):
-            raise ValueError("autonomous review requires AnythingLLM/Qwen, optionally with Claude fallback")
+    def __init__(self, context: str, *, allow_external_review: bool = False, reviewers: tuple[str, ...] = ("ANYTHINGLLM",)):
+        if reviewers != ("ANYTHINGLLM",):
+            raise ValueError("autonomous review requires AnythingLLM/Qwen only")
         self.context = context
         self.allow_external_review = allow_external_review
         self.reviewers = reviewers
 
+    @staticmethod
+    def _anythingllm_record(result: dict[str, Any], *, expected_job_id: str, expected_commit: str) -> dict[str, Any]:
+        reviews = result.get("reviews")
+        if (
+            not isinstance(reviews, (list, tuple))
+            or len(reviews) != 1
+            or not isinstance(reviews[0], dict)
+            or reviews[0].get("provider") != "ANYTHINGLLM"
+            or result.get("adjudication") is not None
+        ):
+            raise RuntimeError("autonomous review returned evidence outside the AnythingLLM/Qwen policy")
+        review = reviews[0]
+        if review.get("state") == "APPROVED":
+            payload = review.get("result")
+            if (
+                not isinstance(payload, dict)
+                or payload.get("job_id") != expected_job_id
+                or payload.get("reviewed_commit") != expected_commit
+                or payload.get("verdict") != "APPROVE"
+                or payload.get("risk") != "LOW"
+                or payload.get("blocking_findings") != []
+                or payload.get("tests_missing") != []
+            ):
+                raise RuntimeError("AnythingLLM approval evidence failed exact binding or acceptance checks")
+        return review
+
     def review(self, task: TaskSpec, commit: str, lease: WorkerLease) -> dict[str, ReviewResult]:
         job_id = "phase2a-" + hashlib.sha256(task.task_id.encode("utf-8")).hexdigest()[:24]
-        fallback_profile = self.reviewers == ("ANYTHINGLLM", "CLAUDE")
-        result = run_review_cycle(Path(lease.repository), commit, job_id, self.context, allow_external_review=self.allow_external_review, reviewers=self.reviewers, required_reviewers=(("CLAUDE",) if fallback_profile else ("ANYTHINGLLM",)), adjudicate_disagreements=(not fallback_profile), sequential_fallback=fallback_profile)
+        result = run_review_cycle(
+            Path(lease.repository), commit, job_id, self.context,
+            allow_external_review=self.allow_external_review,
+            reviewers=("ANYTHINGLLM",), required_reviewers=("ANYTHINGLLM",),
+            adjudicate_disagreements=False, sequential_fallback=False,
+        )
+        review = self._anythingllm_record(result, expected_job_id=job_id, expected_commit=commit)
         if result["state"] != "APPROVED":
-            unavailable = [item for item in result.get("reviews", ()) if item.get("state") == "UNAVAILABLE"]
-            if unavailable:
-                detail = "; ".join(f"{item.get('provider', 'reviewer')}: {item.get('error', 'no diagnostic')}" for item in unavailable)
+            if review.get("state") == "UNAVAILABLE":
+                detail = str(review.get("error", "AnythingLLM review unavailable"))
                 raise ReviewUnavailable(f"independent exact-commit review resource unavailable: {detail[:1000]}")
             raise RuntimeError("independent exact-commit review did not approve: " + _review_failure_detail(result))
-        adjudication = result.get("adjudication")
-        if isinstance(adjudication, dict) and adjudication.get("state") == "APPROVED":
-            payload = adjudication["result"]
-            return {
-                "CLAUDE": ReviewResult(
-                    "CLAUDE", commit, tuple(str(value) for value in payload.get("blocking_findings", [])),
-                    str(payload["risk"]), "APPROVED", str(payload["reasoning_summary"]),
-                )
-            }
-        reviews: dict[str, ReviewResult] = {}
-        for item in result["reviews"]:
-            if item.get("state") == "UNAVAILABLE":
-                continue
-            payload = item.get("result")
-            if item.get("state") != "APPROVED" or not isinstance(payload, dict):
-                raise RuntimeError("review evidence is incomplete")
-            role = str(item["provider"])
-            reviews[role] = ReviewResult(role, commit, tuple(str(value) for value in payload.get("blocking_findings", [])), str(payload["risk"]), "APPROVED", str(payload["reasoning_summary"]))
-        return reviews
+        payload = review.get("result")
+        if review.get("state") != "APPROVED" or not isinstance(payload, dict):
+            raise RuntimeError("AnythingLLM review evidence is incomplete")
+        return {
+            "ANYTHINGLLM": ReviewResult(
+                "ANYTHINGLLM", commit, tuple(str(value) for value in payload.get("blocking_findings", [])),
+                str(payload["risk"]), "APPROVED", str(payload["reasoning_summary"]),
+            )
+        }
 
     def resolve_review(self, task: TaskSpec, lease: WorkerLease) -> str:
         if not task.review_commit:
@@ -110,17 +130,18 @@ class ExactReviewAdapter:
                 job_id,
                 self.context,
                 allow_external_review=self.allow_external_review,
-                reviewers=self.reviewers,
-                required_reviewers=(("CLAUDE",) if self.reviewers == ("ANYTHINGLLM", "CLAUDE") else ("ANYTHINGLLM",)),
-                adjudicate_disagreements=(self.reviewers != ("ANYTHINGLLM", "CLAUDE")),
-                sequential_fallback=(self.reviewers == ("ANYTHINGLLM", "CLAUDE")),
+                reviewers=("ANYTHINGLLM",),
+                required_reviewers=("ANYTHINGLLM",),
+                adjudicate_disagreements=False,
+                sequential_fallback=False,
             )
+            required_review = self._anythingllm_record(result, expected_job_id=job_id, expected_commit=task.review_commit)
             if result["state"] == "APPROVED":
+                if required_review.get("state") != "APPROVED":
+                    return "REPAIRABLE: approved review cycle lacks AnythingLLM approval evidence"
                 return "PASSED"
-            reviews = tuple(result.get("reviews", ()))
-            required_review = next((item for item in reviews if item.get("provider") == "ANYTHINGLLM"), None)
-            if required_review is None or required_review.get("state") == "UNAVAILABLE":
-                detail = required_review.get("error", "AnythingLLM review record was not returned") if required_review else "AnythingLLM review record was not returned"
+            if required_review.get("state") == "UNAVAILABLE":
+                detail = required_review.get("error", "AnythingLLM review unavailable")
                 return "EXTERNAL: " + str(detail)[:1000]
             return "REPAIRABLE: " + _review_failure_detail(result)
         except Exception as exc:

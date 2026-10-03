@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 
 import pytest
 import swarm.work_checkpoint as checkpoint_module
@@ -100,6 +101,40 @@ def test_no_change_accepted_checkpoint_reconciles_at_current_head():
         deterministic_validation=("pytest",),
     )
     assert reconcile_checkpoint(checkpoint, SHA_A)["expected_commit"] == SHA_A
+
+
+def test_anythingllm_checkpoint_records_provider_without_fabricating_legacy_roles(tmp_path):
+    path = tmp_path / "checkpoint.json"
+    checkpoint = _checkpoint(
+        candidate_commit=SHA_B,
+        accepted_commit=SHA_B,
+        claude_review="NOT_USED",
+        gemini_review="NOT_USED",
+        reviewer_evidence=("ANYTHINGLLM:APPROVED:LOW",),
+    )
+    write_checkpoint(path, checkpoint)
+    assert load_checkpoint(path) == checkpoint
+    assert reconcile_checkpoint(checkpoint, SHA_B)["expected_commit"] == SHA_B
+
+
+def test_legacy_checkpoint_without_generic_reviewer_evidence_remains_readable(tmp_path):
+    path = tmp_path / "checkpoint.json"
+    write_checkpoint(path, _checkpoint(candidate_commit=SHA_B, accepted_commit=SHA_B))
+    envelope = json.loads(path.read_text(encoding="utf-8"))
+    del envelope["checkpoint"]["reviewer_evidence"]
+    payload = {"version": envelope["version"], "checkpoint": envelope["checkpoint"]}
+    envelope["sha256"] = hashlib.sha256(checkpoint_module._canonical(payload)).hexdigest()
+    path.write_text(json.dumps(envelope), encoding="utf-8")
+    loaded = load_checkpoint(path)
+    assert loaded.reviewer_evidence == ()
+    assert reconcile_checkpoint(loaded, SHA_B)["expected_commit"] == SHA_B
+
+
+@pytest.mark.parametrize("evidence", [("ANYTHINGLLM:APPROVED:LOW", "ANYTHINGLLM:APPROVED:LOW"), ("CLAUDE:APPROVED:LOW:EXTRA",)])
+def test_malformed_generic_reviewer_evidence_fails_closed(evidence):
+    with pytest.raises(CheckpointError, match="reviewer evidence"):
+        checkpoint = _checkpoint(candidate_commit=SHA_B, accepted_commit=SHA_B, reviewer_evidence=evidence)
+        checkpoint_module._validate(checkpoint)
 
 
 @pytest.mark.parametrize(
