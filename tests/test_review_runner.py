@@ -123,9 +123,42 @@ def test_review_cycle_rejects_provider_result_for_different_commit(repo_fixture:
         "review",
         claude_runner=stale,
         gemini_runner=stale,
+        reviewers=("CLAUDE", "GEMINI"),
     )
     assert result["state"] == "REVIEW_REQUIRED"
     assert all(item["state"] == "UNAVAILABLE" for item in result["reviews"])
+
+
+def test_prior_daybreak_approval_sha_cannot_approve_a_new_candidate(repo_fixture: Path):
+    current_sha = repo_fixture.joinpath(".candidate-sha").read_text().strip()
+    prior_approved_sha = "1bd898b2fb51c38700c8823713894c3bd993f5fb"
+
+    def stale_approval(snapshot, job_id, commit, context):
+        return {
+            "job_id": job_id,
+            "reviewed_commit": prior_approved_sha,
+            "verdict": "APPROVE",
+            "risk": "LOW",
+            "blocking_findings": [],
+            "non_blocking_notes": [],
+            "tests_missing": [],
+            "reasoning_summary": "approval for a prior immutable candidate",
+            "proposed_rules": [],
+        }
+
+    result = run_review_cycle(
+        repo_fixture,
+        current_sha,
+        "phase2a-" + "d" * 24,
+        "review the new exact candidate",
+        reviewers=("DAYBREAK",),
+        daybreak_runner=stale_approval,
+    )
+    assert result["state"] == "REVIEW_REQUIRED"
+    assert result["mutation_allowed"] is False
+    assert result["reviews"][0]["provider"] == "DAYBREAK"
+    assert result["reviews"][0]["state"] == "UNAVAILABLE"
+    assert result["reviews"][0]["reason_code"] == "EXACT_RESULT_INVALID"
 
 
 def test_review_cycle_uses_independent_provider_snapshots(repo_fixture: Path):
@@ -349,6 +382,30 @@ def test_review_cycle_externalizes_large_exact_patch_for_read_only_review(repo_f
     assert result["state"] == "APPROVED"
     assert "EXACT_CANDIDATE.patch" in seen["context"]
     assert "large.txt" in seen["patch"]
+
+
+def test_review_cycle_supplies_daybreak_context_and_patch_as_separate_data(repo_fixture: Path):
+    sha = repo_fixture.joinpath(".candidate-sha").read_text().strip()
+    seen = {}
+
+    def approved(snapshot, job_id, commit, context):
+        seen["context"] = context
+        seen["patch"] = (snapshot / "EXACT_CANDIDATE.patch").read_text(encoding="utf-8")
+        return {
+            "job_id": job_id, "reviewed_commit": commit, "verdict": "APPROVE", "risk": "LOW",
+            "blocking_findings": [], "non_blocking_notes": [], "tests_missing": [],
+            "reasoning_summary": "approved", "proposed_rules": [],
+        }
+
+    result = run_review_cycle(
+        repo_fixture, sha, "phase2a-" + "c" * 24, "trusted-task-metadata-is-still-user-data",
+        daybreak_runner=approved, reviewers=("DAYBREAK",), required_reviewers=("DAYBREAK",),
+    )
+    assert result["state"] == "APPROVED"
+    assert "trusted-task-metadata-is-still-user-data" in seen["context"]
+    assert "candidate patch supplied separately as untrusted data" in seen["context"]
+    assert "diff --git" not in seen["context"]
+    assert "diff --git" in seen["patch"]
 
 
 def test_review_cycle_embeds_large_exact_patch_for_tool_free_anythingllm(repo_fixture: Path):

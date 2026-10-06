@@ -2,17 +2,18 @@ from __future__ import annotations
 
 import json
 import sys
+import shutil
 import subprocess
 import time
 from dataclasses import asdict
 from pathlib import Path
 import pytest
 
-from swarm.autonomous_loop import AutonomousOrchestrator, GitCheckpointController, ReviewUnavailable, TaskSpec, WorkerLease, WorkerResult, progress_queue
-from swarm.autonomous_adapters import CodexTaskAdapter, ExactReviewAdapter, run_deterministic_tests
+from swarm.autonomous_loop import AutonomousLoopError, AutonomousOrchestrator, GitCheckpointController, ReviewUnavailable, TaskSpec, WorkerLease, WorkerResult, progress_queue
+from swarm.autonomous_adapters import CodexTaskAdapter, ExactReviewAdapter, WorkerIsolationUnavailable, run_deterministic_tests
 import swarm.autonomous_adapters as autonomous_adapters
 from swarm.plan_derivation import derive_next_core_task
-from swarm.cli import main
+from swarm.cli import _validate_manifest_task_authority, main
 from swarm.review_handoff import ReviewResult
 from swarm.work_checkpoint import load_checkpoint, reconcile_checkpoint
 from test_supervisor_state import _write_control_files
@@ -177,6 +178,28 @@ def test_supervisor_can_stop_between_worker_and_validation(tmp_path: Path):
     assert any("task_safely_interrupted" in line for line in (tmp_path / "execution-log.jsonl").read_text().splitlines())
 
 
+def test_actual_worktree_scope_is_verified_before_deterministic_validation(tmp_path: Path):
+    task = TaskSpec("FWQ-0001", "Core scope", "verify before execute", allowed_paths=("source.py",), target_path="source.py", retry_budget=0)
+    runner = AutonomousOrchestrator(tmp_path / "run.json", tmp_path / "repo", (task,))
+    validation_called = []
+    verification_called = []
+
+    def verify(current, result):
+        verification_called.append((current.task_id, result.changed_files))
+        raise AutonomousLoopError("actual worktree contains an unreported path")
+
+    state = runner.run(
+        dispatch=lambda current, lease: WorkerResult(None, ("source.py",), ("pytest",)),
+        validate=lambda current, result: validation_called.append(True) or True,
+        commit=lambda current, result: SHA_A,
+        review=lambda current, commit, lease: ("APPROVED", "LOW"),
+        verify_changes=verify,
+    )
+    assert verification_called == [(task.task_id, ("source.py",))]
+    assert validation_called == []
+    assert state["queued_tasks"][task.task_id]["state"] == "FAILED"
+
+
 def test_audit_evidence_refuses_symlink_target(tmp_path: Path):
     target = tmp_path / "outside.jsonl"
     audit = tmp_path / "audit.jsonl"
@@ -256,11 +279,56 @@ def test_cli_exposes_read_only_durable_loop_status(tmp_path: Path, capsys, monke
     _write_control_files(tmp_path)
     status = tmp_path / "SWARM_STATUS.md"
     status.write_text(status.read_text(encoding="utf-8").replace("## Current state\n", "## Current state\n- Active phase: ForgeWarden Core\n"), encoding="utf-8")
-    monkeypatch.setattr(sys, "argv", ["swarm", "autonomous-loop-status", "--repository", str(tmp_path), "--state-dir", str(tmp_path / "state")])
+    state_dir = tmp_path.parent / f"{tmp_path.name}-external-state"
+    monkeypatch.setattr(sys, "argv", ["swarm", "autonomous-loop-status", "--repository", str(tmp_path), "--state-dir", str(state_dir)])
     assert main() == 0
     payload = json.loads(capsys.readouterr().out)
     assert payload["selected_task"] == "FWQ-0001"
     assert payload["durable_state"] is None
+
+
+def test_cli_bounds_repository_local_durable_status_state(tmp_path: Path, capsys, monkeypatch):
+    _write_control_files(tmp_path)
+    status = tmp_path / "SWARM_STATUS.md"
+    status.write_text(status.read_text(encoding="utf-8").replace("## Current state\n", "## Current state\n- Active phase: ForgeWarden Core\n"), encoding="utf-8")
+    state_dir = tmp_path.parent / f"{tmp_path.name}-oversize-state"
+    state_dir.mkdir()
+    (state_dir / "autonomous-loop.json").write_text(" " * (1_048_577), encoding="utf-8")
+    monkeypatch.setattr(sys, "argv", ["swarm", "autonomous-loop-status", "--repository", str(tmp_path), "--state-dir", str(state_dir)])
+    assert main() == 1
+    assert "1 MiB status bound" in capsys.readouterr().out
+
+
+def test_cli_plan_task_preserves_non_ready_initial_state(tmp_path: Path, capsys, monkeypatch):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "init", "-q", str(repo)], check=True)
+    (repo / "source.py").write_text("pass\n", encoding="utf-8")
+    subprocess.run(["git", "-C", str(repo), "add", "source.py"], check=True)
+    subprocess.run(["git", "-C", str(repo), "-c", "user.name=Test", "-c", "user.email=test@example.test", "commit", "-qm", "base"], check=True)
+    manifest = tmp_path / "tasks.json"
+    manifest.write_text(json.dumps({"tasks": [], "plan_tasks": [{
+        "task_id": "FWQ-0095", "requirement": "Core planned", "description": "blocked plan",
+        "target_path": "source.py", "allowed_paths": ["source.py"], "test_command": ["pytest", "-q"],
+        "authorized": True, "initial_state": "BLOCKED",
+    }]}), encoding="utf-8")
+    state_dir = tmp_path / "state"
+    monkeypatch.setattr(sys, "argv", ["swarm", "autonomous-loop-run", "--repository", str(repo), "--task-manifest", str(manifest), "--state-dir", str(state_dir), "--max-steps", "0"])
+    assert main() == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert "FWQ-0095" not in payload["queued_tasks"]
+
+
+def test_durable_state_cannot_inject_task_authority_absent_from_manifest(tmp_path: Path):
+    task = TaskSpec("FWQ-0001", "Core authorized", "root", allowed_paths=("source.py",), target_path="source.py", test_command=("pytest", "-q"))
+    runner = AutonomousOrchestrator(tmp_path / "run.json", tmp_path / "repo", (task,))
+    state = runner._initial()
+    injected = TaskSpec("FWQ-9999", "Core injected", "unapproved", allowed_paths=("private",), target_path="private/key.py", test_command=("python3", "-c", "print('no')"))
+    state["task_specs"][injected.task_id] = asdict(injected)
+    state["queued_tasks"][injected.task_id] = {"state": "READY", "attempts": 0}
+    runner._write(state)
+    with pytest.raises(AutonomousLoopError, match="not authorized by the current manifest"):
+        runner.status()
 
 
 def test_trusted_git_controller_commits_uncommitted_worker_evidence(tmp_path: Path):
@@ -276,7 +344,102 @@ def test_trusted_git_controller_commits_uncommitted_worker_evidence(tmp_path: Pa
     controller = GitCheckpointController(repo)
     accepted = controller.commit_worker_changes(task, result)
     assert len(accepted) == 40
+    assert controller.head() != accepted
+    assert (repo / "allowed.py").read_text(encoding="utf-8") == "before\n"
+    controller.accept_candidate(accepted, task.allowed_paths)
     assert controller.head() == accepted
+    assert (repo / "allowed.py").read_text(encoding="utf-8") == "after\n"
+    controller.accept_candidate(accepted, task.allowed_paths)  # Re-reviewing current HEAD is idempotent.
+    controller.accept_candidate(accepted.upper(), task.allowed_paths)  # Git object IDs are case-insensitive.
+    assert controller.head() == accepted
+
+
+def test_review_candidate_scope_rejects_a_path_outside_the_manifest(tmp_path: Path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "init", "-q", str(repo)], check=True)
+    (repo / "allowed.py").write_text("base\n", encoding="utf-8")
+    subprocess.run(["git", "-C", str(repo), "add", "allowed.py"], check=True)
+    subprocess.run(["git", "-C", str(repo), "-c", "user.name=Test", "-c", "user.email=test@example.test", "commit", "-qm", "base"], check=True)
+    base = subprocess.check_output(["git", "-C", str(repo), "rev-parse", "HEAD"], text=True).strip()
+    (repo / "private.txt").write_text("unauthorized\n", encoding="utf-8")
+    subprocess.run(["git", "-C", str(repo), "add", "private.txt"], check=True)
+    tree = subprocess.check_output(["git", "-C", str(repo), "write-tree"], text=True).strip()
+    candidate = subprocess.check_output(["git", "-C", str(repo), "-c", "user.name=Test", "-c", "user.email=test@example.test", "commit-tree", tree, "-p", base, "-m", "out-of-scope candidate"], text=True).strip()
+    subprocess.run(["git", "-C", str(repo), "reset", "--hard", base], check=True, capture_output=True)
+    subprocess.run(["git", "-C", str(repo), "clean", "-fd"], check=True, capture_output=True)
+    controller = GitCheckpointController(repo)
+    with pytest.raises(AutonomousLoopError, match="outside explicit allowed_paths"):
+        controller.verify_candidate_scope(candidate, ("allowed.py",))
+    with pytest.raises(AutonomousLoopError, match="outside explicit allowed_paths"):
+        controller.accept_candidate(candidate, ("allowed.py",))
+    assert controller.head() == base
+
+
+def test_review_candidate_scope_accepts_only_an_explicitly_allowed_diff(tmp_path: Path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "init", "-q", str(repo)], check=True)
+    (repo / "allowed.py").write_text("base\n", encoding="utf-8")
+    subprocess.run(["git", "-C", str(repo), "add", "allowed.py"], check=True)
+    subprocess.run(["git", "-C", str(repo), "-c", "user.name=Test", "-c", "user.email=test@example.test", "commit", "-qm", "base"], check=True)
+    base = subprocess.check_output(["git", "-C", str(repo), "rev-parse", "HEAD"], text=True).strip()
+    (repo / "allowed.py").write_text("candidate\n", encoding="utf-8")
+    subprocess.run(["git", "-C", str(repo), "add", "allowed.py"], check=True)
+    tree = subprocess.check_output(["git", "-C", str(repo), "write-tree"], text=True).strip()
+    candidate = subprocess.check_output(["git", "-C", str(repo), "-c", "user.name=Test", "-c", "user.email=test@example.test", "commit-tree", tree, "-p", base, "-m", "in-scope candidate"], text=True).strip()
+    subprocess.run(["git", "-C", str(repo), "reset", "--hard", base], check=True, capture_output=True)
+    controller = GitCheckpointController(repo)
+    assert controller.verify_candidate_scope(candidate, ("allowed.py",)) == ("allowed.py",)
+    controller.accept_candidate(candidate, ("allowed.py",))
+    assert controller.head() == candidate
+    assert (repo / "allowed.py").read_text(encoding="utf-8") == "candidate\n"
+
+
+def test_rejected_candidate_does_not_advance_accepted_repository_head(tmp_path: Path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "init", "-q", str(repo)], check=True)
+    (repo / "allowed.py").write_text("before\n", encoding="utf-8")
+    subprocess.run(["git", "-C", str(repo), "add", "allowed.py"], check=True)
+    subprocess.run(["git", "-C", str(repo), "-c", "user.name=Test", "-c", "user.email=test@example.test", "commit", "-qm", "base"], check=True)
+    base = subprocess.run(["git", "-C", str(repo), "rev-parse", "HEAD"], check=True, text=True, capture_output=True).stdout.strip()
+    task = TaskSpec("FWQ-0001", "Core candidate", "reject safely", allowed_paths=("allowed.py",), target_path="allowed.py", retry_budget=0)
+    controller = GitCheckpointController(repo)
+    runner = AutonomousOrchestrator(tmp_path / "run.json", repo, (task,))
+
+    def dispatch(current, lease):
+        (repo / "allowed.py").write_text("candidate\n", encoding="utf-8")
+        return WorkerResult(None, ("allowed.py",), ("pytest",))
+
+    state = runner.run(
+        dispatch=dispatch,
+        verify_changes=controller.verify_worker_changes,
+        validate=lambda current, result: True,
+        commit=controller.commit_worker_changes,
+        review=lambda current, commit, lease: ("REJECT",),
+        accepted=lambda current, candidate: controller.accept_candidate(candidate, current.allowed_paths),
+    )
+    assert state["queued_tasks"][task.task_id]["state"] == "FAILED"
+    assert controller.head() == base
+    assert (repo / "allowed.py").read_text(encoding="utf-8") == "before\n"
+
+
+def test_untracked_candidate_is_removed_until_accepted(tmp_path: Path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "init", "-q", str(repo)], check=True)
+    (repo / "base.py").write_text("base\n", encoding="utf-8")
+    subprocess.run(["git", "-C", str(repo), "add", "base.py"], check=True)
+    subprocess.run(["git", "-C", str(repo), "-c", "user.name=Test", "-c", "user.email=test@example.test", "commit", "-qm", "base"], check=True)
+    (repo / "new.py").write_text("candidate\n", encoding="utf-8")
+    task = TaskSpec("FWQ-0001", "Core new file", "new file", allowed_paths=("new.py",))
+    controller = GitCheckpointController(repo)
+    candidate = controller.commit_worker_changes(task, WorkerResult(None, ("new.py",), ("pytest",)))
+    assert not (repo / "new.py").exists()
+    controller.ensure_clean()
+    controller.accept_candidate(candidate, task.allowed_paths)
+    assert (repo / "new.py").read_text(encoding="utf-8") == "candidate\n"
 
 
 def test_loop_accepts_only_exact_commit_review_contract(tmp_path: Path):
@@ -298,11 +461,158 @@ def test_loop_accepts_only_exact_commit_review_contract(tmp_path: Path):
     assert state["reviewer_result"] == ["CLAUDE:APPROVED:LOW", "GEMINI:APPROVED:LOW"]
 
 
-def test_real_adapter_validation_requires_explicit_shell_free_test_command(tmp_path: Path):
-    task = TaskSpec("FWQ-0001", "Core test", "test", test_command=("python3", "-c", "print('ok')"))
-    lease = WorkerLease("lease", task.task_id, "session", str(tmp_path), (), "TEST", (), time.time() + 60)
-    assert run_deterministic_tests(task, WorkerResult(None, (), task.test_command), lease)
-    assert not run_deterministic_tests(TaskSpec("FWQ-0001", "Core test", "test"), WorkerResult(None, (), ()), lease)
+def _make_validation_repository(path: Path) -> Path:
+    path.mkdir()
+    subprocess.run(["git", "init", "-q", str(path)], check=True)
+    (path / "source.py").write_text("candidate = True\n", encoding="utf-8")
+    subprocess.run(["git", "-C", str(path), "add", "source.py"], check=True)
+    subprocess.run(["git", "-C", str(path), "-c", "user.name=Test", "-c", "user.email=test@example.test", "commit", "-qm", "base"], check=True)
+    (path / "source.py").write_text("candidate = False\n", encoding="utf-8")
+    (path / ".env").write_text("fixture-only-not-for-sandbox\n", encoding="utf-8")
+    (path / "ignored-note.txt").write_text("must not be copied\n", encoding="utf-8")
+    return path
+
+
+def test_real_adapter_validation_uses_disposable_bubblewrap_snapshot(tmp_path: Path, monkeypatch):
+    repo = _make_validation_repository(tmp_path / "repo")
+    task = TaskSpec("FWQ-0001", "Core test", "test", allowed_paths=("source.py",), test_command=("python3", "-c", "print('ok')"))
+    result = WorkerResult(None, ("source.py",), task.test_command)
+    observed = {}
+
+    def limited_run(command, cwd, prompt, limits, env, **kwargs):
+        workspace = Path(command[command.index("--bind") + 1])
+        observed.update(command=command, cwd=cwd, prompt=prompt, env=env, kwargs=kwargs, workspace=workspace)
+        assert not (workspace / ".git").exists()
+        assert not (workspace / ".env").exists()
+        assert not (workspace / "ignored-note.txt").exists()
+        assert (workspace / "source.py").read_text(encoding="utf-8") == "candidate = False\n"
+        etc_targets = [command[index + 2] for index, item in enumerate(command[:-2]) if item == "--ro-bind" and command[index + 2].startswith("/etc/")]
+        assert etc_targets == ["/etc/passwd", "/etc/group", "/etc/nsswitch.conf"]
+        assert not any(command[index + 1:index + 3] == ["/etc", "/etc"] for index, item in enumerate(command[:-2]) if item == "--ro-bind")
+        assert all((workspace.parent / "sandbox-etc" / Path(target).name).is_file() for target in etc_targets)
+        return subprocess.CompletedProcess(command, 0, "ok\n", "")
+
+    monkeypatch.setattr(autonomous_adapters.shutil, "which", lambda name: "/usr/bin/bwrap" if name == "bwrap" else None)
+    monkeypatch.setattr(autonomous_adapters, "limited_run", limited_run)
+    assert run_deterministic_tests(task, result, repo)
+    assert observed["command"][:2] == ["/usr/bin/bwrap", "--unshare-all"]
+    assert "--clearenv" in observed["command"]
+    assert any(observed["command"][index + 1] == "/etc" for index, item in enumerate(observed["command"][:-1]) if item == "--tmpfs")
+    assert not any(observed["command"][index + 1:index + 3] == ["/etc", "/etc"] for index, item in enumerate(observed["command"][:-2]) if item == "--ro-bind")
+    assert "--tmpfs" in observed["command"]
+    assert observed["cwd"] == Path("/")
+    assert observed["kwargs"] == {"use_cgroup": True, "minimal_environment": True, "network_isolated": True}
+    assert observed["env"] == {"SWARM_ROLE": "DETERMINISTIC_VALIDATION", "SWARM_DRY_RUN": "1"}
+    assert not run_deterministic_tests(task, WorkerResult(None, ("../outside.py",), task.test_command), repo)
+    assert not run_deterministic_tests(TaskSpec("FWQ-0001", "Core test", "test"), result, repo)
+
+
+@pytest.mark.skipif(not shutil.which("bwrap") or not shutil.which("systemd-run"), reason="Linux bubblewrap and systemd-run are required")
+def test_validation_process_cannot_read_host_tmp_or_git_metadata(tmp_path: Path):
+    repo = _make_validation_repository(tmp_path / "repo")
+    host_only = tmp_path / "host-only.txt"
+    host_only.write_text("not-visible-to-sandbox\n", encoding="utf-8")
+    code = (
+        "import os,sys,pwd; "
+        "assert not os.path.exists(sys.argv[1]), 'host tmp visible'; "
+        "assert not os.path.exists('.git'), 'supervisor Git metadata visible'; "
+        "assert not os.path.exists('.env'), 'environment file visible'; "
+        "assert not os.path.exists('/etc/hostname'), 'host /etc visible'; "
+        "assert not os.path.exists('/etc/os-release'), 'host /etc/os-release visible'; "
+        "assert pwd.getpwuid(os.getuid()).pw_name in {'forgewarden','root'}, 'unexpected sandbox identity'; "
+        "assert open('source.py', encoding='utf-8').read() == 'candidate = False\\n'"
+    )
+    task = TaskSpec("FWQ-0001", "Core isolation", "sandbox", allowed_paths=("source.py",), test_command=("python3", "-c", code, str(host_only)))
+    result = WorkerResult(None, ("source.py",), task.test_command)
+    assert run_deterministic_tests(task, result, repo)
+
+
+def test_codex_task_adapter_fails_closed_before_worker_process(tmp_path: Path, monkeypatch):
+    target = tmp_path / "target.py"
+    target.write_text("pass\n", encoding="utf-8")
+    task = TaskSpec("FWQ-0011", "Core", "implement", allowed_paths=("target.py",), target_path="target.py")
+    lease = WorkerLease("lease", task.task_id, "session", str(tmp_path), task.allowed_paths, "IMPLEMENT_AND_TEST", (), time.time() + 60)
+    monkeypatch.setattr("swarm.autonomous_adapters.CodexAdapter.run", lambda *args, **kwargs: pytest.fail("unsafe writer was launched"))
+    with pytest.raises(WorkerIsolationUnavailable, match="OS-enforced sandbox"):
+        CodexTaskAdapter(Path(__file__).parents[1] / "schemas/codex-result.schema.json", "codex").dispatch(task, lease)
+
+
+def test_cli_refuses_markdown_only_authorization(tmp_path: Path, capsys, monkeypatch):
+    _write_control_files(tmp_path)
+    state_dir = tmp_path.parent / f"{tmp_path.name}-state"
+    monkeypatch.setattr(sys, "argv", ["swarm", "autonomous-loop-run", "--repository", str(tmp_path), "--state-dir", str(state_dir)])
+    assert main() == 1
+    assert "explicit task manifest" in capsys.readouterr().out
+    assert not (state_dir / "autonomous-loop.json").exists()
+
+
+def test_cli_rejects_task_manifest_inside_repository(tmp_path: Path, capsys, monkeypatch):
+    (tmp_path / "inside.json").write_text(json.dumps({"tasks": []}), encoding="utf-8")
+    monkeypatch.setattr(sys, "argv", ["swarm", "autonomous-loop-run", "--repository", str(tmp_path), "--task-manifest", str(tmp_path / "inside.json"), "--state-dir", str(tmp_path.parent / f"{tmp_path.name}-state")])
+    assert main() == 1
+    assert "outside the Git repository" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("symlink_ancestor", [False, True], ids=["manifest-file", "ancestor-directory"])
+def test_cli_rejects_task_manifest_symlink_and_symlinked_ancestor(tmp_path: Path, capsys, monkeypatch, symlink_ancestor):
+    repository = tmp_path / "repo"
+    repository.mkdir()
+    outside = tmp_path / "operator-control"
+    outside.mkdir()
+    external_manifest = outside / "tasks.json"
+    external_manifest.write_text(json.dumps({"tasks": []}), encoding="utf-8")
+    if symlink_ancestor:
+        manifest_directory = repository / "linked-control"
+        manifest_directory.symlink_to(outside, target_is_directory=True)
+        manifest = manifest_directory / "tasks.json"
+    else:
+        manifest = repository / "tasks.json"
+        manifest.symlink_to(external_manifest)
+    state_dir = tmp_path / "state"
+    monkeypatch.setattr(sys, "argv", [
+        "swarm", "autonomous-loop-run", "--repository", str(repository),
+        "--task-manifest", str(manifest), "--state-dir", str(state_dir),
+    ])
+    assert main() == 1
+    assert "task manifest path is symlinked" in capsys.readouterr().out
+    assert not (state_dir / "autonomous-loop.json").exists()
+
+
+def test_cli_rejects_unbounded_authorized_task_manifest(tmp_path: Path, capsys, monkeypatch):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    manifest = tmp_path / "unbounded.json"
+    manifest.write_text(json.dumps({"tasks": [{"task_id": "FWQ-0001", "requirement": "Core test", "description": "unbounded", "target_path": "allowed.py", "allowed_paths": [], "test_command": ["pytest", "-q"], "authorized": True}]}), encoding="utf-8")
+    monkeypatch.setattr(sys, "argv", ["swarm", "autonomous-loop-run", "--repository", str(repo), "--task-manifest", str(manifest), "--state-dir", str(tmp_path / "state")])
+    assert main() == 1
+    assert "non-empty allowed_paths" in capsys.readouterr().out
+
+
+def test_review_state_manifest_requires_explicit_allowed_paths():
+    item = {"task_id": "FWQ-0001", "requirement": "Core review", "description": "review existing candidate", "authorized": True, "initial_state": "REVIEW", "review_commit": SHA_A}
+    with pytest.raises(AutonomousLoopError, match="explicit non-empty allowed_paths"):
+        _validate_manifest_task_authority(item)
+
+
+@pytest.mark.parametrize("target", ["../outside.py", "./allowed.py", "folder/../allowed.py", "C:/outside.py", "folder\\outside.py", "/outside.py"])
+def test_manifest_rejects_noncanonical_or_absolute_target_paths(target: str):
+    item = {"authorized": True, "initial_state": "READY", "target_path": target, "allowed_paths": ["allowed.py"], "test_command": ["pytest", "-q"]}
+    with pytest.raises(AutonomousLoopError, match="target_path must be a normalized"):
+        _validate_manifest_task_authority(item)
+
+
+@pytest.mark.parametrize("path", ["../outside", "./allowed", "folder/../allowed", "D:/root", "folder\\outside", "/absolute"])
+def test_manifest_rejects_noncanonical_or_absolute_allowed_paths(path: str):
+    item = {"authorized": True, "initial_state": "READY", "target_path": "allowed.py", "allowed_paths": [path], "test_command": ["pytest", "-q"]}
+    with pytest.raises(AutonomousLoopError, match="allowed_paths must be normalized"):
+        _validate_manifest_task_authority(item)
+
+
+@pytest.mark.parametrize("authorization", [None, False, 1, "true"])
+def test_manifest_requires_explicit_boolean_authorization(authorization):
+    item = {"authorized": authorization, "initial_state": "READY", "target_path": "allowed.py", "allowed_paths": ["allowed.py"], "test_command": ["pytest", "-q"]}
+    with pytest.raises(AutonomousLoopError, match="explicit authorized: true"):
+        _validate_manifest_task_authority(item)
 
 
 def test_cli_autonomous_loop_run_persists_without_dispatch_when_step_bound_is_zero(tmp_path: Path, capsys, monkeypatch):
@@ -311,7 +621,7 @@ def test_cli_autonomous_loop_run_persists_without_dispatch_when_step_bound_is_ze
     subprocess.run(["git", "-C", str(tmp_path), "add", "allowed.py"], check=True)
     subprocess.run(["git", "-C", str(tmp_path), "-c", "user.name=Test", "-c", "user.email=test@example.test", "commit", "-qm", "base"], check=True)
     manifest = tmp_path.parent / f"{tmp_path.name}-tasks.json"
-    manifest.write_text(json.dumps({"tasks": [{"task_id": "FWQ-0001", "requirement": "Core test", "description": "bounded", "target_path": "allowed.py", "allowed_paths": ["allowed.py"], "test_command": ["python3", "-c", "print('ok')"]}]}), encoding="utf-8")
+    manifest.write_text(json.dumps({"tasks": [{"task_id": "FWQ-0001", "requirement": "Core test", "description": "bounded", "target_path": "allowed.py", "allowed_paths": ["allowed.py"], "test_command": ["python3", "-c", "print('ok')"], "authorized": True}]}), encoding="utf-8")
     state_dir = tmp_path.parent / f"{tmp_path.name}-state"
     monkeypatch.setattr(sys, "argv", ["swarm", "autonomous-loop-run", "--repository", str(tmp_path), "--task-manifest", str(manifest), "--state-dir", str(state_dir), "--max-steps", "0"])
     selected_reviewers = []
@@ -336,7 +646,7 @@ def test_cli_rejects_manifest_that_selects_disabled_reviewers(tmp_path: Path, ca
     manifest = tmp_path.parent / f"{tmp_path.name}-disabled-reviewer.json"
     manifest.write_text(json.dumps({
         "reviewers": ["DAYBREAK", "CLAUDE"],
-        "tasks": [{"task_id": "FWQ-0001", "requirement": "Core test", "description": "bounded", "target_path": "allowed.py", "allowed_paths": ["allowed.py"]}],
+        "tasks": [{"task_id": "FWQ-0001", "requirement": "Core test", "description": "bounded", "target_path": "allowed.py", "allowed_paths": ["allowed.py"], "test_command": ["pytest", "-q"], "authorized": True}],
     }), encoding="utf-8")
     monkeypatch.setattr(sys, "argv", ["swarm", "autonomous-loop-run", "--repository", str(tmp_path), "--task-manifest", str(manifest), "--state-dir", str(tmp_path.parent / f"{tmp_path.name}-state"), "--max-steps", "0"])
     assert main() == 1
@@ -352,7 +662,7 @@ def test_cli_run_refuses_manifest_that_bypasses_authoritative_queue(tmp_path: Pa
     subprocess.run(["git", "-C", str(tmp_path), "add", "."], check=True)
     subprocess.run(["git", "-C", str(tmp_path), "-c", "user.name=Test", "-c", "user.email=test@example.test", "commit", "-qm", "base"], check=True)
     manifest = tmp_path.parent / f"{tmp_path.name}-bad-tasks.json"
-    manifest.write_text(json.dumps({"tasks": [{"task_id": "FWQ-0002", "requirement": "Core test", "description": "bypass", "target_path": "allowed.py", "allowed_paths": ["allowed.py"]}]}), encoding="utf-8")
+    manifest.write_text(json.dumps({"tasks": [{"task_id": "FWQ-0002", "requirement": "Core test", "description": "bypass", "target_path": "allowed.py", "allowed_paths": ["allowed.py"], "test_command": ["pytest", "-q"], "authorized": True}]}), encoding="utf-8")
     monkeypatch.setattr(sys, "argv", ["swarm", "autonomous-loop-run", "--repository", str(tmp_path), "--task-manifest", str(manifest), "--state-dir", str(tmp_path.parent / f"{tmp_path.name}-state"), "--max-steps", "0"])
     assert main() == 1
     assert "authoritative eligible queue task" in capsys.readouterr().out
@@ -367,6 +677,30 @@ def test_review_pass_promotes_task_and_unlocks_dependency():
     transitions = progress_queue(tasks, state)
     assert transitions == ("FWQ-0001:REVIEW->DONE",)
     assert state["queued_tasks"]["FWQ-0001"]["state"] == "DONE"
+
+
+def test_review_repair_does_not_promote_test_operands_to_writable_paths():
+    task = TaskSpec("FWQ-0097", "Core review", "repair", initial_state="REVIEW", allowed_paths=("src/module.py",), test_command=("pytest", "tests/test_module.py"))
+    state = {"queued_tasks": {task.task_id: {"state": "REVIEW", "attempts": 0}}, "completed_tasks": [], "task_specs": {}}
+    progress_queue({task.task_id: task}, state, review_resolver=lambda *_: "REPAIRABLE: finding")
+    repair_id = state["queued_tasks"][task.task_id]["repair_enqueued"]
+    assert state["task_specs"][repair_id]["allowed_paths"] == ("src/module.py",)
+
+
+def test_unauthorized_review_task_cannot_call_reviewer_or_complete():
+    task = TaskSpec("FWQ-0098", "Core review", "untrusted", initial_state="REVIEW", authorized=False, review_disposition="PASSED")
+    state = {"queued_tasks": {task.task_id: {"state": "REVIEW", "attempts": 0}}, "completed_tasks": [], "task_specs": {}}
+    calls = []
+    transitions = progress_queue({task.task_id: task}, state, review_resolver=lambda *_: calls.append("review") or "PASSED")
+    assert transitions == ()
+    assert calls == []
+    assert state["queued_tasks"][task.task_id]["state"] == "REVIEW"
+
+
+def test_unauthorized_ready_task_is_not_selected(tmp_path: Path):
+    task = TaskSpec("FWQ-0099", "Core work", "untrusted", initial_state="READY", authorized=False)
+    runner = AutonomousOrchestrator(tmp_path / "run.json", tmp_path / "repo", (task,))
+    assert runner._select({"queued_tasks": {task.task_id: {"state": "READY"}}, "completed_tasks": []}) is None
 
 
 def test_repairable_review_creates_ready_repair_task():
@@ -872,7 +1206,7 @@ def test_plan_derivation_reconciles_ids_already_persisted_in_queue(tmp_path: Pat
 def test_review_resolver_does_not_promote_without_exact_candidate_evidence(tmp_path: Path):
     task = TaskSpec("FWQ-0009", "Core review", "review", initial_state="REVIEW")
     lease = WorkerLease("review", task.task_id, "session", str(tmp_path), (), "REVIEW", (), time.time() + 60)
-    assert ExactReviewAdapter("review").resolve_review(task, lease) == "UNRESOLVED"
+    assert ExactReviewAdapter("review", allow_external_review=True).resolve_review(task, lease) == "UNRESOLVED"
 
 
 def test_review_resolver_preserves_provider_unavailability_as_external(tmp_path: Path, monkeypatch):
@@ -883,7 +1217,18 @@ def test_review_resolver_preserves_provider_unavailability_as_external(tmp_path:
         "run_review_cycle",
         lambda *args, **kwargs: {"state": "REVIEW_REQUIRED", "reviews": [{"provider": "DAYBREAK", "state": "UNAVAILABLE"}]},
     )
-    assert ExactReviewAdapter("review").resolve_review(task, lease) == "EXTERNAL: Daybreak review unavailable"
+    assert ExactReviewAdapter("review", allow_external_review=True).resolve_review(task, lease) == "EXTERNAL: Daybreak review unavailable"
+
+
+def test_daybreak_review_requires_explicit_external_transmission_consent(tmp_path: Path, monkeypatch):
+    task = TaskSpec("FWQ-0009", "Core review", "review", initial_state="REVIEW", review_commit=SHA_A)
+    lease = WorkerLease("review", task.task_id, "session", str(tmp_path), (), "REVIEW", (), time.time() + 60)
+    calls = []
+    monkeypatch.setattr(autonomous_adapters, "run_review_cycle", lambda *args, **kwargs: calls.append("called"))
+    with pytest.raises(ReviewUnavailable, match="explicit --allow-external-review"):
+        ExactReviewAdapter("review").review(task, SHA_A, lease)
+    assert ExactReviewAdapter("review").resolve_review(task, lease).startswith("EXTERNAL: Daybreak patch transmission requires explicit")
+    assert calls == []
 
 
 def test_review_unavailability_preserves_provider_diagnostic(tmp_path: Path, monkeypatch):
@@ -894,7 +1239,7 @@ def test_review_unavailability_preserves_provider_diagnostic(tmp_path: Path, mon
         "run_review_cycle",
         lambda *args, **kwargs: {"state": "REVIEW_REQUIRED", "reviews": [{"provider": "DAYBREAK", "state": "UNAVAILABLE", "error": "Daybreak reviewer timed out"}]},
     )
-    assert ExactReviewAdapter("review").resolve_review(task, lease) == "EXTERNAL: Daybreak reviewer timed out"
+    assert ExactReviewAdapter("review", allow_external_review=True).resolve_review(task, lease) == "EXTERNAL: Daybreak reviewer timed out"
 
 
 def test_external_review_diagnostic_is_persisted_and_bounded(tmp_path: Path):
@@ -910,18 +1255,21 @@ def test_external_review_diagnostic_is_persisted_and_bounded(tmp_path: Path):
     assert "sk-secret-token" not in state["queued_tasks"]["FWQ-0009"]["blocker"]
 
 
-def test_review_resolver_ignores_optional_provider_outage_when_claude_is_available(tmp_path: Path, monkeypatch):
+def test_review_resolver_uses_daybreak_as_the_only_provider_and_does_not_fallback(tmp_path: Path, monkeypatch):
     task = TaskSpec("FWQ-0009", "Core review", "review", initial_state="REVIEW", review_commit=SHA_A)
     lease = WorkerLease("review", task.task_id, "session", str(tmp_path), (), "REVIEW", (), time.time() + 60)
+
+    def unavailable(*args, **kwargs):
+        assert kwargs["reviewers"] == ("DAYBREAK",)
+        assert kwargs["required_reviewers"] == ("DAYBREAK",)
+        return {"state": "REVIEW_REQUIRED", "reviews": [{"provider": "DAYBREAK", "state": "UNAVAILABLE"}]}
+
     monkeypatch.setattr(
         autonomous_adapters,
         "run_review_cycle",
-        lambda *args, **kwargs: {"state": "REVIEW_REQUIRED", "reviews": [
-            {"provider": "DAYBREAK", "state": "APPROVED"},
-            {"provider": "OPENROUTER", "state": "UNAVAILABLE"},
-        ]},
+        unavailable,
     )
-    assert ExactReviewAdapter("review").resolve_review(task, lease).startswith("REPAIRABLE:")
+    assert ExactReviewAdapter("review", allow_external_review=True).resolve_review(task, lease) == "EXTERNAL: Daybreak review unavailable"
 
 
 def test_unexpected_gemini_result_cannot_replace_unavailable_anythingllm(tmp_path: Path, monkeypatch):
@@ -932,7 +1280,7 @@ def test_unexpected_gemini_result_cannot_replace_unavailable_anythingllm(tmp_pat
         {"provider": "DAYBREAK", "state": "API access unavailable"},
         {"provider": "GEMINI", "state": "APPROVED", "result": payload},
     ]})
-    adapter = ExactReviewAdapter("review")
+    adapter = ExactReviewAdapter("review", allow_external_review=True)
     with pytest.raises(RuntimeError, match="outside the Daybreak-only policy"):
         adapter.review(task, SHA_A, lease)
     assert adapter.resolve_review(task, lease).startswith("REPAIRABLE: autonomous review returned evidence outside")
@@ -947,7 +1295,7 @@ def test_unexpected_gemini_result_does_not_override_anythingllm_rejection(tmp_pa
         {"provider": "GEMINI", "state": "APPROVED", "result": payload},
     ]})
     with pytest.raises(RuntimeError, match="outside the Daybreak-only policy"):
-        ExactReviewAdapter("review").review(task, SHA_A, lease)
+        ExactReviewAdapter("review", allow_external_review=True).review(task, SHA_A, lease)
 
 
 def test_exact_review_adapter_rejects_unconfigured_adjudication_evidence(tmp_path: Path, monkeypatch):
@@ -956,7 +1304,7 @@ def test_exact_review_adapter_rejects_unconfigured_adjudication_evidence(tmp_pat
     payload = {"job_id": "phase2a-" + "0" * 24, "reviewed_commit": SHA_A, "verdict": "APPROVE", "risk": "LOW", "blocking_findings": [], "non_blocking_notes": [], "tests_missing": [], "reasoning_summary": "final", "proposed_rules": []}
     monkeypatch.setattr(autonomous_adapters, "run_review_cycle", lambda *args, **kwargs: {"state": "APPROVED", "reviews": [{"provider": "OPENROUTER", "state": "REVIEW_RETURNED", "result": payload}], "adjudication": {"provider": "CLAUDE_ADJUDICATION", "state": "APPROVED", "result": payload}})
     with pytest.raises(RuntimeError, match="outside the Daybreak-only policy"):
-        ExactReviewAdapter("review", reviewers=("DAYBREAK",)).review(task, SHA_A, lease)
+        ExactReviewAdapter("review", allow_external_review=True, reviewers=("DAYBREAK",)).review(task, SHA_A, lease)
 
 
 def test_exact_review_adapter_rechecks_qwen_job_and_commit_binding(tmp_path: Path, monkeypatch):
@@ -965,19 +1313,18 @@ def test_exact_review_adapter_rechecks_qwen_job_and_commit_binding(tmp_path: Pat
     payload = {"job_id": "phase2a-" + "0" * 24, "reviewed_commit": SHA_A, "verdict": "APPROVE", "risk": "LOW", "blocking_findings": [], "tests_missing": []}
     monkeypatch.setattr(autonomous_adapters, "run_review_cycle", lambda *args, **kwargs: {"state": "APPROVED", "reviews": [{"provider": "DAYBREAK", "state": "APPROVED", "result": payload}]})
     with pytest.raises(RuntimeError, match="exact binding"):
-        ExactReviewAdapter("review").review(task, SHA_A, lease)
+        ExactReviewAdapter("review", allow_external_review=True).review(task, SHA_A, lease)
 
 
-def test_codex_task_adapter_dispatches_bounded_writer(tmp_path: Path, monkeypatch):
+def test_codex_task_adapter_does_not_dispatch_without_os_isolation(tmp_path: Path, monkeypatch):
     target = tmp_path / "target.py"
     target.write_text("pass\n", encoding="utf-8")
     task = TaskSpec("FWQ-0011", "Core", "implement", allowed_paths=("target.py",), target_path="target.py")
     lease = WorkerLease("lease", task.task_id, "session", str(tmp_path), task.allowed_paths, "IMPLEMENT_AND_TEST", (), time.time() + 60)
     captured = {}
-    payload = {"job_id": "codex-fwq-0011", "status": "FIXED", "root_cause": "test", "summary": "ok", "changed_files": ["target.py"], "tests_added_or_changed": [], "commands_run": [], "remaining_risks": [], "requires_human_approval": False}
-    monkeypatch.setattr("swarm.autonomous_adapters.CodexAdapter.run", lambda self, spec, prompt: payload)
-    result = CodexTaskAdapter(Path(__file__).parents[1] / "schemas/codex-result.schema.json", "codex").dispatch(task, lease)
-    assert result.changed_files == ("target.py",)
+    monkeypatch.setattr("swarm.autonomous_adapters.CodexAdapter.run", lambda *args, **kwargs: pytest.fail("unsafe writer was launched"))
+    with pytest.raises(WorkerIsolationUnavailable, match="OS-enforced sandbox"):
+        CodexTaskAdapter(Path(__file__).parents[1] / "schemas/codex-result.schema.json", "codex").dispatch(task, lease)
 
 
 def test_codex_task_adapter_requires_target_path(tmp_path: Path):
@@ -1093,7 +1440,7 @@ def test_resume_restores_exact_review_commit_from_durable_task_state(tmp_path: P
 @pytest.mark.parametrize("reviewers", [("GEMINI",), ("CLAUDE",), ("CLAUDE", "GEMINI"), ("OPENROUTER",), ("ANYTHINGLLM",), ("DAYBREAK", "CLAUDE"), ()])
 def test_autonomous_reviewer_configuration_rejects_legacy_fallback(reviewers):
     with pytest.raises(ValueError, match="requires Daybreak only"):
-        ExactReviewAdapter("review", reviewers=reviewers)
+        ExactReviewAdapter("review", allow_external_review=True, reviewers=reviewers)
 
 
 @pytest.mark.parametrize("outcome", ["APPROVE", "REJECT", "UNAVAILABLE", "STALE", "WRONG_JOB", "MISSING_TEST", "MEDIUM"])
@@ -1112,9 +1459,10 @@ def test_autonomous_daybreak_review_uses_real_exact_contract(tmp_path, monkeypat
     def daybreak(snapshot, job_id, commit, context):
         calls.append("DAYBREAK")
         assert (snapshot / "fixture.txt").read_text() == "review fixture\n"
-        assert commit == sha and sha in context
+        assert commit == sha
+        assert sha in (snapshot / "EXACT_CANDIDATE.patch").read_text(encoding="utf-8")
         if outcome == "UNAVAILABLE":
-            raise RuntimeError("Daybreak API unavailable")
+            raise RuntimeError("Daybreak Codex CLI unavailable")
         return {"job_id": "phase2a-" + "0" * 24 if outcome == "WRONG_JOB" else job_id,
                 "reviewed_commit": SHA_B if outcome == "STALE" else commit,
                 "verdict": "REJECT" if outcome == "REJECT" else "APPROVE",
@@ -1134,7 +1482,7 @@ def test_autonomous_daybreak_review_uses_real_exact_contract(tmp_path, monkeypat
         return canonical_review_cycle(*args, **kwargs, daybreak_runner=daybreak, claude_runner=forbidden, gemini_runner=forbidden)
 
     monkeypatch.setattr(autonomous_adapters, "run_review_cycle", invoke)
-    adapter = ExactReviewAdapter("Review fixture read-only", reviewers=("DAYBREAK",))
+    adapter = ExactReviewAdapter("Review fixture read-only", allow_external_review=True, reviewers=("DAYBREAK",))
     if outcome == "APPROVE":
         result = adapter.review(task, sha, lease)
         assert set(result) == {"DAYBREAK"}
@@ -1145,9 +1493,10 @@ def test_autonomous_daybreak_review_uses_real_exact_contract(tmp_path, monkeypat
             adapter.review(task, sha, lease)
         assert adapter.resolve_review(task, lease).startswith("EXTERNAL:")
     else:
-        with pytest.raises(RuntimeError, match="did not approve"):
+        with pytest.raises(RuntimeError, match="did not approve|review unavailable"):
             adapter.review(task, sha, lease)
-        assert adapter.resolve_review(task, lease).startswith("REPAIRABLE:")
+        expected_state = "REPAIRABLE:" if outcome == "REJECT" else "EXTERNAL:"
+        assert adapter.resolve_review(task, lease).startswith(expected_state)
     assert calls == ["DAYBREAK", "DAYBREAK"]
 
 
@@ -1162,7 +1511,7 @@ def test_default_autonomous_profile_requires_only_daybreak(monkeypatch, tmp_path
 
     monkeypatch.setattr(autonomous_adapters, "run_review_cycle", cycle)
     with pytest.raises(ReviewUnavailable):
-        ExactReviewAdapter("review").review(task, "a" * 40, lease)
+        ExactReviewAdapter("review", allow_external_review=True).review(task, "a" * 40, lease)
     assert captured["reviewers"] == ("DAYBREAK",)
     assert captured["required_reviewers"] == ("DAYBREAK",)
     assert captured["sequential_fallback"] is False
@@ -1178,7 +1527,7 @@ def test_default_profile_does_not_accept_disabled_reviewer_after_daybreak_outage
         return {"state": "REVIEW_REQUIRED", "reviews": [{"provider": "DAYBREAK", "state": "UNAVAILABLE", "error": "429"}]}
     monkeypatch.setattr(autonomous_adapters, "run_review_cycle", cycle)
     with pytest.raises(ReviewUnavailable):
-        ExactReviewAdapter("review").review(task, "a" * 40, lease)
+        ExactReviewAdapter("review", allow_external_review=True).review(task, "a" * 40, lease)
     assert captured["reviewers"] == ("DAYBREAK",)
     assert captured["sequential_fallback"] is False
 
@@ -1188,4 +1537,4 @@ def test_default_profile_preserves_daybreak_rejection(monkeypatch, tmp_path):
     lease = WorkerLease("review", task.task_id, "session", str(tmp_path), (), "REVIEW", (), time.time() + 60)
     monkeypatch.setattr(autonomous_adapters, "run_review_cycle", lambda *args, **kwargs: {"state": "REVIEW_REQUIRED", "reviews": [{"provider": "DAYBREAK", "state": "REVIEW_RETURNED", "result": {"verdict": "REJECT", "risk": "MEDIUM", "blocking_findings": ["finding"], "tests_missing": []}}]})
     with pytest.raises(RuntimeError, match="did not approve"):
-        ExactReviewAdapter("review").review(task, "a" * 40, lease)
+        ExactReviewAdapter("review", allow_external_review=True).review(task, "a" * 40, lease)

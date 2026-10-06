@@ -94,8 +94,10 @@ def ensure_private_directory(path: Path, label: str) -> Path:
     return path
 
 
-def read_restricted_bytes(path: Path, label: str) -> bytes:
+def read_restricted_bytes(path: Path, label: str, max_bytes: int | None = None) -> bytes:
     """Read a regular file through a no-follow descriptor."""
+    if max_bytes is not None and (not isinstance(max_bytes, int) or isinstance(max_bytes, bool) or max_bytes < 0):
+        raise ValueError("max_bytes must be a non-negative integer")
     _reject_symlink_path(path, label)
     flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
     try:
@@ -103,7 +105,10 @@ def read_restricted_bytes(path: Path, label: str) -> bytes:
     except OSError as exc:
         raise SwarmError(f"unable to read {label} safely: {path}") from exc
     with os.fdopen(descriptor, "rb") as handle:
-        return handle.read()
+        content = handle.read() if max_bytes is None else handle.read(max_bytes + 1)
+    if max_bytes is not None and len(content) > max_bytes:
+        raise SwarmError(f"{label} exceeds the bounded {max_bytes}-byte read limit")
+    return content
 
 
 def read_mailbox_json(path: Path, label: str) -> dict[str, Any]:
@@ -240,11 +245,14 @@ def validate_snapshot_symlinks(snapshot: Path) -> None:
 def validate_contract(payload: Any, kind: str, expected_job_id: str | None = None, expected_commit: str | None = None) -> None:
     if not isinstance(payload, dict):
         raise SwarmError(f"{kind} result must be a JSON object")
-    required = {
+    contracts = {
         "codex": ("job_id", "status", "root_cause", "summary", "changed_files", "tests_added_or_changed", "commands_run", "remaining_risks", "requires_human_approval"),
         "gemini": ("job_id", "reviewed_commit", "verdict", "risk", "blocking_findings", "non_blocking_notes", "tests_missing", "reasoning_summary", "proposed_rules"),
         "claude": ("job_id", "reviewed_commit", "verdict", "risk", "blocking_findings", "non_blocking_notes", "tests_missing", "reasoning_summary", "proposed_rules"),
-    }[kind]
+    }
+    if kind not in contracts:
+        raise SwarmError(f"unsupported result contract: {kind}")
+    required = contracts[kind]
     missing = [key for key in required if key not in payload]
     if missing:
         raise SwarmError(f"{kind} result missing required fields: {', '.join(missing)}")
@@ -265,21 +273,47 @@ def validate_contract(payload: Any, kind: str, expected_job_id: str | None = Non
         extras = sorted(set(payload) - allowed)
         if extras:
             raise SwarmError(f"{kind} result contains forbidden fields: {', '.join(extras)}")
+        if not isinstance(payload["job_id"], str):
+            raise SwarmError(f"{kind} job_id must be a string")
         if expected_job_id is not None and payload["job_id"] != expected_job_id:
             raise SwarmError(f"{kind} result job ID mismatch: expected {expected_job_id}, got {payload['job_id']}")
-        if not re.fullmatch(r"[0-9a-fA-F]{40,64}", str(payload["reviewed_commit"])):
+        if not isinstance(payload["reviewed_commit"], str) or not re.fullmatch(r"[0-9a-fA-F]{40,64}", payload["reviewed_commit"]):
             raise SwarmError(f"{kind} reviewed_commit is not a full SHA")
         if expected_commit is not None:
             require_exact_commit(expected_commit, payload["reviewed_commit"])
+        if not isinstance(payload["verdict"], str) or not isinstance(payload["risk"], str):
+            raise SwarmError(f"{kind} verdict and risk must be strings")
         if payload["verdict"] not in {"APPROVE", "REJECT", "HUMAN_REQUIRED"} or payload["risk"] not in {"LOW", "MEDIUM", "HIGH"}:
             raise SwarmError(f"invalid {kind} verdict or risk")
         for key in ("blocking_findings", "non_blocking_notes", "tests_missing", "proposed_rules"):
             if not isinstance(payload[key], list):
                 raise SwarmError(f"{kind} {key} must be an array")
+            if len(payload[key]) > (1 if key == "proposed_rules" else 16):
+                raise SwarmError(f"{kind} {key} contains too many items")
+            if key in {"blocking_findings", "non_blocking_notes"}:
+                if any(
+                    not isinstance(item, (str, dict))
+                    or (isinstance(item, str) and len(item) > 4096)
+                    or (isinstance(item, dict) and (
+                        len(item) > 12
+                        or any(not isinstance(field, str) or not isinstance(value, (str, int, float, bool, type(None))) for field, value in item.items())
+                        or any(isinstance(value, str) and len(value) > 4096 for value in item.values())
+                    ))
+                    for item in payload[key]
+                ):
+                    raise SwarmError(f"{kind} {key} contains an invalid finding")
+            elif any(not isinstance(item, str) or len(item) > 4096 for item in payload[key]):
+                raise SwarmError(f"{kind} {key} must contain only bounded strings")
         if not isinstance(payload["reasoning_summary"], str) or not payload["reasoning_summary"].strip():
             raise SwarmError(f"{kind} reasoning_summary must be a non-empty string")
-        if not isinstance(payload["proposed_rules"], list) or len(payload["proposed_rules"]) > 1:
-            raise SwarmError(f"{kind} may propose at most one rule")
+        if payload["verdict"] == "APPROVE" and (
+            payload["risk"] != "LOW"
+            or payload["blocking_findings"]
+            or payload["tests_missing"]
+        ):
+            raise SwarmError(
+                f"{kind} APPROVE requires LOW risk, no blocking findings, and no missing tests"
+            )
 
 
 def require_exact_commit(expected: str, reviewed: str) -> None:
