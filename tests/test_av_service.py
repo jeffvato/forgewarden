@@ -148,7 +148,7 @@ def test_linux_pilot_package_readiness_reports_missing_and_validates_scope():
     missing = service.linux_pilot_package_readiness({"tenant_id": "tenant-a"})
     assert missing["reason"] == "MISSING_PILOT_PREREQUISITES"
     assert "device_id" in missing["missing"]
-    package = {"tenant_id": "tenant-a", "device_id": "device-a", "staging_path": "/srv/forgewarden-stage", "service_identity": "forgewarden-sentinel", "signed_manifest": __import__("json").dumps(service.packaging_manifest()), "rollback_checkpoint": "REC-001", "evidence_destination": "fw-evid/tenant-a", "policy_ticket": "AT-001", "maintenance_window": "2026-09-15T01:00Z"}
+    package = {"tenant_id": "tenant-a", "device_id": "device-a", "staging_path": "/srv/forgewarden-stage", "service_identity": "forgewarden-sentinel", "signed_manifest": __import__("json").dumps(service.packaging_manifest()), "rollback_checkpoint": "REC-001", "evidence_destination": "fw-evid/tenant-a/sentinel-pilot", "policy_ticket": "fw-policy/tenant-a/action-ticket/at-001", "maintenance_window": "2026-09-15T01:00:00Z"}
     ready = service.linux_pilot_package_readiness(package)
     assert ready["reason"] == "PILOT_REQUIRES_SEPARATE_ACTIVATION_AUTHORIZATION"
     assert ready["installation"] == "NOT_AUTHORIZED"
@@ -160,6 +160,65 @@ def test_linux_pilot_package_readiness_reports_missing_and_validates_scope():
     windows = AVProtectionService(profile(), DryRunSensorPipeline(NormalizedEventStore(lambda *_: None)))
     with pytest.raises(AVServiceContractError, match="Linux pilot"):
         windows.linux_pilot_package_readiness(package)
+
+
+def test_linux_pilot_package_readiness_hardens_untrusted_references_without_host_access():
+    service = AVProtectionService(
+        AVServiceProfile("tenant-a", "device-a", "LINUX", True, "STATUS_ONLY"),
+        DryRunSensorPipeline(NormalizedEventStore(lambda *_: None)),
+    )
+    package = {
+        "tenant_id": "tenant-a",
+        "device_id": "device-a",
+        "staging_path": "/srv/forgewarden-stage/pilot-001",
+        "service_identity": "forgewarden-sentinel",
+        "signed_manifest": __import__("json").dumps(service.packaging_manifest()),
+        "rollback_checkpoint": "REC-001",
+        "evidence_destination": "fw-evid/tenant-a/sentinel/pilot-001",
+        "policy_ticket": "fw-policy/tenant-a/action-ticket/at-001",
+        "maintenance_window": "2026-09-15T01:00:00Z",
+    }
+    accepted = service.linux_pilot_package_readiness(package)
+    assert accepted["decision"] == "NOT_READY"
+    assert accepted["reason"] == "PILOT_REQUIRES_SEPARATE_ACTIVATION_AUTHORIZATION"
+    assert accepted["authority_granted"] is False
+    assert accepted["installation"] == "NOT_AUTHORIZED"
+    assert accepted["launch"] == "NOT_AUTHORIZED"
+    assert accepted["enforcement"] == "DISABLED"
+    assert accepted["quarantine"] == "DISABLED"
+
+    invalid_cases = (
+        ("staging_path", "/tmp/forgewarden-stage"),
+        ("staging_path", "/srv/forgewarden-stage/../escape"),
+        ("staging_path", "/srv/forgewarden-stage/./pilot"),
+        ("staging_path", "/srv/forgewarden-stage//pilot"),
+        ("staging_path", "/srv/forgewarden-stage/pilot/"),
+        ("staging_path", "srv/forgewarden-stage/pilot"),
+        ("staging_path", "/srv/forgewarden-stage\\pilot"),
+        ("staging_path", "/srv/forgewarden-stage/" + "x" * 240),
+        ("rollback_checkpoint", "REC-001\tforged"),
+        ("evidence_destination", "fw-evid/tenant-b/sentinel/pilot-001"),
+        ("evidence_destination", "fw-evid/tenant-a"),
+        ("evidence_destination", "fw-evid/tenant-a/sentinel\x7fpilot"),
+        ("policy_ticket", "AT-001"),
+        ("policy_ticket", "fw-policy/tenant-b/action-ticket/at-001"),
+        ("policy_ticket", "fw-policy/tenant-a/action-ticket/at-001\nforged"),
+        ("maintenance_window", "2026-09-15T01:00Z"),
+        ("maintenance_window", "2026-09-15T01:00:00+00:00"),
+        ("maintenance_window", "2026-02-30T01:00:00Z"),
+        ("maintenance_window", "2026-09-15t01:00:00z"),
+    )
+    for key, value in invalid_cases:
+        result = service.linux_pilot_package_readiness(dict(package, **{key: value}))
+        assert result == {
+            "decision": "NOT_READY",
+            "reason": "INVALID_PILOT_PREREQUISITE",
+            "invalid": [key],
+            "authority_granted": False,
+            "mode": "DRY_RUN",
+            "action": "DETECT_ONLY",
+        }
+
 
 
 def test_linux_pilot_readiness_is_metadata_only_and_fail_closed():
