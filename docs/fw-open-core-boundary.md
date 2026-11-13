@@ -272,3 +272,21 @@ Completion requires:
 - exact-commit independent read-only review under the currently authorized reviewer policy
 - updated persistent project state
 - no unresolved critical/high-confidence findings
+
+
+## Replay durability and trusted time
+
+The public action boundary must not rely on process-local replay memory for any future executable action. Replay protection must be atomic across concurrent verifier instances and persistent across process/service restarts for at least the authoritative ticket validity horizon plus any required audit retention window.
+
+The verifier must obtain current time from a trusted local/runtime clock abstraction owned by the agent boundary. Untrusted request metadata or caller-supplied timestamps must never decide whether a privileged ticket is expired or not yet valid.
+
+The current public boundary therefore requires:
+- a verification-only asymmetric envelope verifier;
+- a verification-only asymmetric Action Ticket verifier;
+- an injected atomic replay store;
+- an injected trusted clock;
+- exact authority/key-reference pinning;
+- exact tenant/subject/lease/capability/resource/action-class/policy bindings;
+- DRY_RUN, deployment-disabled, and engaged-kill-switch safety evidence.
+
+A verifier failure, replay-store failure, invalid clock result, or unavailable trust anchor fails closed.
