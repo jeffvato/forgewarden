@@ -119,17 +119,17 @@ class PublicActionVerifier:
         trusted_envelope_key_reference: str,
         trusted_ticket_key_reference: str,
     ):
-        if (
-            not callable(getattr(envelope_verifier, "verify", None))
-            or not callable(getattr(ticket_verifier, "verify", None))
-        ):
-            raise OpenCoreBoundaryError("cryptographic verifiers are required")
         if callable(getattr(envelope_verifier, "sign", None)) or callable(
             getattr(ticket_verifier, "sign", None)
         ):
             raise OpenCoreBoundaryError(
                 "public boundary requires verification-only cryptographic objects"
             )
+        if (
+            not callable(getattr(envelope_verifier, "verify", None))
+            or not callable(getattr(ticket_verifier, "verify", None))
+        ):
+            raise OpenCoreBoundaryError("cryptographic verifiers are required")
         self._envelope_verifier = envelope_verifier
         self._ticket_verifier = ticket_verifier
         self._trusted_authority_id = _text(trusted_authority_id, "trusted_authority_id")
