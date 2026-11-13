@@ -1,5 +1,6 @@
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
+from threading import Lock
 
 import pytest
 from cryptography.hazmat.primitives.asymmetric.ed25519 import (
@@ -45,6 +46,23 @@ class PublicEd25519Verifier:
         except ValueError as exc:
             raise InvalidSignature("signature encoding invalid") from exc
         self._public_key.verify(signature, value.canonical_bytes())
+
+
+class AtomicReplayStore:
+    """Test double for the durable atomic replay store contract."""
+
+    def __init__(self):
+        self._action_ids = set()
+        self._ticket_ids = set()
+        self._lock = Lock()
+
+    def consume_once(self, *, action_id, ticket_id):
+        with self._lock:
+            if action_id in self._action_ids or ticket_id in self._ticket_ids:
+                return False
+            self._action_ids.add(action_id)
+            self._ticket_ids.add(ticket_id)
+            return True
 
 
 @pytest.fixture
@@ -94,10 +112,12 @@ def make_envelope(crypto_material, ticket=None, **overrides):
     return crypto_material["envelope_signer"].sign(SignedActionEnvelope(**values))
 
 
-def make_verifier(crypto_material):
+def make_verifier(crypto_material, *, now=150, replay_store=None):
     return PublicActionVerifier(
         envelope_verifier=crypto_material["envelope_verifier"],
         ticket_verifier=crypto_material["ticket_verifier"],
+        replay_store=replay_store or AtomicReplayStore(),
+        clock=lambda: now,
         trusted_authority_id=AUTHORITY,
         trusted_envelope_key_reference=ENVELOPE_KEY,
         trusted_ticket_key_reference=TICKET_KEY,
@@ -113,7 +133,6 @@ def verify(verifier, envelope, **overrides):
         resource="endpoint-123",
         action_class="ISOLATE_ENDPOINT",
         policy_version="FW-ASOC-01-v1",
-        now=150,
         safety_evidence={
             "mode": "DRY_RUN",
             "deployment": "DISABLED",
@@ -130,6 +149,8 @@ def test_public_boundary_rejects_signer_capable_crypto_objects(crypto_material):
         PublicActionVerifier(
             envelope_verifier=crypto_material["envelope_signer"],
             ticket_verifier=crypto_material["ticket_verifier"],
+            replay_store=AtomicReplayStore(),
+            clock=lambda: 150,
             trusted_authority_id=AUTHORITY,
             trusted_envelope_key_reference=ENVELOPE_KEY,
             trusted_ticket_key_reference=TICKET_KEY,
@@ -138,6 +159,8 @@ def test_public_boundary_rejects_signer_capable_crypto_objects(crypto_material):
         PublicActionVerifier(
             envelope_verifier=crypto_material["envelope_verifier"],
             ticket_verifier=crypto_material["ticket_signer"],
+            replay_store=AtomicReplayStore(),
+            clock=lambda: 150,
             trusted_authority_id=AUTHORITY,
             trusted_envelope_key_reference=ENVELOPE_KEY,
             trusted_ticket_key_reference=TICKET_KEY,
@@ -231,12 +254,12 @@ def test_ticket_binding_mismatches_fail_closed(crypto_material, field, value):
 def test_expired_or_not_yet_valid_ticket_is_rejected(crypto_material):
     with pytest.raises(OpenCoreBoundaryError, match="not currently valid"):
         verify(
-            make_verifier(crypto_material), make_envelope(crypto_material), now=200
+            make_verifier(crypto_material, now=200), make_envelope(crypto_material)
         )
 
     with pytest.raises(OpenCoreBoundaryError, match="not currently valid"):
         verify(
-            make_verifier(crypto_material), make_envelope(crypto_material), now=99
+            make_verifier(crypto_material, now=99), make_envelope(crypto_material)
         )
 
 
@@ -245,7 +268,7 @@ def test_action_and_ticket_replay_are_rejected(crypto_material):
     envelope = make_envelope(crypto_material)
     verify(verifier, envelope)
 
-    with pytest.raises(OpenCoreBoundaryError, match="action replay"):
+    with pytest.raises(OpenCoreBoundaryError, match="replay rejected"):
         verify(verifier, envelope)
 
     second = make_envelope(
@@ -254,7 +277,7 @@ def test_action_and_ticket_replay_are_rejected(crypto_material):
         action_id="action-2",
         nonce="nonce-2",
     )
-    with pytest.raises(OpenCoreBoundaryError, match="Ticket replay"):
+    with pytest.raises(OpenCoreBoundaryError, match="replay rejected"):
         verify(verifier, second)
 
 
@@ -299,8 +322,25 @@ def test_consumed_ticket_is_rejected_even_with_valid_outer_signature(crypto_mate
         verify(make_verifier(crypto_material), envelope)
 
 
+def test_shared_replay_store_rejects_replay_across_verifier_instances(crypto_material):
+    replay_store = AtomicReplayStore()
+    envelope = make_envelope(crypto_material)
+    verify(
+        make_verifier(crypto_material, replay_store=replay_store),
+        envelope,
+    )
+
+    with pytest.raises(OpenCoreBoundaryError, match="replay rejected"):
+        verify(
+            make_verifier(crypto_material, replay_store=replay_store),
+            envelope,
+        )
+
+
 def test_concurrent_replay_allows_exactly_one_admission(crypto_material):
-    verifier = make_verifier(crypto_material)
+    verifier = make_verifier(
+        crypto_material, replay_store=AtomicReplayStore()
+    )
     envelope = make_envelope(crypto_material)
 
     def admit(_value):
@@ -312,3 +352,56 @@ def test_concurrent_replay_allows_exactly_one_admission(crypto_material):
 
     with ThreadPoolExecutor(max_workers=2) as workers:
         assert sum(workers.map(admit, range(2))) == 1
+
+
+def test_public_boundary_requires_replay_store_and_trusted_clock(crypto_material):
+    with pytest.raises(OpenCoreBoundaryError, match="replay store"):
+        PublicActionVerifier(
+            envelope_verifier=crypto_material["envelope_verifier"],
+            ticket_verifier=crypto_material["ticket_verifier"],
+            replay_store=object(),
+            clock=lambda: 150,
+            trusted_authority_id=AUTHORITY,
+            trusted_envelope_key_reference=ENVELOPE_KEY,
+            trusted_ticket_key_reference=TICKET_KEY,
+        )
+
+    with pytest.raises(OpenCoreBoundaryError, match="clock"):
+        PublicActionVerifier(
+            envelope_verifier=crypto_material["envelope_verifier"],
+            ticket_verifier=crypto_material["ticket_verifier"],
+            replay_store=AtomicReplayStore(),
+            clock=None,
+            trusted_authority_id=AUTHORITY,
+            trusted_envelope_key_reference=ENVELOPE_KEY,
+            trusted_ticket_key_reference=TICKET_KEY,
+        )
+
+
+def test_invalid_or_failing_trusted_clock_fails_closed(crypto_material):
+    invalid = PublicActionVerifier(
+        envelope_verifier=crypto_material["envelope_verifier"],
+        ticket_verifier=crypto_material["ticket_verifier"],
+        replay_store=AtomicReplayStore(),
+        clock=lambda: True,
+        trusted_authority_id=AUTHORITY,
+        trusted_envelope_key_reference=ENVELOPE_KEY,
+        trusted_ticket_key_reference=TICKET_KEY,
+    )
+    with pytest.raises(OpenCoreBoundaryError, match="invalid time"):
+        verify(invalid, make_envelope(crypto_material))
+
+    def broken_clock():
+        raise RuntimeError("clock unavailable")
+
+    failing = PublicActionVerifier(
+        envelope_verifier=crypto_material["envelope_verifier"],
+        ticket_verifier=crypto_material["ticket_verifier"],
+        replay_store=AtomicReplayStore(),
+        clock=broken_clock,
+        trusted_authority_id=AUTHORITY,
+        trusted_envelope_key_reference=ENVELOPE_KEY,
+        trusted_ticket_key_reference=TICKET_KEY,
+    )
+    with pytest.raises(OpenCoreBoundaryError, match="clock failed"):
+        verify(failing, make_envelope(crypto_material))
