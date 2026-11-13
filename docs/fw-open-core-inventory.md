@@ -113,7 +113,8 @@ Properties:
 - tenant, subject/agent, lease, capability, resource, action class, and policy version must exactly match;
 - ticket lifetime is checked deterministically;
 - consumed tickets are rejected;
-- action IDs and ticket IDs are locally single-use to reject replay;
+- action IDs and ticket IDs are consumed through an injected atomic replay-store contract; production storage must persist across restarts and coordinate concurrent verifier instances;
+- ticket lifetime is evaluated against an injected trusted clock rather than request-supplied time;
 - current ForgeWarden safety invariants are rechecked;
 - successful admission still returns `execution_permitted=False` because DRY_RUN and deployment-disabled safety remain mandatory.
 
