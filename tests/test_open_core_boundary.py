@@ -1,3 +1,4 @@
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 
 import pytest
@@ -210,3 +211,18 @@ def test_consumed_ticket_is_rejected_even_with_valid_outer_signature():
 
     with pytest.raises(OpenCoreBoundaryError, match="consumed"):
         verify(make_verifier(), envelope)
+
+
+def test_concurrent_replay_allows_exactly_one_admission():
+    verifier = make_verifier()
+    envelope = make_envelope()
+
+    def admit(_value):
+        try:
+            verify(verifier, envelope)
+            return True
+        except OpenCoreBoundaryError:
+            return False
+
+    with ThreadPoolExecutor(max_workers=2) as workers:
+        assert sum(workers.map(admit, range(2))) == 1
