@@ -66,6 +66,12 @@ Target flow:
 
 The public agent must reject privileged actions that are unsigned, incorrectly signed, expired, replayed, malformed, from an unknown authority, for another tenant/device, outside scope, outside lease, outside capability, or beyond blast-radius limits.
 
+## Cryptographic separation
+
+The public side must use verification-only asymmetric trust anchors. Public agents may hold public keys/certificates and key identifiers, but must never receive symmetric signing secrets or private signing keys. A verifier object used by the public boundary must not expose signing capability. HMAC may remain in internal/test-only code where appropriate, but it is not sufficient for the open-core authority boundary because possession of an HMAC verification secret also permits forgery.
+
+Private Core signing authority and public verification material must be separate, rotatable, revocable, and bound to explicit authority/key references. The protocol must support overlapping trust anchors during controlled rotation without allowing an untrusted client to choose its own authority.
+
 ## Signed action requirements
 
 Prefer the canonical ForgeWarden action/ticket structures if they already exist. Any boundary object must bind at minimum:
