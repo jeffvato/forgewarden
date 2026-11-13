@@ -11,7 +11,7 @@ component to manufacture privileged authority.
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from threading import Lock
 from typing import Any, Mapping, Protocol
 
@@ -23,8 +23,7 @@ class OpenCoreBoundaryError(ValueError):
     """A Core-originated action cannot be admitted at the public boundary."""
 
 
-class ActionEnvelopeSigner(Protocol):
-    def sign(self, envelope: "SignedActionEnvelope") -> "SignedActionEnvelope": ...
+class ActionEnvelopeVerifier(Protocol):
     def verify(self, envelope: "SignedActionEnvelope") -> None: ...
 
 
@@ -114,15 +113,24 @@ class PublicActionVerifier:
     def __init__(
         self,
         *,
-        envelope_signer: ActionEnvelopeSigner,
+        envelope_verifier: ActionEnvelopeVerifier,
         ticket_verifier: ActionTicketVerifier,
         trusted_authority_id: str,
         trusted_envelope_key_reference: str,
         trusted_ticket_key_reference: str,
     ):
-        if not hasattr(envelope_signer, "verify") or not hasattr(ticket_verifier, "verify"):
+        if (
+            not callable(getattr(envelope_verifier, "verify", None))
+            or not callable(getattr(ticket_verifier, "verify", None))
+        ):
             raise OpenCoreBoundaryError("cryptographic verifiers are required")
-        self._envelope_signer = envelope_signer
+        if callable(getattr(envelope_verifier, "sign", None)) or callable(
+            getattr(ticket_verifier, "sign", None)
+        ):
+            raise OpenCoreBoundaryError(
+                "public boundary requires verification-only cryptographic objects"
+            )
+        self._envelope_verifier = envelope_verifier
         self._ticket_verifier = ticket_verifier
         self._trusted_authority_id = _text(trusted_authority_id, "trusted_authority_id")
         self._trusted_envelope_key_reference = _text(
@@ -171,7 +179,7 @@ class PublicActionVerifier:
             raise OpenCoreBoundaryError("ticket signing key reference is not trusted")
 
         try:
-            self._envelope_signer.verify(envelope)
+            self._envelope_verifier.verify(envelope)
         except Exception as exc:
             raise OpenCoreBoundaryError("action envelope signature verification failed") from exc
         try:
