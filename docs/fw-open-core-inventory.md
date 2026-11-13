@@ -107,6 +107,7 @@ The first boundary slice is deliberately public-side only:
 Properties:
 
 - outer envelope must be signed by the configured trusted private-Core authority;
+- public verification must use verification-only asymmetric trust anchors; the public component must not possess HMAC/shared signing secrets or private signing keys;
 - embedded canonical Action Ticket must independently verify;
 - authority and signing-key references are pinned by the public verifier configuration;
 - tenant, subject/agent, lease, capability, resource, action class, and policy version must exactly match;
