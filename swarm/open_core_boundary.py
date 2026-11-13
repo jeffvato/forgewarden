@@ -12,8 +12,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from threading import Lock
-from typing import Any, Mapping, Protocol
+from typing import Any, Callable, Mapping, Protocol
 
 from .action_ticket import ActionTicket
 from .policy_gate import validate_safety_evidence
@@ -29,6 +28,12 @@ class ActionEnvelopeVerifier(Protocol):
 
 class ActionTicketVerifier(Protocol):
     def verify(self, ticket: ActionTicket) -> None: ...
+
+
+class ReplayStore(Protocol):
+    """Atomic replay protection owned by the public agent boundary."""
+
+    def consume_once(self, *, action_id: str, ticket_id: str) -> bool: ...
 
 
 def _text(value: Any, field: str, maximum: int = 256) -> str:
@@ -105,9 +110,11 @@ class PublicActionAdmission:
 class PublicActionVerifier:
     """Fail-closed public verifier for actions produced by the private Core.
 
-    Successful verification consumes the action/ticket identifiers in this
-    verifier instance to prevent local replay. It still grants no execution
-    authority while ForgeWarden is in its current dry-run deployment posture.
+    Successful verification atomically consumes the action/ticket identifiers
+    through an injected replay store. Production stores must persist across
+    process restarts and coordinate concurrent verifier instances. This class
+    still grants no execution authority while ForgeWarden is in its current
+    dry-run deployment posture.
     """
 
     def __init__(
@@ -115,6 +122,8 @@ class PublicActionVerifier:
         *,
         envelope_verifier: ActionEnvelopeVerifier,
         ticket_verifier: ActionTicketVerifier,
+        replay_store: ReplayStore,
+        clock: Callable[[], int],
         trusted_authority_id: str,
         trusted_envelope_key_reference: str,
         trusted_ticket_key_reference: str,
@@ -130,8 +139,14 @@ class PublicActionVerifier:
             or not callable(getattr(ticket_verifier, "verify", None))
         ):
             raise OpenCoreBoundaryError("cryptographic verifiers are required")
+        if not callable(getattr(replay_store, "consume_once", None)):
+            raise OpenCoreBoundaryError("atomic replay store is required")
+        if not callable(clock):
+            raise OpenCoreBoundaryError("trusted verification clock is required")
         self._envelope_verifier = envelope_verifier
         self._ticket_verifier = ticket_verifier
+        self._replay_store = replay_store
+        self._clock = clock
         self._trusted_authority_id = _text(trusted_authority_id, "trusted_authority_id")
         self._trusted_envelope_key_reference = _text(
             trusted_envelope_key_reference, "trusted_envelope_key_reference"
@@ -139,9 +154,6 @@ class PublicActionVerifier:
         self._trusted_ticket_key_reference = _text(
             trusted_ticket_key_reference, "trusted_ticket_key_reference"
         )
-        self._consumed_action_ids: set[str] = set()
-        self._consumed_ticket_ids: set[str] = set()
-        self._lock = Lock()
 
     def verify(
         self,
@@ -154,13 +166,16 @@ class PublicActionVerifier:
         resource: str,
         action_class: str,
         policy_version: str,
-        now: int,
         safety_evidence: Mapping[str, Any],
     ) -> PublicActionAdmission:
         if not isinstance(envelope, SignedActionEnvelope):
             raise OpenCoreBoundaryError("validated signed action envelope is required")
-        if not isinstance(now, int) or isinstance(now, bool):
-            raise OpenCoreBoundaryError("deterministic verification time is required")
+        try:
+            now = self._clock()
+        except Exception as exc:
+            raise OpenCoreBoundaryError("trusted verification clock failed") from exc
+        if not isinstance(now, int) or isinstance(now, bool) or now < 0:
+            raise OpenCoreBoundaryError("trusted verification clock returned invalid time")
         expected = {
             "tenant_id": _text(tenant_id, "tenant_id"),
             "subject_agent_id": _text(subject_agent_id, "subject_agent_id"),
@@ -200,13 +215,14 @@ class PublicActionVerifier:
         except Exception as exc:
             raise OpenCoreBoundaryError("public action safety state rejected") from exc
 
-        with self._lock:
-            if envelope.action_id in self._consumed_action_ids:
-                raise OpenCoreBoundaryError("action replay rejected")
-            if ticket.ticket_id in self._consumed_ticket_ids:
-                raise OpenCoreBoundaryError("Action Ticket replay rejected")
-            self._consumed_action_ids.add(envelope.action_id)
-            self._consumed_ticket_ids.add(ticket.ticket_id)
+        try:
+            consumed = self._replay_store.consume_once(
+                action_id=envelope.action_id, ticket_id=ticket.ticket_id
+            )
+        except Exception as exc:
+            raise OpenCoreBoundaryError("replay store failed closed") from exc
+        if consumed is not True:
+            raise OpenCoreBoundaryError("action or Action Ticket replay rejected")
 
         return PublicActionAdmission(
             action_id=envelope.action_id,
