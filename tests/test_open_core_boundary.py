@@ -49,8 +49,10 @@ class PublicEd25519Verifier:
 
 @pytest.fixture
 def crypto_material():
-    ticket_private = Ed25519PrivateKey.generate()
-    envelope_private = Ed25519PrivateKey.generate()
+    # Fixed test-only keys keep the security proof deterministic. They are not
+    # production secrets and are never used outside this test fixture.
+    ticket_private = Ed25519PrivateKey.from_private_bytes(bytes.fromhex("11" * 32))
+    envelope_private = Ed25519PrivateKey.from_private_bytes(bytes.fromhex("22" * 32))
     return {
         "ticket_signer": PrivateEd25519Signer(ticket_private),
         "ticket_verifier": PublicEd25519Verifier(ticket_private.public_key()),
