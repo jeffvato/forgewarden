@@ -10,7 +10,7 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 
 - Only approved active-phase work may be claimed.
 - Codex is the sole application-code writer.
-- Claude Code or the authorized AnythingLLM/Qwen fallback reviews exact candidate commits and returns findings only. Gemini is not required or enabled for the active workflow (D-020/D-021).
+- Daybreak Blue is the required read-only exact-commit verifier for new production work through the user's approved ChatGPT/Codex access path. If Blue is unavailable, acceptance fails closed; legacy reviewers are not substituted automatically.
 - A task is DONE only when acceptance criteria, deterministic validation, and review requirements are satisfied.
 - Do not mark placeholders, interfaces without behavior, untested code, or documentation-only claims as complete.
 - If one task is blocked, record the blocker and move to another independent READY task when safe.
@@ -20,10 +20,10 @@ This file is the persistent executable queue for the active ForgeWarden phase. C
 
 ### FWQ-0115 — Linux Sentinel pilot prerequisite reference hardening
 - Requirement: FW-AV Sentinel bounded pilot productionization
-- State: BLOCKED
+- State: REVIEW
 - Priority: P0
 - Dependencies: FWQ-0114
-- Approval: Jeff authorized definition on 2026-10-02. Implementation requires separate Customer Root authorization and remains blocked.
+- Approval: Jeff authorized continued single-track ForgeWarden production engineering on 2026-11-18. This authorization covers the existing metadata-only FWQ-0115 boundary; activation, installation, live sensors, enforcement, quarantine execution, deployment, credentials, and network access remain separately unauthorized.
 - Description: Harden caller-supplied Linux pilot prerequisite references while preserving the existing metadata-only, non-authorizing readiness boundary.
 - Target paths: swarm/av_service.py, tests/test_av_service.py
 - Allowed paths: swarm/av_service.py, tests/test_av_service.py, WORK_QUEUE.md, SWARM_STATUS.md
