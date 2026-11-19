@@ -255,12 +255,28 @@ class AVProtectionService:
         ):
             return invalid("staging_path")
 
-        evidence_match = _TENANT_BOUND_EVIDENCE_REF.fullmatch(package["evidence_destination"])
-        if evidence_match is None or evidence_match.group(1) != self.profile.tenant_id:
+        def canonical_reference(value: str, *, prefix: str, pattern: re.Pattern[str]) -> bool:
+            match = pattern.fullmatch(value)
+            if match is None or match.group(1) != self.profile.tenant_id:
+                return False
+            if "\\" in value or "//" in value:
+                return False
+            suffix = value[len(prefix):]
+            parts = suffix.split("/")
+            return bool(parts) and all(part not in {"", ".", ".."} for part in parts)
+
+        if not canonical_reference(
+            package["evidence_destination"],
+            prefix="fw-evid/",
+            pattern=_TENANT_BOUND_EVIDENCE_REF,
+        ):
             return invalid("evidence_destination")
 
-        policy_match = _TENANT_BOUND_POLICY_REF.fullmatch(package["policy_ticket"])
-        if policy_match is None or policy_match.group(1) != self.profile.tenant_id:
+        if not canonical_reference(
+            package["policy_ticket"],
+            prefix="fw-policy/",
+            pattern=_TENANT_BOUND_POLICY_REF,
+        ):
             return invalid("policy_ticket")
 
         maintenance_window = package["maintenance_window"]
