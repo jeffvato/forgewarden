@@ -8,8 +8,11 @@ and flow through the canonical ``DryRunSensorPipeline``.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 import hashlib
 import json
+import posixpath
+import re
 from typing import Any, Mapping
 
 from .sensor_adapter import DryRunSensorPipeline, SensorAdapterDenied
@@ -17,6 +20,17 @@ from .sensor_adapter import DryRunSensorPipeline, SensorAdapterDenied
 MAX_MEMORY_MB = 256
 MAX_CPU_PERCENT = 20
 MAX_QUEUE_EVENTS = 1024
+
+_LINUX_PILOT_STAGE_ROOT = "/srv/forgewarden-stage"
+_TENANT_BOUND_EVIDENCE_REF = re.compile(
+    r"^fw-evid/([a-z][a-z0-9_.-]{0,127})/[a-z][a-z0-9_.:/-]{0,191}$"
+)
+_TENANT_BOUND_POLICY_REF = re.compile(
+    r"^fw-policy/([a-z][a-z0-9_.-]{0,127})/[a-z][a-z0-9_.:/+-]{0,191}$"
+)
+_UTC_RFC3339_SECOND = re.compile(
+    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$"
+)
 
 
 class AVServiceContractError(ValueError):
@@ -182,24 +196,96 @@ class AVProtectionService:
             raise AVServiceContractError("Linux pilot requires a LINUX service profile")
         if not isinstance(package, Mapping):
             raise AVServiceContractError("pilot package metadata is invalid")
-        required = ("tenant_id", "device_id", "staging_path", "service_identity", "signed_manifest", "rollback_checkpoint", "evidence_destination", "policy_ticket", "maintenance_window")
+
+        required = (
+            "tenant_id", "device_id", "staging_path", "service_identity",
+            "signed_manifest", "rollback_checkpoint", "evidence_destination",
+            "policy_ticket", "maintenance_window",
+        )
         missing = [key for key in required if key not in package]
         if missing:
-            return {"decision": "NOT_READY", "reason": "MISSING_PILOT_PREREQUISITES", "missing": missing, "authority_granted": False, "mode": "DRY_RUN", "action": "DETECT_ONLY"}
+            return {
+                "decision": "NOT_READY", "reason": "MISSING_PILOT_PREREQUISITES",
+                "missing": missing, "authority_granted": False,
+                "mode": "DRY_RUN", "action": "DETECT_ONLY",
+            }
+
+        def invalid(*keys: str) -> dict[str, Any]:
+            return {
+                "decision": "NOT_READY", "reason": "INVALID_PILOT_PREREQUISITE",
+                "invalid": list(keys), "authority_granted": False,
+                "mode": "DRY_RUN", "action": "DETECT_ONLY",
+            }
+
+        def bounded_text(value: Any, *, limit: int) -> bool:
+            return (
+                isinstance(value, str)
+                and bool(value)
+                and len(value) <= limit
+                and value == value.strip()
+                and not any(ord(char) < 32 or ord(char) == 127 for char in value)
+            )
+
         for key in required:
-            value = package[key]
             limit = 4096 if key == "signed_manifest" else 256
-            if not isinstance(value, str) or not value.strip() or len(value) > limit or "\n" in value or "\r" in value:
-                return {"decision": "NOT_READY", "reason": "INVALID_PILOT_PREREQUISITE", "invalid": [key], "authority_granted": False, "mode": "DRY_RUN", "action": "DETECT_ONLY"}
+            if not bounded_text(package[key], limit=limit):
+                return invalid(key)
+
         if package["tenant_id"] != self.profile.tenant_id or package["device_id"] != self.profile.device_id:
-            return {"decision": "NOT_READY", "reason": "PILOT_SCOPE_MISMATCH", "authority_granted": False, "mode": "DRY_RUN", "action": "DETECT_ONLY"}
+            return {
+                "decision": "NOT_READY", "reason": "PILOT_SCOPE_MISMATCH",
+                "authority_granted": False, "mode": "DRY_RUN", "action": "DETECT_ONLY",
+            }
         if package["service_identity"] != "forgewarden-sentinel":
-            return {"decision": "NOT_READY", "reason": "SERVICE_IDENTITY_MISMATCH", "authority_granted": False, "mode": "DRY_RUN", "action": "DETECT_ONLY"}
+            return {
+                "decision": "NOT_READY", "reason": "SERVICE_IDENTITY_MISMATCH",
+                "authority_granted": False, "mode": "DRY_RUN", "action": "DETECT_ONLY",
+            }
+
+        staging_path = package["staging_path"]
+        normalized_path = posixpath.normpath(staging_path)
+        if (
+            "\\" in staging_path
+            or not posixpath.isabs(staging_path)
+            or normalized_path != staging_path
+            or not (
+                staging_path == _LINUX_PILOT_STAGE_ROOT
+                or staging_path.startswith(_LINUX_PILOT_STAGE_ROOT + "/")
+            )
+        ):
+            return invalid("staging_path")
+
+        evidence_match = _TENANT_BOUND_EVIDENCE_REF.fullmatch(package["evidence_destination"])
+        if evidence_match is None or evidence_match.group(1) != self.profile.tenant_id:
+            return invalid("evidence_destination")
+
+        policy_match = _TENANT_BOUND_POLICY_REF.fullmatch(package["policy_ticket"])
+        if policy_match is None or policy_match.group(1) != self.profile.tenant_id:
+            return invalid("policy_ticket")
+
+        maintenance_window = package["maintenance_window"]
+        if _UTC_RFC3339_SECOND.fullmatch(maintenance_window) is None:
+            return invalid("maintenance_window")
+        try:
+            datetime.strptime(maintenance_window, "%Y-%m-%dT%H:%M:%SZ")
+        except ValueError:
+            return invalid("maintenance_window")
+
         try:
             self.validate_packaging_manifest(json.loads(package["signed_manifest"]))
         except (json.JSONDecodeError, AVServiceContractError):
-            return {"decision": "NOT_READY", "reason": "SIGNED_MANIFEST_INVALID", "authority_granted": False, "mode": "DRY_RUN", "action": "DETECT_ONLY"}
-        return {"decision": "NOT_READY", "reason": "PILOT_REQUIRES_SEPARATE_ACTIVATION_AUTHORIZATION", "missing": [], "authority_granted": False, "mode": "DRY_RUN", "action": "DETECT_ONLY", "installation": "NOT_AUTHORIZED", "launch": "NOT_AUTHORIZED", "enforcement": "DISABLED", "quarantine": "DISABLED"}
+            return {
+                "decision": "NOT_READY", "reason": "SIGNED_MANIFEST_INVALID",
+                "authority_granted": False, "mode": "DRY_RUN", "action": "DETECT_ONLY",
+            }
+        return {
+            "decision": "NOT_READY",
+            "reason": "PILOT_REQUIRES_SEPARATE_ACTIVATION_AUTHORIZATION",
+            "missing": [], "authority_granted": False,
+            "mode": "DRY_RUN", "action": "DETECT_ONLY",
+            "installation": "NOT_AUTHORIZED", "launch": "NOT_AUTHORIZED",
+            "enforcement": "DISABLED", "quarantine": "DISABLED",
+        }
 
     def linux_pilot_readiness(self, *, pilot_id: str, rollback_checkpoint: str, manifest: Mapping[str, Any] | None = None) -> dict[str, Any]:
         """Validate one Linux pilot package without installing or launching it."""
